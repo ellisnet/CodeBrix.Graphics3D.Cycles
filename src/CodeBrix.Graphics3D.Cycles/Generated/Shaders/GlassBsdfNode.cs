@@ -44,9 +44,24 @@ public sealed partial class GlassBsdfNode : ShaderGraphNode
     public GlassBsdfDistribution Distribution { get => GetEnum<GlassBsdfDistribution>("distribution"); set => SetEnum("distribution", value); }
 
     /// <summary>
+    /// Gets or sets the <c>tangent</c> socket (Tangent; native type vector, linkable).
+    /// </summary>
+    public Vector3 Tangent { get => GetVector3("tangent"); set => SetVector3("tangent", value); }
+
+    /// <summary>
     /// Gets or sets the <c>roughness</c> socket (Roughness; native type float, linkable).
     /// </summary>
     public float Roughness { get => GetFloat("roughness"); set => SetFloat("roughness", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>anisotropy</c> socket (Anisotropy; native type float, linkable).
+    /// </summary>
+    public float Anisotropy { get => GetFloat("anisotropy"); set => SetFloat("anisotropy", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>rotation</c> socket (Rotation; native type float, linkable).
+    /// </summary>
+    public float Rotation { get => GetFloat("rotation"); set => SetFloat("rotation", value); }
 
     /// <summary>
     /// Gets or sets the <c>IOR</c> socket (IOR; native type float, linkable).
@@ -74,9 +89,24 @@ public sealed partial class GlassBsdfNode : ShaderGraphNode
     public ShaderInput NormalInput => new(this, "Normal");
 
     /// <summary>
+    /// Gets the <c>Tangent</c> input socket (vector), the target of a graph link.
+    /// </summary>
+    public ShaderInput TangentInput => new(this, "Tangent");
+
+    /// <summary>
     /// Gets the <c>Roughness</c> input socket (float), the target of a graph link.
     /// </summary>
     public ShaderInput RoughnessInput => new(this, "Roughness");
+
+    /// <summary>
+    /// Gets the <c>Anisotropy</c> input socket (float), the target of a graph link.
+    /// </summary>
+    public ShaderInput AnisotropyInput => new(this, "Anisotropy");
+
+    /// <summary>
+    /// Gets the <c>Rotation</c> input socket (float), the target of a graph link.
+    /// </summary>
+    public ShaderInput RotationInput => new(this, "Rotation");
 
     /// <summary>
     /// Gets the <c>IOR</c> input socket (float), the target of a graph link.

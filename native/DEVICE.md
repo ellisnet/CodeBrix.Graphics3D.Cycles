@@ -22,6 +22,12 @@ Status in brief (each line points to where it is kept current):
   Linux x64, the practical criterion required and strict differences
   reported ("Validation reference policy"); the full passes are recorded under
   `native/evidence/` ("Device checkpoint 1" describes the last one).
+- The pinned Cycles source is the released Cycles v5.3.0. What that changed in
+  the pinned kernels and what the device does about each change: "Re-pin to
+  Cycles v5.3.0", the last section. Sections written before it describe the
+  previous pinned revision wherever they say "the pinned kernel"; where the
+  release changed the behaviour they describe, a bracketed "At Cycles v5.3.0"
+  note says so in place.
 - Open work and rulings: "Open device items" (numbered; resolved items stay in
   the list as records). The one limitation of correct scenes that the claim
   carries is item 52, a driver fault in heterogeneous-volume renders on Intel
@@ -2236,9 +2242,9 @@ energy preservation and lookup tables:
 | Alpha | transparent | existing transparent closure |
 | Sheen | `CLOSURE_BSDF_SHEEN_ID` (LTC, `sheen_ltc` table); invalid LTC becomes `CLOSURE_NONE_ID` as natively | roughness, transformA/B in `a`/`b`, frame in `T`/`multiscatter` |
 | Coat (tint, normal, IOR) | GGX reflection, dielectric Fresnel, energy preservation | Fresnel model 1 |
-| Emission | emission, attenuated by sheen/coat albedo and coat tint | existing emission |
+| Emission | emission, attenuated by sheen/coat albedo and coat tint (at Cycles v5.3.0 through one layering rule, `clamp(weight - layer_albedo, 0, weight)`, with the coat tint taken at the viewing angle) | existing emission |
 | Metallic | GGX reflection, F82-tint Fresnel | model 5, f0 in `multiscatter`, b in `reflection_tint` |
-| Transmission | GGX glass, generalized Schlick (`exponent < 0`) | model 4, f0 in `multiscatter` |
+| Transmission | GGX glass, generalized Schlick (`exponent < 0`); at Cycles v5.3.0 anisotropic with the node's Anisotropic, Rotation and Tangent | model 4, f0 in `multiscatter` |
 | Thin wall | GGX reflection (constant Fresnel) plus `CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID`, or transparency off camera | thin-glass record (GGX of the mirrored direction) |
 | Specular (IOR level, tint) | GGX reflection, generalized Schlick | model 4 |
 | Thin film | Belcour/Barla Airy summation with the native `thin_film_table` for dielectric, metallic and transmissive lobes | film thickness/IOR in `a`/`b` when active |
@@ -2246,7 +2252,8 @@ energy preservation and lookup tables:
 | Subsurface | BSSRDF random walk (random walk, skin, legacy) and Christensen-Burley; thin-walled: diffuse and translucent, or Oren-Nayar and rough translucent | Bssrdf record (section "Subsurface scattering"); Oren-Nayar records |
 
 Both GGX distributions are supported; multiscatter GGX uses `ggx_E`/`ggx_Eavg`
-and `ggx_glass_E`/`ggx_glass_inv_E` with their averages. Every lookup-table read
+and `ggx_glass_E`/`ggx_glass_inv_E` with their averages (at Cycles v5.3.0 the three-dimensional tables are 32 cubed, where
+they were 16 cubed, and the cosine axis of every energy table except the sheen table is indexed by its square root). Every lookup-table read
 is bounds checked against the uploaded table (error 512), including the sheen,
 generalized-Schlick and thin-film tables. The canonical closure record keeps its
 112-byte size; fields are reused per kind as documented in
@@ -3581,6 +3588,11 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     their scene data and the `shader_eval_volume_density` module change (the world octree is now built). Host ABI consumer:
     the scene renders on both backends, also with a caller background light that lists no shader, and the CPU film repeats
     bitwise and equals the one with the caller's light listing the world shader.
+    Confirmed at Cycles v5.3.0 (FACT, 2026-11-13, lane run): with the host's background-light supply bypassed,
+    `volumes/heterogeneous-in-world-volume` on the CPU backend failed in 3 of 3 runs (the runner alone exits 139; under a
+    debugger a segmentation fault in `volume_octree_setup<true, IntegratorShadowStateCPU*>` called from
+    `volume_shadow_null_scattering`); `scene/volume.cpp` and `volume_stack.h` did not change with the release. The host
+    set-up above stays, and with it the scene renders.
 139. **The Mesa cold-compile crash in volume replays ("the Vulkan driver terminated while creating WebGPU compute pipeline"):
     not reproduced on the current tree.** Recorded in four replays of volume scenes before 2026-11-12
     (`connect_surface_light`, `intersect_shadow`, `shade_shadow_transparent`; the class of `brw_opt_combine_constants`, see
@@ -3916,6 +3928,70 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     film components (7 pixels, largest 0.00707) in both repeats, while the same WGSL with only those functions defined and not
     called is perfect (strict 21, as without the change), and the camera motion case's 718 traced steps are bit-identical with
     them. Which value departs is not found (no step trace of that scene was made); the item 180 fix leaves both as the driver's.
+183. **Volume shaders on meshes that are not closed differ from the CPU: OPEN, older than the re-pin, cause not established.**
+    FACT (2026-11-13, a re-pin lane's scratch scenes, not committed): two open boxes with volume shaders (meshes that no back
+    face closes; camera rays enter the first and then the second), lit by a sun. With the sun on the camera side: 56
+    practical failures against the CPU film, worst 177 times the tolerance, at pixel (12,17); the previous pinned
+    revision's device against the previous revision's CPU film gives the same numbers. With the sun behind the open
+    backs: 3 failures on that one pixel, 2.37 times the tolerance, identical before and after the lane's change. The CPU
+    films of five such scenes are bit-identical between the two pinned revisions (0 of 3,072 values differ). Not the
+    cause (tried, by film): the conversion of an unbounded step count to an integer in `volume_transmittance` (item 188).
+    No committed scene has an open volume mesh, so no committed scene fails for it. Nothing is refused: such a scene
+    renders, and differs.
+184. **A strong noise Bump seen after a diffuse bounce: isolated pixels differ from the CPU: OPEN, older than the re-pin,
+    cause not established.** FACT (2026-11-13, a re-pin lane's scratch scenes, not committed): Lambert surfaces with a
+    Noise texture (scale 9, detail 2) driving a Bump node, seen after a diffuse bounce. With Filter Glossy 0: 31 practical
+    failures, worst 22 times the tolerance; with Filter Glossy 2: 6 practical failures in six film components, worst 8.3
+    times the tolerance, single isolated pixels; with Filter Glossy 0.5 the scene passes. The device as it was before the
+    re-port of the differential widening gives the same 6 failures at the same worst pixel for the Filter Glossy 2
+    scene, so they do not come from that re-port. The same scenes with a gentle Bump pass (0 practical failures at
+    Filter Glossy 0, 0.5 and 2).
+185. **Boolean Math, Integer Math and Get Vector Component nodes: refused by name on the WebGPU device, OPEN (new in
+    Cycles v5.3.0, not ported).** "WebGPU Boolean Math node not implemented", "WebGPU Integer Math node not
+    implemented", "WebGPU Get Vector Component node not implemented" (`svm_census`, referenced shaders only, before any
+    pipeline is built). The SVM compiler folds constant inputs, so only a node with a linked input reaches the device.
+    The CPU backend renders them. They are in the target (Cycles' Metal device has them): a gap to close, not a
+    permanent refusal.
+186. **Gaussian splats, and quaternion and spherical-harmonics attributes: refused by name, OPEN (new in Cycles v5.3.0,
+    not ported).** The host refuses a point cloud whose `render_as` is `gaussian_splats` on every backend
+    ("Unsupported feature: Gaussian splats are not available in this library (the point cloud input render_as must be
+    points)"): it cannot author the three attributes a splat needs (it has no quaternion value kind), and Cycles would
+    render plain points without them. The device has its own refusals behind that, compiled and never reached through
+    the host: "WebGPU Gaussian splats not implemented" (`KERNEL_FEATURE_GSPLATS` is bit 32 of the 64-bit feature word, so
+    it is tested in C++, not in WGSL), "WebGPU quaternion attributes not implemented" and "WebGPU spherical harmonics
+    attributes not implemented" (non-empty `attributes_quaternion` / `attributes_spherical_harmonics_rest`). In the
+    target; a gap to close.
+187. **Dispersion and the dlss denoiser: not available on any backend (by ruling, not open work).** Dispersion: the
+    kernel's spectral sampling reads the CIE standard illuminant D65 table, which the CIE publishes under CC BY-SA 4.0;
+    the import leaves out that table, its normalisation constant, the dispersion functions of
+    `kernel/util/colorspace.h` (which also hold constants fitted from the table) and the `__SPECTRAL__` define
+    (MAINTAINER-README.txt, "PROVENANCE AND VENDORED SOURCES"). The Principled BSDF's two dispersion inputs exist and do
+    nothing in the kernels of any device, Metal included, so the host refuses a Principled BSDF that would disperse
+    (the pinned `PrincipledBsdfNode::has_dispersion()`: Transmission Dispersion Scale and Transmission Weight each
+    linked or not 0) with "Dispersion is not available: of the Principled BSDF inputs Transmission Dispersion Scale and
+    Transmission Weight one must be 0 and unlinked (this library renders without spectral sampling)". The device also
+    refuses a referenced shader flagged `SD_REQUIRES_WAVELENGTH` ("WebGPU dispersion not implemented"); the host refuses
+    first, so that text is never seen. The dlss denoiser: its code is compiled out (`WITH_DLSS` is never defined; it
+    needs a vendor SDK that is not part of this repository), and the host refuses `denoiser_type` dlss at a denoising
+    render ("Unsupported feature: the dlss denoiser is not available in this library (use openimagedenoise)"). Both are
+    on the render-time rejection list of AGENT-README.txt.
+188. **Recorded while re-porting to Cycles v5.3.0; each is older than the re-pin; none is fixed.** FACT unless marked.
+    (a) An Attribute node reading UV in a lamp's shader: the pinned `svm_node_attr` gives the lamp's uv
+    (`sd->type == PRIMITIVE_LAMP && attr == ATTR_STD_UV`); `svm_attribute` has no such branch and gives the node's
+    Missing value (zero before the re-pin). (b) A tiled image whose tile is not loaded: the pinned sampler returns the
+    Missing colour or the image's average colour; the device reports error 256 for any tiled image, as before. (c) The
+    Glass BSDF node with the multiscatter GGX distribution has no handler on the device (the census counts a stopped
+    path); what error such a scene reports was not checked. (d) An Emission closure in a volume shader evaluation is
+    not multiplied by the object's volume density and is not skipped for shadow and extinction evaluations
+    (`svm/closure.h`); the density is 1 unless the object is a Volume geometry in object space, which the host does not
+    create (INFERENCE: no effect today). (e) AO, Bevel, a Raycast node, subsurface scattering and a volume in one scene:
+    `prepare_surface_raytrace` is 1,256,653 inlined bytes, over the 940,000 byte size guard, and took 72 s to compile
+    on the Linux reference machine (1,256,442 bytes before the lane's change); no committed scene has that combination.
+    (f) Emission read from a Bump node's output is undefined on the CPU: a light evaluation masks Bump out and reads a
+    stack slot the node did not write, while the device evaluates the node (INFERENCE on the cause; about 3,200
+    practical failures in a scratch scene). (g) `volume_transmittance` converts an unbounded expected step count to an
+    integer: INT_MIN on x86-64 (one sample), saturation on ARM64 and in WGSL (1,024 samples); by reading only, and a
+    trial of the x86-64 form changed no film bit of the item 183 scene.
 
 Resolved, or closed under the device reference policy:
 - [34 and 18 of this list] **AO, Bevel and Raycast `only_local` from a transform-applied object beside instances: RESOLVED.**
@@ -3945,10 +4021,13 @@ Resolved, or closed under the device reference policy:
   call site, which keeps `shade_surface_passes` at 755,338 bytes); the orthographic camera's motion pass is the
   perspective camera's arithmetic. Scenes `cameras/stereo-*` (4), `cameras/window-*` (7), `passes/motion-*` (8) and
   `passes/denoising-motion-{orthographic,equirectangular}`: perfect.
+  [At Cycles v5.3.0: the background writes no Motion pass any more, and the direction form serves the background's
+  denoising backward motion only, with its own orthographic branch; see "Re-pin to Cycles v5.3.0", "Film".]
 - [6 of this list] **The Geometry node's Tangent output and motion-triangle smooth-normal derivatives: RESOLVED.** Bit 251
   `SVM_GEOMETRY_TANGENT` (census: a Geometry record with `NODE_GEOM_T`): `primitive_tangent`, the radial tangent of the
   generated coordinates through `object_normal_transform`, plain and with derivatives inside bump (as the Tangent node's
-  arithmetic); points keep reporting 16. The value follows the pinned float3 order exactly (`transform_direction_transposed`'s
+  arithmetic); points keep reporting 16 [at Cycles v5.3.0 a point has a tangent frame and the output on a point is
+  `normalize(dPdu)`; see "Re-pin to Cycles v5.3.0", "Surface integrator"]. The value follows the pinned float3 order exactly (`transform_direction_transposed`'s
   dots, `normalize`, the SSE cross): with the host's generated coordinates (object-space positions here), a box's side
   faces give t parallel to N, exactly zero on the CPU (normalize's 0/0), and only the exact order reproduces that under a
   rotated instance. The Tangent node's radial tangent, which uses driver arithmetic and reports a degenerate frame as 16,
@@ -4143,7 +4222,8 @@ Resolved, or closed under the device reference policy:
   `surf_sample` and `light_bsdf` (correctly rounded quotients, unfused products); Oren-Nayar intensity, G and
   parameters (the `dot` and divisions, and glibc's correctly rounded `acosf` through `trig_acos` instead of the series
   `c_acos`); the Lambert/translucent eval `dot`; the diffuse/glossy pass weights (`safe_divide` per lane: 1.0 had come
-  out as 0x1.fffffep-1); the dD widening `sqrtf`; `sd.dP` (a contracted multiply-add in
+  out as 0x1.fffffep-1); the dD widening `sqrtf` [at Cycles v5.3.0 multiplied by
+  `integrator.differential_widen_scale`, which is 0 with Filter Glossy off; see "Re-pin to Cycles v5.3.0"]; `sd.dP` (a contracted multiply-add in
   `wavefront_shader_data.wgsl`). Each site attributed by leave-one-out. Gates: the oracle scenes
   `combinations/enclosure-emissive-panel-{oren-nayar,translucent,mix}` (pass before and after; no configuration was
   found that these sites push past the practical bound). Modules changed: surface, background, shadow, volume (device
@@ -4350,6 +4430,15 @@ instructions. None reaches 1,110,000 bytes. The densest ratio at or above 100,00
 | 963,960 | 50,178 | `shade_volume` | `volumes/catcher-heterogeneous` |
 | 952,582 | 56,189 | `shade_surface_light` | `shadow-linking/hdri-world` |
 | 944,967 | 49,604 | `shade_volume` | `volumes/heterogeneous-point`, `-heterogeneous-point-distance`, `-heterogeneous-point-equiangular`, `-heterogeneous-spot`, `-heterogeneous-sun`, `-passes-emission-heterogeneous`, `-passes-heterogeneous`, `-tree-heterogeneous` |
+
+At Cycles v5.3.0 the two tables above are stale (measured in single runs by the re-pin lanes, not re-measured over the
+corpus): the mixed-phase combination adds 16,246 bytes to `shade_volume_light` and 16,270 bytes to `shade_volume` or
+`shade_volume_phase`, and the light-tree `shade_volume_light` rows were already larger than the table says before that
+(`volumes/linking-tree-lamps`, which is not in the table, 1,044,853 bytes before and 1,061,099 after, 53,367 Intel
+instructions; `shadow-linking/volume` 989,727 and 1,005,973; the new scene `volumes/mixed-phase-world` 989,447 and 1,005,693,
+50,174 instructions; `volumes/catcher-tree` 1,056,954 after). Every entry probed stays under 60,000 instructions. The
+tables are re-measured with the next full pass on the new pin; whether `volumes/mixed-phase-world` joins the accepted
+false warnings is the maintainer's decision.
 
 Nine of these rows grew 10,242 bytes with the normalize of item 54: the eight `shade_volume_light` rows and
 `volumes/principled-volume`. On the HP (Mesa 24.0.8, before that normalize), 20 of the 27 rows compiled and rendered perfect,
@@ -5640,6 +5729,11 @@ shaders at the sampled point.
   ShaderData: world for the background light, `triangle_light_uv` + `shader_setup_from_ray` for a triangle;
   `shade_light_nee` evaluates the emission shader, applies the roulette with `bsdf_eval_average` and multiplies the
   shadow throughput), so each entry stays inside the compile envelope. Capture entries 18-20, recorder v9.
+  [At Cycles v5.3.0: a shadow path made by shadow linking's dedicated light kernel (`PATH_RAY_SHADOW_FOR_LIGHT_LINKING`)
+  carries the picked emitter's intersection in `shadow_isect[0]`, and `prepare_light_nee` then takes type, u, v and t from
+  it and sets the ShaderData up as a hit on a triangle, a curve (`curve_setup_hit`) or a point (`point_setup_hit`); a lamp
+  keeps the light-point path, and a path that is not shadow-linked keeps the arithmetic above; see "Re-pin to Cycles v5.3.0", "Surface
+  integrator".]
 - **Background stage.** `light_sample_mis_weight_forward_background` (background light PDF x lamp selection
   probability, power heuristic) and `background_light_clamp_dD` for non-camera rays.
 - **Fixed along the way.** (a) The triangle self-intersection skip of `integrate_surface_direct_light` was missing
@@ -6294,7 +6388,8 @@ perfect.
 
 Objects carry a `blocker_shadow_set` and emitters a `shadow_set_membership` (`KERNEL_FEATURE_SHADOW_LINKING`): a shadow ray towards a
 shadow-linked emitter passes through objects whose set is not in the emitter's membership, and a bounce also looks for the linked emitters that
-the main path's ray cannot reach past its blocker. The WebGPU device renders this as the pinned kernel does, on the flat light distribution and on the tree:
+the main path's ray cannot reach past its blocker. The WebGPU device renders this as the pinned kernel does, on the flat light distribution and on the tree
+(the bracketed notes below give what Cycles v5.3.0 changed in these kernels):
 
 - **Blocker sets** (`intersection_skip_shadow_link`): `shadow_link_skip` in both traversals (`wavefront_closest.wgsl`, `wavefront_shadow_traversal.wgsl`), so next-event
   and dedicated shadow rays, MNEE's probe rays included, follow the light object's membership. A ray without a light object is unaffected.
@@ -6309,6 +6404,10 @@ the main path's ray cannot reach past its blocker. The WebGPU device renders thi
   `dedicated_light_tree_pdf` and `shade_dedicated_light` (surface module) take an emissive triangle's forward weight (`triangle_light_forward_weight`), build the shadow path in
   a reserved slot (control op 5, so slot numbers do not depend on atomic order; bounce one less, `PATH_RAY_SHADOW_FOR_LIGHT_LINKING`), and restore the path. The MIS pdf
   comes from either sampler: the distribution's selection pdf or the tree's forward pdf. A non-constant emitter's shadow path goes through `SHADE_LIGHT_NEE`.
+  [At Cycles v5.3.0: for a non-constant emitter the kernel also writes the main path's intersection (t, u, v, prim, object, type) to `shadow_isect[0]` of that shadow path
+  (`integrator_state_write_shadow_light_isect`), which `SHADE_LIGHT_NEE` reads back; `dedicated_light_weight` is a 16-bit hit count, not a float; and with shadow linking every
+  referenced shader with emission that is not constant makes the scene compile `SHADE_LIGHT_NEE` and joins the Light Path node's emitter list. Before, such an emitter that no
+  lamp, distribution triangle or tree emitter had made compile was shaded as constant emission; see "Re-pin to Cycles v5.3.0", "Surface integrator".]
 - **Specialization**: bit 120 `SHADOW_LINKING`; every edit of shared WGSL is inside a `SHADOW_LINKING` region, so other scenes compile byte-identical modules. Capture entries 51-54 (recorder format v10).
 - **Shadow catcher and ambient occlusion**: a path split at a shadow catcher takes the dedicated light kernels with its catcher-pass flag (the shifted visibility of
   `path_state_ray_visibility`, lamps excluded from catcher rays skipped, the shadow path's flag carried to the catcher passes); fast GI's additive AO and the AO pass trace their
@@ -6600,11 +6699,13 @@ the catcher-pass copy goes to `INTERSECT_MNEE` after its volume stack (`integrat
 `wavefront_volume_stack.wgsl`). The state gate takes
 case 24 too, since the device keeps the data-pass bookkeeping of volume scenes (open item 125).
 
-No caustic light type is refused. An
-anisotropic refractive caster cannot occur: every refractive and glass closure setup of the pinned kernel sets
+No caustic light type is refused. At
+the previous pinned revision an anisotropic refractive caster could not occur: every refractive and glass closure setup set
 `alpha_y = alpha_x` (`bsdf_microfacet_ggx_refraction_setup`, `_ggx_glass_setup`, `_beckmann_refraction_setup`,
-`_beckmann_glass_setup`), so `mnee_sample_bsdf_dh`'s anisotropic branch is never taken and the device's unsupported-handler
-error 2 for it is unreachable. MNEE takes the light tree's or light linking's selection in its own entry (`mnee_select`, between `mnee_receiver` and `mnee_seed`: the walk stays out of the seed for
+`_beckmann_glass_setup`), so `mnee_sample_bsdf_dh`'s anisotropic branch was never taken. At Cycles v5.3.0 that is no longer
+true: the glass and refraction setups keep `alpha_y` (the Glass BSDF has Anisotropy, Rotation and Tangent inputs, and the
+Principled BSDF's transmission lobe follows its Anisotropic input), so a caustic caster can be anisotropic, and the device's
+walk takes the anisotropic branch of `mnee_sample_bsdf_dh` for it (see "Re-pin to Cycles v5.3.0", "Closures"). MNEE takes the light tree's or light linking's selection in its own entry (`mnee_select`, between `mnee_receiver` and `mnee_seed`: the walk stays out of the seed for
 compiler pressure; 8 record words, capture entry 57), with the pinned `pdf_selection` re-applied by the light update; a selection that fails or is not linked is no sample. The `mnee` and
 `mnee_render` gates carry nine more cases: cases 0, 1, 2, 4, fast GI and receiver motion on the tree, case 4 with light linking on each sampler. With shadow linking the probe and shadow rays follow the
 light's membership (`shadow_linking_gate` cases 10 and 11). A moving caster renders (item 33).
@@ -6912,11 +7013,11 @@ converts nothing. Passes it does not write are refused by name before any pipeli
 | Light | emission, background, AO, diffuse/glossy/transmission direct and indirect, light groups | surface emission, background, forward light hits, shadow rays (`film_write_emission_or_background_pass`, `film_write_direct_light`) |
 | Colour | diffuse, glossy and transmission colour | `shade_surface_passes` (`film_write_data_passes`: `surface_shader_diffuse/glossy/transmission` with `bsdf_albedo`) |
 | Data | depth, position, normal, roughness, UV, object and material index, mist | `shade_surface_passes`; the background's zero depth/position/indices |
-| Motion | motion, motion weight (Scene::MOTION_PASS: no motion blur) | `shade_surface_passes` (`primitive_motion_vector`), background (`camera_motion_vector_direction`) |
+| Motion | motion, motion weight (Scene::MOTION_PASS: no motion blur) | `shade_surface_passes` (`primitive_motion_vector`); at Cycles v5.3.0 the background writes neither (before: `camera_motion_vector_direction`) |
 | Sample count | sample count | camera (`film_write_sample`, already implemented) |
 | AOV | AOV colour and value | the SVM AOV records in `prepare_surface` and the background's shader evaluation |
 | Cryptomatte | object, material and asset id/weight slots | `shade_surface_passes` (`film_write_cryptomatte_slots`); `DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS` (`film_cryptomatte_post`) |
-| Denoising features | albedo, normal, specular albedo, roughness, depth, backward and specular motion | camera (`PATH_RAY_DENOISING_FEATURES`, feature throughput), `shade_surface_passes` (`film_write_denoising_features_surface`), emission and background albedo, background depth |
+| Denoising features | albedo, normal, specular albedo, roughness, depth, backward and specular motion | camera (`PATH_RAY_DENOISING_FEATURES`, feature throughput), `shade_surface_passes` (`film_write_denoising_features_surface`), emission and background albedo, background depth; at Cycles v5.3.0 also the background's backward motion, the volume-bounds depth segment (`film_write_denoising_features_surface_volume`) and an accumulated, finite background depth (see "Re-pin to Cycles v5.3.0", "Film") |
 | Render time | render time | not written: the pinned GPU devices never write it (only `PathTraceWorkCPU` measures it), so it reads zero as on Cycles' Metal device |
 
 Light passes and light groups were already written by the shared film code; the light-pass refusal came from the
@@ -7576,13 +7677,14 @@ displacement and shadow linking render as the pinned kernels do. Where a pinned 
 | `bvh/volume_all.h` (volume stack) | unaligned nodes read, curve leaves passed over | `volume_all_hits` |
 | `scene_intersect_shadow` (AO node), `scene_intersect` (Raycast node) | curve hits, no per-primitive visibility | `ao_trace`, `raytrace_traverse` (global); Raycast hit data from `curve_setup_hit` |
 | MNEE probe rays (`scene_intersect`) | curve hits; a curve caster rejects the path (`SHADER_EVAL_EMPTY`) | the MNEE copy of the closest traversal (it already had the curve regions) |
-| shadow linking (`shadow_linking_pick_mesh_intersection`) | emissive curves are picked; no forward MIS on a curve | `intersect_dedicated_light`, `shade_dedicated_light`, `dedicated_light_tree_pdf` |
+| shadow linking (`shadow_linking_pick_mesh_intersection`) | emissive curves are picked; no forward MIS on a curve; at Cycles v5.3.0 a picked curve or point whose emission is not constant is shaded at the picked hit (`shadow_isect[0]`), where before it had no hit to shade | `intersect_dedicated_light`, `shade_dedicated_light`, `dedicated_light_tree_pdf`; `prepare_light_nee` with `curve_setup_hit` or `point_setup_hit` |
 
 The hit's shader is read from the curve record where a continuation reads it (`volume_after`; after a shadow catcher's background or
 volume when the catcher is a hair object, region `CURVE_SHADOW_CATCHER`, bit 197). Regions: `CURVE_RAYTRACE` (bit 196, curves with the AO,
 Bevel or Raycast node or subsurface scattering: unaligned nodes, curve leaves passed over, the AO node's curve hits), `CURVE_RAYCAST` (bit
-198, curves with the Raycast node: its curve hits and `curve_setup_hit`; kept apart so the subsurface walk, which only passes curves over, stays
-inside the Intel envelope: with the curve intersection inlined `intersect_subsurface` reached 62,571 instructions) and `TRAVERSAL_HELPERS` (the
+198, curves with the Raycast node: its curve hits; kept apart so the subsurface walk, which only passes curves over, stays
+inside the Intel envelope: with the curve intersection inlined `intersect_subsurface` reached 62,571 instructions), `CURVE_SETUP_HIT` (since the re-pin to
+Cycles v5.3.0: the state-free `curve_setup_hit`, compiled with the Raycast node on curves or with shadow linking, whose light evaluation shades a picked curve) and `TRAVERSAL_HELPERS` (the
 surface module's node tests and curve intersection, shared with MNEE: MNEE scenes keep their text). Displacement evaluates meshes only (hair has no true displacement), so it needed no change.
 
 **Displacement.** A true displacement shader on curves renders (`scenes/curves-b/displacement-on-curves`). Method Both on a curve is refused by
@@ -7618,12 +7720,16 @@ True displacement evaluates mesh vertices only, so a point cloud keeps its posit
 **Arithmetic.** As the curves: every sum, difference and product in `wavefront_point.wgsl` and `wavefront_point_shader_data.wgsl` passes the order word,
 quotients and roots are correctly rounded, `float3 / float` follows `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`. The SSE `dot` is `_mm_dp_ps(a, b, 0x7f)`, whose
 `z + 0` decides the sign of a zero sum: a ray starting exactly at a point's centre gets `t = +0` on the oracle only with that sum; the scalar dot leaves it out. On
-Linux, in x64 arithmetic, every point hit's t, u, v and its ShaderData equal the CPU kernels bit for bit, static and moving (`native/tools/point_gate.py`). A
-point's `dPdu` and `dPdv` are zero, so `du` and `dv` are signed zeros: `point_differentials` keeps them.
+Linux, in x64 arithmetic, every point hit's t, u, v and its ShaderData equal the CPU kernels bit for bit, static and moving (`native/tools/point_gate.py`). At the
+previous pinned revision a point's `dPdu` and `dPdv` were zero, so `du` and `dv` were signed zeros. At Cycles v5.3.0 a point has a tangent frame
+(`make_orthonormals(sd->Ng, &sd->dPdu, &sd->dPdv)` in `point_intersect.h`, before the back-facing flip): `point_setup_hit` computes `dPdu = orthogonal(Ng)` and
+`dPdv = cross(Ng, dPdu)`, so a Bump node works on points and `du` and `dv` are no longer zero. A hit exactly at a point's centre has a NaN normal; its frame is then the
+oracle's NaN bit pattern in every component (`point_frame_nan`: 0xffc00000 on x86-64; the ARM64 pattern 0x7fc00000 is an inference, not run).
 
 **Refused by name:** "WebGPU points with a Both displacement shader not implemented": `svm_node_enter_bump_eval` finds no `ATTR_STD_POSITION_UNDISPLACED` on a point,
-saves no differential, and `svm_node_set_bump` then reads stack entries that nothing wrote (item 87). "WebGPU BVH time steps not implemented". The Geometry node's Tangent output
-on a point reports error 16, as on a triangle (`primitive_tangent` is `normalize(0)` on a point, NaN on the oracle).
+saves no differential, and `svm_node_set_bump` then reads stack entries that nothing wrote (item 87). "WebGPU BVH time steps not implemented". At the previous pinned
+revision the Geometry node's Tangent output on a point reported error 16 (`primitive_tangent` was `normalize(0)` there, NaN on the oracle); at Cycles v5.3.0 it is
+`normalize(dPdu)` of the frame above and renders (`svm_geometry_tangent`).
 
 **Authoring.** `cbc_host_points`, `cbc_host_point_motion`, `cbc_host_particles` and the standard attribute `point_random` (`native/host/ABI.md`), the typed
 `PointCloudNode`, `ParticleSystemNode` and `CyclesScene` methods, the `points` and `particles` scene entries.
@@ -7701,7 +7807,9 @@ the BSDF sample, as `_surface_shader_bsdf_eval_mis` with `CLOSURE_IS_BSDF_OR_BSS
 skin model, half the time diffuse entry bounce) and queues `DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE`. At the exit
 point the shader is evaluated only for a bump-mapped BSSRDF normal (`SD_HAS_BSSRDF_BUMP`, `surface_shader_bssrdf_normal`),
 one diffuse closure of weight 1 replaces the closures, and holdout, emission, termination and the data passes are skipped
-(`subsurface_shader_data_setup`); the subsurface path flags are cleared before the exit point's direct light.
+(`subsurface_shader_data_setup`); the subsurface path flags are cleared before the exit point's direct light. [At Cycles
+v5.3.0 the exit point's runtime flags lose only the closure flags (`runtime_flag &= ~SR_CLOSURE_FLAG`, where the previous
+revision wrote 0), so `SR_BACKFACING` survives on the geometry record; `ss_exit` does the same.]
 
 **The walk** (bit 169 `SUBSURFACE_ENTRY`, a module variant of the surface module; entry `intersect_subsurface`,
 recorder entry 47, `native/cycles/subsurface.cpp`): `subsurface_random_walk` with the van de Hulst and the fitted albedo
@@ -8015,3 +8123,176 @@ and the app batch. No soundness sample was run.
   accepts only as point, sun, background, area or spot; mesh emitters are triangle emitters and portals are not lamps, so
   no scene the host can build reaches another type. The two checks (the lamps and the light tree's lamp emitters) read
   "Invalid native light type". The degenerate area light stays refused (item 105).
+
+## Re-pin to Cycles v5.3.0 (2026-11-12/13)
+
+The pinned Cycles source (`third_party/cycles`) was replaced by the released Cycles v5.3.0, revision
+`b3f6262640f1a2f2d10b55b6ffccbf310ce0f981` (191 upstream commits after the previous pinned revision,
+`a456b761034dda42c32eef9f4aae0fa5a5c9f604`). The CPU device is the oracle, so its films changed with the pin: of the 706
+corpus scenes rendered on the CPU at both revisions, 601 differ beyond the practical criterion, 11 differ within it and 94
+are bit-identical. Every film, state record, fingerprint, replay capture and size table recorded before this section
+(`native/evidence/` included) belongs to the previous revision. This section says what the release changed in the kernels
+the device mirrors and what the device does now. It was written before a full gate and corpus pass on the new pin had been
+recorded: each statement of proof below names the single scenes or gate cases it rests on (Linux x64, Intel UHD, against the
+v5.3.0 CPU kernels), and the full passes belong to the next device checkpoint.
+
+**Layouts and constants.**
+
+- Integrator state. The release stores some state fields compressed on GPU devices (`util/types_gpu_compressed.h`:
+  `FloatCompressedOnGPU` as a half float, `SpectrumCompressedOnGPU` as three half floats) and sizes every GPU device's
+  state arrays from the stored type. The WebGPU device keeps full precision (the maintainer's ruling: half precision in
+  `ray.time` and `ray.dD` cannot meet the practical criterion against the CPU oracle): the overlay adds, under
+  `WITH_WEBGPU`, storage types of `float` and `PackedSpectrum` for the two wrappers, so those fields keep the 4 and 12
+  byte elements they had. The host code takes every element size from the stored type
+  (`sizeof(gpu_state_storage<type>::gpu_type)`), never from `sizeof(type)` (a compressed spectrum is 16 bytes on the host).
+  The fields: `path.continuation_probability`, `pass_diffuse_weight`, `pass_glossy_weight`,
+  `denoising_feature_throughput`; `ray.dD`, `ray.time`; `subsurface.albedo`, `anisotropy`; the five guiding
+  probabilities; `shadow_path.pass_diffuse_weight`, `pass_glossy_weight`, `unlit_throughput`; `shadow_ray.time`, `dD`.
+  No field was added or removed; `ray`, `shadow_ray` and `subsurface` were reordered, which needs no shader change (each
+  field is its own array, addressed through its `offsetof` slot). Cycles' Metal device keeps the half-precision state,
+  so Metal and WebGPU films can differ slightly from this alone (INFERENCE, not measured).
+- `shadow_link.dedicated_light_weight` is a 16-bit count of hits (it was a float): written with `state_u16`, read with
+  `state_half`, 2 bytes per path. The MNEE light sample's `eval_fac` lives in `shadow_isect[2].t` (it was in
+  `shadow_ray.time`); `shadow_isect[0]` carries shadow linking's picked intersection (below).
+- `KernelObject`: the mesh and volume fields (`num_prims`, `volume_density`, `volume_velocity_scale`, `normal_offset`) are a
+  union with the Gaussian-splat fields and are written for mesh and volume objects only. Every WGSL read of the triangle
+  count or the normal offset is inside triangle code, and the density is read only through `object_volume_density`, which
+  returns 1 unless the object's primitive type has `PRIMITIVE_TRIANGLE` (the pinned guard).
+- `KernelData.kernel_features` is 64 bits. The shaders read its low word, which holds every flag they test; the one
+  feature above bit 31 (Gaussian splats, bit 32) is tested in C++.
+- Visibility. `PATH_RAY_VISIBILITY_ALL` is 0x7F and the new `PATH_RAY_VISIBILITY_OBJECT_ALL` is 0xFF (it adds the
+  Raycast-node bit). The local traversals (the AO node with only_local, Bevel, a Raycast node with only_local, both
+  subsurface walks) use `OBJECT_ALL`, as `bvh/local.h` does; the volume stack uses `ALL`, so an object visible to Raycast
+  rays alone no longer enters the volume stack.
+- Shader runtime flags and primitive types were renumbered (`SR_CACHE_MISS` is bit 1, `PRIMITIVE_MOTION` bit 7,
+  `PRIMITIVE_NUM_BITS` 8). Every use in the shaders is a named constant taken from the header, so they follow; numbers in
+  records made before the re-pin are stale.
+- SVM. The Vertex Color opcodes are gone: the node compiles to an Attribute node with Missing 0 and Missing Alpha 0, and
+  the device's Vertex Color handler was removed (feature bit 6 stays unused, so no later bit moves). The Attribute and the
+  three image records carry Missing and Missing Alpha: an attribute that is not found gives Missing (Missing Alpha on the
+  Alpha output) where it gave zero, with zero derivatives; an image that is absent, or a UDIM tile out of range, gives
+  them where it gave the fixed (1,0,1,1); both inputs can be linked. In a volume shader a missing attribute gives Missing
+  before the Generated special case is considered, as the pinned volume function does. The Glass and Principled records
+  grew (anisotropy, rotation and tangent; the two dispersion inputs). Every record field is read through its `offsetof`
+  constant.
+- Energy tables. `ggx_glass_E`, `ggx_glass_inv_E` and the two generalized-Schlick tables are 32 x 32 x 32 (they were
+  16 x 16 x 16), their averages 32 x 32; the resolutions come from `kernel/constants.h`. On the cosine axis of `ggx_E`, the
+  glass tables and the generalized-Schlick tables the index is `safe_sqrtf(mu)`; the sheen table, `ggx_Eavg` and the
+  glass averages are indexed as before (`microfacet_mu_index`; the Huang hair energy scale the same).
+- A sixth default shader, `default_gsplat` (an Attribute node into an Emission), is in every scene and is referenced.
+  The attribute feature (`SVM_NODE_ATTR`) is therefore taken from the shaders the scene's own geometry, lights and world
+  reference, as the Principled features already were, so scenes without attributes compile the modules they compiled
+  before (confirmed by the maintainer). A shader evaluated outside those would report an unsupported opcode, never
+  render differently.
+- Scheduling. The release gives `DeviceQueue::num_concurrent_states` a base implementation that grows and shrinks the
+  state count; the device keeps its own fixed count (the SVM value stack has 4,096 slots) and implements the two new
+  pure virtuals (`concurrent_states_params`: baseline, minimum and maximum all 4,096; `get_memory_info` reports no
+  memory, because the count does not follow free device memory). `num_concurrent_busy_states` no longer exists. The pinned scheduler now keeps at least a quarter of the
+  maximum number of paths active (1,024; it was half, 2,048), limits new paths by the free shadow slots and forces a
+  shadow compaction: the command stream of a render changes, so fingerprints and replay captures made before the
+  re-pin do not apply; films should not change (INFERENCE; the render gates decide).
+- Host-side data that moves films on every device: the XYZ to Rec.709 matrix (about 1e-4 relative in the film's colour
+  constants), the built-in sRGB texture conversion for scene-linear spaces other than Rec.709, grey-and-alpha images
+  with straight alpha (premultiplied on load now), and the triangle centroid in the light tree build (a different tree
+  shape in some mesh-light scenes: different noise, the same expectation). The device reads all of these from the
+  uploaded data.
+
+**Closures (surface shaders).** Each mirrors the release's arithmetic operation for operation.
+
+- Oren-Nayar: the multiple-scattering term uses the albedo once (`Ems = (1/pi) * albedo * (Eavg / (1 - Eavg)) / (1 -
+  albedo * (1 - Eavg))`; the previous revision squared it). Every rough Diffuse closure changes.
+- Principled layering: one rule for every layer, `clamp(weight - layer_albedo, 0, weight)`, with
+  `layer_albedo = weight * reduce_max(albedo estimate)` for the specular lobe, the maximum component of the sheen weight
+  for sheen, and for the coat `(1 - tint_at_angle * (1 - albedo)) * coat_weight`, the tint raised to
+  `ior / sqrt(ior^2 - (1 - cosNI^2))`. The separate coat-tint step of the previous revision is gone.
+- Emission under layers: a sheen or coat lobe is the stack-local closure only when no closure slot is left and the shader
+  has emission (the previous test was the path flag), decided per lobe at allocation; local lobes set no runtime flags.
+- Thin-wall transmission roughness: `saturate(alpha * 3.4 * (eta - 1) * sqr(eta - 0.5) / eta^3)`, without the square root.
+- Anisotropic transmission: the glass and refraction setups keep `alpha_y`, the evaluation is anisotropic whenever the
+  two alphas differ (transmission included), and the anisotropic sample builds its outgoing direction in the tangent
+  frame from the sampled direction (`local_O = (dot(X, wo), dot(Y, wo), cos_NO)`), which also changes existing
+  anisotropic reflection lobes. The Glass BSDF's Anisotropy, Rotation and Tangent and the Principled BSDF's Anisotropic
+  input on its transmission lobe are ported, not refused, and so is the anisotropic branch of the caustics walk for an
+  anisotropic caster.
+- The reflectance/transmittance pair of the Fresnel functions is a refactor: no arithmetic changed.
+- Proof (single runs): `starter/diffuse-triangle`, `bsdf/metallic`, `beckmann`, `glossy-filter`,
+  `combinations/tree-principled`, `principled-receiver-transparent-lighting-5`, `subsurface/principled-thin-wall`,
+  `points/anisotropic-tangent`, `curves/anisotropic-tangent-thick`, `hair/huang-absorption`, `chiang-absorption-linear`,
+  `passes/aovs`, `linux-gates/textured-plane`, `mnee/area-caustic` and the new scenes `bsdf/glass-anisotropic`,
+  `bsdf/principled-anisotropic-transmission` and `bsdf/principled-layers`: perfect. Gate programs `principled_svm` (295
+  cases), `svm_surface` (26), `glass_svm` (119), `microfacet_bounce` (22), `principled_bounce` (29): passed. Largest
+  entry seen: `prepare_surface` 869,084 bytes.
+
+**Surface integrator, shadow linking, points.**
+
+- Differential widening: the widened `dD` of a bounce, of a next-event shadow ray and of a volume scatter is
+  `max(previous, differential_widen_scale * roughness term)`. The scale is `min(1, filter_glossy)`, and Filter Glossy 0
+  means "off", so the scale is 0 there and the widening the previous revision always applied is off. The integrator's
+  Filter Glossy default is 1.0 at this release (it was 0), which the host follows: a scene that does not set it renders
+  with glossy filtering and the `SURFACE_FILTER_GLOSSY` variant. Proof: scratch scenes at Filter Glossy 0, 0.5 and 2 with
+  a gentle Bump seen after a diffuse bounce, perfect (their CPU films differ from each other in over 2,200 components);
+  `volume_gate` cases at scale 0, 0.37 and 1. The shadow ray's `dD` reaches no film value here; it is state the
+  lighting gates compare. Item 184 is the strong-Bump remainder.
+- `SR_BSDF` is cleared when the closure filter (the integrator's use_diffuse, use_glossy and the like) leaves no BSDF
+  (`surf_prepare`). The subsurface exit and the holdout keep the non-closure runtime flags (`SR_BACKFACING`).
+- Shadow linking with emitters whose emission is not constant (textured, or on curves or points): the dedicated light
+  kernel stores the picked intersection in `shadow_isect[0]` and the light evaluation shades that hit; the linked
+  triangle's uv comes from the traced hit. See the notes in "Shadow linking" and "Environment lighting and non-constant
+  emitters". Proof: new scenes `shadow-linking/emissive-textured`, `curves-b/linking-emissive-textured`,
+  `points/shadow-linking-emissive-textured`: perfect (the two last failed with 3,547 and 632 practical failures before).
+- Points have a tangent frame (see "Point clouds"). Proof: `codebrix_cycles_point_gate`, all 8 cases, every point field
+  bit-identical to the CPU.
+- The three SVM node-skipping fixes of the release (a displacement output beside emission, transparency or a volume;
+  Bump or Normal Map in a volume shader; the legacy random walk beside emission, a mix or a volume) are CPU-side: the
+  device's interpreter takes every record's size from its size table before the dispatch. The one counterpart, the
+  volume module's skip table, gained the legacy random walk id.
+
+**Volumes, shadows, MNEE.**
+
+- Phase sampling with more than one phase closure (a Mie phase function, or a stack that merges two media): the stored
+  pdf is the combined pdf of all closures and the throughput is multiplied by evaluation / pdf, the picked closure
+  first and the others in closure order (`volume_phase_mis`, `vl_phase_mis`). Proof: a two-lobe medium under a gradient
+  world, 805 practical failures before, perfect after; `volumes/phase-mie` with Lambert surfaces, 80 before, perfect
+  after; new scene `volumes/mixed-phase-world`.
+- Octree set-up for null scattering (`volume_octree_setup_single`): the active stack entry is replaced by an empty local
+  tracer where the previous revision skipped it (`vh_octree_skip`). Reachable only on shadow paths to a distant or
+  background light through two stacked media; no film rendered so far can tell it from the previous code (the CPU films
+  of the reproducers are bit-identical between the revisions).
+- The transparent shadow loop was refactored upstream with no change of result; MNEE's kernel changed only in where
+  `eval_fac` is stored. 16 of the 18 `mnee` scenes have bit-identical CPU films at both revisions.
+- The CPU crash of item 138 persists at this release; the host's protection stays.
+- Item 183 (open volume meshes) was found here and is older than the re-pin.
+
+**Film.**
+
+- The Motion pass gets no background motion (the release removed that write).
+- Denoising backward motion: written at the first hit only (`PATH_RAY_SINGLE_PASS_DONE` as it was before the data-pass
+  stage), not through a transparent or portal surface below the pass alpha threshold, and at the background from
+  `camera_motion_vector_direction(P, D)`, with an orthographic branch (`P + D * 1e4`). With that feature in the film and
+  none of the surface stage's data passes, the single-pass bookkeeping runs in `shade_surface_passes`
+  (`film_data_passes_bookkeeping`), after the flag is read.
+- Denoising depth: the near-clip offset on the first segment, a finite background depth from the camera's clip length
+  (accumulated; an infinite far clip overwrites as before), none for shadow-catcher-pass paths, and the volume-bounds
+  segment (`film_write_denoising_features_surface_volume`), which the device did not write before (older than the
+  re-pin; fixed here).
+- The albedo passes: `bsdf_albedo` lost its weight and `closure_albedo` multiplies it once; the device's `fp_albedo`
+  already did.
+- Denoiser guide bits: BACKWARD_MOTION is 32 and SPECULAR_MOTION 64; there is no MOTION bit. The managed
+  `DenoiserGuides.Motion` was removed, and the host refuses a `denoiser_passes` bit that is no guide at a denoising render.
+- Proof (the named passes; the Combined film of most of these scenes moved with the closures): `passes/motion`,
+  `motion-orthographic`, `denoising-motion` (1,511 practical failures before), `-deforming`, `-equirectangular`,
+  `-orthographic`, `denoising-features`, `-features-weighted`, `holdout-transparent-film`, the `passes/with-*` scenes
+  with a depth feature, `hair/chiang-denoising-features`, `hair/huang-denoising`, `curves/denoising-features` and the
+  new scenes `passes/denoising-motion-transparent`, `-transparent-orthographic` and `volumes/denoising-depth-bounds`: 0
+  practical failures in every motion and depth row. Strict differences in the depth rows are the order of the
+  per-sample film adds (two repeats of one scene differ from each other as much as from the CPU).
+
+**New in the release and not rendered by the device.** Items 185 to 187: the Boolean Math, Integer Math and Get Vector
+Component nodes, Gaussian splats with the quaternion and spherical-harmonics attribute types, dispersion and the dlss
+denoiser. Each is refused by name; none is approximated.
+
+**The other platforms.** The recipes for Linux ARM64, Android, Windows and both macOS profiles read the same pinned
+source and the same overlay and have not been built or run on it. Cycles' Metal device (osx-arm64) comes with the release
+unchanged: half-precision integrator state, the generic `CYCLES_CONCURRENT_STATES_*` controls in place of the Metal-only
+ones, a minimum of macOS 13.0, and dispersion compiled out with the same imported headers
+([host/MACOS_ARM64.md](host/MACOS_ARM64.md)).

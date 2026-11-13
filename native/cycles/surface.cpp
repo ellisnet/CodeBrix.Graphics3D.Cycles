@@ -38,6 +38,8 @@ static std::string surface_layout(){
   DATA(integrator,max_diffuse_bounce);DATA(integrator,max_transmission_bounce);
   DATA(integrator,max_glossy_bounce);
   DATA(background,transparent_roughness_squared_threshold);
+  // bsdf_widen_dD: min(1, Filter Glossy), 0 when Filter Glossy is off (scene/integrator.cpp).
+  DATA(integrator,differential_widen_scale);
   source<<"//#if SURFACE_FILTER_GLOSSY\n";DATA(integrator,filter_glossy);source<<"//#endif\n";
 #undef DATA
   constant("O_shadow_terminator_shading_offset",offsetof(KernelObject,shadow_terminator_shading_offset));
@@ -46,7 +48,7 @@ static std::string surface_layout(){
   ENUM(LABEL_GLOSSY);ENUM(LABEL_SINGULAR);ENUM(FILTER_CLOSURE_GLOSSY);ENUM(FILTER_CLOSURE_TRANSMISSION);
   ENUM(PATH_RAY_SINGULAR);ENUM(PATH_RAY_IMPORTANCE_BAKE);ENUM(PATH_RAY_DIFFUSE_ANCESTOR);
   ENUM(FILTER_CLOSURE_EMISSION);ENUM(FILTER_CLOSURE_DIFFUSE);ENUM(CLOSURE_NONE_ID);ENUM(NBUILTIN_CLOSURES);
-  ENUM(FILTER_CLOSURE_TRANSPARENT);ENUM(SD_OBJECT_HOLDOUT_MASK);ENUM(SD_HAS_ONLY_VOLUME);ENUM(SD_MIS_FRONT);ENUM(SD_MIS_BACK);ENUM(PRNG_SURFACE_BSDF);
+  ENUM(FILTER_CLOSURE_TRANSPARENT);ENUM(SR_CLOSURE_FLAG);ENUM(SD_OBJECT_HOLDOUT_MASK);ENUM(SD_HAS_ONLY_VOLUME);ENUM(SD_MIS_FRONT);ENUM(SD_MIS_BACK);ENUM(PRNG_SURFACE_BSDF);
 #undef ENUM
   // With denoising features (FILM_DENOISING) their path flag is supported; the
   // markers keep every other module's constant line unchanged.
@@ -328,6 +330,11 @@ void WebGPUDevice::enqueue_light_nee(int work,const DeviceKernelArguments &args)
   field(state.shadow_path.sample,4);field(state.shadow_path.rng_pixel,4);field(state.shadow_path.rng_offset,2);
   field(state.shadow_ray.P,12);field(state.shadow_ray.D,12);field(state.shadow_ray.tmax,4);field(state.shadow_ray.time,4);
   field(state.shadow_ray.dP,4);field(state.shadow_ray.dD,4);field(state.shadow_ray.self_light_object,4);field(state.shadow_ray.self_light_prim,4);
+  // A dedicated shadow path (PATH_RAY_SHADOW_FOR_LIGHT_LINKING) reads its emitter's intersection from shadow_isect[0].
+  if(data.kernel_features&KERNEL_FEATURE_SHADOW_LINKING){
+    const auto &light_isect=state.shadow_isect[0];field(state.shadow_path.flag,4);
+    field(light_isect.t,4);field(light_isect.u,4);field(light_isect.v,4);field(light_isect.prim,4);field(light_isect.object,4);field(light_isect.type,4);
+  }
   validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
   p[14]=scene_tables();
   if(!n||!work)return;

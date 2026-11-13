@@ -211,6 +211,46 @@ fn volume_phase(direction:vec3<f32>,g:f32,random:vec2<f32>)->vec4<f32>{
     let wo=rounded_add3(rounded_add3(local.x*tangent,local.y*bitangent),local.z*direction);
     return vec4<f32>(wo,pdf);
 }
+//#if !VOLUME_PHASES
+// phase_henyey_greenstein (volume_henyey_greenstein_eval's pdf) for the other closures of volume_phase_mis.
+fn volume_hg_pdf(cosine:f32,g:f32)->f32{
+    if(abs(g)<0.001){return 0.07957747154594767;}
+    let fac=rounded_add(1.0,g*rounded_add(g,-2.0*cosine));
+    return rounded_divide(rounded_add(1.0,-g*g),(12.566370614359172*fac)*rounded_sqrt(max(fac,0.0)));
+}
+//#endif
+// volume_shader_phase_sample with more than one phase closure: the evaluation and the pdf of all the phase closures
+// combined for the sampled direction (_volume_shader_phase_eval_mis started from the picked closure's eval * sample_weight
+// and pdf * sample_weight, the picked closure skipped in the loop, the others in closure order). A phase evaluation is
+// its pdf in every channel, so the combined evaluation is sum_pdf * (1 / sum_sample_weight) and the combined pdf
+// sum_pdf / sum_sample_weight. Returns the throughput weight bsdf_eval_sum / pdf (float3 / float of the originating
+// host) and the pdf; a zero pdf or evaluation (no scatter) returns zero.
+fn volume_phase_mis(r:SvmResult,selected:u32,direction:vec3<f32>,phase:vec4<f32>)->vec2<f32>{
+    let picked=heap_float(r.closure_base+selected*SVM_CLOSURE_BYTES+12u);var sum_pdf=phase.w*picked;var sum_weight=picked;
+    let cosine=rounded_dot(direction,phase.xyz);let two=rounded_steps(2u);let three=rounded_steps(3u);
+    for(var i=0u;i<r.count;i++){
+        if(i==selected){continue;}
+        // The closure's sample_weight (word 3) and, for Henyey-Greenstein, its anisotropy (word 8).
+        let at=r.closure_base+i*SVM_CLOSURE_BYTES;let weight=heap_float(at+12u);
+//#if VOLUME_PHASES else         let pdf=volume_hg_pdf(cosine,heap_float(at+32u));
+        let pdf=vp_eval(svm_closure_read(r,i),cosine);
+//#endif
+        // sum_pdf += pdf * sample_weight for a non-zero pdf, then sum_sample_weight += sample_weight (one addition site).
+        for(var j=0u;j<two;j++){
+            let sum=rounded_add(select(sum_weight,sum_pdf,j==0u),select(weight,pdf*weight,j==0u));
+            if(j!=0u){sum_weight=sum;}else if(pdf!=0.0){sum_pdf=sum;}
+        }
+    }
+    // One division site: 1 / sum_sample_weight (the evaluation's factor), sum_pdf / sum_sample_weight (the pdf), then the
+    // weight's float3 / float: a division with SSE, a multiplication by the reciprocal on the scalar float3 hosts.
+    let reciprocal=NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u;var eval=0.0;var pdf=0.0;var weight=0.0;
+    for(var k=0u;k<three;k++){
+        if(k==2u&&(pdf==0.0||eval==0.0)){return vec2<f32>(0.0);}
+        let q=rounded_divide(select(select(select(eval,1.0,reciprocal),sum_pdf,k==1u),1.0,k==0u),select(sum_weight,pdf,k==2u));
+        if(k==0u){eval=sum_pdf*q;}else if(k==1u){pdf=select(0.0,q,sum_weight>0.0);}else if(k==2u){weight=select(q,eval*q,reciprocal);}
+    }
+    return vec2<f32>(weight,pdf);
+}
 //#if SHADOW_LINKING else fn volume_finish(index:u32,next:u32){
 fn volume_finish(index:u32,requested:u32){
     // integrator_shade_volume: a phase scatter (the only finish towards intersect_closest) looks for its dedicated lights first.
@@ -490,11 +530,16 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     var selected=0u;var sum=svm_closure_read(r,0u).sample_weight;
     for(var i=1u;i<r.count;i++){let weight=svm_closure_read(r,i).sample_weight;sum+=weight;let threshold=weight/sum;
         if(random.x<threshold){selected=i;random.x/=threshold;}else{random.x=(random.x-threshold)/(1.0-threshold);}}
-//#if VOLUME_PHASES else     let g=svm_closure_read(r,selected).roughness;let phase=volume_phase(direction,g,random);if(phase.w==0.0){volume_finish(index,0u);return;}
+//#if VOLUME_PHASES else     let g=svm_closure_read(r,selected).roughness;let phase=volume_phase(direction,g,random);
     let closure=svm_closure_read(r,selected);let g=vp_get_g(closure);var phase:vec4<f32>;
     if(closure.kind==CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID){phase=volume_phase(direction,closure.roughness,random);}else{phase=vp_phase_sample(direction,closure,random);}
-    if(phase.w==0.0){volume_finish(index,0u);return;}
 //#endif
+    // volume_shader_phase_sample: more than one phase closure stores the pdf of all of them (forward MIS) and weights the
+    // throughput by their combined evaluation over it; one closure's weight is exactly one. No scatter for a zero pdf.
+    var phase_pdf=phase.w;var phase_weight=1.0;
+    if(phase_pdf!=0.0&&r.count>1u){let mis=volume_phase_mis(r,selected,direction,phase);phase_weight=mis.x;phase_pdf=mis.y;}
+    if(phase_pdf==0.0){volume_finish(index,0u);return;}
+    if(r.count>1u){state_vec3(S_path_throughput,index,heap_vec3(state_address(S_path_throughput,index,12u))*phase_weight);}
 //#if VOLUME_LIGHT else     let position=origin+sampled_t*direction;state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,surface_native_normalize(phase.xyz));
     let position=rounded_add3(origin,sampled_t*direction);state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,surface_native_normalize(phase.xyz));
 //#endif
@@ -502,16 +547,16 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     // ray->tmax - ray->tmin of the segment.
     if(data_word(VL_D_use_light_tree)!=0u){state_f32(S_ray_previous_dt,index,select(bitcast<f32>(0x7f7fffffu),heap_float(state_address(S_isect_t,index,4u)),state_word(S_isect_prim,index)!=NONE)-tmin);}
 //#endif
-    state_f32(S_ray_tmin,index,0.0);state_u32(S_ray_tmax,index,0x7f7fffffu);state_f32(S_ray_dP,index,0.0);state_f32(S_ray_dD,index,max(heap_float(state_address(S_ray_dD,index,4u)),1.0-abs(g)));
+    state_f32(S_ray_tmin,index,0.0);state_u32(S_ray_tmax,index,0x7f7fffffu);state_f32(S_ray_dP,index,0.0);state_f32(S_ray_dD,index,max(heap_float(state_address(S_ray_dD,index,4u)),data_float(V_integrator_differential_widen_scale)*(1.0-abs(g))));
     state_u32(S_isect_prim,index,NONE);state_u32(S_isect_object,index,sd.object_id);
 //#if LIGHT_LINKING
     if((data_word(D_kernel_features)&KF_LIGHT_LINKING)!=0u){state_u32(S_path_mis_ray_object,index,sd.object_id);}
 //#endif
     if(p(20u)!=0u&&bounce==0u){state_vec3(S_path_pass_diffuse_weight,index,vec3<f32>(1));state_vec3(S_path_pass_glossy_weight,index,vec3<f32>(0));}
-//#if VOLUME_LIGHT else     state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-(origin+direction*tmin));
-    state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-rounded_add3(origin,direction*tmin));
+//#if VOLUME_LIGHT else     state_f32(S_path_mis_ray_pdf,index,phase_pdf);state_vec3(S_path_mis_origin_n,index,position-(origin+direction*tmin));
+    state_f32(S_path_mis_ray_pdf,index,phase_pdf);state_vec3(S_path_mis_origin_n,index,position-rounded_add3(origin,direction*tmin));
 //#endif
-    state_f32(S_path_min_ray_pdf,index,min(phase.w,heap_float(state_address(S_path_min_ray_pdf,index,4u))));
+    state_f32(S_path_min_ray_pdf,index,min(phase_pdf,heap_float(state_address(S_path_min_ray_pdf,index,4u))));
     let next_bounce=bounce+1u;let volume_bounce=state_half(S_path_volume_bounce,index)+1u;
     if(next_bounce>=data_word(V_integrator_max_bounce)||volume_bounce>=data_word(V_integrator_max_volume_bounce)){flag|=PATH_RAY_TERMINATE_AFTER_TRANSPARENT;}
     flag&=~(V_PATH_RAY_REFLECT|V_PATH_RAY_SINGULAR|PATH_RAY_TRANSPARENT|V_PATH_RAY_IMPORTANCE_BAKE|V_PATH_RAY_MIS_SKIP|V_PATH_RAY_MIS_HAD_TRANSMISSION);
@@ -549,7 +594,12 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     let g=vp_get_g(closure);var phase:vec4<f32>;
     if(closure.kind==CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID){phase=volume_phase(direction,closure.roughness,random);}else{phase=vp_phase_sample(direction,closure,random);}
 //#endif
-    if(phase.w==0.0){volume_finish(index,0u);return;}
+    // volume_shader_phase_sample: more than one phase closure stores the pdf of all of them (forward MIS) and weights the
+    // throughput by their combined evaluation over it; one closure's weight is exactly one. No scatter for a zero pdf.
+    var phase_pdf=phase.w;var phase_weight=1.0;
+    if(phase_pdf!=0.0&&r.count>1u){let mis=volume_phase_mis(r,selected,direction,phase);phase_weight=mis.x;phase_pdf=mis.y;}
+    if(phase_pdf==0.0){volume_finish(index,0u);return;}
+    if(r.count>1u){state_vec3(S_path_throughput,index,heap_vec3(state_address(S_path_throughput,index,12u))*phase_weight);}
 //#if VOLUME_LIGHT else     let position=origin+sampled_t*direction;state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,surface_native_normalize(phase.xyz));
     let position=rounded_add3(origin,sampled_t*direction);state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,surface_native_normalize(phase.xyz));
 //#endif
@@ -557,16 +607,16 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     // ray->tmax - ray->tmin of the segment.
     if(data_word(VL_D_use_light_tree)!=0u){state_f32(S_ray_previous_dt,index,select(bitcast<f32>(0x7f7fffffu),heap_float(state_address(S_isect_t,index,4u)),state_word(S_isect_prim,index)!=NONE)-tmin);}
 //#endif
-    state_f32(S_ray_tmin,index,0.0);state_u32(S_ray_tmax,index,0x7f7fffffu);state_f32(S_ray_dP,index,0.0);state_f32(S_ray_dD,index,max(heap_float(state_address(S_ray_dD,index,4u)),1.0-abs(g)));
+    state_f32(S_ray_tmin,index,0.0);state_u32(S_ray_tmax,index,0x7f7fffffu);state_f32(S_ray_dP,index,0.0);state_f32(S_ray_dD,index,max(heap_float(state_address(S_ray_dD,index,4u)),data_float(V_integrator_differential_widen_scale)*(1.0-abs(g))));
     state_u32(S_isect_prim,index,NONE);state_u32(S_isect_object,index,object);
 //#if LIGHT_LINKING
     if((data_word(D_kernel_features)&KF_LIGHT_LINKING)!=0u){state_u32(S_path_mis_ray_object,index,object);}
 //#endif
     if(p(20u)!=0u&&bounce==0u){state_vec3(S_path_pass_diffuse_weight,index,vec3<f32>(1));state_vec3(S_path_pass_glossy_weight,index,vec3<f32>(0));}
-//#if VOLUME_LIGHT else     state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-(origin+direction*tmin));
-    state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-rounded_add3(origin,direction*tmin));
+//#if VOLUME_LIGHT else     state_f32(S_path_mis_ray_pdf,index,phase_pdf);state_vec3(S_path_mis_origin_n,index,position-(origin+direction*tmin));
+    state_f32(S_path_mis_ray_pdf,index,phase_pdf);state_vec3(S_path_mis_origin_n,index,position-rounded_add3(origin,direction*tmin));
 //#endif
-    state_f32(S_path_min_ray_pdf,index,min(phase.w,heap_float(state_address(S_path_min_ray_pdf,index,4u))));
+    state_f32(S_path_min_ray_pdf,index,min(phase_pdf,heap_float(state_address(S_path_min_ray_pdf,index,4u))));
     let next_bounce=bounce+1u;let volume_bounce=state_half(S_path_volume_bounce,index)+1u;
     if(next_bounce>=data_word(V_integrator_max_bounce)||volume_bounce>=data_word(V_integrator_max_volume_bounce)){flag|=PATH_RAY_TERMINATE_AFTER_TRANSPARENT;}
     flag&=~(V_PATH_RAY_REFLECT|V_PATH_RAY_SINGULAR|PATH_RAY_TRANSPARENT|V_PATH_RAY_IMPORTANCE_BAKE|V_PATH_RAY_MIS_SKIP|V_PATH_RAY_MIS_HAD_TRANSMISSION);

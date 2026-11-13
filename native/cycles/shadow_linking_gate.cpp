@@ -301,6 +301,8 @@ static void state_gate(WebGPUDevice &d,Scene &scene,const std::vector<DedicatedR
     bounce=read(sp.bounce,2),diffuse=read(sp.diffuse_bounce,2),glossy=read(sp.glossy_bounce,2),transmission=read(sp.transmission_bounce,2),transparent=read(sp.transparent_bounce,2),bounds=read(sp.volume_bounds_bounce,2),group=read(sp.lightgroup,1),
     flag=read(sp.flag,4),visibility=read(sp.visibility,1),pixel=read(sp.render_pixel_index,4),sample_id=read(sp.sample,4),rng_pixel=read(sp.rng_pixel,4),rng_offset=read(sp.rng_offset,2);
   std::vector<uint8_t> average;if(sp.bsdf_eval_average)average=read(sp.bsdf_eval_average,4);
+  // shadow_isect[0]: the picked intersection of a path queued for SHADE_LIGHT_NEE (integrator_state_write_shadow_light_isect).
+  const auto &li=d.state.shadow_isect[0];const auto li_t=read(li.t,4),li_u=read(li.u,4),li_v=read(li.v,4),li_object=read(li.object,4),li_prim=read(li.prim,4),li_type=read(li.type,4);
   auto u16=[](const std::vector<uint8_t> &v,size_t k){uint16_t x;std::memcpy(&x,v.data()+k*2,2);return int64_t(x);};auto s32=[](const std::vector<uint8_t> &v,size_t k){int32_t x;std::memcpy(&x,v.data()+k*4,4);return int64_t(x);};auto u32=[](const std::vector<uint8_t> &v,size_t k){uint32_t x;std::memcpy(&x,v.data()+k*4,4);return int64_t(x);};
   auto f32=[](const std::vector<uint8_t> &v,size_t k,size_t c=0){float x;std::memcpy(&x,v.data()+k*4+c*4,4);return x;};auto f3=[](const std::vector<uint8_t> &v,size_t k,size_t c){float x;std::memcpy(&x,v.data()+k*12+c*4,4);return x;};
   std::vector<int> intersect;uint32_t nee_count=0;
@@ -315,7 +317,13 @@ static void state_gate(WebGPUDevice &d,Scene &scene,const std::vector<DedicatedR
     exact(u16(transparent,k),r.s_transparent,"Shadow transparent bounce"+w);exact(u16(bounds,k),r.s_volume_bounds,"Shadow volume bounds"+w);exact(group[k],r.s_group,"Shadow light group"+w);exact(u32(flag,k),r.s_flag,"Shadow flag"+w);exact(visibility[k],r.s_visibility,"Shadow visibility"+w);
     exact(u32(pixel,k),r.s_pixel,"Shadow pixel"+w);exact(u32(sample_id,k),r.s_sample,"Shadow sample"+w);exact(u32(rng_pixel,k),r.s_rng_pixel,"Shadow rng pixel"+w);exact(u16(rng_offset,k),r.s_rng_offset,"Shadow rng offset"+w);
     if(!average.empty())numeric(f32(average,k),r.s_average,m,"Shadow BSDF average"+w);
-    if(r.shadow_kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW)intersect.push_back(int(k));else nee_count++;
+    if(r.shadow_kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW)intersect.push_back(int(k));
+    else{nee_count++;
+      // The light shader is evaluated at the intersection the pick left: the device's own picked hit bit for bit, the oracle's
+      // integers exactly and its t, u, v by the practical criterion (as the pick itself).
+      exact(s32(li_object,k),r.s_isect_object,"Light isect object"+w);exact(s32(li_prim,k),r.s_isect_prim,"Light isect prim"+w);exact(s32(li_type,k),r.s_isect_type,"Light isect type"+w);
+      float_exact(f32(li_t,k),after[i].isect.t,"Light isect t"+w);float_exact(f32(li_u,k),after[i].isect.u,"Light isect u"+w);float_exact(f32(li_v,k),after[i].isect.v,"Light isect v"+w);
+      numeric(f32(li_t,k),r.s_isect_t,m,"Light isect t"+w);numeric(f32(li_u,k),r.s_isect_u,m,"Light isect u"+w);numeric(f32(li_v,k),r.s_isect_v,m,"Light isect v"+w);}
   }
   m.nee+=nee_count;
   if(intersect.empty())return;

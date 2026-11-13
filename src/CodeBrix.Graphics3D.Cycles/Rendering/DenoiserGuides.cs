@@ -9,7 +9,8 @@ namespace CodeBrix.Graphics3D.Cycles.Rendering;
 /// The guide passes the denoiser uses: the bits of the native integrator socket <c>denoiser_passes</c>
 /// (<see cref="Generated.Scene.IntegratorNode.DenoiserGuides"/>). The values are Cycles' denoiser pass bits. Open Image
 /// Denoise reads <see cref="Albedo"/> and <see cref="Normal"/> (the default); the other bits are read only by
-/// denoisers this library does not include.
+/// denoisers this library does not include. A <c>denoiser_passes</c> value with any other bit is refused by name when a
+/// denoising render starts.
 /// </summary>
 [Flags]
 public enum DenoiserGuides
@@ -32,12 +33,9 @@ public enum DenoiserGuides
     /// <summary>The depth guide.</summary>
     Depth = 1 << 4,
 
-    /// <summary>The motion guide.</summary>
-    Motion = 1 << 5,
-
     /// <summary>The backward motion guide.</summary>
-    BackwardMotion = 1 << 6,
+    BackwardMotion = 1 << 5,
 
     /// <summary>The specular motion guide.</summary>
-    SpecularMotion = 1 << 7,
+    SpecularMotion = 1 << 6,
 }

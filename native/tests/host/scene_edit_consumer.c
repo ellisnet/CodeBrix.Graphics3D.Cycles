@@ -19,11 +19,11 @@
 #define W 48
 #define H 36
 #define SAMPLES 16
-enum { FLOATS = W * H * 4, SCENARIOS = 13 };
+enum { FLOATS = W * H * 4, SCENARIOS = 14 };
 static const char *names[SCENARIOS] = {
   "object-tfm", "object-motion-added", "camera-motion-added", "material-value", "light-edit",
   "deformation-motion-added", "mesh-replaced", "instance-added", "object-motion-removed", "tfm-round-trip",
-  "attribute-replaced", "smooth-toggled", "motion-blur-enabled"};
+  "attribute-replaced", "smooth-toggled", "motion-blur-enabled", "subdivision-rediced"};
 
 static void check(int result, const char *call, int line) {
   if (result == CBC_OK) return;
@@ -38,6 +38,7 @@ typedef struct Params {
   float subject_tfm[12];
   int object_motion, camera_motion, deform, alternate_mesh, instance, smooth, motion_blur;
   float color[3], light_strength, light_tfm[12], tint;
+  int floor_cage; float dicing_rate;
 } Params;
 typedef struct Scene {
   CBCHost host;
@@ -83,10 +84,20 @@ static void camera_motion(Scene *s, int enabled) {
   float steps[36] = {1,0,0,-.2f, 0,1,0,1, 0,0,1,-5, 1,0,0,0, 0,1,0,1, 0,0,1,-5, 1,0,0,.25f, 0,1,0,1.1f, 0,0,1,-5};
   CHECK(cbc_host_set_floats(s->host, s->camera, "motion", steps, 36));
 }
-static void floor_tint(Scene *s, float tint) {
+static void floor_tint_flags(Scene *s, float tint, uint32_t flags) {
   float values[4 * 3]; for (unsigned v = 0; v < 4; ++v) { values[3 * v] = tint; values[3 * v + 1] = .5f + .1f * v; values[3 * v + 2] = 1 - tint; }
-  CBCAttributeConfig config = {sizeof(config), CBC_VALUE_COLOR, CBC_ATTR_VERTEX, 0, {0}};
+  CBCAttributeConfig config = {sizeof(config), CBC_VALUE_COLOR, CBC_ATTR_VERTEX, flags, {0}};
   CHECK(cbc_host_attribute_floats(s->host, s->floor_mesh, "tint", &config, values, 12));
+}
+static void floor_tint(Scene *s, float tint) { floor_tint_flags(s, tint, 0); }
+/* The floor as a linear subdivision cage: one bilinear quad with a raised corner, so the dicing rate decides its shape.
+ * Every render dices the same mesh object again (scenario 13 changes the rate between two renders). */
+static void floor_cage(Scene *s, const Params *p) {
+  const float cage[] = {-4,-1,-3, 4,-1,-3, 4,.6f,3, -4,-1,3}; const uint32_t four = 4, order[] = {0, 1, 2, 3};
+  CHECK(cbc_host_subd_mesh(s->host, s->floor_mesh, cage, 4, &four, 1, order, 4));
+  CHECK(cbc_host_set_string(s->host, s->floor_mesh, "subdivision_type", "linear"));
+  integer(s->host, s->floor_mesh, "subd_max_level", 6); scalar(s->host, s->floor_mesh, "subd_dicing_rate", p->dicing_rate);
+  floor_tint_flags(s, p->tint, CBC_ATTR_SUBDIVISION);
 }
 
 /* Builds a scene in a fixed node creation order so a fresh host can rebuild any edited state. */
@@ -129,7 +140,8 @@ static void build(Scene *s, uint32_t backend, const Params *p) {
   object_motion(s, s->subject, p->subject_tfm, p->object_motion);
   s->floor_mesh = create(h, "mesh"); nodes(h, s->floor_mesh, "used_shaders", floor_material);
   const float quad[] = {-4,-1,-3, 4,-1,-3, 4,-1,3, -4,-1,3}; const uint32_t quad_triangles[] = {0,1,2, 0,2,3};
-  CHECK(cbc_host_mesh(h, s->floor_mesh, quad, 4, quad_triangles, 2)); floor_tint(s, p->tint);
+  if (p->floor_cage) floor_cage(s, p);
+  else { CHECK(cbc_host_mesh(h, s->floor_mesh, quad, 4, quad_triangles, 2)); floor_tint(s, p->tint); }
   CBCNode floor = create(h, "object"); nodes(h, floor, "geometry", s->floor_mesh);
   CBCNode emitter = create(h, "shader"), emission = graph_node(h, emitter, "emission");
   const float white[3] = {1, 1, 1}; triple(h, emission, "color", white); scalar(h, emission, "strength", 1);
@@ -159,6 +171,7 @@ static void base_params(Params *p, int scenario) {
   /* Motion scenarios start with motion blur enabled; scenario 12 enables it later. */
   p->motion_blur = scenario == 1 || scenario == 2 || scenario == 5 || scenario == 8;
   p->object_motion = scenario == 8;
+  p->floor_cage = scenario == 13; p->dicing_rate = 24;
 }
 /* The edited state, as a fresh host builds it. */
 static void edited_params(Params *p, int scenario) {
@@ -177,6 +190,7 @@ static void edited_params(Params *p, int scenario) {
     case 10: p->tint = .2f; break;
     case 11: p->smooth = 1; break;
     case 12: p->motion_blur = 1; p->object_motion = 1; break;
+    case 13: p->dicing_rate = 2; break;
   }
 }
 /* Applies scenario edits to a host that already rendered its base state. */
@@ -202,6 +216,7 @@ static void edit(Scene *s, int scenario, float *scratch) {
     case 10: floor_tint(s, p.tint); break;
     case 11: { int64_t smooth[6] = {1, 1, 1, 1, 1, 1}; CHECK(cbc_host_set_ints(h, s->subject_mesh, "smooth", smooth, 6)); break; }
     case 12: integer(h, s->integrator, "motion_blur", 1); object_motion(s, s->subject, p.subject_tfm, 1); break;
+    case 13: scalar(h, s->floor_mesh, "subd_dicing_rate", p.dicing_rate); break;
   }
 }
 static void save(const char *prefix, const char *name, const float *data) {

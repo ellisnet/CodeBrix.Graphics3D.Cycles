@@ -273,6 +273,10 @@ std::string wavefront_layout(){
   constant("DN_D_denoising_pass_options_flag",offsetof(KernelData,film.denoising_pass_options_flag));
   constant("DN_FOLLOW_REFLECTIONS",DENOISING_PASS_FOLLOW_REFLECTIONS);constant("DN_USE_ALBEDO_ROUGHNESS_WEIGHTING",DENOISING_PASS_USE_ALBEDO_ROUGHNESS_WEIGHTING);
   constant("DN_PATH_RAY_REFLECT",PATH_RAY_REFLECT);
+  // The near clip offset of the denoising depth and the background's far clip depth (denoising_depth_compute,
+  // film_write_denoising_features_background).
+  constant("DN_CAMERA_PERSPECTIVE",CAMERA_PERSPECTIVE);constant("DN_CAMERA_ORTHOGRAPHIC",CAMERA_ORTHOGRAPHIC);
+  constant("DN_PATH_RAY_SHADOW_CATCHER_PASS",PATH_RAY_SHADOW_CATCHER_PASS);
   source<<"//#endif\n";
   return source.str();
 }

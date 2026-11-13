@@ -1,5 +1,15 @@
 # Testing on Linux ARM64 (Raspberry Pi 5, WebGPU)
 
+> **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
+> Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
+> `third_party/cycles-import.json`). The Linux ARM64 recipes have not been built or run on it (NOT BUILT).
+> Every result, film, hash, file count and payload statement in this document
+> was recorded at the previous pinned revision
+> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
+> evidence for the current source. Films and references recorded at the
+> previous revision cannot be compared with the current source: the CPU
+> oracle's films changed with the pin.
+
 > **MANDATORY TEST RULES (from 2026-10-29; they apply to every run of this
 > procedure and override anything below, including the historical records).**
 >
@@ -258,7 +268,7 @@ ARM64 GPU. A run of this procedure produces:
 
 Pins (the build scripts check them; do not change them):
 
-- Cycles revision `a456b761034dda42c32eef9f4aae0fa5a5c9f604`, the filtered
+- Cycles revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981` (the released v5.3.0), the filtered
   snapshot in `third_party/cycles` (`third_party/cycles-import.json`).
 - CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210, unchanged. The Pi
   loads its `runtimes/linux-arm64/native/libcodebrix_wgpu.so`. The build reads

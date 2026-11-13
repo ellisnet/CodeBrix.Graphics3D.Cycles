@@ -398,6 +398,9 @@ public enum IntegratorSamplingPattern
 /// </summary>
 public enum IntegratorDenoiserType
 {
+    /// <summary>The native <c>dlss</c> item.</summary>
+    Dlss = 8,
+
     /// <summary>The native <c>none</c> item.</summary>
     None = 0,
 

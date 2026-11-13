@@ -2,6 +2,22 @@
 
 Copyright (c) 2026 Jeremy Ellis and contributors
 
+> **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
+> Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
+> `third_party/cycles-import.json`). This platform has not been built or run on it (NOT BUILT).
+> Its payload (`native/binaries/osx-arm64/`), built from the previous revision, was
+> removed; it comes back when the platform is rebuilt, validated and restaged
+> on an Apple Silicon Mac (`native/binaries/README.md`). Wherever the text below
+> says the payload is committed or staged, read "after it has been restaged".
+> Every result, film, hash, file count and payload statement in this document
+> was recorded at the previous pinned revision
+> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
+> evidence for the current source. Films and references recorded at the
+> previous revision cannot be compared with the current source: the CPU
+> oracle's films changed with the pin, and the Metal references in
+> `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64` are void
+> until they are recorded again from a v5.3.0 build.
+
 This recipe produces the osx-arm64 product binary: the pinned Cycles revision
 with its own Metal backend, behind the same native C API as the WGSL builds.
 Every other RID, osx-x64 included, uses Cycles with the WGSL/WebGPU device. The
@@ -48,7 +64,7 @@ same build also produces CPU-arm64 and Metal oracle films for validating WGSL.
 - sse2neon is not imported; this build targets only macOS with Metal, and the
   CPU device uses Cycles' plain C++ kernels.
 - Reviewed deliverables go to `native/binaries/osx-arm64/` (runtime,
-  unstripped and symbols) with provenance. Jeremy creates every commit and push.
+  unstripped and symbols) with provenance. The maintainer creates every commit and push.
 
 ## Toolchain and isolation
 
@@ -107,6 +123,20 @@ Adaptations, all recorded by the recipes:
   `CXX_HAS_SSE42`, `CXX_HAS_AVX2` and `CXX_HAS_F16C` as absent, and rejects any
   x86 or host-specific CPU flag. `WITH_CYCLES_NATIVE_ONLY` is off, so the CPU
   kernels run on every M-series chip.
+- Overlay files in the Metal kernel closure (NOT BUILT on a Mac at the current
+  pin). The shared overlay (`native/tools/cycles_overlay.py`) comes first on the
+  include path of every host translation unit, and at the current pin two of its
+  files are also headers of the Metal kernel closure:
+  `util/types_gpu_compressed.h` (the WebGPU device's full-precision integrator
+  state, entirely inside `#ifdef WITH_WEBGPU`) and `kernel/integrator/mnee.h`
+  (one `[[maybe_unused]]` attribute). This profile never defines `WITH_WEBGPU`
+  (the recipe refuses a compile database that names it), so the host is compiled
+  with Cycles' own half-precision state layout, the layout its Metal kernels
+  use. The Metal kernels are compiled at run time from the pinned files, never
+  from the overlay. `build_cycles_macos.py` (`STOCK_EQUIVALENT`) proves, for
+  each overlay file in the closure, that the overlay copy is the pinned text plus
+  exactly that recorded addition, and refuses the build otherwise;
+  `kernel-sources.json` lists them under `overlaidInClosure`.
 - Fixed-baseline CPU oracle (native/DEVICE.md, "Fixed-baseline CPU oracle"):
   `inject_cycles_macos.cmake` compiles every Cycles and CodeBrix translation
   unit with `-ffp-contract=off -fno-reciprocal-math` after Cycles' own math

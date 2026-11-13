@@ -31,8 +31,11 @@ function(codebrix_add_cycles_metal_host)
   if(NOT WITH_CYCLES_DEVICE_METAL)
     message(FATAL_ERROR "The osx-arm64 profile requires WITH_CYCLES_DEVICE_METAL")
   endif()
-  # Device registration names and the color-cache correction, shared with the
-  # other RIDs; WITH_WEBGPU stays undefined, so no WebGPU device is compiled.
+  # The overlay shared with the other RIDs (device registration names, the
+  # scheduling additions, util/colorspace.cpp handed through unchanged);
+  # WITH_WEBGPU stays undefined, so no WebGPU device is compiled and the
+  # overlay copy of util/types_gpu_compressed.h preprocesses to the pinned text
+  # (Cycles' half-precision integrator state, as its Metal kernels expect).
   # The CPU device's arithmetic for the capability report (see inject_cycles.cmake).
   target_sources(cycles_kernel_cpu PRIVATE "${CODEBRIX_NATIVE_ROOT}/cycles/cpu_arithmetic.cpp")
   set_source_files_properties("${CODEBRIX_NATIVE_ROOT}/cycles/cpu_arithmetic.cpp" TARGET_DIRECTORY cycles_kernel_cpu

@@ -134,9 +134,29 @@ public sealed partial class ImageTextureNode : ShaderGraphNode
     public Vector3 Vector { get => GetVector3("vector"); set => SetVector3("vector", value); }
 
     /// <summary>
+    /// Gets or sets the <c>missing</c> socket (Missing; native type color, linkable).
+    /// </summary>
+    public Vector3 Missing { get => GetVector3("missing"); set => SetVector3("missing", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>missing_alpha</c> socket (Missing Alpha; native type float, linkable).
+    /// </summary>
+    public float MissingAlpha { get => GetFloat("missing_alpha"); set => SetFloat("missing_alpha", value); }
+
+    /// <summary>
     /// Gets the <c>Vector</c> input socket (point), the target of a graph link.
     /// </summary>
     public ShaderInput VectorInput => new(this, "Vector");
+
+    /// <summary>
+    /// Gets the <c>Missing</c> input socket (color), the target of a graph link.
+    /// </summary>
+    public ShaderInput MissingInput => new(this, "Missing");
+
+    /// <summary>
+    /// Gets the <c>Missing Alpha</c> input socket (float), the target of a graph link.
+    /// </summary>
+    public ShaderInput MissingAlphaInput => new(this, "Missing Alpha");
 
     /// <summary>
     /// Gets the <c>Color</c> output socket (color), the source of a graph link.

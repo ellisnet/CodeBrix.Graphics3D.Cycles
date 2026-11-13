@@ -2,6 +2,20 @@
 
 Copyright (c) 2026 Jeremy Ellis and contributors
 
+> **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
+> Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
+> `third_party/cycles-import.json`). This platform has not been built or run on it (NOT BUILT).
+> Its payload (`native/binaries/osx-x64/`), built from the previous revision, was
+> removed; it comes back when the platform is rebuilt, validated and restaged
+> on an Intel Mac (`native/binaries/README.md`). Wherever the text below
+> says the payload is committed or staged, read "after it has been restaged".
+> Every result, film, hash, file count and payload statement in this document
+> was recorded at the previous pinned revision
+> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
+> evidence for the current source. Films and references recorded at the
+> previous revision cannot be compared with the current source: the CPU
+> oracle's films changed with the pin.
+
 > **MANDATORY TEST RULES (from 2026-10-29; they apply to every run of this
 > procedure and override anything below, including the historical records).**
 >
@@ -228,7 +242,7 @@ match the device name (M2).
 | Item | Value |
 |---|---|
 | Machine | An Intel Mac that runs macOS 15 or later (the deployment target). |
-| Cycles | `a456b761034dda42c32eef9f4aae0fa5a5c9f604`, the filtered snapshot in `third_party/cycles` |
+| Cycles | `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981` (the released v5.3.0), the filtered snapshot in `third_party/cycles` |
 | WebGPU runtime | `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.300.210; package SHA-256 `ddfd92f8e9ce0f4348b0b079b856158608552184d3255c26a3e35a87b73b8b7b`; `runtimes/osx-x64/native/libcodebrix_wgpu.dylib` SHA-256 `840a106d54fe479c255ecb98d51cee192a9044c3d0411fc1535f9ff0b8abbb82` (x86_64, minimum macOS 11.0, ad-hoc signed; 257 exports, codebrix contract 4, `wgpuCodebrixSetMetalPreciseMath` included). The first runs used 1.0.290.1433 (`9ceea795...`, dylib `3a3abcf9...`). |
 | Xcode | The Xcode Command Line Tools are enough (validated); Xcode works too. Versions are recorded by the recipes. |
 | Homebrew (x64) | In `/usr/local`. Used only for tools; every recipe excludes `/usr/local` and `/opt/homebrew` from searches and rejects any reference to them. |

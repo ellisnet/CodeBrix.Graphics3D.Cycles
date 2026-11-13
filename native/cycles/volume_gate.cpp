@@ -487,6 +487,8 @@ TaskScheduler::init(1);int status=0;try{
     if(!direct){data.background.use_mis=0;data.integrator.use_direct_light=0;data.integrator.use_light_mis=0;data.integrator.num_lights=0;}
     else require(data.integrator.use_direct_light&&data.integrator.num_lights>0,"Volume direct light fixture without a light");
     data.integrator.use_caustics=0;data.integrator.filter_glossy=FLT_MAX;data.film.pass_flag=0;
+    // volume_phase_widen_dD's scale (the integrator's min(1, Filter Glossy)): 0.37, 0 and 1 over the cases.
+    data.integrator.differential_widen_scale=index%2?.37f:index%4?0.f:1.f;
     d.const_copy_to("data",&data,sizeof(data));bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
     std::vector<IntegratorStateCPU> states(scheduler.capacity());std::vector<int> ids;
     for(unsigned j=0;j<512;j++){unsigned i=3*j;ids.push_back(i);auto &s=states[i];s.path.render_pixel_index=j;s.path.sample=j*137u;s.path.rng_pixel=0x12345678u+i*0x9e3779b9u;s.path.rng_offset=uint16_t(65500u+i*79u);

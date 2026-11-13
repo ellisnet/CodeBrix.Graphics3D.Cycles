@@ -116,7 +116,7 @@ public sealed class MainActivity : Activity
                     architecture = RuntimeInformation.ProcessArchitecture.ToString(), apiLevel = (int)Build.VERSION.SdkInt,
                     nativeDirectory, libraries, comparisons, configurationRounds = 6, imageFilms = 1560,
                     imageFormats = 8, cancellationAndReuse = true, disposeDuringRender = true,
-                    registryNodeTypes = 184, registrySockets = 1277, propertyReadbackChecks = true };
+                    registryNodeTypes = 187, registrySockets = 1311, propertyReadbackChecks = true };
             }
             catch (Exception error) { report = new { passed = false, error = error.ToString(), comparisons }; }
             string json = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });

@@ -89,6 +89,8 @@ class WebGPUDevice final:public Device {
   SvmCensus census;
   // Principled features refused at upload (pipelines.cpp shader_features).
   uint64_t unsupported_generation=~uint64_t(0);ShaderFeatures principled_features;ShaderFeatures attribute_features;ShaderFeatures displacement_features;ShaderFeatures displacement_program_features;std::string unsupported_feature;
+  // A referenced shader can make an anisotropic transmission lobe (SvmCensus::anisotropic_transmission; SF_MNEE_ANISOTROPIC).
+  bool anisotropic_transmission=false;
   std::vector<uint32_t> tri_shader_words; // per-triangle shader words (Principled census roots)
   // BVH primitive -> triangle and object (the MNEE caster census, mnee_unused_svm_features); mnee_generation counts
   // their uploads, and the census is kept per (svm_generation, mnee_generation).

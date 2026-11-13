@@ -4,8 +4,9 @@
 """Write the BSDF family oracle scenes (scenes/bsdf/) byte for byte.
 
 Smooth spheres with the Metallic, Beckmann (glossy, anisotropic, refraction,
-glass, metallic), Ashikhmin-Shirley, Ashikhmin velvet and Toon BSDFs on a
-diffuse floor and wall, lit by a sphere lamp with MIS (BSDF evaluation through
+glass, metallic), Ashikhmin-Shirley, Ashikhmin velvet and Toon BSDFs, the
+anisotropic Glass BSDF, and the Principled BSDF's anisotropic transmission and
+its coat, sheen, emission and thin-wall layers, on a diffuse floor and wall, lit by a sphere lamp with MIS (BSDF evaluation through
 next-event estimation) and a constant world, through the public C API.
 Usage: python3 native/oracle/scenes/author_bsdf.py [--check]."""
 import argparse
@@ -135,6 +136,24 @@ def scenes():
         single('f-glass', 'glass_bsdf', {'distribution': 'beckmann', 'roughness': 0.05, 'IOR': 1.45, 'color': [0.9, 0.95, 0.95]}),
         mixed('f-mix', ('glossy_bsdf', {'distribution': 'ashikhmin_shirley', 'roughness': 0.1, 'color': [0.8, 0.7, 0.5]}),
               ('diffuse_bsdf', {'color': [0.4, 0.5, 0.6], 'roughness': 0.2}), 0.5)], filter_glossy=1.0)
+    out['glass-anisotropic.json'] = scene('bsdf/glass-anisotropic', 'Anisotropic Glass BSDF with a tangent: GGX with a rotated tangent, Beckmann with a negative anisotropy, and a tinted GGX glass with a low roughness', [
+        tangent_shader('g-ggx', 'glass_bsdf', {'distribution': 'ggx', 'roughness': 0.35, 'anisotropy': 0.6, 'rotation': 0.2, 'IOR': 1.5, 'color': [0.9, 0.95, 1.0]}),
+        tangent_shader('g-beckmann', 'glass_bsdf', {'distribution': 'beckmann', 'roughness': 0.4, 'anisotropy': -0.5, 'IOR': 1.45, 'color': [0.95, 0.9, 0.8]}),
+        tangent_shader('g-tinted', 'glass_bsdf', {'distribution': 'ggx', 'roughness': 0.2, 'anisotropy': 0.8, 'IOR': 1.33, 'color': [0.6, 0.85, 0.7]})])
+    out['principled-anisotropic-transmission.json'] = scene('bsdf/principled-anisotropic-transmission', 'Principled BSDF with Anisotropic and Transmission Weight (the anisotropic transmission lobe): GGX, multiscatter GGX with a rotated tangent and a partial transmission, and a part-metallic tinted one', [
+        tangent_shader('p-ggx', 'principled_bsdf', {'distribution': 'ggx', 'base_color': [0.9, 0.95, 1.0], 'roughness': 0.3, 'ior': 1.5, 'anisotropic': 0.7, 'transmission_weight': 1.0}),
+        tangent_shader('p-multi', 'principled_bsdf', {'distribution': 'multi_ggx', 'base_color': [0.85, 0.6, 0.4], 'roughness': 0.4, 'ior': 1.45, 'anisotropic': 0.5,
+                                                      'anisotropic_rotation': 0.25, 'transmission_weight': 0.6}),
+        tangent_shader('p-metal', 'principled_bsdf', {'distribution': 'multi_ggx', 'base_color': [0.5, 0.8, 0.7], 'roughness': 0.25, 'ior': 1.33, 'anisotropic': 0.9,
+                                                      'metallic': 0.3, 'specular_tint': [0.9, 0.7, 0.6], 'transmission_weight': 0.8})])
+    out['principled-layers.json'] = scene('bsdf/principled-layers', 'Principled BSDF layering: a tinted coat of fractional weight, an emissive base under sheen and a tinted coat (the layers attenuate the emission, also at the last bounce), and a rough thin-wall transmission', [
+        single('l-coat', 'principled_bsdf', {'distribution': 'multi_ggx', 'base_color': [0.8, 0.5, 0.25], 'roughness': 0.4, 'ior': 1.45, 'coat_weight': 0.6,
+                                             'coat_roughness': 0.15, 'coat_ior': 1.6, 'coat_tint': [0.9, 0.4, 0.3]}),
+        single('l-emission', 'principled_bsdf', {'distribution': 'ggx', 'base_color': [0.3, 0.5, 0.8], 'roughness': 0.5, 'ior': 1.5, 'coat_weight': 1.0, 'coat_roughness': 0.3,
+                                                 'coat_ior': 1.5, 'coat_tint': [0.5, 0.8, 0.6], 'sheen_weight': 0.7, 'sheen_roughness': 0.4, 'sheen_tint': [0.9, 0.8, 0.6],
+                                                 'emission_color': [1.0, 0.6, 0.3], 'emission_strength': 2.0}),
+        single('l-thin', 'principled_bsdf', {'distribution': 'multi_ggx', 'base_color': [0.7, 0.9, 0.85], 'roughness': 0.45, 'ior': 1.5, 'transmission_weight': 0.9,
+                                             'thin_wall': 1, 'specular_tint': [0.9, 0.85, 0.8]})])
     return out
 
 

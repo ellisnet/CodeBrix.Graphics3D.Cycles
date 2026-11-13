@@ -425,6 +425,26 @@
      "flags": 24,
      "nodeType": null,
      "enumValues": []
+    },
+    {
+     "name": "missing",
+     "uiName": "Missing",
+     "type": "color",
+     "valueType": 6,
+     "components": 3,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "missing_alpha",
+     "uiName": "Missing Alpha",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
     }
    ],
    "outputs": [
@@ -833,6 +853,93 @@
      "type": "color",
      "valueType": 6,
      "components": 3,
+     "flags": 0,
+     "nodeType": null,
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "name": "boolean_math",
+   "kind": 1,
+   "base": null,
+   "hasFactory": true,
+   "inputs": [
+    {
+     "name": "math_type",
+     "uiName": "Type",
+     "type": "enum",
+     "valueType": 12,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": [
+      {
+       "name": "and",
+       "value": 0
+      },
+      {
+       "name": "imply",
+       "value": 7
+      },
+      {
+       "name": "nand",
+       "value": 3
+      },
+      {
+       "name": "nimply",
+       "value": 8
+      },
+      {
+       "name": "nor",
+       "value": 4
+      },
+      {
+       "name": "not",
+       "value": 2
+      },
+      {
+       "name": "or",
+       "value": 1
+      },
+      {
+       "name": "xnor",
+       "value": 5
+      },
+      {
+       "name": "xor",
+       "value": 6
+      }
+     ]
+    },
+    {
+     "name": "boolean1",
+     "uiName": "Boolean1",
+     "type": "int",
+     "valueType": 2,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "boolean2",
+     "uiName": "Boolean2",
+     "type": "int",
+     "valueType": 2,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    }
+   ],
+   "outputs": [
+    {
+     "name": "boolean",
+     "uiName": "Boolean",
+     "type": "int",
+     "valueType": 2,
+     "components": 1,
      "flags": 0,
      "nodeType": null,
      "enumValues": []
@@ -2392,6 +2499,86 @@
      "enumValues": []
     },
     {
+     "name": "viewplane_pre.left",
+     "uiName": "Viewplane Pre Left",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "viewplane_pre.right",
+     "uiName": "Viewplane Pre Right",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "viewplane_pre.bottom",
+     "uiName": "Viewplane Pre Bottom",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "viewplane_pre.top",
+     "uiName": "Viewplane Pre Top",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "viewplane_post.left",
+     "uiName": "Viewplane Post Left",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "viewplane_post.right",
+     "uiName": "Viewplane Post Right",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "viewplane_post.bottom",
+     "uiName": "Viewplane Post Bottom",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "viewplane_post.top",
+     "uiName": "Viewplane Post Top",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
      "name": "border.left",
      "uiName": "Border Left",
      "type": "float",
@@ -2424,6 +2611,26 @@
     {
      "name": "border.top",
      "uiName": "Border Top",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "border_pre_left",
+     "uiName": "Border Pre Left",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "border_pre_bottom",
+     "uiName": "Border Pre Bottom",
      "type": "float",
      "valueType": 5,
      "components": 1,
@@ -4986,7 +5193,11 @@
      "nodeType": null,
      "enumValues": [
       {
-       "name": "openimageio",
+       "name": "dlss",
+       "value": 8
+      },
+      {
+       "name": "openimagedenoise",
        "value": 4
       },
       {
@@ -5597,6 +5808,26 @@
      "type": "point",
      "valueType": 8,
      "components": 3,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "missing",
+     "uiName": "Missing",
+     "type": "color",
+     "valueType": 6,
+     "components": 3,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "missing_alpha",
+     "uiName": "Missing Alpha",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
      "flags": 26,
      "nodeType": null,
      "enumValues": []
@@ -6644,6 +6875,46 @@
    "outputs": []
   },
   {
+   "name": "get_vector_component",
+   "kind": 1,
+   "base": null,
+   "hasFactory": true,
+   "inputs": [
+    {
+     "name": "vector",
+     "uiName": "Vector",
+     "type": "vector",
+     "valueType": 7,
+     "components": 3,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "index",
+     "uiName": "Index",
+     "type": "int",
+     "valueType": 2,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    }
+   ],
+   "outputs": [
+    {
+     "name": "value",
+     "uiName": "Value",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 0,
+     "nodeType": null,
+     "enumValues": []
+    }
+   ]
+  },
+  {
    "name": "glass_bsdf",
    "kind": 1,
    "base": null,
@@ -6703,8 +6974,38 @@
      ]
     },
     {
+     "name": "tangent",
+     "uiName": "Tangent",
+     "type": "vector",
+     "valueType": 7,
+     "components": 3,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
      "name": "roughness",
      "uiName": "Roughness",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "anisotropy",
+     "uiName": "Anisotropy",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "rotation",
+     "uiName": "Rotation",
      "type": "float",
      "valueType": 5,
      "components": 1,
@@ -8111,6 +8412,26 @@
      "flags": 26,
      "nodeType": null,
      "enumValues": []
+    },
+    {
+     "name": "missing",
+     "uiName": "Missing",
+     "type": "color",
+     "valueType": 6,
+     "components": 3,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "missing_alpha",
+     "uiName": "Missing Alpha",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
     }
    ],
    "outputs": [
@@ -8129,6 +8450,139 @@
      "uiName": "Alpha",
      "type": "float",
      "valueType": 5,
+     "components": 1,
+     "flags": 0,
+     "nodeType": null,
+     "enumValues": []
+    }
+   ]
+  },
+  {
+   "name": "integer_math",
+   "kind": 1,
+   "base": null,
+   "hasFactory": true,
+   "inputs": [
+    {
+     "name": "math_type",
+     "uiName": "Type",
+     "type": "enum",
+     "valueType": 12,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": [
+      {
+       "name": "absolute",
+       "value": 7
+      },
+      {
+       "name": "add",
+       "value": 0
+      },
+      {
+       "name": "divide",
+       "value": 3
+      },
+      {
+       "name": "divide_ceil",
+       "value": 15
+      },
+      {
+       "name": "divide_floor",
+       "value": 14
+      },
+      {
+       "name": "divide_round",
+       "value": 16
+      },
+      {
+       "name": "floored_modulo",
+       "value": 6
+      },
+      {
+       "name": "gcd",
+       "value": 10
+      },
+      {
+       "name": "lcm",
+       "value": 11
+      },
+      {
+       "name": "maximum",
+       "value": 9
+      },
+      {
+       "name": "minimum",
+       "value": 8
+      },
+      {
+       "name": "modulo",
+       "value": 17
+      },
+      {
+       "name": "multiply",
+       "value": 2
+      },
+      {
+       "name": "multiply_add",
+       "value": 4
+      },
+      {
+       "name": "negate",
+       "value": 12
+      },
+      {
+       "name": "power",
+       "value": 5
+      },
+      {
+       "name": "sign",
+       "value": 13
+      },
+      {
+       "name": "subtract",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "name": "value1",
+     "uiName": "Value1",
+     "type": "int",
+     "valueType": 2,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "value2",
+     "uiName": "Value2",
+     "type": "int",
+     "valueType": 2,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "value3",
+     "uiName": "Value3",
+     "type": "int",
+     "valueType": 2,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    }
+   ],
+   "outputs": [
+    {
+     "name": "value",
+     "uiName": "Value",
+     "type": "int",
+     "valueType": 2,
      "components": 1,
      "flags": 0,
      "nodeType": null,
@@ -8748,6 +9202,10 @@
      "flags": 24,
      "nodeType": null,
      "enumValues": [
+      {
+       "name": "dlss",
+       "value": 8
+      },
       {
        "name": "none",
        "value": 0
@@ -12480,6 +12938,25 @@
      "flags": 25,
      "nodeType": null,
      "enumValues": []
+    },
+    {
+     "name": "render_as",
+     "uiName": "Render As",
+     "type": "enum",
+     "valueType": 12,
+     "components": 1,
+     "flags": 24,
+     "nodeType": null,
+     "enumValues": [
+      {
+       "name": "gaussian_splats",
+       "value": 1
+      },
+      {
+       "name": "points",
+       "value": 0
+      }
+     ]
     }
    ],
    "outputs": []
@@ -12879,6 +13356,26 @@
     {
      "name": "transmission_weight",
      "uiName": "Transmission Weight",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "transmission_dispersion_scale",
+     "uiName": "Transmission Dispersion Scale",
+     "type": "float",
+     "valueType": 5,
+     "components": 1,
+     "flags": 26,
+     "nodeType": null,
+     "enumValues": []
+    },
+    {
+     "name": "transmission_dispersion_abbe_number",
+     "uiName": "Transmission Dispersion Abbe Number",
      "type": "float",
      "valueType": 5,
      "components": 1,

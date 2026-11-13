@@ -416,7 +416,7 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                     (*st).set_ok=(*st).o.node!=NONE&&(*st).o.t.x<(*st).o.t.y;(*st).set_done=true;(*st).stage=VH_SETUP;continue;
                 }
                 let object=vh_stack_object((*st).index,(*st).set_i);
-                if(object==(*st).set_skip_object&&shader==(*st).set_skip_shader){(*st).set_i++;continue;}
+                if(object==(*st).set_skip_object&&shader==(*st).set_skip_shader){var o=(*st).o;vh_octree_skip(&o);(*st).o=o;(*st).set_i++;continue;}
                 (*st).set_local=vlp_local((*st).index,(*st).origin,(*st).direction,(*st).tmax,(*st).o.t.x,object,shader);
                 if(vlp_estimates((*st).visibility,shader)){(*st).est=vlp_start((*st).set_local.t,object,shader,(*st).sample,(*st).pixel,(*st).offset,17u);(*st).estimating=true;(*st).stage=15u;continue;}
                 (*st).est.ext=vh_extrema((*st).set_local);(*st).stage=17u;

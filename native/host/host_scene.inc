@@ -96,12 +96,12 @@ Attribute &find_attribute(Host &host,CBCNode id,const char *name,uint32_t flags)
 // Requests the pinned Cycles accepts but this library cannot honour: refused by name on every backend, never ignored.
 void validate_unavailable(Host &host) {
   // Dispersion: the kernels are built without spectral sampling, so they would render a dispersive Principled BSDF
-  // as a non-dispersive one with no message. A linked input counts as a request.
-  for(auto &[shader,stored]:host.graphs)for(auto node:stored->authoring->nodes)if(auto principled=dynamic_cast<PrincipledBsdfNode *>(node)) {
-    auto input=principled->input("Transmission Dispersion Scale");
-    require(input&&!input->link&&principled->get_transmission_dispersion_scale()==0.0f,
-            "Dispersion is not available: the Principled BSDF input Transmission Dispersion Scale must be 0 and unlinked (this library renders without spectral sampling)",CBC_UNSUPPORTED);
-  }
+  // as a non-dispersive one with no message. The test is the pinned node's own (PrincipledBsdfNode::has_dispersion):
+  // the dispersion scale and the transmission weight are each linked or not zero; with a constant zero transmission
+  // weight nothing disperses and the scene renders, as in Cycles.
+  for(auto &[shader,stored]:host.graphs)for(auto node:stored->authoring->nodes)if(auto principled=dynamic_cast<PrincipledBsdfNode *>(node))
+    require(!principled->has_dispersion(),
+            "Dispersion is not available: of the Principled BSDF inputs Transmission Dispersion Scale and Transmission Weight one must be 0 and unlinked (this library renders without spectral sampling)",CBC_UNSUPPORTED);
   // Gaussian splats: a point cloud asked to render as splats needs the radiance, scale and rotation attributes, which this
   // host cannot author; the pinned Cycles would render it as plain points with no message (PointCloud::primitive_type).
   for(auto geom:host.session->scene->geometry)if(auto points=dynamic_cast<PointCloud *>(geom))
@@ -111,6 +111,12 @@ void validate_unavailable(Host &host) {
   auto integrator=host.session->scene->integrator;
   require(!integrator->get_use_denoise()||integrator->get_denoiser_type()!=DENOISER_DLSS,
           "Unsupported feature: the dlss denoiser is not available in this library (use openimagedenoise)",CBC_UNSUPPORTED);
+  // denoiser_passes is Cycles' DenoiserPass bit set (device/denoise.h). A bit outside it is read by nothing; a caller
+  // built against a different numbering of the guides is told instead of rendering without the guide it asked for.
+  const int denoiser_guides=DENOISER_PASS_ALBEDO|DENOISER_PASS_SPECULAR_ALBEDO|DENOISER_PASS_NORMAL|DENOISER_PASS_ROUGHNESS|DENOISER_PASS_DEPTH|
+                            DENOISER_PASS_BACKWARD_MOTION|DENOISER_PASS_SPECULAR_MOTION;
+  require(!integrator->get_use_denoise()||!(integrator->get_denoiser_passes()&~denoiser_guides),
+          "Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)");
 }
 void validate_geometry(Host &host) {
   validate_unavailable(host);

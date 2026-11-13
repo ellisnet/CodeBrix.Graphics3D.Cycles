@@ -95,7 +95,9 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
     // renderTimeRejections: every class of scene the backend refuses at render time, in the words of AGENT-README.txt
     // "RENDER-TIME REJECTIONS" (a managed test compares the two): the host's own first (every backend; the denoiser
     // upscale factor not on Metal), then the device's.
-#define CBC_HOST_REJECTIONS "\"Catmull-Clark subdivision surfaces (they need OpenSubdiv, which this library does not include)\""
+#define CBC_HOST_REJECTIONS "\"Catmull-Clark subdivision surfaces (they need OpenSubdiv, which this library does not include)\"," \
+  "\"dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0; this library renders without spectral sampling)\"," \
+  "\"the dlss denoiser\",\"point clouds rendered as Gaussian splats\""
 #define CBC_HOST_CPU_DENOISE_REJECTIONS "\"a denoiser upscale factor other than 1\""
     out << ",\"backendScope\":{\"cpu\":{\"device\":\"Cycles CPU device (reference)\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\""
 #ifdef WITH_OSL
@@ -122,6 +124,7 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
            "\"BVH time steps\",\"volume velocity motion blur\",\"sparse or tiled images\","
            "\"area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, with an axis of infinities, or reached by the light tree at a transmissive surface\",\"background light portals of zero extent\",\"bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)\","
            "\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\","
+           "\"Boolean Math, Integer Math and Get Vector Component shader nodes with a linked input\","
            "\"shadow catchers with transparent shadows on Adreno 650 GPUs\",\"shadow caustics (manifold next-event estimation) on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL

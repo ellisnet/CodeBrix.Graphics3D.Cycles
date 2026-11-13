@@ -30,6 +30,40 @@ next build:
      the others no longer read one; deleting them only frees the disk.
   3. Do a FULL dependency rebuild for that host (the dependency prefixes from
      earlier builds are stale), then build Cycles as usual.
+
+THE PINNED CYCLES SOURCE IS NOW THE RELEASED CYCLES v5.3.0 (revision
+b3f6262640f1a2f2d10b55b6ffccbf310ce0f981). On every Windows and macOS build
+host, and for the Linux ARM64 and Android builds, before the next build:
+
+  4. Nothing of an earlier host build may be reused: delete
+       native/work/windows/<rid>/host/
+       native/work/macos/osx-arm64/host/
+       native/work/macos/osx-x64/host/
+       native/work/linux/linux-arm64/host/
+       native/work/android/<rid>/host/
+     (build trees, generated overlays and any copied Cycles source). The
+     dependency snapshots (third_party/deps) did not change with the re-pin, so
+     a dependency prefix built after step 3 above stays valid.
+  5. The payloads native/binaries/osx-arm64, osx-x64, win-x64 and win-arm64 were
+     REMOVED: they were built from the previous pinned revision. Only linux-x64
+     is present. A platform's payload comes back when that platform has been
+     rebuilt, validated and restaged on its own machine (native/binaries/README.md;
+     PACKAGING AND PUBLISHING, "Adding a platform").
+  6. None of these recipes has been built or run on v5.3.0 (Linux x64 is the only
+     platform built on it). Every film, reference, hash and result recorded for
+     another platform belongs to the previous revision and is void as evidence:
+     the Metal reference films of the managed tests
+     (tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64), the
+     oracle films under native/evidence/ and the device-gate exchange records
+     are recorded again as part of the first run. The CPU oracle's films
+     changed with the pin, so old and new films must never be compared.
+  7. osx-arm64 only: the overlay now holds two headers that are also in the
+     Metal kernel include closure (util/types_gpu_compressed.h,
+     kernel/integrator/mnee.h). The recipe accepts them only after proving that
+     each is the pinned text plus one recorded addition that is inert in this
+     profile (native/host/MACOS_ARM64.md, "Overlay files in the Metal kernel
+     closure"); the Metal kernels are still compiled from the pinned files.
+     UNTESTED on a Mac.
 ********************************************************************************
 
 
@@ -278,6 +312,8 @@ MAP OF THE NATIVE DOCUMENTATION
                                   opt-in, clang-cl, hybrid C runtime)
     docs/TESTING-WINDOWS-X64.md   test procedure for Windows x64 and ARM64:
                                   WGSL on Direct3D 12 and Vulkan
+    docs/TESTING-WINDOWS-ARM64.md the win-arm64 device run from the staged
+                                  payload
     docs/TESTING-LINUX-ARM64.md   test procedure for the Raspberry Pi 5: WGSL
                                   on the V3D GPU and the glibc ARM64 reference
     docs/TESTING-LINUX-ARM64-ORACLE.md
@@ -450,6 +486,11 @@ put ispc on PATH; tools/dependencies/build.py refuses any other version. Windows
 machine with Visual Studio's clang-cl) is described in native/host/WINDOWS_X64.md:
 `python -I -X utf8 tools/dependencies/build_windows.py --rid <rid>`, then
 `python -I -X utf8 native/tools/build_cycles_windows.py --rid <rid>`.
+The Windows, osx-x64 and osx-arm64 payloads are NOT in native/binaries/ at
+present: they were built from the previous pinned Cycles revision and were
+removed with the re-pin to Cycles v5.3.0 (see the note at the top of this file).
+The rest of this paragraph is each platform's last validated state at the
+previous revision, and what its payload looks like once it is staged again.
 Both reviewed Windows payloads are staged in native/binaries/<rid>/ with the
 same layout (runtime/, symbols/, tests/, provenance.json). win-x64 is
 validated (host gate on Direct3D 12 and Vulkan, managed tests, oracle corpus);
@@ -475,7 +516,10 @@ against comes from it and is committed:
 the newest native/evidence/linux-x64-reference-<date>/ (now
 linux-x64-reference-20261107: the full host gate without its reload rounds,
 oracle and bench films; linux-x64-reference-20261101 still supplies the overlay
-hashes, libm record, managed reference films and host-gate reload rounds). Device-gate exchanges of the
+hashes, libm record, managed reference films and host-gate reload rounds). Both folders were recorded at the
+previous pinned Cycles revision: the CPU oracle's films changed with the re-pin to Cycles v5.3.0, so they are
+records of that revision and no reference for the current source until the full pass on v5.3.0 is recorded
+in a new native/evidence/linux-x64-reference-<date>/ folder. Device-gate exchanges of the
 devices without a Linux x64 side (Windows, the Intel Mac, the Raspberry Pi) run
 as the two-visit hand-off of native/tools/reference_exchange_handoff.py
 (docs/TESTING-WINDOWS-ARM64.md, "Device-gate exchange with the Linux x64
@@ -688,7 +732,9 @@ WebGPU film is within the practical criterion of its CPU film; the WebGPU films'
 bit identity is reported).
 The specialization feature mask (pipelines.h ShaderFeatures) is a fixed array of
 64-bit words (256 bits); bit numbers keep their meaning once assigned (0-61 and
-63 are in use, 62 and 64 onwards are free); reports and logs carry feature
+63 are in use, 62 and 64 onwards are free; a retired bit stays unused and is
+never reassigned: bit 6 was the Vertex Color handler, which Cycles v5.3.0
+removed); reports and logs carry feature
 names, never the numeric mask, so widening it changes no persisted format.
 
 Testing on other machines follows the per-platform procedures in docs/:
@@ -1080,6 +1126,138 @@ replacements for excluded upstream files. Every origin, pinned revision,
 license, modification and exclusion is recorded in the third_party/ manifests;
 THIRD-PARTY-NOTICES.txt and NOTICE are generated from them by
 tools/licensing/notices.py. Never hand-edit the generated files.
+
+THE CYCLES PIN
+--------------
+third_party/cycles is the filtered import of the standalone Cycles repository
+(https://github.com/blender/cycles) at the released tag v5.3.0, revision
+b3f6262640f1a2f2d10b55b6ffccbf310ce0f981. third_party/cycles-import.json is its
+manifest: the revision and tag, the importer's own SHA-256, and for every
+imported file its upstream hash, its imported hash, its licenses and whether
+the importer modified it; every upstream path that was not copied is listed
+with the reason. The revision is written in three places that must agree:
+tools/licensing/import_cycles.py (REVISION), tools/cycles_source.py (REVISION;
+every build calls its verify(), which checks the importer hash, the file set
+and every file hash against the manifest) and native/tools/build.py. Nothing
+under third_party/cycles is ever edited by hand: a change to pinned Cycles code
+is either an importer transform (below; it is part of the import and of the
+manifest) or an overlay edit (further below; it leaves the snapshot unchanged).
+
+What the importer does to the upstream tree (tools/licensing/import_cycles.py):
+- It copies src/, third_party/sky, third_party/libc_compat,
+  third_party/mikktspace and the root CMakeLists.txt, LICENSE, AUTHORS and
+  README.md; it does not copy upstream's atomic implementation, its
+  dependency setup (not under a license this repository accepts), maintenance
+  helpers, submodules, examples, cuew or hipew.
+  Every copied file must carry an allowed SPDX identifier (Apache-2.0,
+  BSD-3-Clause, MIT, Zlib) or be on the reviewed inherited-license list;
+  anything else stops the import.
+- Seven files are modified, each recorded as modified in the manifest with a
+  modification notice in the file:
+    CMakeLists.txt                        the build goes through the reviewed
+                                          dependency adapter
+                                          (tools/licensing/replacements/
+                                          codebrix_dependencies.cmake)
+    src/CMakeLists.txt                    the excluded atomic include roots
+                                          and the standalone application
+                                          build are removed
+    src/util/atomic.h                     the independent Apache-2.0 atomics
+                                          (replacements/atomic_ops_codebrix.h,
+                                          ATOMIC-CONTRACT.md)
+    src/util/stats.h                      atomic return and load for the
+                                          concurrent memory accounting
+    src/kernel/tables.h                   the CIE standard illuminant D65 table
+                                          and its normalisation constant are
+                                          not copied; the comment of the colour
+                                          matching table records that table's
+                                          public-domain origin
+    src/kernel/util/colorspace.h          the dispersion functions, which read
+                                          the D65 table and hold constants
+                                          fitted from it, are not copied
+    src/kernel/features.h                 __SPECTRAL__ is not defined
+- The D65 data and dispersion. The CIE publishes the D65 table under
+  CC BY-SA 4.0, which is not compatible with this repository's Apache-2.0
+  license, so it is never copied: the importer drops the text between two
+  anchors unread, with everything derived from it (the normalisation constant,
+  the dispersion functions and their fitted constants, and
+  src/app/cie_d65_luminance_fit.py, which embeds the table and is excluded).
+  Without __SPECTRAL__ the kernels of every device, Metal included, are built
+  without spectral sampling, so DISPERSION IS NOT AVAILABLE on any backend;
+  the host refuses a Principled BSDF that would disperse, by name
+  (native/DEVICE.md, open item 187). This is a ruling of the maintainer: it
+  changes only if the data becomes available under a compatible license.
+- The Ceres notice. src/util/math_float3x3.h marks two quaternion functions
+  "Adopted from Ceres-solver" (BSD-3-Clause) and carries only its Apache-2.0
+  header. The importer records both licenses for that file (PORTED_NOTICES)
+  and refuses the import when the marker or the file's SPDX line changes; the
+  notice text is third_party/licenses/CeresSolver-BSD-3-Clause.txt, named in
+  third_party/dependencies.json and third_party/additional-license-origins.json.
+- The Gaussian-splat files (src/kernel/geom/gsplat*.h and the scene code) are
+  imported as they are (the maintainer's ruling, after a review of what they
+  cite). The library refuses to render splats (native/DEVICE.md, item 186).
+
+Beside the import:
+- The WITH_EMBREE guard. The Cycles build files test WITH_EMBREE, which the
+  imported external_libs.cmake sets from WITH_CYCLES_EMBREE. The dependency
+  adapter stops the configuration when WITH_CYCLES_EMBREE is on and WITH_EMBREE
+  is not, because that build would silently put the CPU device on BVH2.
+- The overlay (native/tools/cycles_overlay.py; generated into the build's
+  cycles-overlay folder, first on the include path of every Cycles
+  translation unit; each edit is an exact string that must match the pinned
+  file exactly once, so a pin whose text moved stops the build):
+    device/device.h, device/device.cpp    the WebGPU device type and its
+                                          registration
+    integrator/path_trace.cpp             render scheduling and maintainer-tool
+                                          additions
+    util/types_gpu_compressed.h           FULL-PRECISION INTEGRATOR STATE: under
+                                          WITH_WEBGPU the fields Cycles stores
+                                          as half floats on GPU devices are
+                                          stored as float and PackedSpectrum,
+                                          so the WGSL device matches the CPU
+                                          oracle (the maintainer's ruling).
+                                          Without WITH_WEBGPU (osx-arm64) the
+                                          text is the pinned text.
+    kernel/integrator/mnee.h              one [[maybe_unused]] attribute: with
+                                          spectral sampling compiled out a flag
+                                          is written and never read
+    util/colorspace.cpp                   handed through UNCHANGED. The earlier
+                                          colour-cache correction is gone (the
+                                          pinned source now invalidates its
+                                          caches when the OpenColorIO
+                                          configuration object changes). The
+                                          file stays in the overlay because
+                                          every platform's inject_cycles*.cmake
+                                          and the five host gates' link-map
+                                          checks still take it from there;
+                                          removing that wiring is a change to
+                                          all of them at once and waits for a
+                                          session that can build every platform.
+
+Moving the pin (a re-pin) is a reviewed upgrade, never a routine step:
+1. Read the license and the provenance of everything the new revision adds
+   (new files, new data tables, text that says it comes from elsewhere) BEFORE
+   importing; bring anything not established as Apache-2.0-compatible to the
+   maintainer.
+2. Set REVISION in the three places above, remove third_party/cycles and
+   third_party/cycles-import.json (the importer refuses to overwrite an
+   import), and run
+       python3 tools/licensing/import_cycles.py --upstream <clean checkout of the revision>
+   Every importer anchor must match exactly once; a failed assertion means the
+   upstream text moved and the transform is reviewed again.
+3. Update the notices: python3 tools/licensing/collect_attributions.py, the
+   Cycles component of third_party/dependencies.json (version, revision,
+   notices, noticeSha256), python3 tools/licensing/notices.py, the hash-pinned
+   entries of third_party/license-review-exceptions.json for files that
+   changed, and native/THIRD-PARTY-NOTICES.txt where it names files that moved
+   or went; then python3 tools/licensing/audit.py and notices.py --check.
+4. Rebuild; fix the overlay anchors; bring native/cycles, native/host and
+   native/shaders to the new kernels, with the CPU device as the oracle
+   (native/DEVICE.md, "Re-pin to Cycles v5.3.0", is the record of the last one).
+5. Payloads built from the old revision are removed (a payload always matches
+   the pinned source of the commit that carries it); references and evidence
+   recorded at the old revision are void and are recorded again;
+   compatibility/*.json is recorded again
+   (tools/compatibility/inventory.py).
 
 
 PIPELINE CACHE

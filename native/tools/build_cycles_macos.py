@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Build the osx-arm64 Cycles host with Cycles' Metal and CPU devices.
 
-The pinned snapshot is used unchanged; only the shared registration/color
-overlay is generated. Metal kernels are compiled by Cycles at run time, so the
-include closure of kernel.metal is staged beside the host library.
+The pinned snapshot is used unchanged; only the shared registration overlay is
+generated (cycles_overlay.py). Metal kernels are compiled by Cycles at run time,
+so the include closure of kernel.metal is staged beside the host library, from
+the pinned snapshot and never from the overlay.
 """
 import argparse,difflib,importlib.util,json,re,shutil,subprocess,sys
 from pathlib import Path
@@ -43,10 +44,39 @@ def kernel_closure(src):
  return sorted(found),sorted(unresolved)
 
 
-def stage_kernels(src,destination,overlay_names):
+# Overlay files that are also in the Metal kernel closure. The host's C++ is compiled
+# from the overlay copy and the Metal kernels from the pinned file, so the two texts
+# must mean the same in this profile. Each entry is the exact addition the overlay may
+# hold; stock_equivalent proves the overlay copy is the pinned text plus that addition
+# and nothing else:
+# - util/types_gpu_compressed.h: the full-precision integrator state of the WebGPU
+#   device, entirely inside #ifdef WITH_WEBGPU, which this profile never defines (main
+#   checks the compile commands), so the preprocessed text is the pinned text and the
+#   state layout the host allocates is the one the Metal kernels use.
+# - kernel/integrator/mnee.h: one [[maybe_unused]] attribute on a host-side local.
+OVERLAY_HEADER='// Copyright (c) 2026 Jeremy Ellis and contributors\n// CodeBrix WebGPU registration additions; upstream notices follow.\n'
+STOCK_EQUIVALENT={
+ 'util/types_gpu_compressed.h':('#ifdef WITH_WEBGPU\n'
+  '/* CodeBrix WebGPU: compressed-on-GPU state fields are stored in full precision. */\n'
+  'template<> struct gpu_state_storage<FloatCompressedOnGPU, void> {\n  using gpu_type = float;\n};\n'
+  'template<> struct gpu_state_storage<SpectrumCompressedOnGPU, void> {\n  using gpu_type = PackedSpectrum;\n};\n'
+  '#endif\n'),
+ 'kernel/integrator/mnee.h':'[[maybe_unused]] '}
+
+
+def stock_equivalent(name,pinned,overlaid):
+ """True when the overlay copy is the pinned text with the overlay header and the one
+ recorded addition for this file, and nothing else."""
+ addition=STOCK_EQUIVALENT.get(name)
+ if addition is None or not overlaid.startswith(OVERLAY_HEADER) or overlaid.count(addition)!=1:return False
+ return overlaid[len(OVERLAY_HEADER):].replace(addition,'')==pinned
+
+
+def stage_kernels(src,destination,overlay_root,overlay_names):
  names,unresolved=kernel_closure(src)
  shadowed=sorted(set(names)&set(overlay_names))
- if shadowed:raise RuntimeError('Metal kernel closure includes overlaid files: '+', '.join(shadowed))
+ different=[name for name in shadowed if not stock_equivalent(name,(src/name).read_text(),(Path(overlay_root)/name).read_text())]
+ if different:raise RuntimeError('Metal kernel closure includes overlaid files that differ from the pinned text: '+', '.join(different))
  root=destination/KERNEL_ROOT
  if root.exists():shutil.rmtree(root)
  for name in names:
@@ -172,9 +202,11 @@ def main():
   forbidden=[name for name in loaded if re.match(r'lib(jpeg|png|tiff|webp|gif|heif|raw|openjp|avif|jxl)',name)]
   if forbidden:raise RuntimeError('Image codec libraries are loaded by the host: '+', '.join(forbidden))
   # Shipped kernel sources are the pristine snapshot; the half.h adaptation is
-  # CPU-only and excluded from GPU compilation by __KERNEL_GPU__.
-  verify_source();verify_cycles();kernels,unresolved=stage_kernels(SOURCE/'src',build/'lib',overlay_files)
-  save(WORK/'kernel-sources.json',dict(root=KERNEL_ROOT,entry=KERNEL_ENTRY,files=kernels,unresolvedIncludes=unresolved))
+  # CPU-only and excluded from GPU compilation by __KERNEL_GPU__. Overlay files in
+  # the closure are proven equivalent to the pinned text (STOCK_EQUIVALENT).
+  verify_source();verify_cycles();kernels,unresolved=stage_kernels(SOURCE/'src',build/'lib',generated,overlay_files)
+  save(WORK/'kernel-sources.json',dict(root=KERNEL_ROOT,entry=KERNEL_ENTRY,files=kernels,unresolvedIncludes=unresolved,
+   overlaidInClosure=sorted(set(kernels)&set(overlay_files))))
   artifacts={str(p.relative_to(build)):sha(p) for d in [build/'bin',build/'lib'] for p in sorted(d.glob('*'))
    if p.is_file() and (p.name.startswith('codebrix_') or p.name=='libcodebrix_cycles_host.dylib')}
   if not a.target:assert len(artifacts)==len(HOST_TARGETS),artifacts

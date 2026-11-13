@@ -2,8 +2,12 @@
 
 Copyright (c) 2026 Jeremy Ellis and contributors
 
-This is the initial P00 inventory for Cycles revision
-`a456b761034dda42c32eef9f4aae0fa5a5c9f604`. Full Cycles functionality, all nine
+This is the initial P00 inventory for Cycles. The pinned revision is
+`b3f6262640f1a2f2d10b55b6ffccbf310ce0f981` (the released Cycles v5.3.0); the
+JSON ledger in this folder was recorded at the previous pinned revision,
+`a456b761034dda42c32eef9f4aae0fa5a5c9f604`, still names it, and is recorded
+again against v5.3.0 in a later session (until then
+`tools/compatibility/inventory.py check` does not pass). Full Cycles functionality, all nine
 native RIDs, the unchanged shipped WebGPU runtime and thin .NET delivery remain
 required. `inventoryComplete` and `fullCyclesParity` are both false.
 

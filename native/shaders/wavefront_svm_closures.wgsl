@@ -97,7 +97,7 @@ fn svm_oren_param(sigma:f32,albedo:vec3<f32>,nv:f32)->SvmOrenParam{
     let pi=3.141592653589793;var r:SvmOrenParam;
     r.a=rounded_divide(1.0,rounded_add(pi,sigma*(1.5707963267948966f-2.0f/3.0f)));r.b=sigma*r.a;
     let average=svm_oren_add(r.a*pi,((6.283185307179586f-5.6f)/3.0f)*r.b);
-    let scale=(0.3183098861837907f*(albedo*albedo))*rounded_divide(average,1.0-average);
+    let scale=(0.3183098861837907f*albedo)*rounded_divide(average,1.0-average);
     let d=rounded_add3(vec3<f32>(1),-(albedo*(1.0-average)));
     // The three lane quotients through one rounded_divide body (rounded_steps).
     var ems=vec3<f32>(0);let count=rounded_steps(3u);

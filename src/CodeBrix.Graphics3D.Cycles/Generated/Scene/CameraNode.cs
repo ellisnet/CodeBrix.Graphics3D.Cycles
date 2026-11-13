@@ -263,6 +263,46 @@ public sealed partial class CameraNode : CyclesNode
     public float ViewplaneTop { get => GetFloat("viewplane.top"); set => SetFloat("viewplane.top", value); }
 
     /// <summary>
+    /// Gets or sets the <c>viewplane_pre.left</c> socket (Viewplane Pre Left; native type float).
+    /// </summary>
+    public float ViewplanePreLeft { get => GetFloat("viewplane_pre.left"); set => SetFloat("viewplane_pre.left", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>viewplane_pre.right</c> socket (Viewplane Pre Right; native type float).
+    /// </summary>
+    public float ViewplanePreRight { get => GetFloat("viewplane_pre.right"); set => SetFloat("viewplane_pre.right", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>viewplane_pre.bottom</c> socket (Viewplane Pre Bottom; native type float).
+    /// </summary>
+    public float ViewplanePreBottom { get => GetFloat("viewplane_pre.bottom"); set => SetFloat("viewplane_pre.bottom", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>viewplane_pre.top</c> socket (Viewplane Pre Top; native type float).
+    /// </summary>
+    public float ViewplanePreTop { get => GetFloat("viewplane_pre.top"); set => SetFloat("viewplane_pre.top", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>viewplane_post.left</c> socket (Viewplane Post Left; native type float).
+    /// </summary>
+    public float ViewplanePostLeft { get => GetFloat("viewplane_post.left"); set => SetFloat("viewplane_post.left", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>viewplane_post.right</c> socket (Viewplane Post Right; native type float).
+    /// </summary>
+    public float ViewplanePostRight { get => GetFloat("viewplane_post.right"); set => SetFloat("viewplane_post.right", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>viewplane_post.bottom</c> socket (Viewplane Post Bottom; native type float).
+    /// </summary>
+    public float ViewplanePostBottom { get => GetFloat("viewplane_post.bottom"); set => SetFloat("viewplane_post.bottom", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>viewplane_post.top</c> socket (Viewplane Post Top; native type float).
+    /// </summary>
+    public float ViewplanePostTop { get => GetFloat("viewplane_post.top"); set => SetFloat("viewplane_post.top", value); }
+
+    /// <summary>
     /// Gets or sets the <c>border.left</c> socket (Border Left; native type float).
     /// </summary>
     public float BorderLeft { get => GetFloat("border.left"); set => SetFloat("border.left", value); }
@@ -281,6 +321,16 @@ public sealed partial class CameraNode : CyclesNode
     /// Gets or sets the <c>border.top</c> socket (Border Top; native type float).
     /// </summary>
     public float BorderTop { get => GetFloat("border.top"); set => SetFloat("border.top", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>border_pre_left</c> socket (Border Pre Left; native type float).
+    /// </summary>
+    public float BorderPreLeft { get => GetFloat("border_pre_left"); set => SetFloat("border_pre_left", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>border_pre_bottom</c> socket (Border Pre Bottom; native type float).
+    /// </summary>
+    public float BorderPreBottom { get => GetFloat("border_pre_bottom"); set => SetFloat("border_pre_bottom", value); }
 
     /// <summary>
     /// Gets or sets the <c>viewport_camera_border.left</c> socket (Viewport Border Left; native type float).

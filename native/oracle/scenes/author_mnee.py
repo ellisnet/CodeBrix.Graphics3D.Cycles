@@ -16,6 +16,9 @@ shadow-catcher/caustics-receiver: shadow-catcher/catcher-point-light with the ca
 under the point lamp, which casts shadow caustics (shadow_catcher_gate case 23).
 mnee/area-caustic, mnee/area-disk-spread-caustic, mnee/area-zero-spread-caustic: the caustic lamp is a rectangular area light with
 the full spread, a disk area light with a narrow spread or a rectangular area light with zero spread (26, 27, 28).
+mnee/anisotropic-glass-caustic, mnee/anisotropic-principled-caustic: the sphere is a rough anisotropic Glass BSDF (GGX, a constant
+tangent) or a Principled BSDF with full transmission, an Anisotropic value and the same tangent: the anisotropic branch of
+mnee_sample_bsdf_dh (no mnee_fixture.h case; the nearest is case 1, a rough isotropic refraction caster).
 """
 import json
 from pathlib import Path
@@ -71,6 +74,16 @@ def beckmann():
  node(nodes,'glass')['graph']=dict(nodes=[dict(handle='bsdf',type='refraction_bsdf',set=dict(distribution='beckmann',roughness=0.2,IOR=1.33,color=[0.9,0.95,1.0]))],
   connect=[['bsdf','BSDF','output','Surface']])
  return data
+def anisotropic(principled):
+ data,nodes=derived('mnee/anisotropic-principled-caustic' if principled else 'mnee/anisotropic-glass-caustic',
+  'MNEE shadow caustics through a Principled BSDF with full transmission, Anisotropic 0.7 and a constant tangent (an anisotropic transmission lobe)'
+  if principled else 'MNEE shadow caustics through a rough anisotropic Glass BSDF (GGX, anisotropy 0.6, a constant tangent)',1)
+ data['sourceFixture']='native/oracle/scenes/author_mnee.py; no mnee_fixture() case (nearest: case 1, a rough isotropic refraction caster)'
+ bsdf=dict(handle='bsdf',type='principled_bsdf',set=dict(distribution='ggx',base_color=[0.9,0.95,1.0],roughness=0.3,ior=1.45,anisotropic=0.7,transmission_weight=1.0)) \
+  if principled else dict(handle='bsdf',type='glass_bsdf',set=dict(distribution='ggx',roughness=0.2,IOR=1.45,color=[0.95,0.97,1.0],anisotropy=0.6))
+ node(nodes,'glass')['graph']=dict(nodes=[bsdf,dict(handle='t',type='color',set=dict(value=[0.8,0.3,0.2]))],
+  connect=[['t','Color','bsdf','Tangent'],['bsdf','BSDF','output','Surface']])
+ return data
 def volume():
  data,nodes=derived('mnee/volume-caustic','MNEE shadow caustics inside an absorbing medium: the sphere and the floor under it in a box with an absorption volume',24)
  at=nodes.index(node(nodes,'world'))
@@ -105,7 +118,7 @@ def catcher():
  return data
 def main():
  for data in [moving_caster(),spot(False),spot(True),
-              background(),lamp_shader(),beckmann(),volume(),huang(),catcher(),
+              background(),lamp_shader(),beckmann(),volume(),huang(),catcher(),anisotropic(False),anisotropic(True),
               area('mnee/area-caustic','MNEE shadow caustics from a rectangular area light with the full spread',26,dict(sizeu=1.2,sizev=0.9,ellipse=False,spread=3.1415927)),
               area('mnee/area-disk-spread-caustic','MNEE shadow caustics from a disk area light with a narrow spread (the clamped sample region)',27,
                    dict(sizeu=0.8,sizev=0.8,ellipse=True,spread=1.2)),

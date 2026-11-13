@@ -35,7 +35,7 @@ std::string volume_light_layout(){
   constant("VL_SD_VOLUME_MIS",SD_VOLUME_MIS);constant("VL_SD_VOLUME_EQUIANGULAR",SD_VOLUME_EQUIANGULAR);
   constant("VL_SHADER_EXCLUDE_SCATTER",SHADER_EXCLUDE_SCATTER);constant("VL_K_SHADE_VOLUME",DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME);
   constant("VL_K_INTERSECT_CLOSEST",DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);constant("VL_PRNG_VOLUME_PHASE",PRNG_VOLUME_PHASE);
-  constant("VL_D_max_bounce",offsetof(KernelData,integrator.max_bounce));constant("VL_D_max_volume_bounce",offsetof(KernelData,integrator.max_volume_bounce));
+  constant("VL_D_differential_widen_scale",offsetof(KernelData,integrator.differential_widen_scale));constant("VL_D_max_bounce",offsetof(KernelData,integrator.max_bounce));constant("VL_D_max_volume_bounce",offsetof(KernelData,integrator.max_volume_bounce));
   constant("VL_TREE_SELECTION",96);constant("VL_D_use_light_tree",offsetof(KernelData,integrator.use_light_tree));
 #define ENUM(name) constant("VL_" #name,uint32_t(name))
   ENUM(PATH_RAY_REFLECT);ENUM(PATH_RAY_SINGULAR);ENUM(PATH_RAY_IMPORTANCE_BAKE);ENUM(PATH_RAY_MIS_SKIP);ENUM(PATH_RAY_MIS_HAD_TRANSMISSION);
@@ -58,7 +58,7 @@ std::string volume_light_layout(){
 std::string volume_source(){
   std::ostringstream source;auto constant=[&](const char *name,size_t v){source<<"const "<<name<<":u32="<<uint32_t(v)<<"u;\n";};
 #define DATA(parent,member) constant("V_" #parent "_" #member,offsetof(KernelData,parent.member))
-  DATA(integrator,max_bounce);DATA(integrator,max_volume_bounce);
+  DATA(integrator,max_bounce);DATA(integrator,max_volume_bounce);DATA(integrator,differential_widen_scale);
   DATA(film,pass_volume_scatter_denoised);DATA(film,pass_volume_transmit_denoised);
 #undef DATA
 #define ENUM(name) constant("V_" #name,uint32_t(name))

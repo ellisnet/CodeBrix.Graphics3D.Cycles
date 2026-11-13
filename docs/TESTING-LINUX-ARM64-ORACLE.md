@@ -3,6 +3,17 @@
 Copyright (c) 2026 Jeremy Ellis and contributors
 SPDX-License-Identifier: Apache-2.0
 
+> **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
+> Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
+> `third_party/cycles-import.json`). The Linux ARM64 CPU oracle has not been built or rendered on it (NOT BUILT);
+> the committed `native/evidence/linux-arm64-cpu-oracle-<date>/` films are films of the previous revision.
+> Every result, film, hash, file count and payload statement in this document
+> was recorded at the previous pinned revision
+> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
+> evidence for the current source. Films and references recorded at the
+> previous revision cannot be compared with the current source: the CPU
+> oracle's films changed with the pin.
+
 > **MANDATORY TEST RULES** (the same as every TESTING document):
 >
 > 1. **WebGPU binaries: ONLY from the `CodeBrix.WebGpu.Native.MitLicenseForever`

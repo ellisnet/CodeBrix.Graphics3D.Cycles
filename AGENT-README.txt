@@ -729,7 +729,8 @@ Sampling (scene.Integrator):
   - Bounces and path controls: MinBounce, MaxBounce and the per-type maxima
     (MaxDiffuseBounce, MaxGlossyBounce, MaxTransmissionBounce, MaxVolumeBounce,
     TransparentMinBounce, TransparentMaxBounce), FilterGlossy (blurs glossy
-    reflections after blurry bounces: less noise, less accuracy),
+    reflections after blurry bounces: less noise, less accuracy; 1 by default,
+    as in Cycles, 0 switches it off),
     CausticsReflective and CausticsRefractive (off removes those caustic
     paths), SampleClampDirect, SampleClampIndirect, LightSamplingThreshold,
     UseLightTree (on by default).
@@ -737,12 +738,15 @@ Sampling (scene.Integrator):
     and is not rendered by the WebGPU device (RENDER-TIME REJECTIONS).
 
 Denoising (scene.Integrator): UseDenoise (off by default), DenoiserType
-Openimagedenoise, DenoiserPrefilter, DenoiserQuality, DenoiseStartSample and
-DenoiserGuides (the guide passes; Open Image Denoise reads Albedo and Normal,
-the default). DenoiseUseGpu lets Open Image Denoise use the GPU where it can
-(Metal); the CPU and WebGPU backends denoise on the CPU (GetCapabilities().
-DenoiseDevices). DenoiserUpscaleFactor other than 1 is refused on the CPU and
-WebGPU backends (RENDER-TIME REJECTIONS).
+Openimagedenoise (Dlss is refused: RENDER-TIME REJECTIONS), DenoiserPrefilter,
+DenoiserQuality, DenoiseStartSample and DenoiserGuides (the guide passes:
+Albedo, SpecularAlbedo, Normal, Roughness, Depth, BackwardMotion,
+SpecularMotion; Open Image Denoise reads Albedo and Normal, the default; a
+DenoiserPasses value with a bit outside these fails a denoising render).
+DenoiseUseGpu lets Open Image Denoise use the GPU where it can (Metal); the
+CPU and WebGPU backends denoise on the CPU (GetCapabilities().DenoiseDevices).
+DenoiserUpscaleFactor other than 1 is refused on the CPU and WebGPU backends
+(RENDER-TIME REJECTIONS).
 
 Lights (CreateLight<T>, placed by an object; see A light): every LightNode has
 Strength, CastShadow, UseMis, UseCaustics, MaxBounces, IsEnabled, Normalize
@@ -783,6 +787,18 @@ AttributeFlags.Standard these names are Cycles' standard attributes:
     curve_length and curve_random (per curve), for the Hair Info node;
   - point clouds: uv, generated, radius, point_random (the Point Info node).
   Any other name is a custom attribute, read by the Attribute node.
+  A node that asks for an attribute by name (AttributeNode, UvMapNode) gets
+  the attribute of that name, also when it is one of the names above set
+  without AttributeFlags.Standard; a node that asks for a standard attribute
+  (the Texture Coordinate node's UV, the Geometry node's Pointiness) gets the
+  one set with AttributeFlags.Standard, else an attribute with that name, value
+  type and domain.
+  AttributeNode, ImageTextureNode and EnvironmentTextureNode have Missing and
+  MissingAlpha: the colour and alpha the node returns when its attribute or
+  image does not exist (by default alpha 1 with black for the attribute and
+  magenta 1, 0, 1 for the textures).
+  PointCloudNode.RenderAs stays Points (GaussianSplats is refused:
+  RENDER-TIME REJECTIONS).
 
 Shader graphs: a link between different value types (a colour into a float
 input, a float into a colour or vector input, a value into a shader input)
@@ -1352,6 +1368,9 @@ GetBinaryCapabilities().BackendScopes those of every backend in the library.
 
 Every backend:
   - Catmull-Clark subdivision surfaces (they need OpenSubdiv, which this library does not include)
+  - dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0; this library renders without spectral sampling)
+  - the dlss denoiser
+  - point clouds rendered as Gaussian splats
 The CPU backends and the WebGPU backend:
   - a denoiser upscale factor other than 1
 The WebGPU backend:
@@ -1368,11 +1387,22 @@ The WebGPU backend:
   - bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)
   - texture, colour and utility shader nodes on Adreno 650 GPUs
   - ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs
+  - Boolean Math, Integer Math and Get Vector Component shader nodes with a linked input
   - shadow catchers with transparent shadows on Adreno 650 GPUs
   - shadow caustics (manifold next-event estimation) on Adreno 650 GPUs
 
 Why. OSL, OpenSubdiv and OpenVDB/NanoVDB (whose sparse images and velocity
-grids the last two WebGPU entries concern) are outside this package. Path
+grids two of the WebGPU entries concern) are outside this package. The
+library's kernels are built without spectral sampling, so Cycles would render a
+dispersive Principled BSDF without its dispersion; leave
+TransmissionDispersionScale at 0 and unlinked (with TransmissionWeight at 0
+and unlinked nothing disperses, and the scale is not refused). The dlss denoiser is not part of
+the library (use Openimagedenoise). A Gaussian splat needs radiance, scale and
+rotation attributes of value kinds this API cannot create, and Cycles would
+render the cloud as plain points. BooleanMathNode, IntegerMathNode and
+GetVectorComponentNode are not implemented by the WebGPU device; with constant
+inputs Cycles folds them away and every backend renders them, with a linked
+input the CPU and Metal backends render them. Path
 guiding is not part of Cycles' Metal device either. A Both displacement shader
 on curves or points makes Cycles' own kernels read values they never set, so
 that scene has no defined result. The Radial Tiling case is binary32 rounding

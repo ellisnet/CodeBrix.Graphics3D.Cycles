@@ -16,8 +16,12 @@ platform except Apple Silicon, where it uses Metal, so a developer gets the
 same features everywhere. Until a feature is ported the WebGPU device refuses
 scenes that need it, explicitly; it never approximates them.
 The reference is the pinned upstream revision
-`a456b761034dda42c32eef9f4aae0fa5a5c9f604`; each new behavior needs comparison
-with original Cycles code and, ultimately, complete reference renders.
+`b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`, the released Cycles v5.3.0; each new behavior needs comparison
+with original Cycles code and, ultimately, complete reference renders. The
+counts, evidence and estimates below were recorded at the previous pinned
+revision (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) unless a line says
+otherwise; "Cycles v5.3.0" below lists what the release added and where each
+addition stands.
 
 Hard constraints: unchanged shipped CodeBrix.WebGpu.Native binaries, native C++
 host/backend, no Slang, Android API 33 minimum, the requested desktop/mobile RIDs,
@@ -104,6 +108,42 @@ development; the Mac-rendered ARM64 films of this commit follow). The Galaxy S20
 
 A device row lists every failed job; native/DEVICE.md has the per-job tables and the open item numbers (item 98: the three
 device replays of Linux captures that cannot pass bit for bit on another GPU).
+
+## Cycles v5.3.0
+
+The pinned source is the released Cycles v5.3.0. The WGSL device was brought to
+its kernels (native/DEVICE.md, "Re-pin to Cycles v5.3.0": what changed in the
+pinned behaviour and how each change was proven); the full gate and corpus pass
+on this revision is the next device checkpoint, and the machine-readable
+inventory (`compatibility/*.json`) still describes the previous revision until
+it is recorded again. What the release ADDED, feature by feature:
+
+| Feature of the release | State | Refusal text, where refused |
+| --- | --- | --- |
+| Anisotropic transmission (the Glass BSDF's Anisotropy, Rotation and Tangent inputs; the Principled BSDF's Anisotropic input on its transmission lobe) | Ported on the WGSL device, caustics through an anisotropic caster included; the CPU and Metal devices have it from the source | none |
+| Missing and Missing Alpha inputs of the Attribute, Image Texture and Environment Texture nodes | Ported (every backend) | none |
+| A plain attribute named like a standard attribute is found by an Attribute node | Follows the source (every backend) | none |
+| Bump on point clouds (points have a tangent frame); the Geometry node's Tangent output on a point | Ported | none |
+| Emissive curves and points with shadow linking and textured emission | Ported | none |
+| Denoising depth with the near clip offset and a finite background depth; denoising backward motion through transparent surfaces and with an orthographic camera | Ported | none |
+| Integrator Filter Glossy default 1.0 | Follows the source (every backend) | none |
+| Boolean Math node | Refused by name on the WGSL device when an input is linked (constant inputs are folded before the device sees the node); renders on the CPU backend. A gap to close | "WebGPU Boolean Math node not implemented" |
+| Integer Math node | As Boolean Math | "WebGPU Integer Math node not implemented" |
+| Get Vector Component node | As Boolean Math | "WebGPU Get Vector Component node not implemented" |
+| Gaussian splats (a point cloud with `render_as` `gaussian_splats`) | Refused by name on every backend: the scene API cannot author the attributes a splat needs. A gap to close | "Unsupported feature: Gaussian splats are not available in this library (the point cloud input render_as must be points)"; behind it on the WGSL device, "WebGPU Gaussian splats not implemented" |
+| Quaternion and spherical-harmonics attribute types | Not reachable through the scene API (it has no such value kind); refused by name on the WGSL device. A gap to close | "WebGPU quaternion attributes not implemented", "WebGPU spherical harmonics attributes not implemented" |
+| Dispersion (the Principled BSDF's Transmission Dispersion Scale and Abbe Number) | Not available on any backend, Metal included: its CIE D65 data table is published under CC BY-SA 4.0 and is not imported, so the kernels are built without spectral sampling. Refused by name when the two inputs that enable it are both linked or not 0 | "Dispersion is not available: of the Principled BSDF inputs Transmission Dispersion Scale and Transmission Weight one must be 0 and unlinked (this library renders without spectral sampling)" |
+| The dlss denoiser | Not available on any backend: never built (it needs a vendor SDK that is not part of this repository) | "Unsupported feature: the dlss denoiser is not available in this library (use openimagedenoise)" |
+
+The open items are native/DEVICE.md items 185 to 187. Effect on the parity
+estimate below (INFERENCE from the pinned header's node list, not a re-run of
+the method): the release removed the two Vertex Color opcodes (the node now
+compiles to an Attribute node) and added four (Boolean Math, Integer Math, Get
+Vector Component and its derivative form), so the target has 110 opcodes, of
+which the device implements 106. The opcode table of
+`native/cycles/pipelines.cpp` names the four new opcodes for their record size
+only, so a plain name search would count them; they are refused and must be
+subtracted. The closure, kernel and pass figures were not re-derived.
 
 ## Parity estimate
 

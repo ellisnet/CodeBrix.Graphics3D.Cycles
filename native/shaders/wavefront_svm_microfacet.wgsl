@@ -27,6 +27,9 @@ fn microfacet_lut2(s:ptr<function,SvmState>,x:f32,y:f32,offset:u32)->f32{
     let a=microfacet_lut1(s,x,offset+32u*index,32u);if(t==0.0){return a;}
     let b=microfacet_lut1(s,x,offset+32u*min(index+1u,31u),32u);return (1.0-t)*a+t*b;
 }
+// mu_to_y_index (closure/bsdf_microfacet.h): the mu axis of the GGX energy and generalized Schlick tables is
+// indexed by safe_sqrtf(mu). The sheen and thin-film tables are not.
+fn microfacet_mu_index(mu:f32)->f32{return rounded_sqrt(max(mu,0.0));}
 fn svm_glossy(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibility:u32){
     if(data_word(D_caustics_reflective)==0u&&(visibility&PATH_RAY_VISIBILITY_DIFFUSE)!=0u){return;}
     let ni=svm_byte(data+N_GlossyBsdfData_normal_offset);var n=(*s).geometry.N;
@@ -59,7 +62,7 @@ fn svm_glossy(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibili
     if(kind==CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID){
         let color=max(svm_input3(s,data+N_GlossyBsdfData_color),vec3<f32>(0));
         let roughness=sqrt(sqrt(c.alpha_x*c.alpha_y));let mu=dot((*s).geometry.wi,c.N);
-        let e=microfacet_lut2(s,roughness,mu,data_word(D_ggx_E));
+        let e=microfacet_lut2(s,roughness,microfacet_mu_index(mu),data_word(D_ggx_E));
         let average=microfacet_lut1(s,roughness,data_word(D_ggx_Eavg),32u);
         if((*s).error!=0u){return;}
         let missing=(1.0-e)/e;c.energy_scale=1.0+missing;
@@ -124,12 +127,25 @@ fn svm_glass(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibilit
     c.ior=select(ior,rounded_divide(1.0,ior),((*s).geometry.runtime_flag&SR_BACKFACING)!=0u);
     var rough=svm_input(s,data+select(N_RefractionBsdfData_roughness,N_GlassBsdfData_roughness,glass));
     if(glass){rough=clamp(rough,0.0,1.0);}c.alpha_x=clamp(rough*rough,0.0,1.0);c.alpha_y=c.alpha_x;
+    // Glass BSDF anisotropy (svm/closure.h): with a Tangent on the stack and |anisotropy| above 1e-4 the lobe takes the
+    // rotated tangent and the two alphas, as the Glossy BSDF's; bsdf_microfacet_*_glass_setup saturates both.
+    if(glass){let anisotropy=clamp(svm_input(s,data+N_GlassBsdfData_anisotropy),-0.99,0.99);let ti=svm_byte(data+N_GlassBsdfData_tangent_offset);
+        if(ti!=SVM_STACK_INVALID&&abs(anisotropy)>1e-4){
+            let squared=rough*rough;c.T=svm_load3(s,ti);let rotation=svm_input(s,data+N_GlassBsdfData_rotation);
+//#if SVM_BSDF_ROTATION else             if(rotation!=0.0){c.T=microfacet_rotate(c.T,c.N,rotation*6.283185307179586f);}
+            if(rotation!=0.0){c.T=principled_rotate(c.T,c.N,rotation*6.283185307179586f);}
+//#endif
+            if(anisotropy<0.0){c.alpha_x=rounded_divide(squared,rounded_add(1.0,anisotropy));c.alpha_y=squared*rounded_add(1.0,anisotropy);}
+            else{c.alpha_x=squared*rounded_add(1.0,-anisotropy);c.alpha_y=rounded_divide(squared,rounded_add(1.0,-anisotropy));}
+            c.alpha_x=clamp(c.alpha_x,0.0,1.0);c.alpha_y=clamp(c.alpha_y,0.0,1.0);
+        }
+    }
     (*s).output.runtime_flag|=SR_BSDF|SR_BSDF_HAS_TRANSMISSION;
     if(c.alpha_x*c.alpha_y>2e-10){(*s).output.runtime_flag|=SR_BSDF_HAS_EVAL;}
     if(glass){c.fresnel_f0=ggx_f0(ior);let color=max(svm_input3(s,data+N_GlassBsdfData_color),vec3<f32>(0));
         c.reflection_tint=select(vec3<f32>(0),color,reflect);c.transmission_tint=select(vec3<f32>(0),color,transmit);
         let roughness=sqrt(sqrt(c.alpha_x*c.alpha_y));let mu=dot((*s).geometry.wi,c.N);
-        let z=sqrt(abs((c.ior-1.0)/(c.ior+1.0)));let v=microfacet_lut3(s,roughness,mu,z,data_word(D_ggx_gen_schlick_ior_s));
+        let z=sqrt(abs((c.ior-1.0)/(c.ior+1.0)));let v=microfacet_lut3(s,roughness,microfacet_mu_index(mu),z,data_word(D_ggx_gen_schlick_ior_s));
         let f=(1.0-v)*c.fresnel_f0+v;let albedo=f*c.reflection_tint+(1.0-f)*c.transmission_tint;
         c.sample_weight*=(albedo.x+albedo.y+albedo.z)*(1.0/3.0);
     }
@@ -184,8 +200,8 @@ fn principled_rotate(pt:vec3<f32>,axis:vec3<f32>,angle:f32)->vec3<f32>{
 fn principled_new(kind:u32,weight:vec3<f32>)->SvmClosure{
     var c:SvmClosure;c.kind=kind;c.weight=max(weight,vec3<f32>(0));c.sample_weight=abs(principled_average(c.weight));return c;
 }
-// bsdf_alloc (+closure_alloc_extra) or, for emission-only evaluation, the
-// stack closure of bsdf_alloc_maybe_emission. NONE when nothing is allocated.
+// bsdf_alloc (+closure_alloc_extra) or the stack closure of bsdf_alloc_maybe_emission (`local`: no closure slot is
+// left and the shader has emission, tested after the weight cutoff). NONE when nothing is allocated.
 fn principled_slot(s:ptr<function,SvmState>,c:SvmClosure,local:bool,extra:bool)->u32{
     if(!(c.sample_weight>=1e-5)){return NONE;}
     if(local){return PRINCIPLED_LOCAL;}
@@ -215,7 +231,7 @@ fn principled_valid(s:ptr<function,SvmState>,n:vec3<f32>)->vec3<f32>{
 //#endif
 //#if SVM_BSDF_PRINCIPLED
 fn principled_ggx(s:ptr<function,SvmState>,c:ptr<function,SvmClosure>,glass:bool){
-    (*c).alpha_x=clamp((*c).alpha_x,0.0,1.0);(*c).alpha_y=select(clamp((*c).alpha_y,0.0,1.0),(*c).alpha_x,glass);(*c).energy_scale=1.0;
+    (*c).alpha_x=clamp((*c).alpha_x,0.0,1.0);(*c).alpha_y=clamp((*c).alpha_y,0.0,1.0);(*c).energy_scale=1.0;
     (*c).kind=select(CLOSURE_BSDF_MICROFACET_GGX_ID,CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID,glass);
     (*s).output.runtime_flag|=SR_BSDF|select(0u,SR_BSDF_HAS_TRANSMISSION,glass)|select(0u,SR_BSDF_HAS_EVAL,(*c).alpha_x*(*c).alpha_y>2e-10);
 }
@@ -273,14 +289,14 @@ fn principled_albedo(s:ptr<function,SvmState>,c:SvmClosure,transmission:bool)->v
     if(model==1u&&!(c.ior>1.0)){return vec3<f32>(ggx_dielectric(cos_ni,c.ior).x);}
     var z=0.5;var table=data_word(D_ggx_gen_schlick_s);
     if(model!=5u){z=sqrt(abs((c.ior-1.0)/(c.ior+1.0)));table=data_word(D_ggx_gen_schlick_ior_s);}
-    let v=microfacet_lut3(s,sqrt(sqrt(c.alpha_x*c.alpha_y)),cos_ni,z,table);
+    let v=microfacet_lut3(s,sqrt(sqrt(c.alpha_x*c.alpha_y)),microfacet_mu_index(cos_ni),z,table);
     var f0=c.multiscatter;if(model==1u){f0=vec3<f32>(ggx_f0(c.ior));}
     let f=f0+v*(vec3<f32>(1)-f0);if(model!=4u){return f;}
     return f*c.reflection_tint+select(vec3<f32>(0),(vec3<f32>(1)-f)*c.transmission_tint,transmission);
 }
 // microfacet_ggx_preserve_energy.
 fn principled_preserve(s:ptr<function,SvmState>,c:ptr<function,SvmClosure>,wi:vec3<f32>,fss:vec3<f32>){
-    let mu=dot(wi,(*c).N);let rough=sqrt(sqrt((*c).alpha_x*(*c).alpha_y));var e:f32;var average:f32;
+    let mu=microfacet_mu_index(dot(wi,(*c).N));let rough=sqrt(sqrt((*c).alpha_x*(*c).alpha_y));var e:f32;var average:f32;
     if((*c).kind!=CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID){e=microfacet_lut2(s,rough,mu,data_word(D_ggx_E));average=microfacet_lut1(s,rough,data_word(D_ggx_Eavg),32u);}
     else{var ior=(*c).ior;var table=data_word(D_ggx_glass_E);var average_table=data_word(D_ggx_glass_Eavg);
         if(ior<1.0){ior=rounded_divide(1.0,ior);table=data_word(D_ggx_glass_inv_E);average_table=data_word(D_ggx_glass_inv_Eavg);}
@@ -305,7 +321,7 @@ fn principled_orthonormals(n:vec3<f32>,wi:vec3<f32>)->array<vec3<f32>,2>{
 // 0 sheen, 1 coat, 2 metallic, 3 transmission or thin-wall reflection,
 // 4 thin-wall transmission, 5 specular, 6 diffuse/Oren-Nayar.
 fn svm_principled(s:ptr<function,SvmState>,data:u32,mix_weight:f32,flag:u32,visibility:u32){
-    let wi=(*s).geometry.wi;let local=(flag&PATH_RAY_EMISSION)!=0u;
+    let wi=(*s).geometry.wi;let emissive=((*s).geometry.shader_flag&PR_SD_HAS_EMISSION)!=0u;var coat_albedo=vec3<f32>(0);
     let n=principled_normal(s,svm_byte(data+N_PrincipledBsdfData_normal_offset),(*s).geometry.N);
     let not_diffuse=(visibility&PATH_RAY_VISIBILITY_DIFFUSE)==0u;
     let reflective=data_word(D_caustics_reflective)!=0u||not_diffuse;let refractive=data_word(D_caustics_refractive)!=0u||not_diffuse;
@@ -372,7 +388,8 @@ fn svm_principled(s:ptr<function,SvmState>,data:u32,mix_weight:f32,flag:u32,visi
                 }
                 else{kind=CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID;}}
             case 4u:{if(transmission>1e-5&&thin_wall&&any(thin_transmittance!=vec3<f32>(0))){
-                    let r=roughness*roughness*sqrt(3.4*(ior-1.0)*((ior-0.5)*(ior-0.5))/((ior*ior)*ior));thin_rough=min(select(0.0,r,r>0.0),1.0);
+                    // bsdf_thin_glass_transmission_alpha: the mapping on alpha, without the square root.
+                    let r=rounded_divide((((roughness*roughness)*3.4)*(ior-1.0))*((ior-0.5)*(ior-0.5)),(ior*ior)*ior);thin_rough=min(select(0.0,r,r>0.0),1.0);
                     w=thin_transmittance*(transmission*weight);
                     if((visibility&VIS_CAMERA)==0u&&thin_rough*thin_rough<=2e-10){svm_transparent(s,w,flag);}
                     else{enabled_lobe=true;kind=PRINCIPLED_THIN_GLASS;}}}
@@ -395,9 +412,9 @@ fn svm_principled(s:ptr<function,SvmState>,data:u32,mix_weight:f32,flag:u32,visi
         }
         if((*s).error!=0u){return;}
         if(enabled_lobe){
-            var c=principled_new(kind,w);let i=principled_slot(s,c,local&&may_be_local,extra);
+            var c=principled_new(kind,w);let i=principled_slot(s,c,may_be_local&&emissive&&(*s).output.remaining==0u,extra);
             if(i!=NONE){
-                var albedo=false;var albedo_transmission=false;var preserve=false;var fss=vec3<f32>(1);var preserve_wi=wi;var layer=false;
+                var albedo=false;var albedo_transmission=false;var preserve=false;var fss=vec3<f32>(1);var preserve_wi=wi;var layer=false;var layer_albedo=vec3<f32>(0);
                 switch(lobe){
                     case 0u:{c.N=surface_normalize(n+clamp(coat_weight,0.0,1.0)*(coat_normal-n));
                         c.roughness=clamp(clamp(svm_input(s,data+N_PrincipledBsdfData_sheen_roughness),0.0,1.0),1e-3,1.0);
@@ -406,16 +423,21 @@ fn svm_principled(s:ptr<function,SvmState>,data:u32,mix_weight:f32,flag:u32,visi
                         for(var k=0u;k<3u;k++){ltc[k]=microfacet_lut2(s,cos_ni,c.roughness,table+k*1024u);}
                         c.a=ltc.x;c.b=ltc.y;
                         if(abs(c.a)<1e-5||ltc.z<1e-5){var none:SvmClosure;none.kind=PRINCIPLED_CLOSURE_NONE;none.weight=c.weight;none.N=c.N;c=none;}
-                        else{c.weight*=ltc.z;c.sample_weight*=ltc.z;(*s).output.runtime_flag|=SR_BSDF|SR_BSDF_HAS_EVAL;layer=true;}}
+                        else{c.weight*=ltc.z;c.sample_weight*=ltc.z;if(i!=PRINCIPLED_LOCAL){(*s).output.runtime_flag|=SR_BSDF|SR_BSDF_HAS_EVAL;}
+                            // bsdf_sheen_setup's layering albedo: reduce_max of the closure weight.
+                            layer=true;layer_albedo=vec3<f32>(max(max(c.weight.x,c.weight.y),c.weight.z));}}
                     case 1u:{let coat_ior=max(svm_input(s,data+N_PrincipledBsdfData_coat_ior),1.0);let r=clamp(svm_input(s,data+N_PrincipledBsdfData_coat_roughness),0.0,1.0);
+                        // bsdf_coat_setup: the setup's runtime flags only for a closure allocated in the shader data.
+                        let flags=(*s).output.runtime_flag;
                         c.N=coat_valid;c.ior=coat_ior;c.alpha_x=r*r;c.alpha_y=c.alpha_x;principled_ggx(s,&c,false);c.roughness=1.0;
-                        albedo=true;preserve=true;fss=vec3<f32>(principled_fss(coat_ior));layer=true;}
+                        if(i==PRINCIPLED_LOCAL){(*s).output.runtime_flag=flags;}
+                        albedo=true;preserve=true;fss=vec3<f32>(principled_fss(coat_ior));}
                     case 2u:{c.N=valid;c.ior=1.0;c.T=tangent;c.alpha_x=alpha_x;c.alpha_y=alpha_y;principled_ggx(s,&c,false);
                         c.roughness=5.0;c.multiscatter=clamped_base;c.a=film_thickness;c.b=film;let tint=min(specular_tint,vec3<f32>(1));
                         if(any(tint!=vec3<f32>(1))){let f=6.0/7.0;let f5=(f*f)*(f*f)*f;c.reflection_tint=(clamped_base+f5*(vec3<f32>(1)-clamped_base))*(7.0/(f5*f))*(vec3<f32>(1)-tint);}
                         albedo=true;preserve=multi;fss=clamped_base+(1.0/21.0)*(vec3<f32>(1)-clamped_base)-c.reflection_tint*(1.0/126.0);}
                     case 3u:{if(thin_wall){c.N=valid;c.alpha_x=roughness*roughness;c.alpha_y=c.alpha_x;c.ior=1.0;principled_ggx(s,&c,false);preserve=true;fss=specular_tint;}
-                        else{c.N=valid;c.alpha_x=roughness*roughness;c.alpha_y=c.alpha_x;c.ior=select(ior,rounded_divide(1.0,ior),backfacing);
+                        else{c.N=valid;c.T=tangent;c.alpha_x=alpha_x;c.alpha_y=alpha_y;c.ior=select(ior,rounded_divide(1.0,ior),backfacing);
                             c.a=film_thickness;c.b=select(film,film*c.ior,backfacing);
                             c.reflection_tint=select(vec3<f32>(0),vec3<f32>(1),reflective);c.transmission_tint=select(vec3<f32>(0),sqrt(clamped_base),refractive);
                             c.multiscatter=ggx_f0(ior)*specular_tint;principled_ggx(s,&c,true);albedo=true;albedo_transmission=true;preserve=multi;}}
@@ -437,16 +459,22 @@ fn svm_principled(s:ptr<function,SvmState>,data:u32,mix_weight:f32,flag:u32,visi
                 var estimate=vec3<f32>(1);
                 if(albedo){estimate=principled_albedo(s,c,albedo_transmission);c.sample_weight*=principled_average(estimate);}
                 if(preserve){principled_preserve(s,&c,preserve_wi,fss);}
-                // closure_layering_weight(bsdf_albedo(reflection), weight); reflection-only lobes.
-                if(layer){let layer_albedo=c.weight*estimate;let ratio=select(vec3<f32>(0),layer_albedo/weight,weight!=vec3<f32>(0));
-                    weight*=clamp(1.0-max(max(ratio.x,ratio.y),ratio.z),0.0,1.0);}
+                if(lobe==1u){coat_albedo=estimate;}
+                // closure_layer_albedo: the closure weight times reduce_max of the reflection albedo (specular lobe).
+                if(lobe==5u){layer_albedo=c.weight*max(max(estimate.x,estimate.y),estimate.z);}
+                // closure_layering_weight: clamp(weight - layer_albedo, 0, weight).
+                if(layer){weight=min(max(rounded_add3(weight,-layer_albedo),vec3<f32>(0)),weight);}
                 principled_store(s,i,c);
             }
         }
         if(lobe==1u&&coat_weight>1e-5){
-            let coat_ior=max(svm_input(s,data+N_PrincipledBsdfData_coat_ior),1.0);let tint=max(svm_input3(s,data+N_PrincipledBsdfData_coat_tint),vec3<f32>(0));
-            if(any(tint!=vec3<f32>(1))){let cos_ni=dot(wi,coat_valid);let inverse=1.0/coat_ior;let depth=1.0/sqrt(1.0-inverse*inverse*(1.0-cos_ni*cos_ni));
-                weight*=vec3<f32>(1)+coat_weight*(pow(tint,vec3<f32>(depth))-vec3<f32>(1));}
+            // bsdf_coat_setup's return and closure_layering_weight: the tint at the viewing angle (slab_color_at_angle)
+            // and the coat lobe's reflection albedo (zero when the lobe is not set up) attenuate the lower layers.
+            let coat_ior=max(svm_input(s,data+N_PrincipledBsdfData_coat_ior),1.0);var tint=max(svm_input3(s,data+N_PrincipledBsdfData_coat_tint),vec3<f32>(0));
+            if(any(tint!=vec3<f32>(1))){let cos_ni=dot(wi,coat_valid);let under=rounded_add(coat_ior*coat_ior,-rounded_add(1.0,-(cos_ni*cos_ni)));
+                let depth=coat_ior*select(0.0,rounded_divide(1.0,rounded_sqrt(under)),under>0.0);tint=pow(tint,vec3<f32>(depth));}
+            let coat_layer=rounded_add3(vec3<f32>(1),-(tint*rounded_add3(vec3<f32>(1),-coat_albedo)))*(coat_weight*weight);
+            weight=min(max(rounded_add3(weight,-coat_layer),vec3<f32>(0)),weight);
         }
         if(lobe==1u){let emission=svm_input3(s,data+N_PrincipledBsdfData_emission_color)*svm_input(s,data+N_PrincipledBsdfData_emission_strength);
             if(any(emission!=vec3<f32>(0))){let e=emission*weight;if(((*s).output.runtime_flag&SR_EMISSION)!=0u){(*s).output.emission+=e;}else{(*s).output.emission=e;(*s).output.runtime_flag|=SR_EMISSION;}}}

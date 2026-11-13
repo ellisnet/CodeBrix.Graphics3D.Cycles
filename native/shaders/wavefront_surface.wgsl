@@ -317,14 +317,18 @@ fn surf_prepare(index:u32,r:ptr<function,SvmResult>){
     let closure_filter=data_word(D_integrator_filter_closures);if((closure_filter&FILTER_CLOSURE_EMISSION)!=0u){(*r).emission=vec3<f32>(0);}
     if((state_byte(S_path_visibility,index)&VIS_CAMERA)==0u){return;}
     if((closure_filter&FILTER_CLOSURE_DIRECT_LIGHT)!=0u){(*r).runtime_flag&=~SR_BSDF_HAS_EVAL;}
+    // No BSDF closure left after the filter: SR_BSDF is cleared (surface_shader_prepare_closures, CLOSURE_IS_BSDF).
+    var has_bsdf=false;
     for(var i=0u;i<(*r).count;i++){var c=svm_closure_read(*r,i);
         if((surf_diffuse(c.kind)&&(closure_filter&FILTER_CLOSURE_DIFFUSE)!=0u)||(surf_glossy(c.kind)&&(closure_filter&FILTER_CLOSURE_GLOSSY)!=0u)||
            (surf_refraction(c.kind)&&(closure_filter&FILTER_CLOSURE_TRANSMISSION)!=0u)||
            (surf_glass(c.kind)&&(closure_filter&(FILTER_CLOSURE_GLOSSY|FILTER_CLOSURE_TRANSMISSION))==(FILTER_CLOSURE_GLOSSY|FILTER_CLOSURE_TRANSMISSION))){
             c.kind=CLOSURE_NONE_ID;c.sample_weight=0.0;}
         else if(c.kind==CLOSURE_BSDF_TRANSPARENT_ID&&(closure_filter&FILTER_CLOSURE_TRANSPARENT)!=0u){c.kind=CLOSURE_HOLDOUT_ID;c.sample_weight=0.0;(*r).runtime_flag|=SR_HOLDOUT;}
+        else if(c.kind!=CLOSURE_NONE_ID&&c.kind<=CLOSURE_BSDF_TRANSPARENT_ID){has_bsdf=true;}
         svm_closure_write((*r).closure_base+i*SVM_CLOSURE_BYTES,c);
     }
+    if(!has_bsdf){(*r).runtime_flag&=~SR_BSDF;}
 }
 //#if SURFACE_FILTER_GLOSSY
 // surface_shader_prepare_closures' glossy filter (integrator filter_glossy; pinned
@@ -371,7 +375,7 @@ fn surf_holdout(sd:SurfaceData,r:ptr<function,SvmResult>)->vec3<f32>{
     if((sd.object_flag&SD_OBJECT_HOLDOUT_MASK)!=0u){
         if(((*r).runtime_flag&SR_TRANSPARENT)!=0u){weight=vec3<f32>(1)-(*r).transparency;
             for(var i=0u;i<(*r).count;i++){var c=svm_closure_read(*r,i);if(c.kind!=CLOSURE_BSDF_TRANSPARENT_ID){c.kind=NBUILTIN_CLOSURES;svm_closure_write((*r).closure_base+i*SVM_CLOSURE_BYTES,c);}}
-            (*r).runtime_flag&=SR_TRANSPARENT|SR_BSDF;
+            (*r).runtime_flag&=(~SR_CLOSURE_FLAG)|SR_TRANSPARENT|SR_BSDF;
         }else{weight=vec3<f32>(1);}
     }else{for(var i=0u;i<(*r).count;i++){let c=svm_closure_read(*r,i);if(c.kind==CLOSURE_HOLDOUT_ID){weight+=c.weight;}}}
     return weight;
@@ -473,6 +477,10 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
 fn sc_data_passes(index:u32,r:SvmResult){
     let flag=state_word(S_path_flag,index);
     if((flag&SC_TRANSPARENT_BACKGROUND)==0u||(flag&SC_PATH_PASS)!=0u||data_word(SC_D_pass_flag)==0u||(flag&SC_SINGLE_PASS_DONE)!=0u){return;}
+//#if FILM_MOTION
+    // With the denoising backward motion feature the bookkeeping is shade_surface_passes' (film_data_passes_bookkeeping).
+    if(data_word(FPM_D_pass_denoising_backward_motion)!=PASS_NONE){return;}
+//#endif
     let threshold=data_float(SC_D_pass_alpha_threshold);
     if((r.runtime_flag&(SC_SR_TRANSPARENT|SC_SR_RAY_PORTAL))!=0u&&threshold!=0.0){
         let alpha=clamp(vec3<f32>(1)-r.transparency,vec3<f32>(0),vec3<f32>(1));
@@ -490,6 +498,10 @@ fn sc_data_passes(index:u32,r:SvmResult){
 fn aov_single_pass_done(index:u32,r:SvmResult){
     let flag=state_word(S_path_flag,index);
     if((flag&AOV_PATH_RAY_TRANSPARENT_BACKGROUND)==0u||data_word(D_film_pass_flag)==0u||(flag&AOV_PATH_RAY_SINGLE_PASS_DONE)!=0u){return;}
+//#if FILM_MOTION
+    // With the denoising backward motion feature the bookkeeping is shade_surface_passes' (film_data_passes_bookkeeping).
+    if(data_word(FPM_D_pass_denoising_backward_motion)!=PASS_NONE){return;}
+//#endif
     let threshold=data_float(AOV_D_pass_alpha_threshold);
     if((r.runtime_flag&(AOV_SR_TRANSPARENT|AOV_SR_RAY_PORTAL))!=0u&&threshold!=0.0){
         let alpha=clamp(vec3<f32>(1)-r.transparency,vec3<f32>(0),vec3<f32>(1));
@@ -767,6 +779,12 @@ fn surface_light_combined(li:SurfaceLightInputs){
 //#endif
 //#endif
     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)!=0u){
+//#if FILM_DENOISING
+//#if VOLUME_SHADOW
+        // film_write_denoising_features_surface_volume (wavefront_film_passes.wgsl), compiled for scenes with volumes only.
+        film_denoising_surface_volume(index,sd);
+//#endif
+//#endif
         let bounds=state_half(S_path_volume_bounds_bounce,index)+1u;state_u16(S_path_volume_bounds_bounce,index,bounds);
         if(bounds>VS_BOUNDS_MAX){surf_finish(index,false);return;}
         state_u16(S_path_rng_offset,index,state_half(S_path_rng_offset,index)+RNG_BOUNCE);
@@ -904,7 +922,7 @@ fn surf_ray_portal(index:u32,sd:SurfaceData,r:SvmResult,selected:u32,throughput:
     if((sampled.label&LABEL_TRANSPARENT)!=0u){let t=sd.ray_length;state_f32(S_ray_tmin,index,select(bitcast<f32>(bitcast<u32>(t)+1u),1.1754943508222875e-38,t==0.0));}
     else{let direction=surface_native_normalize(sampled.wo);state_vec3(S_ray_P,index,surf_ray_offset(sd,direction));state_vec3(S_ray_D,index,direction);
         state_f32(S_ray_tmin,index,0.0);state_f32(S_ray_tmax,index,3.4028234663852886e38);state_f32(S_ray_dP,index,sd.dP);
-        let dd=heap_float(state_address(S_ray_dD,index,4u));state_f32(S_ray_dD,index,select(dd,max(dd,rounded_sqrt(sampled.roughness)),sampled.roughness>0.0));}
+        let dd=heap_float(state_address(S_ray_dD,index,4u));state_f32(S_ray_dD,index,select(dd,max(dd,data_float(D_integrator_differential_widen_scale)*rounded_sqrt(sampled.roughness)),sampled.roughness>0.0));}
     state_vec3(S_path_throughput,index,throughput*surf_native_div3(sampled.eval,sampled.pdf));
     if(p(20u)!=0u&&state_half(S_path_bounce,index)==0u){state_vec3(S_path_pass_diffuse_weight,index,surf_safe_divide3(sampled.diffuse,sampled.eval));state_vec3(S_path_pass_glossy_weight,index,surf_safe_divide3(sampled.glossy,sampled.eval));}
     if((sampled.label&LABEL_TRANSPARENT)==0u){state_f32(S_path_mis_ray_pdf,index,sampled.pdf);state_vec3(S_path_mis_origin_n,index,sd.N);

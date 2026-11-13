@@ -184,7 +184,7 @@ fn huang_table(x:f32,y:f32,z:f32,offset:u32)->f32{
     return result;
 }
 // bsdf_hair_huang_energy_scale: `rough` is sqrtf(roughness), z and offset the eta's.
-fn huang_energy(rough:f32,mu:f32,z:f32,offset:u32)->f32{return rounded_divide(1.0,huang_table(rough,mu,z,offset));}
+fn huang_energy(rough:f32,mu:f32,z:f32,offset:u32)->f32{return rounded_divide(1.0,huang_table(rough,rounded_sqrt(max(mu,0.0)),z,offset));}
 fn huang_energy_z(eta:f32)->f32{return rounded_sqrt(abs(rounded_divide(rounded_add(eta,-1.0),rounded_add(eta,1.0))));}
 fn huang_energy_table(eta:f32)->u32{return data_word(select(HH_D_ggx_glass_E,HH_D_ggx_glass_inv_E,eta<1.0));}
 // native_disk_sincos with its Horner steps through one body (the same operations in the same order).

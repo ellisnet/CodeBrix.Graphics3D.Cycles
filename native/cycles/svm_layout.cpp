@@ -231,6 +231,8 @@ std::string svm_layout(bool surface){
   constant("N_RayPortalBsdfData_direction",offsetof(SVMNodeRayPortalBsdfData,direction));constant("N_RayPortalBsdfData_position_offset",offsetof(SVMNodeRayPortalBsdfData,position_offset));
   source<<"//#endif\n";
   ENUM(SD_USE_BUMP_MAP_CORRECTION);ENUM(PATH_RAY_TERMINATE);ENUM(PATH_RAY_EMISSION);ENUM(PATH_RAY_VISIBILITY_SHADOW);
+  // bsdf_alloc_maybe_emission (closure/alloc.h): prefixed, other stage layouts define the plain name.
+  constant("PR_SD_HAS_EMISSION",SD_HAS_EMISSION);
   // Node-specific copies (prefixed: other stage layouts define some of these names).
   source<<"//#if SVM_NODES_ANY\n";
   constant("SVMN_PATH_RAY_VISIBILITY_CAMERA",PATH_RAY_VISIBILITY_CAMERA);constant("SVMN_PATH_RAY_VISIBILITY_DIFFUSE",PATH_RAY_VISIBILITY_DIFFUSE);

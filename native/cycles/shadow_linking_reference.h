@@ -20,6 +20,9 @@ struct DedicatedRow {
   uint32_t mis_valid;float mis;uint32_t after_shade;int restored_prim,restored_object;
   uint32_t shadow_kernel;float s_throughput[3],s_P[3],s_D[3],s_tmin,s_tmax,s_time,s_dP,s_dD;int s_light_object,s_light_prim,s_self_object,s_self_prim;
   uint32_t s_bounce,s_diffuse,s_glossy,s_transmission,s_transparent,s_volume_bounds,s_group,s_flag,s_visibility,s_pixel,s_sample,s_rng_pixel,s_rng_offset;float s_average;
+  // integrator_state_write_shadow_light_isect: shadow_isect[0] of a dedicated shadow path queued for SHADE_LIGHT_NEE (an emitter
+  // whose shader is not constant): the picked intersection.
+  float s_isect_t,s_isect_u,s_isect_v;int s_isect_object,s_isect_prim,s_isect_type;
   // integrator_intersect_shadow on that path: the blocker-set decision.
   uint32_t shadow_after_intersect,shadow_hits;
 };

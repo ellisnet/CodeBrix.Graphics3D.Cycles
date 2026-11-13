@@ -5,8 +5,9 @@
 
 The Bevel node (rounded box edges and a smooth sphere), the Raycast node (hit
 distance and hit normal along the shading normal, and an only_local ray into a
-box) and the Radial Tiling node (regular and irregular, rounded polygons), through
-the public C API, lit by a sphere lamp with MIS and a constant world.
+box), the Radial Tiling node (regular and irregular, rounded polygons) and plain
+attributes named like standard attributes, through the public C API, lit by a
+sphere lamp with MIS and a constant world.
 Usage: python3 native/oracle/scenes/author_surface_nodes.py [--check]."""
 import argparse
 import json
@@ -80,8 +81,45 @@ def radial_material(handle, sides, roundness, normalize):
                    ['g', 'BSDF', 'm', 'Closure1'], ['d', 'BSDF', 'm', 'Closure2'], ['m', 'Closure', 'output', 'Surface']])
 
 
+def named_like_standard_material(handle):
+    """Attribute nodes asking for the names "color" and "pointiness", which are also standard attribute names."""
+    return shader(handle, [{'handle': 'c', 'type': 'attribute', 'set': {'attribute': 'color'}},
+                           {'handle': 'p', 'type': 'attribute', 'set': {'attribute': 'pointiness'}},
+                           {'handle': 'd', 'type': 'diffuse_bsdf', 'set': {'roughness': 0.0}},
+                           {'handle': 'e', 'type': 'emission', 'set': {'color': [0.2, 0.5, 0.9]}},
+                           {'handle': 'a', 'type': 'add_closure', 'set': {}}],
+                  [['c', 'Color', 'd', 'Color'], ['p', 'Fac', 'e', 'Strength'], ['d', 'BSDF', 'a', 'Closure1'],
+                   ['e', 'Emission', 'a', 'Closure2'], ['a', 'Closure', 'output', 'Surface']])
+
+
+def uv_material(handle):
+    """The Texture Coordinate node's UV (a request for the standard UV map with no name) colouring a checker."""
+    return shader(handle, [{'handle': 't', 'type': 'texture_coordinate', 'set': {}},
+                           {'handle': 'k', 'type': 'checker_texture', 'set': {'scale': 4.0, 'color1': [0.9, 0.7, 0.1], 'color2': [0.1, 0.3, 0.7]}},
+                           {'handle': 'd', 'type': 'diffuse_bsdf', 'set': {'roughness': 0.0}}],
+                  [['t', 'UV', 'k', 'Vector'], ['k', 'Color', 'd', 'Color'], ['d', 'BSDF', 'output', 'Surface']])
+
+
+def with_attributes(nodes, attributes):
+    nodes[0]['mesh']['attributes'] = attributes
+    return nodes
+
+
 def scenes():
     out = {}
+    # None of the three attributes is created in standard mode (no "standard" flag): they are plain named attributes.
+    out['attribute-standard-name.json'] = scene(
+        'surface-nodes/attribute-standard-name',
+        'Plain (not standard) attributes whose names are standard attribute names: "color" and "pointiness" read by Attribute nodes, '
+        'and a corner float2 "uv" read as the UV map by the Texture Coordinate node',
+        [named_like_standard_material('named'), uv_material('mapped')],
+        with_attributes(quad('panel-a', 'named', [(-3.6, -2, 1), (-0.2, -2, 1), (-0.2, 1.5, 1), (-3.6, 1.5, 1)]),
+                        [{'name': 'color', 'value': 'color', 'domain': 'vertex',
+                          'data': [0.9, 0.1, 0.1, 0.1, 0.8, 0.2, 0.2, 0.3, 0.9, 0.8, 0.8, 0.1]},
+                         {'name': 'pointiness', 'value': 'float', 'domain': 'vertex', 'data': [0.0, 0.25, 1.0, 0.5]}]) +
+        with_attributes(quad('panel-b', 'mapped', [(0.2, -2, 1), (3.6, -2, 1), (3.6, 1.5, 1), (0.2, 1.5, 1)]),
+                        [{'name': 'uv', 'value': 'point2', 'domain': 'corner',
+                          'data': [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0]}]))
     out['bevel.json'] = scene('surface-nodes/bevel', 'Bevel node: rounded edges of a box and a smooth sphere, the bevel normal shading a diffuse/glossy mix',
                               [bevel_material('bevel-box', 0.3, 8), bevel_material('bevel-sphere', 0.2, 4)],
                               box('box', 'bevel-box', (-1.4, -1.0, 0.5), (1.6, 1.8, 1.4))+sphere('sphere', 'bevel-sphere', (1.6, -0.9, 0.4), 1.0))

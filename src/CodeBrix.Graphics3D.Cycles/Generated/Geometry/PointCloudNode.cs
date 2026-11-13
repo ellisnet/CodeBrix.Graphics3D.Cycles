@@ -31,4 +31,22 @@ public sealed partial class PointCloudNode : GeometryBaseNode
     /// Gets or sets the <c>shader</c> socket (Shader; native type array_int).
     /// </summary>
     public int[] Shader { get => GetIntArray("shader"); set => SetIntArray("shader", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>render_as</c> socket (Render As; native type enum).
+    /// </summary>
+    public PointCloudRenderAs RenderAs { get => GetEnum<PointCloudRenderAs>("render_as"); set => SetEnum("render_as", value); }
+}
+
+/// <summary>
+/// The items of the <c>render_as</c> enumeration socket of the native <c>pointcloud</c> node type.
+/// The values are the native enumeration values.
+/// </summary>
+public enum PointCloudRenderAs
+{
+    /// <summary>The native <c>gaussian_splats</c> item.</summary>
+    GaussianSplats = 1,
+
+    /// <summary>The native <c>points</c> item.</summary>
+    Points = 0
 }

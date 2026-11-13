@@ -101,6 +101,7 @@ LEFT = [(-3.2, -2, -1), (-1.4, -2, 0.5), (-1.4, 1.5, 0.5), (-3.2, 1.5, -1)]
 RIGHT = [(1.4, -2, 0.5), (3.2, -2, -1), (3.2, 1.5, -1), (1.4, 1.5, 0.5)]
 PANEL = [(-0.6, 1.6, 1.5), (0.6, 1.6, 1.5), (0.6, 2.4, 1.5), (-0.6, 2.4, 1.5)]
 FRONT = [(-2.2, -1.9, -1.6), (-0.9, -1.9, -1.6), (-0.9, -0.6, -1.6), (-2.2, -0.6, -1.6)]
+SIDE = [(2.0, -1.0, -1.5), (3.4, -1.0, -1.5), (3.4, 0.8, -1.5), (2.0, 0.8, -1.5)]
 
 LIGHT_PASSES = [('diffuse_direct', 'DiffDir', {}), ('diffuse_indirect', 'DiffInd', {}), ('diffuse_color', 'DiffCol', {}),
                 ('glossy_direct', 'GlossDir', {}), ('glossy_indirect', 'GlossInd', {}), ('glossy_color', 'GlossCol', {}),
@@ -211,6 +212,28 @@ def scenes():
     denoise_motion['nodes'] = [n for n in denoise_motion['nodes'] if n.get('create') != 'pass']+passes(
         [('denoising_backward_motion', 'Denoising Backward Motion', {}), ('denoising_specular_motion', 'Denoising Specular Motion', {}),
          ('denoising_albedo', 'Denoising Albedo', {}), ('denoising_normal', 'Denoising Normal', {})])
+    # Denoising backward motion and depth through transparent surfaces, with no data pass in the film (the data pass
+    # stage runs only for its single-pass bookkeeping): a veil below the pass alpha threshold (alpha 0.3: the motion
+    # is written by what lies behind it, the wall or the background) reaching over the wall's edge onto the
+    # background, and a moving veil above the threshold (alpha 0.8: the veil's own motion, once per path). The
+    # depth takes the near clip distance on a path's first segment only and the far clip depth at the background.
+    veil_solid = shader('veil-solid', [{'handle': 'd', 'type': 'diffuse_bsdf', 'set': {'color': [0.7, 0.3, 0.4], 'roughness': 0.0}},
+                                       {'handle': 't', 'type': 'transparent_bsdf', 'set': {'color': [1, 1, 1]}},
+                                       {'handle': 'm', 'type': 'mix_closure', 'set': {'fac': 0.2}}],
+                        [['d', 'BSDF', 'm', 'Closure1'], ['t', 'BSDF', 'm', 'Closure2'], ['m', 'Closure', 'output', 'Surface']])
+    denoise_motion_transparent = copy.deepcopy(denoise_motion)
+    denoise_motion_transparent['id'] = 'passes/denoising-motion-transparent'
+    denoise_motion_transparent['description'] = ('denoising backward motion and depth without motion blur and without data passes, through a '
+                                                 'semi-transparent veil below the pass alpha threshold (over the wall and the background) and a '
+                                                 'moving one above it')
+    veils = (quad('side', 'veil', SIDE)+
+             quad('front', 'veil-solid', FRONT, {'motion': [[1.0, 0.0, 0.0, -0.2, 0.0, 1.0, 0.0, 0.1, 0.0, 0.0, 1.0, 0.05],
+                                                            [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                                                            [1.0, 0.0, 0.0, 0.2, 0.0, 1.0, 0.0, -0.1, 0.0, 0.0, 1.0, -0.05]]}))
+    kept = [n for n in denoise_motion_transparent['nodes'] if n.get('create') != 'pass']
+    world = next(i for i, n in enumerate(kept) if n['handle'] == 'world')
+    denoise_motion_transparent['nodes'] = (kept[:world]+[semi_transparent('veil'), veil_solid]+veils+kept[world:]+
+                                           passes([('denoising_backward_motion', 'Denoising Backward Motion', {}), ('denoising_depth', 'Denoising Depth', {})]))
     # Deforming geometry in the motion pass (no motion blur): the right wall and the floor panel deform (three
     # motion steps, the centre in the middle; plain triangles with SD_OBJECT_HAS_VERTEX_MOTION), beside the moving
     # objects and the moving camera; the denoising motion features over the same scene.
@@ -256,7 +279,7 @@ def scenes():
                     film={'mist_start': 1.0, 'mist_depth': 12.0, 'mist_falloff': 0.5, 'pass_alpha_threshold': 0.0},
                     world={'transparent': True})
     return {'holdout-transparent-film.json': holdout, 'sample-count.json': count, 'denoising-motion.json': denoise_motion, 'motion.json': motion, 'motion-deforming.json': motion_deform,
-            'denoising-motion-deforming.json': denoise_motion_deform, 'light-passes.json': light, 'data-passes.json': data, 'light-groups.json': groups, 'aovs.json': aov, 'cryptomatte.json': crypto,
+            'denoising-motion-deforming.json': denoise_motion_deform, 'denoising-motion-transparent.json': denoise_motion_transparent, 'light-passes.json': light, 'data-passes.json': data, 'light-groups.json': groups, 'aovs.json': aov, 'cryptomatte.json': crypto,
             'denoising-features.json': denoise, 'denoising-features-weighted.json': denoise_weighted}
 
 

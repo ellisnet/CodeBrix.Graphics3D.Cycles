@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Modified from pinned Cycles kernel/geom/point_intersect.h point_shader_setup and kernel/geom/shader_data.h
 // shader_setup_from_ray (the point branch). Arithmetic as in wavefront_point.wgsl.
-// differential_dudv_compact with every sum and product through the order word. dPdu and dPdv are zero, so the determinant
-// is zero and du, dv are signed zeros, which this keeps as pinned.
+// differential_dudv_compact with every sum and product through the order word. dPdu and dPdv are the frame
+// make_orthonormals builds about the geometric normal (point_shader_setup), negated on a back-facing hit.
 fn point_differentials(sd:ptr<function,SurfaceData>,o:u32){
     let n=(*sd).Ng;let tangent=surface_orthogonal(n);
     let bitangent=ptb3(ptb3(n.yzx*tangent.zxy,o)-ptb3(n.zxy*tangent.yzx,o),o);
@@ -18,6 +18,11 @@ fn point_differentials(sd:ptr<function,SurfaceData>,o:u32){
     var det=ptb(ptb(a.x*b.y,o)-ptb(b.x*a.y,o),o);if(det!=0.0){det=rounded_divide(1.0,det);}
     (*sd).du=vec2<f32>(ptb(ptb(ptb(dx.x*b.y,o)-ptb(dx.y*b.x,o),o)*det,o),ptb(ptb(ptb(dy.x*b.y,o)-ptb(dy.y*b.x,o),o)*det,o));
     (*sd).dv=vec2<f32>(ptb(ptb(ptb(dx.y*a.x,o)-ptb(dx.x*a.y,o),o)*det,o),ptb(ptb(ptb(dy.y*a.x,o)-ptb(dy.x*a.y,o),o)*det,o));
+}
+// The NaN the oracle's float arithmetic generates and propagates: sign set on x86-64 (SSE), clear on ARM64.
+fn point_frame_nan(v:vec3<f32>,o:u32)->vec3<f32>{
+    let nan=bitcast<f32>(select(0xffc00000u,0x7fc00000u,NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u)^o);
+    return select(v,vec3<f32>(nan),(bitcast<vec3<u32>>(v)&vec3<u32>(0x7fffffffu))>vec3<u32>(0x7f800000u));
 }
 fn point_setup_hit(kind:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32,time:f32,ray_P:vec3<f32>,ray_D:vec3<f32>,ray_dP:f32,ray_dD:f32)->SurfaceData{
     var sd:SurfaceData;let o=pt_order();
@@ -39,6 +44,10 @@ fn point_setup_hit(kind:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32,time:f32,ra
     if(load_word(p(17u))!=0u){sd.error=1u;return sd;}
     if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){center=surface_object_point(sd,center,false);}
     sd.Ng=pt_normalize(ptb3(sd.P-center,o),o);sd.N=sd.Ng;
+    // point_shader_setup: make_orthonormals(Ng, &dPdu, &dPdv), an arbitrary tangent frame (the Bump node needs one).
+    // A hit at the point's own centre has a NaN normal (0/0), and the frame is NaN: the oracle's default NaN in every component
+    // (a GPU's NaN bits are its own).
+    sd.dPdu=point_frame_nan(surface_orthogonal(sd.Ng),o);sd.dPdv=point_frame_nan(ptb3(ptb3(sd.Ng.yzx*sd.dPdu.zxy,o)-ptb3(sd.Ng.zxy*sd.dPdu.yzx,o),o),o);
     sd.shader_flag=load_word(table_at(G_shaders,shader_id,SIZE_shaders)+SH_flags);
     if(pt_dot(sd.Ng,sd.wi,o)<0.0){sd.runtime_flag|=SR_BACKFACING;sd.N=-sd.N;sd.Ng=-sd.Ng;sd.dPdu=-sd.dPdu;sd.dPdv=-sd.dPdv;}
     sd.dI=ray_dD;

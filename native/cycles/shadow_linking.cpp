@@ -90,6 +90,15 @@ void WebGPUDevice::enqueue_dedicated_light(DeviceKernel kernel,int work,const De
   require(state.shadow_path.bsdf_eval_average||(data.kernel_features&KERNEL_FEATURE_LIGHT_TREE),"Missing shadow BSDF average");
   validate(uintptr_t(state.shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1].object),size_t(p[25])*4);
   validate(uintptr_t(state.shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1].prim),size_t(p[25])*4);
+  // integrator_state_write_shadow_light_isect: a dedicated shadow path whose emitter's shader is not constant carries the picked
+  // intersection in shadow_isect[0] for shade_light_nee (the self primitives are in the last element).
+  static_assert(INTEGRATOR_SHADOW_ISECT_SIZE_GPU>1,"Light and self intersection must not overlap");
+  if((shader_features()&SF_LIGHT_NEE).any()){
+    const auto &light_isect=state.shadow_isect[0];
+    for(const void *field:{static_cast<const void*>(light_isect.t),static_cast<const void*>(light_isect.u),static_cast<const void*>(light_isect.v),
+                           static_cast<const void*>(light_isect.prim),static_cast<const void*>(light_isect.object),static_cast<const void*>(light_isect.type)})
+      validate(uintptr_t(field),size_t(p[25])*4);
+  }
   validate(uintptr_t(state.next_shadow_path_index),4);
   if(!work||!n)return;
   // Per input, the record (32 bytes, zeroed: no lamp value yet) and, after the records, the reserved slot word.

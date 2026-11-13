@@ -132,6 +132,16 @@ def motion_scenes():
     out['denoising-motion-orthographic.json'] = variant(
         'passes/denoising-motion-orthographic', 'denoising motion features without motion blur through a moving orthographic camera',
         dict(out['motion-orthographic.json']['nodes'][2]['set']), 'passes/denoising-motion')
+    # The orthographic camera's denoising depth (the near clip distance without the ray length conversion, the far
+    # clip depth of the background) and its background backward motion (the far point P + D * 1e4), through the
+    # transparent veils. The view is wider than the back wall, so the background surrounds the room.
+    wide = lambda dx, dy, z: [3.6, 0.0, 0.0, dx, 0.0, 3.6, 0.0, dy, 0.0, 0.0, 3.6, z]
+    out['denoising-motion-transparent-orthographic.json'] = variant(
+        'passes/denoising-motion-transparent-orthographic', 'denoising backward motion and depth without motion blur and without data passes '
+        'through semi-transparent veils and a moving orthographic camera that sees the background around the room',
+        {'camera_type': 'orthograph', 'nearclip': 0.1, 'farclip': 100.0, 'matrix': wide(0.0, 0.0, -7.0),
+         'motion': [wide(-0.15, 0.05, -7.2), wide(0.0, 0.0, -7.0), wide(0.15, -0.05, -6.8)], 'shuttertime': 0.5},
+        'passes/denoising-motion-transparent')
     out['denoising-motion-equirectangular.json'] = variant(
         'passes/denoising-motion-equirectangular', 'denoising motion features without motion blur through a moving equirectangular camera',
         dict(out['motion-equirectangular.json']['nodes'][2]['set']), 'passes/denoising-motion')

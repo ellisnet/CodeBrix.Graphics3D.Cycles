@@ -1,5 +1,21 @@
 # Testing on macOS ARM64 (Apple Silicon, Metal)
 
+> **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
+> Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
+> `third_party/cycles-import.json`). This platform has not been built or run on it (NOT BUILT).
+> Its payload (`native/binaries/osx-arm64/`), built from the previous revision, was
+> removed; it comes back when the platform is rebuilt, validated and restaged
+> on an Apple Silicon Mac (`native/binaries/README.md`). Wherever the text below
+> says the payload is committed or staged, read "after it has been restaged".
+> Every result, film, hash, file count and payload statement in this document
+> was recorded at the previous pinned revision
+> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
+> evidence for the current source. Films and references recorded at the
+> previous revision cannot be compared with the current source: the CPU
+> oracle's films changed with the pin, and the Metal references in
+> `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64` are void
+> until they are recorded again from a v5.3.0 build (step 7).
+
 > **MANDATORY TEST RULES (from 2026-10-29; they apply to every run of this
 > procedure and override anything below, including the historical records).**
 >
@@ -68,14 +84,15 @@ procedure produces:
 - the managed build, test and pack results on macOS, including the managed
   GPU render tests on Cycles' Metal device, judged against the recorded Metal
   references (section 5);
-- optionally, a restaged osx-arm64 payload under `native/binaries/osx-arm64`
-  (only on the maintainer's decision; see step 9).
+- a restaged osx-arm64 payload under `native/binaries/osx-arm64` (the folder is
+  absent until the first build on the current pin has been validated; only on
+  the maintainer's decision; see step 9).
 
 ## 2. Prerequisites and pins
 
 Pins (the build scripts check them; do not change them):
 
-- Cycles revision `a456b761034dda42c32eef9f4aae0fa5a5c9f604`, the filtered
+- Cycles revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981` (the released v5.3.0), the filtered
   snapshot in `third_party/cycles` (`third_party/cycles-import.json`).
 - CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210 is the shipped
   runtime of the WGSL RIDs. The osx-arm64 profile contains no WebGPU device and
@@ -346,7 +363,8 @@ python3 tools/licensing/audit.py
 ```
 
 The stager refuses while `native/binaries/osx-arm64/` already holds a payload
-("review and remove it first"). The committed payload is a reviewed
+("review and remove it first"); at the current pin the folder is absent, so the
+first stage creates it. A committed payload is a reviewed
 deliverable: replace it only when the maintainer decides to, after reviewing what
 changed. When it runs, it copies the host and its dependency closure into
 `runtime/`, `unstripped/` and `symbols/`, removes build-tree rpaths, strips and
@@ -354,7 +372,7 @@ ad-hoc signs the runtime copies, writes the dSYM, records `provenance.json`
 and renders from a temporary copy of `runtime/` alone on CPU and Metal.
 
 **MISSING:** a comparison of a fresh build against the committed payload
-without restaging. Until one exists, compare the SHA-256 of
+without restaging. Until one exists (and once a payload is committed again), compare the SHA-256 of
 `native/work/macos/osx-arm64/host/build/lib/libcodebrix_cycles_host.dylib`
 and of the dependency libraries with `approvedPayload` in
 `native/binaries/osx-arm64/provenance.json` by hand (`shasum -a 256`) and

@@ -57,6 +57,16 @@ fn vh_extrema(o:VhOctree)->vec2<f32>{
     if(o.object!=NONE){density=object_volume_density(o.object);}
     return vec2<f32>(heap_float(node+8u),heap_float(node+12u))*density;
 }
+// volume_octree_setup's stack entry that is the active one (volume_octree_setup_single returns true and leaves its local
+// tracer as constructed: no node, no entry, the interval {t.min, FLT_MAX}, zero extrema). The loop then takes it like any
+// other entry: it replaces the active octree when that one's t.max is FLT_MAX as well, keeping the summed extrema, and the
+// set-up reports no segment unless a later stack entry replaces it in turn.
+fn vh_octree_skip(g:ptr<function,VhOctree>){
+    if(bitcast<f32>(0x7f7fffffu)<=(*g).t.y){
+        var local:VhOctree;local.t=vec2<f32>((*g).t.x,bitcast<f32>(0x7f7fffffu));local.scale=VH_MANTISSA_BITS;local.node=NONE;
+        local.object=NONE;local.shader=NONE;local.sigma=(*g).sigma;*g=local;
+    }
+}
 // volume_octree_setup<false> over the path's volume stack (entries in stack order).
 fn vh_octree_setup(index:u32,origin:vec3<f32>,direction:vec3<f32>,ray_tmax:f32,g:ptr<function,VhOctree>)->bool{
     if((*g).no_overlap){return (*g).t.x<(*g).t.y;}
@@ -65,7 +75,7 @@ fn vh_octree_setup(index:u32,origin:vec3<f32>,direction:vec3<f32>,ray_tmax:f32,g
     for(;i<limit;i++){
         let shader=vh_stack_shader(index,i);if(shader==NONE){break;}
         let object=vh_stack_object(index,i);
-        if(object==skip_object&&shader==skip_shader){continue;}
+        if(object==skip_object&&shader==skip_shader){vh_octree_skip(g);continue;}
         let root=vh_root(object,shader);
         var local:VhOctree;local.t=vec2<f32>((*g).t.x,bitcast<f32>(0x7f7fffffu));local.scale=VH_MANTISSA_BITS;local.node=load_word(root+12u);
         local.object=object;local.shader=shader;

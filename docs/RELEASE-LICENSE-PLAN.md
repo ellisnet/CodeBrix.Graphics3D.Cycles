@@ -27,9 +27,16 @@ policy. See `native/evidence/license-compliance-20261018` and the new
 
 ## Implemented source changes
 
-- `third_party/cycles` is a filtered 944-file snapshot of the pinned upstream
-  revision. The excluded atomic, dependency-target and maintenance files are
+- `third_party/cycles` is a filtered snapshot of the pinned upstream
+  revision, the released Cycles v5.3.0 (`third_party/cycles-import.json` lists
+  every file). The excluded atomic, dependency-target and maintenance files are
   absent. Independent Apache-2.0 atomic and build adapters replace required APIs.
+  The CIE standard illuminant D65 data table, which the CIE publishes under
+  CC BY-SA 4.0, is not imported, nor is anything derived from it; the kernels are
+  therefore built without spectral sampling and dispersion is not available. Two
+  functions the release marks as adopted from Ceres Solver carry that project's
+  BSD-3-Clause notice (`third_party/licenses/CeresSolver-BSD-3-Clause.txt`).
+  MAINTAINER-README.txt, "THE CYCLES PIN", describes the import.
 - Atomic tests cover integer wraparound, compare/exchange, float representation
   edge cases, multithreaded film accumulation and memory accounting. Linux and
   API 33 Android targets passed the replacement tests. The repository-contained

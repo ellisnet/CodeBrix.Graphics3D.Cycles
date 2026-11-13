@@ -6,6 +6,7 @@
 // </auto-generated>
 
 using System;
+using System.Numerics;
 using CodeBrix.Graphics3D.Cycles.Generated.Geometry;
 using CodeBrix.Graphics3D.Cycles.Generated.Lights;
 using CodeBrix.Graphics3D.Cycles.Generated.Scene;
@@ -31,6 +32,26 @@ public sealed partial class AttributeNode : ShaderGraphNode
     /// Gets or sets the <c>attribute</c> socket (Attribute; native type string).
     /// </summary>
     public string Attribute { get => GetString("attribute"); set => SetString("attribute", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>missing</c> socket (Missing; native type color, linkable).
+    /// </summary>
+    public Vector3 Missing { get => GetVector3("missing"); set => SetVector3("missing", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>missing_alpha</c> socket (Missing Alpha; native type float, linkable).
+    /// </summary>
+    public float MissingAlpha { get => GetFloat("missing_alpha"); set => SetFloat("missing_alpha", value); }
+
+    /// <summary>
+    /// Gets the <c>Missing</c> input socket (color), the target of a graph link.
+    /// </summary>
+    public ShaderInput MissingInput => new(this, "Missing");
+
+    /// <summary>
+    /// Gets the <c>Missing Alpha</c> input socket (float), the target of a graph link.
+    /// </summary>
+    public ShaderInput MissingAlphaInput => new(this, "Missing Alpha");
 
     /// <summary>
     /// Gets the <c>Color</c> output socket (color), the source of a graph link.

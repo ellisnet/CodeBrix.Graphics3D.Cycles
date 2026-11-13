@@ -134,6 +134,16 @@ public sealed partial class PrincipledBsdfNode : ShaderGraphNode
     public float TransmissionWeight { get => GetFloat("transmission_weight"); set => SetFloat("transmission_weight", value); }
 
     /// <summary>
+    /// Gets or sets the <c>transmission_dispersion_scale</c> socket (Transmission Dispersion Scale; native type float, linkable).
+    /// </summary>
+    public float TransmissionDispersionScale { get => GetFloat("transmission_dispersion_scale"); set => SetFloat("transmission_dispersion_scale", value); }
+
+    /// <summary>
+    /// Gets or sets the <c>transmission_dispersion_abbe_number</c> socket (Transmission Dispersion Abbe Number; native type float, linkable).
+    /// </summary>
+    public float TransmissionDispersionAbbeNumber { get => GetFloat("transmission_dispersion_abbe_number"); set => SetFloat("transmission_dispersion_abbe_number", value); }
+
+    /// <summary>
     /// Gets or sets the <c>sheen_weight</c> socket (Sheen Weight; native type float, linkable).
     /// </summary>
     public float SheenWeight { get => GetFloat("sheen_weight"); set => SetFloat("sheen_weight", value); }
@@ -287,6 +297,16 @@ public sealed partial class PrincipledBsdfNode : ShaderGraphNode
     /// Gets the <c>Transmission Weight</c> input socket (float), the target of a graph link.
     /// </summary>
     public ShaderInput TransmissionWeightInput => new(this, "Transmission Weight");
+
+    /// <summary>
+    /// Gets the <c>Transmission Dispersion Scale</c> input socket (float), the target of a graph link.
+    /// </summary>
+    public ShaderInput TransmissionDispersionScaleInput => new(this, "Transmission Dispersion Scale");
+
+    /// <summary>
+    /// Gets the <c>Transmission Dispersion Abbe Number</c> input socket (float), the target of a graph link.
+    /// </summary>
+    public ShaderInput TransmissionDispersionAbbeNumberInput => new(this, "Transmission Dispersion Abbe Number");
 
     /// <summary>
     /// Gets the <c>Sheen Weight</c> input socket (float), the target of a graph link.

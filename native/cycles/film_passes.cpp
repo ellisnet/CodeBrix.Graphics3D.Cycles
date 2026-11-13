@@ -145,8 +145,8 @@ std::string film_passes_layout(){
   constant("FPC_MASK_CRYPTOMATTE",PASSMASK(CRYPTOMATTE));constant("FPC_CRYPT_OBJECT",CRYPT_OBJECT);constant("FPC_CRYPT_MATERIAL",CRYPT_MATERIAL);constant("FPC_CRYPT_ASSET",CRYPT_ASSET);
   out<<"//#endif\n";return out.str();
 }
-// Constants of the FILM_MOTION region (motion pass: wavefront_film_passes.wgsl and
-// the background's camera_motion_vector_direction).
+// Constants of the FILM_MOTION region (motion pass and denoising motion features: wavefront_film_passes.wgsl and
+// the background's camera_motion_vector_direction for the denoising backward motion feature).
 std::string film_motion_layout(){
   std::ostringstream out;out<<"//#if FILM_MOTION\n";
   auto constant=[&](const char *name,size_t value){out<<"const "<<name<<":u32="<<value<<"u;\n";};
@@ -154,7 +154,7 @@ std::string film_motion_layout(){
   DATA(film,pass_motion);DATA(film,pass_motion_weight);DATA(cam,worldtoraster);DATA(cam,perspective_pre);DATA(cam,perspective_post);
   DATA(film,pass_denoising_backward_motion);DATA(film,pass_denoising_specular_motion);DATA(cam,motion_pass_pre);
 #undef DATA
-  constant("FPM_MASK_MOTION",PASSMASK(MOTION));constant("FPM_PATH_RAY_SHADOW_CATCHER_PASS",PATH_RAY_SHADOW_CATCHER_PASS);
+  constant("FPM_MASK_MOTION",PASSMASK(MOTION));constant("FPM_CAMERA_ORTHOGRAPHIC",CAMERA_ORTHOGRAPHIC);
   constant("FPM_TRANSFORMS_PER_OBJECT",OBJECT_MOTION_PASS_SIZE);constant("FPM_PRE",OBJECT_PASS_MOTION_PRE);constant("FPM_POST",OBJECT_PASS_MOTION_POST);
   constant("FPM_TRANSFORM_BYTES",sizeof(Transform));
   out<<"//#endif\n";return out.str();

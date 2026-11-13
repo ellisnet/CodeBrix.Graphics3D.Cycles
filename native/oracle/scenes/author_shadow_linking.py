@@ -12,6 +12,8 @@ on the light tree alone, and with light linking on the flat CDF.
 The combinations (COMBINATIONS and VOLUME_COMBINATIONS, the block before main): shadow-linking/shadow-catcher, shadow-linking/fast-gi, shadow-linking/ao-pass,
 shadow-linking/volume-spot-area, shadow-linking/volume-triangles, shadow-linking/volume-light-tree,
 shadow-linking/volume-light-passes, shadow-linking/volume-emission-passes.
+shadow-linking/emissive-textured: shadow-linked emitters whose shaders are not constant (an emissive panel coloured by its barycentric
+coordinates, a point lamp coloured by its normal): their dedicated shadow paths evaluate the shader at the picked intersection.
 """
 import json
 from pathlib import Path
@@ -76,6 +78,16 @@ def caustic(identifier,description,tree,light_linking,shadow_linking):
   blocker=mesh('blocker',[-1.6,1.3,-1.2, 1.6,1.3,-1.2, 1.6,1.3,1.6, -1.6,1.3,1.6],[0,1,2, 0,2,3],'diffuse')
   nodes[at:at]=blocker;node('blocker-object')['set']['blocker_shadow_set']=1;node('light-object')['set']['shadow_set_membership']=0b001
  return data
+# Emitters without a constant emission: next-event rays and the dedicated light rays both send their shadow path through the light
+# shader evaluation; the dedicated ray's path carries the intersection it picked (the triangle's u and v are the traced hit's).
+def textured(identifier,description):
+ data=base(identifier,description,False,False,False);nodes=data['nodes']
+ def node(handle):return next(n for n in nodes if n['handle']==handle)
+ node('panel-emission')['graph']=dict(nodes=[dict(handle='g',type='geometry'),dict(handle='e',type='emission',set=dict(strength=4.0))],
+  connect=[['g','Parametric','e','Color'],['e','Emission','output','Surface']])
+ node('point-shader')['graph']=dict(nodes=[dict(handle='g',type='geometry'),dict(handle='a',type='vector_math',set=dict(math_type='absolute')),dict(handle='e',type='emission',set=dict(strength=1.0))],
+  connect=[['g','Normal','a','Vector1'],['a','Vector','e','Color'],['e','Emission','output','Surface']])
+ return data
 # Shadow linking combined with the shadow catcher, ambient occlusion and volumes (one scene per combination of the pinned kernel).
 # shadow-linking/shadow-catcher: blockers' scene with a shadow catcher floor, a transparent film, the point lamp itself a catcher, the three catcher passes.
 # shadow-linking/fast-gi: fast GI with one AO bounce and additive AO. shadow-linking/ao-pass: the AO pass on the light tree.
@@ -120,6 +132,7 @@ def main():
               base('shadow-linking/light-tree','Shadow linking on the light tree with light linking on the floor and the ball',True,True,False),
               base('shadow-linking/hdri-world','Shadow linking on the flat CDF with a procedural world and its background light, sampled with MIS',False,False,True),
               base('shadow-linking/volume','Shadow linking with a scattering box: phase scatters take the dedicated light kernels, shadow rays attenuate through the medium',False,False,True,True),
+              textured('shadow-linking/emissive-textured','Shadow linking with emitters whose shaders are not constant: a panel coloured by its barycentric coordinates and a point lamp coloured by its normal'),
               caustic('shadow-linking/caustics','Shadow caustics from a shadow-linked point lamp past a blocker of set 1, on the light tree',True,False,True),
               caustic('mnee/light-tree-caustic','Manifold next-event estimation with the light tree choosing between a caustic and an ordinary lamp',True,False,False),
               caustic('mnee/light-linking-caustic','Manifold next-event estimation with light linking on the flat CDF: the floor and the wall each linked to one lamp',False,True,False)]:

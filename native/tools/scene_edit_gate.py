@@ -80,8 +80,8 @@ def main():
                 subprocess.run([str(binary), str(folder/'run'), mode], cwd=REPO, env=environment,
                                stdout=stdout, stderr=stderr, check=True, timeout=900)
             report = json.loads((folder/'stdout.txt').read_text())
-            assert report['passed'] and report['backend'] == mode and report['scenarios'] == 13
-            assert report['changedScenarios'] == 12
+            assert report['passed'] and report['backend'] == mode and report['scenarios'] == 14
+            assert report['changedScenarios'] == 13
             rows = {}
             for name in report['names']:
                 path = lambda kind: folder/f'run.{name}.{kind}.rgba.bin'
@@ -114,7 +114,8 @@ def main():
                       gpuStrictDifferences=sum(row['strictDifferences'] for row in gpu),
                       recovery=results['gpu']['recovery'],
                       scope='Scene edits after a render (object tfm, object/camera/deformation motion, motion blur, '
-                            'material value, light, mesh replacement, instancing, attributes, smooth flags) through the '
+                            'material value, light, mesh replacement, instancing, attributes, smooth flags, the dicing rate of a '
+                            'subdivision cage that an earlier render diced) through the '
                             'C ABI versus a fresh CPU render of the edited scene; replay = the same edit sequence in a new '
                             'host; WebGPU device-error recovery after a rejected custom (OSL) camera, twice.')
     except Exception as error:

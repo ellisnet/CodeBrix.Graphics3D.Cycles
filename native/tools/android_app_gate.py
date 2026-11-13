@@ -135,7 +135,7 @@ def main():
             assert report['architecture']==('Arm64' if rid=='android-arm64' else 'X64')
             api=int(call(['shell','getprop','ro.build.version.sdk'],'api')[1]);assert report['apiLevel']==api and api>=33
             assert report['configurationRounds']==6 and report['imageFilms']==1560 and report['imageFormats']==8
-            assert report['registryNodeTypes']==184 and report['registrySockets']==1277
+            assert report['registryNodeTypes']==187 and report['registrySockets']==1311
             assert report['nativeDirectory'].startswith('/data/app/') and report['libraries']==payload['native'][TARGETS[rid][0]]
             cases=[('lifecycle/run.'+str(i)+'.rgba.bin','reference/cpu/run.'+str(i)+'.rgba.bin',True) for i in range(3)]
             cases += [(f'round.{i}/case.{j}.rgba.bin',f'reference/{chr(ord("a")+i%3)}/output/case.{j}.rgba.bin',False) for i in range(6) for j in range(260)]

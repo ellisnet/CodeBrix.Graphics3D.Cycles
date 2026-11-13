@@ -97,6 +97,12 @@
         state_u32(S_shadow_path_flag,shadow,state_word(S_path_flag,index)|DL_PATH_RAY_SHADOW_FOR_LIGHT_LINKING);
 //#if LIGHT_NEE else state_u16(S_shadow_path_queued_kernel,shadow,K_SHADOW_INTERSECT);let shadow_counter=load_word(p(7u)+S_queue_counter)/4u;atomicAdd(&heap[shadow_counter+K_SHADOW_INTERSECT],1u);
         let next_shadow=select(K_LIGHT_NEE,K_SHADOW_INTERSECT,constant);
+        // integrator_state_write_shadow_light_isect: shade_light_nee sets the emitter up from the picked intersection.
+        if(!constant){
+            state_f32(S_shadow_hit_t,shadow,heap_float(state_address(S_isect_t,index,4u)));state_f32(S_shadow_hit_u,shadow,heap_float(state_address(S_isect_u,index,4u)));
+            state_f32(S_shadow_hit_v,shadow,heap_float(state_address(S_isect_v,index,4u)));state_u32(S_shadow_hit_prim,shadow,state_word(S_isect_prim,index));
+            state_u32(S_shadow_hit_object,shadow,state_word(S_isect_object,index));state_u32(S_shadow_hit_type,shadow,state_word(S_isect_type,index));
+        }
         state_u16(S_shadow_path_queued_kernel,shadow,next_shadow);let shadow_counter=load_word(p(7u)+S_queue_counter)/4u;atomicAdd(&heap[shadow_counter+next_shadow],1u);
 //#endif
     }

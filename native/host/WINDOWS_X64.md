@@ -2,6 +2,20 @@
 
 Copyright (c) 2026 Jeremy Ellis and contributors
 
+> **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
+> Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
+> `third_party/cycles-import.json`). This platform has not been built or run on it (NOT BUILT).
+> Its payloads (`native/binaries/win-x64` and `native/binaries/win-arm64/`), built from the previous revision, were
+> removed; they come back when the platform is rebuilt, validated and restaged
+> on the x64 Windows build machine (`native/binaries/README.md`). Wherever the text below
+> says the payload is committed or staged, read "after it has been restaged".
+> Every result, film, hash, file count and payload statement in this document
+> was recorded at the previous pinned revision
+> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
+> evidence for the current source. Films and references recorded at the
+> previous revision cannot be compared with the current source: the CPU
+> oracle's films changed with the pin.
+
 This recipe produces the Windows product binaries: the pinned Cycles revision
 with the CodeBrix WGSL/WebGPU device and the CPU device, behind the same native C
 API and managed API as every other RID. Both Windows RIDs are built on an x64

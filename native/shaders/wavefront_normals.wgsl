@@ -103,11 +103,11 @@ fn normal_radial(v:vec3<f32>,axis:u32,center:f32)->vec3<f32>{
 }
 //#if SVM_GEOMETRY_TANGENT
 // primitive_tangent (geom/primitive.h) for the Geometry node's Tangent output, plain or with derivatives (dual3): on a
-// curve normalize(dPdu); on a triangle the radial tangent of the generated coordinates, (-(y - 0.5), x - 0.5, 0) through
+// curve or a point normalize(dPdu); on a triangle the radial tangent of the generated coordinates, (-(y - 0.5), x - 0.5, 0) through
 // object_normal_transform, then cross(N, normalize(cross(t, N))); without generated coordinates normalize(dPdu). The value
 // follows the pinned float3 order exactly (transform_direction_transposed's dots, normalize, the SSE cross), so a frame
 // that is degenerate on the CPU (t parallel to N: exactly zero, then normalize's 0/0) is degenerate here too; the
-// derivatives use the dual arithmetic of the Tangent node. Points keep reporting unsupported (16).
+// derivatives use the dual arithmetic of the Tangent node.
 fn svm_geometry_normal_transform(sd:SurfaceData,v:vec3<f32>)->vec3<f32>{
     // object_normal_transform: normalize(transform_direction_transposed(itfm, v)), the motion inverse for a moving object.
     var rows:NativeTransform;
@@ -123,6 +123,10 @@ fn svm_geometry_tangent(s:ptr<function,SvmState>,derivative:bool)->NormalDual{
     if((sd.primitive_type&PRIMITIVE_CURVE)!=0u){return NormalDual(cv_normalize(sd.dPdu,cv_order()),zero,zero);}
 //#endif
     if(sd.object_id==NONE){return NormalDual(normalize(sd.dPdu),zero,zero);}
+//#if POINTS
+    // On a point normalize(dPdu) too: the frame point_shader_setup builds about the normal.
+    if((sd.primitive_type&PRIMITIVE_POINT)!=0u){return NormalDual(pt_normalize(sd.dPdu,pt_order()),zero,zero);}
+//#endif
     if((sd.primitive_type&PRIMITIVE_TRIANGLE)==0u){svm_error(s,16u);return NormalDual(zero,zero,zero);}
     let desc=normal_attribute(s,ATTR_STD_GENERATED);
     if(!desc.found){return NormalDual(surface_native_normalize(sd.dPdu),zero,zero);}

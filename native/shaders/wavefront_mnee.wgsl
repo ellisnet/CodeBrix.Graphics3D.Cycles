@@ -165,11 +165,60 @@ fn mn_fast_sincos(angle:f32)->vec2<f32>{
     if((q&1)!=0){cu=-cu;}
     return vec2<f32>(clamp(su,-1.0,1.0),clamp(cu,-1.0,1.0));
 }
-// mnee_sample_bsdf_dh for an isotropic GGX lobe; anisotropic lobes (atanf/tanf)
-// report the unsupported-handler error 2 instead of approximating.
+//#if MNEE_ANISOTROPIC
+// atanf(ratio * tanf(angle)) for mnee_sample_bsdf_dh's anisotropic branch, both correctly rounded as glibc's are: the
+// arithmetic of family_tan and of family_atan / trig_atan2(x, 1) (wavefront_microfacet.wgsl, wavefront_trig.wgsl), operation
+// for operation, with the reduction by pi/2 and the double-float sine and cosine series they share run by one loop body
+// (the two calls inlined cost about 40,000 B more of the MNEE entry that samples the casters).
+fn mn_atan_tan(ratio:f32,first:f32)->f32{
+    var angle=first;var x=0.0;var theta=0.0;
+    for(var k=0u;k<2u;k++){
+        let n=i32(floor(angle*0.6366197723675814+0.5));let product=trig_product(f32(n),1.5707963705062866);
+        let head=trig_two_sum(angle,-product.x);let r=trig_two_sum(head.x,rounded_add(head.y,rounded_add(-product.y,f32(n)*4.3711390001862426e-8)));
+        let sc=select(trig_sincos_series(r),vec4<f32>(r,1.0,0.0),k==0u&&abs(r.x)<1e-6);
+        if(k==0u){
+            // family_tan: the quotient of the two series, rounded once.
+            var num=sc.xy;var den=sc.zw;if((n&1)!=0){num=sc.zw;den=-sc.xy;}
+            let q=rounded_divide(num.x,den.x);let qd=trig_product(q,den.x);
+            let correction=rounded_divide(rounded_add(rounded_add(rounded_add(num.x,-qd.x),-qd.y),rounded_add(num.y,-(q*den.y))),den.x);
+            x=ratio*rounded_add(q,correction);
+            // family_atan: x itself near 0, pi/2 minus 1/x near the pole, else trig_atan2(x, 1) from the driver's value.
+            if(abs(x)<1e-6){return x;}
+            if(abs(x)>1e6){let inverse=rounded_divide(1.0,x);return select(rounded_add(-1.5707963705062866,rounded_add(4.371139000186243e-8,-inverse)),rounded_add(1.5707963705062866,rounded_add(-4.371139000186243e-8,-inverse)),x>0.0);}
+            theta=atan2(x,1.0);if(theta!=theta){return theta;}
+            angle=theta;continue;
+        }
+        let quadrant=((n%4)+4)%4;var sn=sc.xy;var cs=sc.zw;
+        if(quadrant==1){sn=sc.zw;cs=-sc.xy;}else if(quadrant==2){sn=-sc.xy;cs=-sc.zw;}else if(quadrant==3){sn=-sc.zw;cs=sc.xy;}
+        let a=trig_mul(vec2<f32>(x,0.0),cs);let b=trig_mul(vec2<f32>(1.0,0.0),sn);
+        let numerator=rounded_add(rounded_add(a.x,-b.x),rounded_add(a.y,-b.y));
+        let denominator=rounded_add(1.0*cs.x,x*sn.x);if(denominator==0.0){return theta;}
+        let sum=trig_coeff(vec2<f32>(theta,0.0),vec2<f32>(rounded_divide(numerator,denominator),0.0));return rounded_add(sum.x,sum.y);
+    }
+    return theta;
+}
+// mnee_sample_bsdf_dh's angle for alpha_x != alpha_y (integrator/mnee.h): phi = atanf(alpha_y / alpha_x *
+// tanf(2 pi v + pi/2)), plus pi when v > 0.5. The azimuth is in the manifold vertex's frame (dp_du, dp_dv), as pinned:
+// the walk does not take the closure's tangent.
+fn mn_dh_phi(alpha_x:f32,alpha_y:f32,v:f32)->f32{
+    let phi=mn_atan_tan(rounded_divide(alpha_y,alpha_x),rounded_add(6.2831854820251465*v,1.5707963705062866));
+    if(v>0.5){return rounded_add(phi,3.1415927410125732);}
+    return phi;
+}
+// Its alpha2 = 1 / (cos_phi^2 / alpha_x^2 + sin_phi^2 / alpha_y^2); sc = (sin_phi, cos_phi).
+fn mn_dh_alpha2(alpha_x:f32,alpha_y:f32,sc:vec2<f32>)->f32{
+    return rounded_divide(1.0,rounded_add(rounded_divide(sc.y*sc.y,alpha_x*alpha_x),rounded_divide(sc.x*sc.x,alpha_y*alpha_y)));
+}
+//#endif
+// mnee_sample_bsdf_dh for a GGX lobe. An anisotropic lobe (a Glass BSDF or a Principled transmission lobe with a tangent)
+// takes the pinned anisotropic branch (MNEE_ANISOTROPIC, set from the shader census with caustics; one fast_sincosf and
+// one mapping to the offset for both branches); in a module without that region it reports the unsupported-handler
+// error 2 instead of approximating.
 fn mn_sample_dh(alpha_x:f32,alpha_y:f32,u:f32,v:f32)->vec2<f32>{
-    if(alpha_x!=alpha_y){atomicOr(&heap[p(17u)/4u],2u);return vec2<f32>(0);}
-    let sc=mn_fast_sincos(v*6.2831854820251465);let alpha2=alpha_x*alpha_x;
+//#if MNEE_ANISOTROPIC else     if(alpha_x!=alpha_y){atomicOr(&heap[p(17u)/4u],2u);return vec2<f32>(0);}let sc=mn_fast_sincos(v*6.2831854820251465);let alpha2=alpha_x*alpha_x;
+    var phi=v*6.2831854820251465;if(alpha_x!=alpha_y){phi=mn_dh_phi(alpha_x,alpha_y,v);}
+    let sc=mn_fast_sincos(phi);var alpha2=alpha_x*alpha_x;if(alpha_x!=alpha_y){alpha2=mn_dh_alpha2(alpha_x,alpha_y,sc);}
+//#endif
     let tan2=alpha2*rounded_divide(u,rounded_add(1.0,-u));
     let cos2=rounded_divide(1.0,rounded_add(1.0,tan2));let sin_theta=rounded_sqrt(max(rounded_add(1.0,-cos2),0.0));
     return vec2<f32>(sc.y*sin_theta,sc.x*sin_theta);
@@ -1150,10 +1199,14 @@ fn mn_logf(x:f32)->f32{
     let le=trig_product(e,0.6931471824645996);let tail=rounded_add(le.y,e*-1.9046542121259336e-09);
     let sum=trig_two_sum(le.x,lm.x);let l=vec2<f32>(sum.x,rounded_add(rounded_add(sum.y,lm.y),tail));return rounded_add(l.x,l.y);
 }
-// mnee_sample_bsdf_dh for an isotropic Beckmann refraction lobe: tan2_theta = alpha2 * -logf(1 - u).
+// mnee_sample_bsdf_dh for a Beckmann refraction lobe: tan2_theta = alpha2 * -logf(1 - u). The Refraction BSDF node
+// makes isotropic lobes only (svm/closure.h sets alpha_y = alpha_x), so the anisotropic branch is mirrored but not
+// reached from a shader graph.
 fn mn_beckmann_dh(alpha_x:f32,alpha_y:f32,u:f32,v:f32)->vec2<f32>{
-    if(alpha_x!=alpha_y){atomicOr(&heap[p(17u)/4u],2u);return vec2<f32>(0);}
-    let sc=mn_fast_sincos(v*6.2831854820251465);let alpha2=alpha_x*alpha_x;
+//#if MNEE_ANISOTROPIC else     if(alpha_x!=alpha_y){atomicOr(&heap[p(17u)/4u],2u);return vec2<f32>(0);}let sc=mn_fast_sincos(v*6.2831854820251465);let alpha2=alpha_x*alpha_x;
+    var phi=v*6.2831854820251465;if(alpha_x!=alpha_y){phi=mn_dh_phi(alpha_x,alpha_y,v);}
+    let sc=mn_fast_sincos(phi);var alpha2=alpha_x*alpha_x;if(alpha_x!=alpha_y){alpha2=mn_dh_alpha2(alpha_x,alpha_y,sc);}
+//#endif
     let tan2=alpha2*(-mn_logf(rounded_add(1.0,-u)));
     let cos2=rounded_divide(1.0,rounded_add(1.0,tan2));let sin_theta=rounded_sqrt(max(rounded_add(1.0,-cos2),0.0));
     return vec2<f32>(sc.y*sin_theta,sc.x*sin_theta);

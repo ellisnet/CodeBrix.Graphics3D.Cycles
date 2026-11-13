@@ -19,17 +19,17 @@ fn curve_differentials(sd:ptr<function,SurfaceData>,o:u32){
     (*sd).du=vec2<f32>(cvb(cvb(cvb(dx.x*b.y,o)-cvb(dx.y*b.x,o),o)*det,o),cvb(cvb(cvb(dy.x*b.y,o)-cvb(dy.y*b.x,o),o)*det,o));
     (*sd).dv=vec2<f32>(cvb(cvb(cvb(dx.y*a.x,o)-cvb(dx.x*a.y,o),o)*det,o),cvb(cvb(cvb(dy.y*a.x,o)-cvb(dy.x*a.y,o),o)*det,o));
 }
-//#if CURVE_RAYCAST
+//#if CURVE_SETUP_HIT
 fn curve_setup_from_ray(index:u32)->SurfaceData{
     return curve_setup_hit(state_word(S_isect_type,index),state_word(S_isect_object,index),state_word(S_isect_prim,index),heap_float(state_address(S_isect_u,index,4u)),heap_float(state_address(S_isect_v,index,4u)),
       heap_float(state_address(S_isect_t,index,4u)),heap_float(state_address(S_ray_time,index,4u)),heap_vec3(state_address(S_ray_P,index,12u)),heap_vec3(state_address(S_ray_D,index,12u)),heap_float(state_address(S_ray_dP,index,4u)),heap_float(state_address(S_ray_dD,index,4u)));
 }
-// shader_setup_from_ray of a curve hit, from a state-free ray (the Raycast node).
+// shader_setup_from_ray of a curve hit, from a state-free ray (the Raycast node; shade_light_nee on a dedicated shadow path).
 fn curve_setup_hit(hit_type:u32,hit_object:u32,hit_prim:u32,hit_u:f32,hit_v:f32,hit_t:f32,ray_time:f32,ray_P:vec3<f32>,ray_D:vec3<f32>,ray_dP:f32,ray_dD:f32)->SurfaceData{
     var sd:SurfaceData;let o=cv_order();
     sd.primitive_type=hit_type;sd.object_id=hit_object;sd.prim=hit_prim;
 //#endif
-//#if !CURVE_RAYCAST
+//#if !CURVE_SETUP_HIT
 fn curve_setup_from_ray(index:u32)->SurfaceData{
     var sd:SurfaceData;let o=cv_order();
     sd.primitive_type=state_word(S_isect_type,index);sd.object_id=state_word(S_isect_object,index);sd.prim=state_word(S_isect_prim,index);
@@ -38,11 +38,11 @@ fn curve_setup_from_ray(index:u32)->SurfaceData{
     if(sd.object_id>=table_count(G_objects)||sd.object_id>=table_count(G_object_flag)||sd.prim>=table_count(G_curves)){surface_failure(&sd);return sd;}
 //#endif
     sd.object_flag=load_word(table_at(G_object_flag,sd.object_id,4u));
-//#if CURVE_RAYCAST
+//#if CURVE_SETUP_HIT
     sd.u=hit_u;sd.v=hit_v;
     var t=hit_t;sd.ray_length=t;sd.time=ray_time;
 //#endif
-//#if !CURVE_RAYCAST
+//#if !CURVE_SETUP_HIT
     sd.u=heap_float(state_address(S_isect_u,index,4u));sd.v=heap_float(state_address(S_isect_v,index,4u));
     var t=heap_float(state_address(S_isect_t,index,4u));sd.ray_length=t;sd.time=heap_float(state_address(S_ray_time,index,4u));
 //#endif
@@ -53,11 +53,11 @@ fn curve_setup_from_ray(index:u32)->SurfaceData{
         if(load_word(p(17u))!=0u){surface_failure(&sd);return sd;}
     }
 //#endif
-//#if CURVE_RAYCAST
+//#if CURVE_SETUP_HIT
     sd.wi=-ray_D;
     var P=ray_P;var D=ray_D;
 //#endif
-//#if !CURVE_RAYCAST
+//#if !CURVE_SETUP_HIT
     let ray_D=heap_vec3(state_address(S_ray_D,index,12u));sd.wi=-ray_D;
     var P=heap_vec3(state_address(S_ray_P,index,12u));var D=ray_D;
 //#endif
@@ -109,10 +109,10 @@ fn curve_setup_from_ray(index:u32)->SurfaceData{
     if(shader_id>=table_count(G_shaders)){surface_failure(&sd);return sd;}
     sd.shader_flag=load_word(table_at(G_shaders,shader_id,SIZE_shaders)+SH_flags);
     if(cv_dot(sd.Ng,sd.wi,o)<0.0){sd.runtime_flag|=SR_BACKFACING;sd.N=-sd.N;sd.Ng=-sd.Ng;sd.dPdu=-sd.dPdu;sd.dPdv=-sd.dPdv;}
-//#if CURVE_RAYCAST else     sd.dI=heap_float(state_address(S_ray_dD,index,4u));
+//#if CURVE_SETUP_HIT else     sd.dI=heap_float(state_address(S_ray_dD,index,4u));
     sd.dI=ray_dD;
 //#endif
-//#if CURVE_RAYCAST else     sd.dP=rounded_add(heap_float(state_address(S_ray_dP,index,4u)),sd.ray_length*sd.dI);curve_differentials(&sd,o);
+//#if CURVE_SETUP_HIT else     sd.dP=rounded_add(heap_float(state_address(S_ray_dP,index,4u)),sd.ray_length*sd.dI);curve_differentials(&sd,o);
     sd.dP=rounded_add(ray_dP,sd.ray_length*sd.dI);curve_differentials(&sd,o);
 //#endif
     return sd;

@@ -79,8 +79,8 @@ string registry = CyclesHost.RegistryJson();
 using (JsonDocument document = JsonDocument.Parse(registry))
 {
     JsonElement.ArrayEnumerator nodes = document.RootElement.GetProperty("nodeTypes").EnumerateArray();
-    Require(nodes.Count() == 184, "Complete registry retention");
-    Require(nodes.Sum(node => node.GetProperty("inputs").GetArrayLength() + node.GetProperty("outputs").GetArrayLength()) == 1277, "Complete socket registry");
+    Require(nodes.Count() == 187, "Complete registry retention");
+    Require(nodes.Sum(node => node.GetProperty("inputs").GetArrayLength() + node.GetProperty("outputs").GetArrayLength()) == 1311, "Complete socket registry");
 }
 File.WriteAllText(Path.Combine(args[1], "registry.json"), registry);
 CyclesHost.ConfigureTiers(PipelineTier.Auto, null);

@@ -298,7 +298,7 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
     state_vec3(S_shadow_ray_P,shadow,origin);state_vec3(S_shadow_ray_D,shadow,direction);
     state_f32(S_shadow_ray_tmin,shadow,select(bitcast<f32>(0x7f7fffffu),0.0,(ls.shader&SHADER_CAST_SHADOW)!=0u));state_f32(S_shadow_ray_tmax,shadow,tmax);
     state_f32(S_shadow_ray_time,shadow,sd.time);state_f32(S_shadow_ray_dP,shadow,sd.dP);
-    state_f32(S_shadow_ray_dD,shadow,select(sd.dI,max(sd.dI,sqrt(bsdf.roughness)),bsdf.roughness>0.0));
+    state_f32(S_shadow_ray_dD,shadow,select(sd.dI,max(sd.dI,data_float(D_integrator_differential_widen_scale)*sqrt(bsdf.roughness)),bsdf.roughness>0.0));
     state_u32(S_shadow_self_object,shadow,select(NONE,sd.object_id,start.w!=0.0));state_u32(S_shadow_self_prim,shadow,select(NONE,sd.prim,start.w!=0.0));
     state_u32(S_shadow_ray_self_light_object,shadow,ls.object_id);state_u32(S_shadow_ray_self_light_prim,shadow,ls.prim);
     // Not allocated with KERNEL_FEATURE_LIGHT_TREE (shadow_state_template.h).

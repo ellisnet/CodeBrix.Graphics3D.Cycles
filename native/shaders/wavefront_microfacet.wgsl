@@ -94,7 +94,8 @@ fn ggx_evaluate(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec4<f32>{
     let inverse=select(0.0,rounded_divide(1.0,length),length!=0.0);let h=unnormalized*inverse;
     let cos_hi=rounded_dot(h,wi);let f=ggx_fresnel(c,cos_hi);if(all(f.reflection==vec3<f32>(0))&&all(f.transmission==vec3<f32>(0))){return vec4<f32>(0);}
     let ch=rounded_dot(c.N,h);var d:f32;var li:f32;var lo:f32;
-    if(c.alpha_x==c.alpha_y||transmit){d=ggx_d(alpha2,ch);li=ggx_lambda(alpha2,ci);lo=ggx_lambda(alpha2,co);}
+    // Anisotropic whenever the alphas differ, transmission included (bsdf_microfacet_eval).
+    if(c.alpha_x==c.alpha_y){d=ggx_d(alpha2,ch);li=ggx_lambda(alpha2,ci);lo=ggx_lambda(alpha2,co);}
     else{let b=ggx_basis(c);let hi=vec3<f32>(rounded_dot(b.X,h),rounded_dot(b.Y,h),ch);let ii=vec3<f32>(rounded_dot(b.X,wi),rounded_dot(b.Y,wi),ci);let oo=vec3<f32>(rounded_dot(b.X,wo),rounded_dot(b.Y,wo),co);
         d=ggx_aniso_d(c,hi);li=ggx_aniso_lambda(c,ii);lo=ggx_aniso_lambda(c,oo);}
     var factor=d/ci*0.25;if(transmit){let eta_inverse=c.ior*inverse;factor=d/ci*(eta_inverse*eta_inverse)*abs(cos_hi*rounded_dot(h,wo));}
@@ -104,8 +105,8 @@ fn ggx_evaluate(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec4<f32>{
 fn ggx_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>,disk:vec2<f32>)->SurfaceSample{
     var out:SurfaceSample;let ci=rounded_dot(c.N,sd.wi);if(ci<=0.0){return out;}
     let alpha2=c.alpha_x*c.alpha_y;var singular=alpha2<=2e-10;
-    var h=c.N;var hi:vec3<f32>;var ii:vec3<f32>;
-    if(!singular){let b=ggx_basis(c);ii=vec3<f32>(rounded_dot(b.X,sd.wi),rounded_dot(b.Y,sd.wi),ci);hi=ggx_vndf_disk(ii,c.alpha_x,c.alpha_y,disk);h=rounded_add3(rounded_add3(hi.x*b.X,hi.y*b.Y),hi.z*c.N);}
+    var h=c.N;var hi:vec3<f32>;var ii:vec3<f32>;var b:MicrofacetBasis;
+    if(!singular){b=ggx_basis(c);ii=vec3<f32>(rounded_dot(b.X,sd.wi),rounded_dot(b.Y,sd.wi),ci);hi=ggx_vndf_disk(ii,c.alpha_x,c.alpha_y,disk);h=rounded_add3(rounded_add3(hi.x*b.X,hi.y*b.Y),hi.z*c.N);}
     let ch=rounded_dot(h,sd.wi);let f=ggx_fresnel(c,ch);if(all(f.reflection==vec3<f32>(0))&&all(f.transmission==vec3<f32>(0))){return out;}
     let reflection_pdf=ggx_reflection_pdf(f);let transmit=random.z>=reflection_pdf;let inv_eta=rounded_divide(1.0,c.ior);
     out.wo=rounded_add3(2.0*ch*h,-sd.wi);if(transmit){out.wo=rounded_add3(rounded_add(inv_eta*ch,f.cos_transmit)*h,-inv_eta*sd.wi);}
@@ -114,8 +115,9 @@ fn ggx_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>,disk:vec2<f32>)->Surf
     singular=singular||(transmit&&abs(c.ior-1.0)<1e-4);
     if(singular){out.pdf*=1e6;out.eval*=1e6;}
     else{var d:f32;var li:f32;var lo:f32;
-        if(c.alpha_x==c.alpha_y||transmit){d=ggx_d(alpha2,hi.z);li=ggx_lambda(alpha2,ci);lo=ggx_lambda(alpha2,co);}
-        else{let oo=2.0*ch*hi-ii;d=ggx_aniso_d(c,hi);li=ggx_aniso_lambda(c,ii);lo=ggx_aniso_lambda(c,oo);}
+        // bsdf_microfacet_sample: the local outgoing direction is the sampled wo in the tangent frame (reflected or refracted).
+        if(c.alpha_x==c.alpha_y){d=ggx_d(alpha2,hi.z);li=ggx_lambda(alpha2,ci);lo=ggx_lambda(alpha2,co);}
+        else{let oo=vec3<f32>(rounded_dot(b.X,out.wo),rounded_dot(b.Y,out.wo),co);d=ggx_aniso_d(c,hi);li=ggx_aniso_lambda(c,ii);lo=ggx_aniso_lambda(c,oo);}
         var factor=d/ci*0.25;if(transmit){let denominator=rounded_add(f.cos_transmit,ch*inv_eta);factor=d/ci*(abs(ch*f.cos_transmit)/(denominator*denominator));}
         out.pdf*=factor/(1.0+li);out.eval*=factor/(1.0+li+lo);
     }
@@ -303,7 +305,7 @@ fn microfacet_evaluate(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec4<f32>{
     let unnormalized=select(wi+wo,-rounded_add3(c.ior*wo,wi),transmit);let length=rounded_sqrt(rounded_dot(unnormalized,unnormalized));
     let inverse=select(0.0,rounded_divide(1.0,length),length!=0.0);let h=unnormalized*inverse;
     let cos_hi=rounded_dot(h,wi);let f=ggx_fresnel(g,cos_hi);if(all(f.reflection==vec3<f32>(0))&&all(f.transmission==vec3<f32>(0))){return vec4<f32>(0);}
-    let ch=rounded_dot(c.N,h);var d:f32;var li:f32;var lo:f32;let iso=c.alpha_x==c.alpha_y||transmit;
+    let ch=rounded_dot(c.N,h);var d:f32;var li:f32;var lo:f32;let iso=c.alpha_x==c.alpha_y;
     var hi=vec3<f32>(0,0,ch);var ii=vec3<f32>(0,0,ci);var oo=vec3<f32>(0,0,co);
     if(!iso){let b=ggx_basis(c);hi=vec3<f32>(rounded_dot(b.X,h),rounded_dot(b.Y,h),ch);ii=vec3<f32>(rounded_dot(b.X,wi),rounded_dot(b.Y,wi),ci);oo=vec3<f32>(rounded_dot(b.X,wo),rounded_dot(b.Y,wo),co);}
     if(beckmann){d=beckmann_distribution(c,alpha2,hi,iso);let l=beckmann_smith2(c,alpha2,ii,oo,iso);li=l.x;lo=l.y;}
@@ -322,8 +324,8 @@ fn microfacet_evaluate(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec4<f32>{
 fn microfacet_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>,disk:vec2<f32>)->SurfaceSample{
     var out:SurfaceSample;let beckmann=surf_beckmann(c.kind);let g=beckmann_lobes(c);let ci=rounded_dot(c.N,sd.wi);if(ci<=0.0){return out;}
     let alpha2=c.alpha_x*c.alpha_y;var singular=alpha2<=2e-10;
-    var h=c.N;var hi:vec3<f32>;var ii:vec3<f32>;
-    if(!singular){let b=ggx_basis(c);ii=vec3<f32>(rounded_dot(b.X,sd.wi),rounded_dot(b.Y,sd.wi),ci);
+    var h=c.N;var hi:vec3<f32>;var ii:vec3<f32>;var b:MicrofacetBasis;
+    if(!singular){b=ggx_basis(c);ii=vec3<f32>(rounded_dot(b.X,sd.wi),rounded_dot(b.Y,sd.wi),ci);
         hi=microfacet_vndf(ii,c.alpha_x,c.alpha_y,random.xy,disk,beckmann);
         h=rounded_add3(rounded_add3(hi.x*b.X,hi.y*b.Y),hi.z*c.N);}
     let ch=rounded_dot(h,sd.wi);let f=ggx_fresnel(g,ch);if(all(f.reflection==vec3<f32>(0))&&all(f.transmission==vec3<f32>(0))){return out;}
@@ -333,12 +335,14 @@ fn microfacet_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>,disk:vec2<f32>
     out.pdf=select(reflection_pdf,1.0-reflection_pdf,transmit);out.eval=select(f.reflection,f.transmission,transmit);
     singular=singular||(transmit&&abs(c.ior-1.0)<1e-4);
     if(singular){out.pdf*=1e6;out.eval*=1e6;}
-    else{var d:f32;var li:f32;var lo:f32;let iso=c.alpha_x==c.alpha_y||transmit;
-        if(beckmann){var local_i=vec3<f32>(0,0,ci);var local_o=vec3<f32>(0,0,co);if(!iso){local_i=ii;local_o=2.0*ch*hi-ii;}
+    else{var d:f32;var li:f32;var lo:f32;let iso=c.alpha_x==c.alpha_y;
+        // The local outgoing direction is the sampled wo in the tangent frame (reflected or refracted).
+        let oo=vec3<f32>(rounded_dot(b.X,out.wo),rounded_dot(b.Y,out.wo),co);
+        if(beckmann){var local_i=vec3<f32>(0,0,ci);var local_o=vec3<f32>(0,0,co);if(!iso){local_i=ii;local_o=oo;}
             d=beckmann_distribution(c,alpha2,select(hi,vec3<f32>(0,0,hi.z),iso),iso);let l=beckmann_smith2(c,alpha2,local_i,local_o,iso);li=l.x;lo=l.y;}
         else{
             if(iso){d=ggx_d(alpha2,hi.z);}else{d=ggx_aniso_d(c,hi);}
-            let directions=array<vec3<f32>,2>(select(ii,vec3<f32>(0,0,ci),iso),select(2.0*ch*hi-ii,vec3<f32>(0,0,co),iso));var lambdas=vec2<f32>(0);
+            let directions=array<vec3<f32>,2>(select(ii,vec3<f32>(0,0,ci),iso),select(oo,vec3<f32>(0,0,co),iso));var lambdas=vec2<f32>(0);
             for(var k=0u;k<2u;k++){if(iso){lambdas[k]=ggx_lambda(alpha2,directions[k].z);}else{lambdas[k]=ggx_aniso_lambda(c,directions[k]);}}
             li=lambdas.x;lo=lambdas.y;
         }

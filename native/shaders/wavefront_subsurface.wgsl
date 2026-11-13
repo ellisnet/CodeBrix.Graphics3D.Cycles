@@ -90,11 +90,12 @@ fn ss_exit(slot:u32,geometry:SurfaceData,e:SvmResult,evaluated:bool){
     }
     var r:SvmResult;r.closure_base=base;r.count=1u;r.remaining=data_word(D_max_closures)-1u;r.runtime_flag=SR_BSDF|SR_BSDF_HAS_EVAL;r.N=sd.N;
     var c:SvmClosure;c.kind=CLOSURE_BSDF_DIFFUSE_ID;c.weight=vec3<f32>(1);c.sample_weight=1.0;c.N=n;svm_closure_write(base,c);
-    sd.runtime_flag=0u;
+    // subsurface_shader_data_setup: the closure flags go (they are the new record's), SR_BACKFACING stays.
+    sd.runtime_flag&=~SR_CLOSURE_FLAG;
 //#if FILM_PASSES_ANY
     // integrate_surface writes no data passes and no denoising features at the exit point: the record carries
     // SS_SR_EXIT_POINT for shade_surface_passes (no SR_* flag uses bit 31; the stages test sd.runtime_flag bit by bit).
-    sd.runtime_flag=SS_SR_EXIT_POINT;
+    sd.runtime_flag|=SS_SR_EXIT_POINT;
 //#endif
     surface_stage_write(p(24u)+slot*SURFACE_STAGE_BYTES,sd,r);
 }

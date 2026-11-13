@@ -2,6 +2,20 @@
 
 Copyright (c) 2026 Jeremy Ellis and contributors
 
+> **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
+> Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
+> `third_party/cycles-import.json`). This platform has not been built or run on it (NOT BUILT).
+> Its payloads (`native/binaries/win-x64` and `native/binaries/win-arm64/`), built from the previous revision, were
+> removed; they come back when the platform is rebuilt, validated and restaged
+> on the x64 Windows build machine (`native/binaries/README.md`). Wherever the text below
+> says the payload is committed or staged, read "after it has been restaged".
+> Every result, film, hash, file count and payload statement in this document
+> was recorded at the previous pinned revision
+> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
+> evidence for the current source. Films and references recorded at the
+> previous revision cannot be compared with the current source: the CPU
+> oracle's films changed with the pin.
+
 > **MANDATORY TEST RULES (from 2026-10-29; they apply to every run of this
 > procedure and override anything below, including the historical records).**
 >
@@ -61,7 +75,7 @@ default, Vulkan on request. A run establishes:
 |---|---|
 | Build machine | x64 Windows 10 or 11 with a Direct3D 12 GPU (and a Vulkan driver for the Vulkan steps). |
 | Test device (win-arm64) | ARM64 Windows 11 with a Direct3D 12 GPU. Nothing is built there. |
-| Cycles | `a456b761034dda42c32eef9f4aae0fa5a5c9f604`, the filtered snapshot in `third_party/cycles` |
+| Cycles | `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981` (the released v5.3.0), the filtered snapshot in `third_party/cycles` |
 | WebGPU runtime | `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.300.210; package SHA-256 `ddfd92f8e9ce0f4348b0b079b856158608552184d3255c26a3e35a87b73b8b7b`; `runtimes/win-x64/native/codebrix_wgpu.dll` SHA-256 `88be16eb071943d97bc679a87811f738c5bc0d447f05ee30af2aa8bfeebbc7ce` |
 | DXC | `dxcompiler.dll` 1.9.2609.5 in `native/binaries/<rid>/runtime/` (`third_party/dxc-import.json`; `tools/windows_dxc.py` pins the hashes) |
 | Visual Studio | 2022 or later with "Desktop development with C++" and "C++ Clang tools for Windows" (clang-cl, lld-link), the Windows SDK, and its bundled CMake and Ninja. Versions are recorded by the recipes. |

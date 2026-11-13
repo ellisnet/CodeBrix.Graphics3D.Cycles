@@ -127,9 +127,31 @@ def bsdf_in_volume():
                          'the volume shader steps over them as the pinned kernel does', graph=(nodes, connect))
 
 
+# The denoising depth feature through a medium's bounds: every volume-only surface a path crosses writes its depth
+# segment (film_write_denoising_features_surface_volume), the first one with the near clip distance, and the
+# background behind the box writes what remains of the far clip depth. Lambert surfaces and an absorbing medium, so
+# every path is the same on every backend whatever the glossy closures and the scattering do.
+def depth_bounds():
+    document = json.loads((HERE.parent/'volumes/absorption-point.json').read_text())
+    document['id'] = 'volumes/denoising-depth-bounds'
+    document['description'] = ('volumes/absorption-point with Lambert surfaces and the denoising depth pass: the depth segments that end at '
+                               'the medium\'s bounds, at the surfaces behind them and at the background')
+    document['sourceFixture'] = 'native/oracle/scenes/author_volumes_b.py (from scenes/volumes/absorption-point.json)'
+    for node in document['nodes']:
+        if node.get('create') == 'shader' and node['handle'] in ('wall', 'floor-material', 'glossy', 'glass', 'matte'):
+            color = node['graph']['nodes'][0]['set']['color']
+            node['graph'] = {'nodes': [{'handle': 'n', 'type': 'diffuse_bsdf', 'set': {'color': color, 'roughness': 0.0}}],
+                             'connect': [['n', 'BSDF', 'output', 'Surface']]}
+        if node.get('scene') == 'camera':
+            node['set'].update({'nearclip': 0.25, 'farclip': 60.0})
+    document['nodes'].append({'handle': 'pass-Denoising Depth', 'create': 'pass', 'set': {'type': 'denoising_depth', 'name': 'Denoising Depth'}})
+    return document
+
+
 def scenes():
     documents = {pattern.replace('_', '-')+'-'+source.split('/', 1)[1]+'.json': variant(source, pattern) for source, pattern in PATTERN_SOURCES}
     documents['bsdf-in-volume.json'] = bsdf_in_volume()
+    documents['denoising-depth-bounds.json'] = depth_bounds()
     documents.update({'denoise-'+source.split('/', 1)[1]+'.json': denoised(source) for source in DENOISE_SOURCES})
     documents.update({name+'.json': linked(source, name, tree) for source, name, tree in LINK_SOURCES})
     # A heterogeneous medium lit only by the world (no medium emission, so no VOLUME_EMISSION region).

@@ -198,6 +198,60 @@ public class GpuRenderTests(ITestOutputHelper output)
         Judge(gpu, WebGpuValidationScenes.DiffuseSun, film, RenderCpu(WebGpuValidationScenes.DiffuseSun)).PracticalFailures.Should().Be(0);
     }
 
+    // The integer and component nodes are not part of the WGSL device: a graph that reaches one with a linked input is
+    // refused with the node's name (a constant one is folded away before the device sees it), and the CPU renders it.
+    [Theory]
+    [InlineData("Boolean Math")]
+    [InlineData("Integer Math")]
+    [InlineData("Get Vector Component")]
+    public async Task webgpu_refuses_the_integer_and_component_nodes_by_name_and_the_cpu_renders_them(string node)
+    {
+        //Arrange
+        using CyclesScene gpu = CreateGpuScene();
+        if (gpu.Backend == Backend.Metal) Assert.Skip("Cycles' Metal device renders these nodes; the refusal is the WGSL device's.");
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        foreach (CyclesScene scene in new[] { gpu, cpu })
+        {
+            WebGpuValidationScenes.Build(scene, WebGpuValidationScenes.DiffuseSun);
+            ShaderNode material = scene.CreateShader();
+            GeometryNode geometry = material.Add<GeometryNode>();
+            EmissionNode emission = material.Add<EmissionNode>();
+            switch (node)
+            {
+                case "Boolean Math":
+                    BooleanMathNode boolean = material.Add<BooleanMathNode>();
+                    boolean.MathType = BooleanMathMathType.Not;
+                    material.Connect(geometry.BackfacingOutput, boolean.Boolean1Input);
+                    material.Connect(boolean.BooleanOutput, emission.StrengthInput);
+                    break;
+                case "Integer Math":
+                    IntegerMathNode integer = material.Add<IntegerMathNode>();
+                    integer.MathType = IntegerMathMathType.Add;
+                    integer.Value2 = 1;
+                    material.Connect(geometry.BackfacingOutput, integer.Value1Input);
+                    material.Connect(integer.ValueOutput, emission.StrengthInput);
+                    break;
+                default:
+                    GetVectorComponentNode component = material.Add<GetVectorComponentNode>();
+                    component.Index = 1;
+                    material.Connect(geometry.NormalOutput, component.VectorInput);
+                    material.Connect(component.ValueOutput, emission.StrengthInput);
+                    break;
+            }
+            material.Connect(emission.EmissionOutput, material.Output.SurfaceInput);
+            material.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+            scene.CreateObject(scene.CreateMesh([-.4f, 1.2f, 0, .4f, 1.2f, 0, 0, 1.9f, 0], [0, 1, 2], material));
+        }
+
+        //Act
+        Func<Task> render = () => gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
+        FilmBuffer onCpu = await cpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
+
+        //Assert
+        (await render.Should().ThrowAsync<NativeFailure>()).Which.Message.Should().Contain("WebGPU " + node + " node not implemented");
+        onCpu.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+    }
+
     // A small quad whose material samples a 16385 x 1 image, which Cycles' Metal device rejects.
     private static (ObjectNode, MeshNode, ShaderNode) OversizedTexturedQuad(CyclesScene scene)
     {

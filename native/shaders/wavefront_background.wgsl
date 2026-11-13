@@ -12,11 +12,6 @@ fn film_rgb(base:u32,offset:u32,value:vec3<f32>){
     if(offset==PASS_NONE){return;}
     film_add(base+offset*4u,value.x);film_add(base+(offset+1u)*4u,value.y);film_add(base+(offset+2u)*4u,value.z);
 }
-//#if FILM_MOTION
-// transform_perspective_direction: a.x * t.x.x + a.y * t.x.y + a.z * t.x.z per row, each step rounded.
-fn bgm_row(t:vec4<f32>,a:vec3<f32>)->f32{return rounded_add(rounded_add(a.x*t.x,a.y*t.y),a.z*t.z);}
-fn bgm_direction(address:u32,a:vec3<f32>)->vec3<f32>{return vec3<f32>(bgm_row(heap_vec4(address),a),bgm_row(heap_vec4(address+16u),a),bgm_row(heap_vec4(address+32u),a));}
-//#endif
 //#if FILM_DENOISING
 // film_write_emission_or_background_pass, denoising albedo: the emission or
 // background contribution times the path's denoising feature throughput.
@@ -32,6 +27,79 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
         ((shader&SHADER_EXCLUDE_SCATTER)!=0u&&(visibility&PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u)||
         ((shader&SHADER_EXCLUDE_CAMERA)!=0u&&(visibility&VIS_CAMERA)!=0u));
 }
+//#if FILM_DENOISING
+//#if FILM_MOTION
+// transform_perspective_direction: a.x * t.x.x + a.y * t.x.y + a.z * t.x.z per row, each step rounded.
+fn bgm_row(t:vec4<f32>,a:vec3<f32>)->f32{return rounded_add(rounded_add(a.x*t.x,a.y*t.y),a.z*t.z);}
+fn bgm_direction(address:u32,a:vec3<f32>)->vec3<f32>{return vec3<f32>(bgm_row(heap_vec4(address),a),bgm_row(heap_vec4(address+16u),a),bgm_row(heap_vec4(address+32u),a));}
+// transform_perspective with SSE float4 dots (as wavefront_film_passes.wgsl fp_perspective, which this module does not hold).
+fn bgm_dot4(a:vec4<f32>,b:vec4<f32>)->f32{return rounded_add(rounded_add(a.x*b.x,a.y*b.y),rounded_add(a.z*b.z,a.w*b.w));}
+fn bgm_perspective(address:u32,a:vec3<f32>)->vec3<f32>{
+    let b=vec4<f32>(a,1.0);let c=vec3<f32>(bgm_dot4(heap_vec4(address),b),bgm_dot4(heap_vec4(address+16u),b),bgm_dot4(heap_vec4(address+32u),b));
+    let w=bgm_dot4(heap_vec4(address+48u),b);if(w==0.0){return vec3<f32>(0);}
+    return vec3<f32>(rounded_divide(c.x,w),rounded_divide(c.y,w),rounded_divide(c.z,w));
+}
+// camera_motion_vector_direction(P, D).xy, the backward motion of the background (motion_pre - motion_center):
+// an orthographic camera projects the far point P + D * 1e4, a perspective one the direction, both with the
+// world-to-raster matrices; panoramic cameras take the camera-space directions through direction_to_panorama.
+fn bgm_backward_motion(P:vec3<f32>,D:vec3<f32>)->vec2<f32>{
+//#if CAMERA_PANORAMA_INVERSE
+    if(data_word(D_cam_type)==CPI_CAMERA_PANORAMA){return cpi_motion_vector(D,D,D,false).xy;}
+//#endif
+    if(data_word(D_cam_type)==FPM_CAMERA_ORTHOGRAPHIC){
+        let point_far=rounded_add3(P,D*1e4);
+        return rounded_add3(bgm_perspective(p(6u)+FPM_D_perspective_pre,point_far),-bgm_perspective(p(6u)+FPM_D_worldtoraster,point_far)).xy;
+    }
+    return rounded_add3(bgm_direction(p(6u)+FPM_D_perspective_pre,D),-bgm_direction(p(6u)+FPM_D_worldtoraster,D)).xy;
+}
+//#endif
+// camera_z_depth: the camera-space z for perspective and orthographic cameras, the distance to the camera
+// position for the others.
+fn bgd_z_depth(P:vec3<f32>)->f32{
+    let kind=data_word(D_cam_type);
+    if(kind==DN_CAMERA_PERSPECTIVE||kind==DN_CAMERA_ORTHOGRAPHIC){return surface_transform_point(p(6u)+D_cam_worldtocamera,P).z;}
+    let t=p(6u)+D_cam_cameratoworld;let d=rounded_add3(P,-vec3<f32>(heap_float(t+12u),heap_float(t+28u),heap_float(t+44u)));
+    return rounded_sqrt(rounded_dot(d,d));
+}
+// film_write_denoising_features_background for a camera path (bounce 0) that is not a shadow catcher split path:
+// the far clip depth and the background's backward motion. flag is the path's flag as integrate_background read it.
+fn film_denoising_background(index:u32,base:u32,flag:u32){
+    if(data_word(DN_D_pass_denoising_depth)!=PASS_NONE){
+        let throughput=heap_vec3(state_address(S_path_denoising_feature_throughput,index,12u));
+        // Transparent surfaces and volume bounds keep bounce 0; the first of them wrote the near clip distance.
+        let wrote_first_segment=state_half(S_path_transparent_bounce,index)!=0u||state_half(S_path_volume_bounds_bounce,index)!=0u;
+        let near=data_float(D_cam_nearclip);let cliplength=data_float(D_cam_cliplength);
+        // cliplength == FLT_MAX.
+        let unbounded=bitcast<u32>(cliplength)==0x7f7fffffu;
+        var farclip_depth=cliplength;
+        if(!(near<0.0||unbounded||wrote_first_segment)){farclip_depth=rounded_add(near,cliplength);}
+        let at=base+data_word(DN_D_pass_denoising_depth)*4u;
+        if(unbounded){store_word(at,bitcast<u32>(farclip_depth));}
+        else{
+            let ray_P=heap_vec3(state_address(S_ray_P,index,12u));let ray_D=heap_vec3(state_address(S_ray_D,index,12u));
+            // Only the distance this path has not written yet.
+            if(wrote_first_segment){
+                let prev_P=rounded_add3(ray_P,ray_D*heap_float(state_address(S_ray_tmin,index,4u)));
+                farclip_depth=rounded_add(farclip_depth,-rounded_add(bgd_z_depth(prev_P),-bgd_z_depth(ray_P)));
+            }
+            // The camera z distance as a ray length.
+            if((data_word(DN_D_denoising_pass_options_flag)&DN_FOLLOW_REFLECTIONS)!=0u&&data_word(D_cam_type)==DN_CAMERA_PERSPECTIVE){
+                let t=p(6u)+D_cam_cameratoworld;let camD=vec3<f32>(heap_float(t+8u),heap_float(t+24u),heap_float(t+40u));
+                farclip_depth=rounded_divide(farclip_depth,rounded_dot(ray_D,camD));
+            }
+            farclip_depth=farclip_depth*((throughput.x+throughput.y+throughput.z)*(1.0/3.0));
+            // ensure_finite.
+            film_add(at,select(farclip_depth,0.0,(bitcast<u32>(farclip_depth)&0x7f800000u)==0x7f800000u));
+        }
+    }
+//#if FILM_MOTION
+    if(data_word(FPM_D_pass_denoising_backward_motion)!=PASS_NONE&&(flag&PATH_RAY_SINGLE_PASS_DONE)==0u){
+        let speed=bgm_backward_motion(heap_vec3(state_address(S_ray_P,index,12u)),heap_vec3(state_address(S_ray_D,index,12u)));
+        film_rgb(base,data_word(FPM_D_pass_denoising_backward_motion),vec3<f32>(speed.x,speed.y,0.0));
+    }
+//#endif
+}
+//#endif
 @compute @workgroup_size(64) fn shade_background(@builtin(global_invocation_id) id:vec3<u32>){
     svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
@@ -129,23 +197,10 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
         if((flags&MASK_MATERIAL_ID)!=0u){store_word(base+data_word(D_film_pass_material_id)*4u,0u);}
         if((flags&MASK_POSITION)!=0u){let address=base+data_word(D_film_pass_position)*4u;store_word(address,0u);store_word(address+4u,0u);store_word(address+8u,0u);}
     }
-//#if FILM_MOTION
-    // film_write_data_passes_background, motion: camera_motion_vector_direction (perspective camera).
-    if((flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u&&(flag&FPM_PATH_RAY_SHADOW_CATCHER_PASS)==0u&&(flag&PATH_RAY_SINGLE_PASS_DONE)==0u&&(data_word(D_film_pass_flag)&FPM_MASK_MOTION)!=0u){
-        let D=heap_vec3(state_address(S_ray_D,index,12u));
-//#if CAMERA_PANORAMA_INVERSE else         let c=bgm_direction(p(6u)+FPM_D_worldtoraster,D);let a=rounded_add3(bgm_direction(p(6u)+FPM_D_perspective_pre,D),-c);let b=rounded_add3(c,-bgm_direction(p(6u)+FPM_D_perspective_post,D));
-        var c=bgm_direction(p(6u)+FPM_D_worldtoraster,D);var a=rounded_add3(bgm_direction(p(6u)+FPM_D_perspective_pre,D),-c);var b=rounded_add3(c,-bgm_direction(p(6u)+FPM_D_perspective_post,D));
-        // camera_motion_vector_direction, panoramic cameras: the camera-space directions through direction_to_panorama.
-        if(data_word(D_cam_type)==CPI_CAMERA_PANORAMA){let m=cpi_motion_vector(D,D,D,false);a=vec3<f32>(m.xy,0.0);b=vec3<f32>(m.zw,0.0);}
-//#endif
-        let at=base+data_word(FPM_D_pass_motion)*4u;film_add(at,a.x);film_add(at+4u,a.y);film_add(at+8u,b.x);film_add(at+12u,b.y);
-        film_add(base+data_word(FPM_D_pass_motion_weight)*4u,1.0);
-    }
-//#endif
+    // film_write_data_passes_background writes no motion: the background leaves the motion and motion weight passes alone.
 //#if FILM_DENOISING
-    // film_write_denoising_features_background: the depth feature of camera rays that miss.
-    if((flag&DN_PATH_RAY_DENOISING_FEATURES)!=0u&&bounce==0u&&data_word(DN_D_pass_denoising_depth)!=PASS_NONE){
-        store_word(base+data_word(DN_D_pass_denoising_depth)*4u,0x7f7fffffu);}
+    // film_write_denoising_features_background: camera paths that miss, not the paths split off for a shadow catcher.
+    if((flag&DN_PATH_RAY_DENOISING_FEATURES)!=0u&&(flag&DN_PATH_RAY_SHADOW_CATCHER_PASS)==0u&&bounce==0u){film_denoising_background(index,base,flag);}
 //#endif
 //#if SHADOW_CATCHER
     if((flag&SC_PATH_BACKGROUND)!=0u){sc_background_continue(index,flag);return;}

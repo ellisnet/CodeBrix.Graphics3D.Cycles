@@ -10,6 +10,15 @@
 // variants keep derivatives in the adjacent stack slots, as the CPU kernel does.
 // Each handler has its own feature region and a single call site.
 //#if SVM_NODE_BUMP
+//#if !CURVES
+// Ordering barriers for svm_node_set_bump outside curve modules (the curve modules use wavefront_curve_math.wgsl's):
+// the order word is 0 in every dispatch and the compiler cannot see it, so no product is contracted into a sum.
+fn bump_fence(x:f32,o:u32)->f32{return bitcast<f32>(bitcast<u32>(x)^o);}
+fn bump_fence3(x:vec3<f32>,o:u32)->vec3<f32>{return bitcast<vec3<f32>>(bitcast<vec3<u32>>(x)^vec3<u32>(o));}
+// The SSE cross (a.yzx * b.zxy - a.zxy * b.yzx, each product rounded) and the dpps dot ((x + y) + z).
+fn bump_cross(a:vec3<f32>,b:vec3<f32>,o:u32)->vec3<f32>{return bump_fence3(bump_fence3(a.yzx*b.zxy,o)-bump_fence3(a.zxy*b.yzx,o),o);}
+fn bump_dot(a:vec3<f32>,b:vec3<f32>,o:u32)->f32{return bump_fence(bump_fence(bump_fence(a.x*b.x,o)+bump_fence(a.y*b.y,o),o)+bump_fence(a.z*b.z,o),o);}
+//#endif
 // displace.h svm_node_set_bump. Background evaluation has no BUMP node feature
 // on the host (KERNEL_FEATURE_NODE_MASK_SURFACE_BACKGROUND): it stores zero.
 fn svm_set_bump(s:ptr<function,SvmState>,node:u32){
@@ -37,8 +46,11 @@ fn svm_set_bump(s:ptr<function,SvmState>,node:u32){
         if(transform){n=surface_object_normal(sd,n,inverse);}
         if(!inverse){break;}
 //#if !CURVES
-        let normal_in=n;let Rx=cross(dPdy,normal_in);let Ry=cross(normal_in,dPdx);
-        let det=dot(dPdx,Rx);let surfgrad=(h_x-h_c)*Rx+(h_y-h_c)*Ry;let absdet=abs(det);
+        // The pinned float3 order with every product rounded before its sum (no contraction), as the curve branch
+        // below: a height that is constant up to rounding leaves a last-bit residue in the normal, and the bounce
+        // direction follows it.
+        let o=load_word(p(17u)+12u);let normal_in=n;let Rx=bump_cross(dPdy,normal_in,o);let Ry=bump_cross(normal_in,dPdx,o);
+        let det=bump_dot(dPdx,Rx,o);let surfgrad=bump_fence3(bump_fence3(bump_fence(h_x-h_c,o)*Rx,o)+bump_fence3(bump_fence(h_y-h_c,o)*Ry,o),o);let absdet=abs(det);
 //#endif
 //#if CURVES
         let o=cv_order();let normal_in=n;let Rx=cv_cross(dPdy,normal_in,o);let Ry=cv_cross(normal_in,dPdx,o);
@@ -48,9 +60,9 @@ fn svm_set_bump(s:ptr<function,SvmState>,node:u32){
         strength=max(strength,0.0);
         let sign=select(1.0,-1.0,det<0.0);
 //#if !CURVES
-        n=surface_normalize(heap_float(node+N_SetBump_bump_filter_width)*absdet*normal_in-scale*sign*surfgrad);
+        n=surface_normalize(bump_fence3(bump_fence3(bump_fence(heap_float(node+N_SetBump_bump_filter_width)*absdet,o)*normal_in,o)-bump_fence3(bump_fence(scale*sign,o)*surfgrad,o),o));
         if(all(n==vec3<f32>(0))){n=normal_in;}
-        else{n=surface_native_normalize(strength*n+(1.0-strength)*normal_in);}
+        else{n=surface_native_normalize(bump_fence3(bump_fence3(strength*n,o)+bump_fence3(bump_fence(1.0-strength,o)*normal_in,o),o));}
 //#endif
 //#if CURVES
         n=surface_normalize(cvb3(cvb3(cvb(heap_float(node+N_SetBump_bump_filter_width)*absdet,o)*normal_in,o)-cvb3(cvb(scale*sign,o)*surfgrad,o),o));

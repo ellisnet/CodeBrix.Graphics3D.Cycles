@@ -245,6 +245,30 @@ side, with and without the importance map, with the light tree, with sun guiding
 heterogeneous medium boxes), two background light objects (`two-background-lights*`) and the Ray Portal BSDF on a panel
 in front of the spheres (`ray-portal*`).
 
+## Scenes added with the re-pin to Cycles v5.3.0
+
+One scene per behaviour of the release that no committed scene reached (native/DEVICE.md, "Re-pin to Cycles v5.3.0").
+Each is written by its family's script, whose `--check` still reproduces every committed scene:
+
+- `author_bsdf.py`: `bsdf/glass-anisotropic` (the Glass BSDF's Anisotropy, Rotation and Tangent: GGX with a rotated
+  tangent, Beckmann with negative anisotropy, a tinted GGX), `bsdf/principled-anisotropic-transmission` (the Principled
+  BSDF's Anisotropic input on its transmission lobe) and `bsdf/principled-layers` (a tinted fractional coat, an emissive
+  base under sheen and a tinted coat, rough thin-wall transmission).
+- `author_shadow_linking.py`, `author_curves_b.py`, `author_points.py`: `shadow-linking/emissive-textured`,
+  `curves-b/linking-emissive-textured` and `points/shadow-linking-emissive-textured` (shadow-linked emitters whose
+  emission is not constant: a panel, a point lamp, curves and points).
+- `author_passes.py`, `author_cameras_b.py`: `passes/denoising-motion-transparent` and
+  `passes/denoising-motion-transparent-orthographic` (denoising backward motion and depth with no data pass, through
+  veils below and above the pass alpha threshold, over the background; the second through a moving orthographic camera).
+- `author_volumes_b.py`, `author_volumes_c.py`: `volumes/denoising-depth-bounds` (the denoising depth pass through a
+  medium's bounds) and `volumes/mixed-phase-world` (two phase lobes lit only by a gradient world through a background
+  light; its `shade_volume_light` is above the pipeline size guard, a warning, and under the compile envelope).
+- `author_surface_nodes.py`: `surface-nodes/attribute-standard-name` (plain attributes named `color`, `pointiness` and
+  `uv`, which an Attribute node and the Texture Coordinate node now find).
+
+The description of `passes/motion` still says "and background motion vectors"; the release writes no background motion
+to the Motion pass, and the committed scene file is left as it is (its bytes are its identity).
+
 ## Denoising scenes (`scenes/denoise/`)
 
 `author_denoise.py` (`--check`) writes `scenes/denoise/` from committed scenes:

@@ -74,8 +74,11 @@ public sealed partial class DenoiseParamsNode : CyclesNode
 /// </summary>
 public enum DenoiseParamsType
 {
-    /// <summary>The native <c>openimageio</c> item.</summary>
-    Openimageio = 4,
+    /// <summary>The native <c>dlss</c> item.</summary>
+    Dlss = 8,
+
+    /// <summary>The native <c>openimagedenoise</c> item.</summary>
+    Openimagedenoise = 4,
 
     /// <summary>The native <c>optix</c> item.</summary>
     Optix = 2

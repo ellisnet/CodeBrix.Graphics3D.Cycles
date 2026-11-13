@@ -674,7 +674,7 @@ fn vh_shadow_next(hs:ptr<function,VhShadow>,index:u32,origin:vec3<f32>,direction
                 (*hs).post_ok=(*hs).o.node!=NONE&&(*hs).o.t.x<(*hs).o.t.y;(*hs).lstage=7u;continue;
             }
             let object=vh_stack_object(index,(*hs).set_i);
-            if(object==(*hs).set_skip_object&&shader==(*hs).set_skip_shader){(*hs).set_i++;continue;}
+            if(object==(*hs).set_skip_object&&shader==(*hs).set_skip_shader){var o=(*hs).o;vh_octree_skip(&o);(*hs).o=o;(*hs).set_i++;continue;}
             (*hs).set_local=vlp_local(index,origin,direction,ray_tmax,(*hs).o.t.x,object,shader);
             if(vlp_estimates(0u,shader)){(*hs).est=vlp_start((*hs).set_local.t,object,shader,(*hs).sample,(*hs).pixel,(*hs).offset,6u);(*hs).estimating=true;(*hs).lstage=9u;continue;}
             (*hs).est.ext=vh_extrema((*hs).set_local);(*hs).lstage=6u;

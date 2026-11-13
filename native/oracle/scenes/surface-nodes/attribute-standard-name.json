@@ -1,0 +1,581 @@
+{
+ "cbcOracleScene": 1,
+ "id": "surface-nodes/attribute-standard-name",
+ "description": "Plain (not standard) attributes whose names are standard attribute names: \"color\" and \"pointiness\" read by Attribute nodes, and a corner float2 \"uv\" read as the UV map by the Texture Coordinate node",
+ "sourceFixture": "native/cycles/raytrace_nodes_fixture.h and bsdf_fixture.h (the same nodes)",
+ "render": {
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "filter_glossy": 0.0,
+    "caustics_reflective": true,
+    "caustics_refractive": true
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 0.9,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "handle": "wall",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.62,
+        0.65
+       ],
+       "roughness": 0.25
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "floor-material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.5,
+        0.45,
+        0.35
+       ],
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "named",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "c",
+      "type": "attribute",
+      "set": {
+       "attribute": "color"
+      }
+     },
+     {
+      "handle": "p",
+      "type": "attribute",
+      "set": {
+       "attribute": "pointiness"
+      }
+     },
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.0
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.2,
+        0.5,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "a",
+      "type": "add_closure",
+      "set": {}
+     }
+    ],
+    "connect": [
+     [
+      "c",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "p",
+      "Fac",
+      "e",
+      "Strength"
+     ],
+     [
+      "d",
+      "BSDF",
+      "a",
+      "Closure1"
+     ],
+     [
+      "e",
+      "Emission",
+      "a",
+      "Closure2"
+     ],
+     [
+      "a",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "mapped",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "t",
+      "type": "texture_coordinate",
+      "set": {}
+     },
+     {
+      "handle": "k",
+      "type": "checker_texture",
+      "set": {
+       "scale": 4.0,
+       "color1": [
+        0.9,
+        0.7,
+        0.1
+       ],
+       "color2": [
+        0.1,
+        0.3,
+        0.7
+       ]
+      }
+     },
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "t",
+      "UV",
+      "k",
+      "Vector"
+     ],
+     [
+      "k",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "back",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -3,
+     3,
+     4,
+     -3,
+     3,
+     4,
+     3,
+     3,
+     -4,
+     3,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "wall"
+    ]
+   }
+  },
+  {
+   "handle": "back-object",
+   "create": "object",
+   "set": {
+    "geometry": "back"
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -2,
+     -2,
+     4,
+     -2,
+     -2,
+     4,
+     -2,
+     3,
+     -4,
+     -2,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "floor-material"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor"
+   }
+  },
+  {
+   "handle": "panel-a",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -3.6,
+     -2,
+     1,
+     -0.2,
+     -2,
+     1,
+     -0.2,
+     1.5,
+     1,
+     -3.6,
+     1.5,
+     1
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ],
+    "attributes": [
+     {
+      "name": "color",
+      "value": "color",
+      "domain": "vertex",
+      "data": [
+       0.9,
+       0.1,
+       0.1,
+       0.1,
+       0.8,
+       0.2,
+       0.2,
+       0.3,
+       0.9,
+       0.8,
+       0.8,
+       0.1
+      ]
+     },
+     {
+      "name": "pointiness",
+      "value": "float",
+      "domain": "vertex",
+      "data": [
+       0.0,
+       0.25,
+       1.0,
+       0.5
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "named"
+    ]
+   }
+  },
+  {
+   "handle": "panel-a-object",
+   "create": "object",
+   "set": {
+    "geometry": "panel-a"
+   }
+  },
+  {
+   "handle": "panel-b",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     0.2,
+     -2,
+     1,
+     3.6,
+     -2,
+     1,
+     3.6,
+     1.5,
+     1,
+     0.2,
+     1.5,
+     1
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "data": [
+       0.0,
+       0.0,
+       1.0,
+       0.0,
+       1.0,
+       1.0,
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       0.0,
+       1.0
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "mapped"
+    ]
+   }
+  },
+  {
+   "handle": "panel-b-object",
+   "create": "object",
+   "set": {
+    "geometry": "panel-b"
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.3,
+        0.35,
+        0.42
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "emitter",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "lamp",
+   "create": "pointlight",
+   "set": {
+    "radius": 0.45,
+    "is_sphere": true,
+    "use_mis": true,
+    "strength": [
+     110,
+     90,
+     70
+    ],
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "lamp-object",
+   "create": "object",
+   "set": {
+    "geometry": "lamp",
+    "tfm": [
+     1.0,
+     0.0,
+     0.0,
+     2.2,
+     0.0,
+     1.0,
+     0.0,
+     2.0,
+     0.0,
+     0.0,
+     1.0,
+     -2.0
+    ]
+   }
+  }
+ ],
+ "images": []
+}

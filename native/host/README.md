@@ -65,8 +65,11 @@ rendering returns scene-linear RGBA with a lower-left origin. Failed or cancelle
 renders preserve the caller's output. Destruction and managed `Dispose` cancel
 active work and wait for cleanup. Color configuration is process-wide: select an
 OCIO configuration before creating hosts or after all host lifetimes and in-flight
-calls finish. The generated Cycles overlay invalidates derived color caches by
-full configuration identity. The pinned third-party snapshot remains unchanged.
+calls finish. The pinned Cycles invalidates its derived color caches when the
+OpenColorIO configuration object changes, also when the new configuration keeps
+the scene-linear name of the old one; the overlay hands `util/colorspace.cpp`
+through unchanged, and the host gate's reload rounds check it. The pinned
+third-party snapshot remains unchanged.
 
 ## Phase D ABI additions (maintainer notes)
 
@@ -115,7 +118,7 @@ GPU ABI test keeps the area light on the CPU and area lights stay covered by the
 broad- and transparent-lighting gates (phaseE3 report).
 
 `native/tests/host/scene_edit_consumer.c` (`codebrix_host_scene_edit_test`) and
-`native/tools/scene_edit_gate.py` check the edits (13 scenarios, CPU bit for bit
+`native/tools/scene_edit_gate.py` check the edits (14 scenarios, CPU bit for bit
 against a fresh host, WebGPU with the practical criterion, each sequence replayed
 in a new host) and the recovery after a rejected volume majorant pass and custom (OSL)
 camera:

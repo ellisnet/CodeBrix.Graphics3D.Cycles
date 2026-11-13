@@ -256,6 +256,12 @@ def mixed_scenes():
     out['linking-emissive.json'] = derived('linking-emissive', 'shadow-linking/blockers', 'Emissive curves in a shadow set: the dedicated light kernels pick and shade them, with no forward MIS on a curve',
         hair('tuft', 'panel-emission', 'thick', center=(0.6, -1.0, 1.6), spread=1.0, height=2.0), object_with(place('tuft-object', 'tuft'), shadow_set_membership=5),
         hair('ribbons', 'panel-emission', 'ribbon', seed=1.3, center=(-1.4, -1.0, 2.2), spread=0.8, height=1.8), object_with(place('ribbons-object', 'ribbons'), shadow_set_membership=3))
+    # Emission that is not constant on the curves: the dedicated shadow path evaluates the shader at the picked curve hit (its u and v).
+    glow = room.shader('curve-glow', [{'handle': 'g', 'type': 'geometry'}, {'handle': 'a', 'type': 'vector_math', 'set': {'math_type': 'absolute'}}, {'handle': 'e', 'type': 'emission', 'set': {'strength': 4.0}}],
+        [['g', 'Parametric', 'a', 'Vector1'], ['a', 'Vector', 'e', 'Color'], ['e', 'Emission', 'output', 'Surface']])
+    out['linking-emissive-textured.json'] = derived('linking-emissive-textured', 'shadow-linking/blockers', 'Curves in a shadow set whose emission follows the hit\'s parametric coordinates: the dedicated light kernels pick them and the light shader is evaluated at the picked hit', glow,
+        hair('tuft', 'curve-glow', 'thick', center=(0.6, -1.0, 1.6), spread=1.0, height=2.0), object_with(place('tuft-object', 'tuft'), shadow_set_membership=5),
+        hair('ribbons', 'curve-glow', 'ribbon', seed=1.3, center=(-1.4, -1.0, 2.2), spread=0.8, height=1.8), object_with(place('ribbons-object', 'ribbons'), shadow_set_membership=3))
     out['linking-tree.json'] = derived('linking-tree', 'shadow-linking/light-tree', 'Shadow linking with the light tree and curves as blockers', matte(),
         hair('tuft', 'hair-matte', 'thick', center=(0.6, -1.0, 1.6), spread=1.0, height=2.0), object_with(place('tuft-object', 'tuft'), blocker_shadow_set=1))
     return out

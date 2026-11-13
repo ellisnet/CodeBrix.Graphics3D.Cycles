@@ -5,7 +5,8 @@
 
 The heterogeneous box inside a world volume, with no background light object: the host supplies the background light
 that pinned Cycles builds the world volume's octree from (scene/volume.cpp, VolumeManager::initialize_octree); a
-heterogeneous world volume alone and with the heterogeneous box inside it.
+heterogeneous world volume alone and with the heterogeneous box inside it. Two Henyey-Greenstein lobes of different
+anisotropy in one medium lit by the world (the phase-sampled path stores the pdf of all the phase closures).
 Usage: python3 native/oracle/scenes/author_volumes_c.py [--check]."""
 import argparse
 import json
@@ -26,8 +27,33 @@ def heterogeneous_world(document):
     return document
 
 
+# Two scattering lobes of different anisotropy and density in one shader (two phase closures, different sample weights).
+MIXED_PHASES = ([{'handle': 'a', 'type': 'absorption_volume', 'set': {'density': 0.05, 'color': [0.8, 0.65, 0.4]}},
+                 {'handle': 's', 'type': 'scatter_volume', 'set': {'density': 0.3, 'color': [0.75, 0.8, 0.9], 'anisotropy': 0.75}},
+                 {'handle': 'b', 'type': 'scatter_volume', 'set': {'density': 0.15, 'color': [0.9, 0.8, 0.7], 'anisotropy': -0.5}},
+                 {'handle': 'add', 'type': 'add_closure'}, {'handle': 'add2', 'type': 'add_closure'}],
+                [['a', 'Volume', 'add', 'Closure1'], ['s', 'Volume', 'add', 'Closure2'], ['add', 'Closure', 'add2', 'Closure1'], ['b', 'Volume', 'add2', 'Closure2'],
+                 ['add2', 'Closure', 'output', 'Volume']])
+
+
+def gradient_world(document):
+    """A linear gradient over the world direction as the background colour (a constant world leaves the background light
+    disabled, and its forward MIS with it)."""
+    world = next(n for n in document['nodes'] if n['handle'] == 'world')
+    world['graph'] = {'nodes': [{'handle': 'sky', 'type': 'gradient_texture', 'set': {'gradient_type': 'linear'}},
+                                {'handle': 'coordinates', 'type': 'texture_coordinate'},
+                                {'handle': 'b', 'type': 'background_shader', 'set': {'strength': 2.0}}],
+                      'connect': [['coordinates', 'Generated', 'sky', 'Vector'], ['sky', 'Color', 'b', 'Color'], ['b', 'Background', 'output', 'Surface']]}
+    return document
+
+
 def scenes():
     return {
+        'mixed-phase-world.json': gradient_world(volumes.scene(
+            'volumes/mixed-phase-world',
+            'The medium box with two Henyey-Greenstein lobes (anisotropy 0.75 and -0.5) lit only by a gradient world through a '
+            'background light with MIS: the phase-sampled path stores the pdf of both phase closures for the forward MIS weight',
+            lamp='none', world_light=True, graph=MIXED_PHASES)),
         'heterogeneous-world-volume.json': heterogeneous_world(volumes.scene(
             'volumes/heterogeneous-world-volume',
             'A heterogeneous world volume (scatter density 0.03 times a Noise Texture) around the homogeneous box, point light '

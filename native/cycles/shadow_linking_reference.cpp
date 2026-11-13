@@ -69,6 +69,8 @@ DedicatedRow original_dedicated_row(ccl::DeviceScene &scene,const ccl::Integrato
   r.s_bounce=s.shadow_path.bounce;r.s_diffuse=s.shadow_path.diffuse_bounce;r.s_glossy=s.shadow_path.glossy_bounce;r.s_transmission=s.shadow_path.transmission_bounce;r.s_transparent=s.shadow_path.transparent_bounce;
   r.s_volume_bounds=s.shadow_path.volume_bounds_bounce;r.s_group=s.shadow_path.lightgroup;r.s_flag=s.shadow_path.flag;r.s_visibility=s.shadow_path.visibility;r.s_pixel=s.shadow_path.render_pixel_index;
   r.s_sample=s.shadow_path.sample;r.s_rng_pixel=s.shadow_path.rng_pixel;r.s_rng_offset=s.shadow_path.rng_offset;r.s_average=s.shadow_path.bsdf_eval_average;
+  if(r.shadow_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE){const auto &light_isect=s.shadow_isect[0];
+    r.s_isect_t=light_isect.t;r.s_isect_u=light_isect.u;r.s_isect_v=light_isect.v;r.s_isect_object=light_isect.object;r.s_isect_prim=light_isect.prim;r.s_isect_type=light_isect.type;}
   if(r.shadow_kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW){auto shadow=std::make_unique<IntegratorShadowStateCPU>(s);
     integrator_intersect_shadow(kg,shadow.get());r.shadow_after_intersect=shadow->shadow_path.queued_kernel;r.shadow_hits=shadow->shadow_path.packed_num_hits;}
   return r;

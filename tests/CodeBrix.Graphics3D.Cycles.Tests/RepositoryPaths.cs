@@ -42,7 +42,8 @@ internal static class RepositoryPaths
 
     // Where native/tools/build_cycles_windows.py places the Windows native host (beside the
     // dependency DLLs, the WebGPU runtime and DXC). On a device that only tests (win-arm64 is
-    // cross-built on x64), the reviewed payload in native/binaries/<rid>/runtime is used instead.
+    // cross-built on x64), the reviewed payload in native/binaries/<rid>/runtime is used instead,
+    // when one is staged (the folder is absent until the platform is rebuilt on the pinned source).
     internal static string WindowsNativeHostLibrary
     {
         get

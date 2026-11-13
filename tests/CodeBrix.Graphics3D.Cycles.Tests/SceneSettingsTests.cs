@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Text.RegularExpressions;
 using CodeBrix.Graphics3D.Cycles.Generated.Geometry;
 using CodeBrix.Graphics3D.Cycles.Generated.Scene;
 using CodeBrix.Graphics3D.Cycles.Generated.Shaders;
@@ -157,6 +160,116 @@ public class SceneSettingsTests
         CyclesException error = render.Should().Throw<CyclesException>().Which;
         error.NativeStatus.Should().Be(NativeStatus.Unsupported);
         error.Message.Should().Contain("upscale");
+    }
+
+    [Fact]
+    public void Dispersion_is_refused_by_name_exactly_when_the_scale_and_the_transmission_weight_are_both_set_or_linked()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        (ShaderNode material, _, _) = TestScenes.BuildTyped(scene);
+        PrincipledBsdfNode principled = material.Add<PrincipledBsdfNode>();
+        ValueNode value = material.Add<ValueNode>();
+        material.Connect(principled.BsdfOutput, material.Output.SurfaceInput);
+        float scaleByDefault = principled.TransmissionDispersionScale;
+        FilmBuffer withoutDispersion = scene.Render(Small);
+
+        //Act
+        principled.TransmissionDispersionScale = .5f;
+        FilmBuffer withoutTransmission = scene.Render(Small);
+        principled.TransmissionWeight = 1f;
+        Action constant = () => scene.Render(Small);
+        Action linked = () =>
+        {
+            principled.TransmissionDispersionScale = 0f;
+            material.Connect(value.ValueOutput, principled.TransmissionDispersionScaleInput);
+            scene.Render(Small);
+        };
+
+        //Assert
+        scaleByDefault.Should().Be(0f);
+        withoutDispersion.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        withoutTransmission.Span.SequenceEqual(withoutDispersion.Span).Should().BeTrue();
+        CyclesException error = constant.Should().Throw<CyclesException>().Which;
+        error.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        error.Message.Should().Contain("Dispersion").And.Contain("Transmission Dispersion Scale");
+        linked.Should().Throw<CyclesException>().Which.Message.Should().Contain("Dispersion");
+        principled.TransmissionWeight = 0f;
+        FilmBuffer linkedScaleWithoutTransmission = scene.Render(Small);
+        linkedScaleWithoutTransmission.Span.SequenceEqual(withoutDispersion.Span).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Dlss_denoiser_is_refused_by_name_when_denoising()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        TestScenes.BuildTyped(scene);
+        scene.Integrator.DenoiserType = IntegratorDenoiserType.Dlss;
+        FilmBuffer withoutDenoising = scene.Render(Small);
+        scene.Integrator.UseDenoise = true;
+
+        //Act
+        Action render = () => scene.Render(Small);
+        Action again = () => scene.Render(Small);
+
+        //Assert
+        withoutDenoising.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        CyclesException error = render.Should().Throw<CyclesException>().Which;
+        error.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        error.Message.Should().Contain("dlss");
+        scene.Integrator.DenoiserType = IntegratorDenoiserType.Openimagedenoise;
+        again.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Point_cloud_rendered_as_gaussian_splats_is_refused_by_name()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        TestScenes.BuildTyped(scene);
+        PointCloudNode points = scene.CreatePointCloud([-.5f, 0f, 0f, .5f, 0f, 0f], [.3f, .2f]);
+        scene.CreateObject(points);
+        PointCloudRenderAs renderAsByDefault = points.RenderAs;
+        points.RenderAs = PointCloudRenderAs.GaussianSplats;
+
+        //Act
+        Action render = () => scene.Render(Small);
+        Action again = () => scene.Render(Small);
+
+        //Assert
+        renderAsByDefault.Should().Be(PointCloudRenderAs.Points);
+        CyclesException error = render.Should().Throw<CyclesException>().Which;
+        error.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        error.Message.Should().Contain("Gaussian splats");
+        points.RenderAs = PointCloudRenderAs.Points;
+        again.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Filter_glossy_is_one_by_default_and_zero_renders_a_different_glossy_film()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        (ShaderNode material, _, _) = TestScenes.BuildTyped(scene);
+        scene.Integrator.CausticsReflective = true;
+        GlossyBsdfNode glossy = material.Add<GlossyBsdfNode>();
+        glossy.Roughness = .05f;
+        material.Connect(glossy.BsdfOutput, material.Output.SurfaceInput);
+        ShaderNode floorMaterial = scene.CreateShader();
+        DiffuseBsdfNode floorDiffuse = floorMaterial.Add<DiffuseBsdfNode>();
+        floorMaterial.Connect(floorDiffuse.BsdfOutput, floorMaterial.Output.SurfaceInput);
+        scene.CreateObject(scene.CreateMesh([-4, -1.2f, -3, 4, -1.2f, -3, 4, -1.2f, 3, -4, -1.2f, 3], [0, 1, 2, 0, 2, 3], floorMaterial));
+
+        //Act
+        float filterByDefault = scene.Integrator.FilterGlossy;
+        FilmBuffer filtered = scene.Render(Small);
+        scene.Integrator.FilterGlossy = 0f;
+        FilmBuffer unfiltered = scene.Render(Small);
+
+        //Assert
+        filterByDefault.Should().Be(1f);
+        unfiltered.Span.SequenceEqual(filtered.Span).Should().BeFalse();
     }
 
     [Fact]
@@ -450,5 +563,45 @@ public class SceneSettingsTests
         scene.Integrator.DenoiserPasses.Should().Be(1);
         scene.Film.CryptomattePasses.Should().Be(FilmCryptomattePasses.Object | FilmCryptomattePasses.Material);
         typeof(FilmCryptomattePasses).IsDefined(typeof(FlagsAttribute), false).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Denoiser_guides_are_exactly_the_denoiser_pass_bits_of_the_pinned_cycles()
+    {
+        //Arrange
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        string header = File.ReadAllText(Path.Combine(RepositoryPaths.Root, "third_party", "cycles", "src", "device", "denoise.h"));
+
+        //Act
+        Dictionary<string, int> native = Regex.Matches(header, @"DENOISER_PASS_(\w+) = (?:(\d+) << (\d+)|0),")
+            .ToDictionary(match => match.Groups[1].Value.Replace("_", ""), match => match.Groups[2].Success ? int.Parse(match.Groups[2].Value) << int.Parse(match.Groups[3].Value) : 0);
+        Dictionary<string, int> managed = Enum.GetValues<DenoiserGuides>().ToDictionary(guide => guide.ToString().ToUpperInvariant(), guide => (int)guide);
+
+        //Assert
+        native.Should().NotBeEmpty();
+        managed.Should().BeEquivalentTo(native);
+    }
+
+    [Fact]
+    public void Denoiser_passes_bit_that_is_no_guide_is_refused_by_name_when_denoising()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        TestScenes.BuildTyped(scene);
+        scene.Integrator.DenoiserPasses = (int)(DenoiserGuides.Albedo | DenoiserGuides.Normal) | 128;
+        FilmBuffer withoutDenoising = scene.Render(Small);
+        scene.Integrator.UseDenoise = true;
+
+        //Act
+        Action render = () => scene.Render(Small);
+        Action again = () => scene.Render(Small);
+
+        //Assert
+        withoutDenoising.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        CyclesException error = render.Should().Throw<CyclesException>().Which;
+        error.NativeStatus.Should().Be(NativeStatus.Invalid);
+        error.Message.Should().Contain("denoiser_passes");
+        scene.Integrator.DenoiserGuides = DenoiserGuides.Albedo | DenoiserGuides.Normal | DenoiserGuides.SpecularMotion;
+        again.Should().NotThrow();
     }
 }

@@ -66,7 +66,7 @@ fn fp_albedo_parts(sd:SurfaceData,c:SvmClosure)->AlbedoParts{
         // One table read: ggx_gen_schlick_ior_s at z = sqrt(|(ior - 1) / (ior + 1)|), or ggx_gen_schlick_s at 0.5 (F82).
         var z=0.5;var table=data_word(FP_D_ggx_gen_schlick_s);
         if(!f82){z=rounded_sqrt(abs(rounded_divide(rounded_add(c.ior,-1.0),rounded_add(c.ior,1.0))));table=data_word(FP_D_ggx_gen_schlick_ior_s);}
-        let s=microfacet_lut3(&st,rough,cos_ni,z,table);
+        let s=microfacet_lut3(&st,rough,rounded_sqrt(max(cos_ni,0.0)),z,table);
         if(f82){parts.r=fp_mix3(c.multiscatter,vec3<f32>(1),s);return parts;}
         if(schlick){
             let f0=select(c.multiscatter,vec3<f32>(c.fresnel_f0),model==0u);
@@ -255,10 +255,14 @@ fn film_cryptomatte_slots(buffer:u32,slots:u32,id:f32,weight:f32){
 }
 //#endif
 // film_write_data_passes for one surface hit (pinned order).
-fn film_data_passes(index:u32,sd:SurfaceData,r:SvmResult){
-    var flag=state_word(S_path_flag,index);
+// path_flag is the path's flag as integrate_surface read it before this function (the caller's copy).
+fn film_data_passes(index:u32,path_flag:u32,sd:SurfaceData,r:SvmResult){
+    var flag=path_flag;
     if((flag&PATH_RAY_TRANSPARENT_BACKGROUND)==0u||(flag&FP_PATH_RAY_SHADOW_CATCHER_PASS)!=0u){return;}
-    let pass_flag=data_word(D_film_pass_flag);if(pass_flag==0u){return;}
+//#if FILM_MOTION else     let pass_flag=data_word(D_film_pass_flag);if(pass_flag==0u){return;}
+    // With only the denoising backward motion feature the function continues for its PATH_RAY_SINGLE_PASS_DONE bookkeeping.
+    let pass_flag=data_word(D_film_pass_flag);if(pass_flag==0u&&data_word(FPM_D_pass_denoising_backward_motion)==PASS_NONE){return;}
+//#endif
     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);let base=p(4u)+pixel*stride*4u;
     // surface_shader_transparency / surface_shader_alpha (SD_HAS_ONLY_VOLUME never reaches this stage).
     var transparency=vec3<f32>(0);if((r.runtime_flag&(FP_SR_TRANSPARENT|FP_SR_RAY_PORTAL))!=0u){transparency=r.transparency;}
@@ -348,6 +352,27 @@ fn film_data_passes(index:u32,sd:SurfaceData,r:SvmResult){
     }
 }
 //#endif
+//#if !FILM_DATA_PASSES
+//#if FILM_DENOISING
+//#if FILM_MOTION
+// film_write_data_passes when the film holds none of the surface stage's data passes but holds the denoising backward
+// motion feature: no film write, only the PATH_RAY_SINGLE_PASS_DONE bookkeeping of the pinned function, which that
+// feature (here and at the background) tests on the flag from before this hit. Without the feature in the film the
+// surface stage's own copies keep the bookkeeping (wavefront_surface.wgsl sc_data_passes, aov_single_pass_done), and
+// they leave it to this function when the feature is there.
+fn film_data_passes_bookkeeping(index:u32,path_flag:u32,r:SvmResult){
+    if((path_flag&PATH_RAY_TRANSPARENT_BACKGROUND)==0u||(path_flag&FP_PATH_RAY_SHADOW_CATCHER_PASS)!=0u){return;}
+    if(data_word(FPM_D_pass_denoising_backward_motion)==PASS_NONE||(path_flag&PATH_RAY_SINGLE_PASS_DONE)!=0u){return;}
+    let threshold=data_float(FP_D_pass_alpha_threshold);
+    if((r.runtime_flag&(FP_SR_TRANSPARENT|FP_SR_RAY_PORTAL))!=0u&&threshold!=0.0){
+        let alpha=clamp(vec3<f32>(1)-r.transparency,vec3<f32>(0),vec3<f32>(1));
+        if(!(fp_average(alpha)>=threshold)){return;}
+    }
+    state_u32(S_path_flag,index,path_flag|PATH_RAY_SINGLE_PASS_DONE);
+}
+//#endif
+//#endif
+//#endif
 //#if FILM_DENOISING
 // smoothstep (util/math_base.h), each operation rounded once.
 fn fp_smoothstep(edge0:f32,edge1:f32,x:f32)->f32{
@@ -356,14 +381,35 @@ fn fp_smoothstep(edge0:f32,edge1:f32,x:f32)->f32{
 }
 fn fp_finite3(v:vec3<f32>)->vec3<f32>{return select(v,vec3<f32>(0),(bitcast<vec3<u32>>(v)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));}
 fn fp_finite(v:f32)->f32{return select(v,0.0,(bitcast<u32>(v)&0x7f800000u)==0x7f800000u);}
-// film_write_denoising_features_surface (the motion features are refused with the motion pass).
-fn film_denoising_surface(index:u32,sd:SurfaceData,r:SvmResult){
+// denoising_depth_compute: the ray length minus tmin, or the camera z depth step, with the near clip distance on the
+// first segment of a camera path, times the average denoising feature throughput.
+fn fp_denoising_depth(index:u32,sd:SurfaceData,throughput:vec3<f32>,follow:bool)->f32{
+    let d=rounded_add(sd.ray_length,-heap_float(state_address(S_ray_tmin,index,4u)));var depth=d;
+    if(!follow){let prev=rounded_add3(sd.P,sd.wi*d);
+//#if CAMERA_PROJECTIONS else         depth=rounded_add(surface_transform_point(p(6u)+FP_D_worldtocamera,sd.P).z,-surface_transform_point(p(6u)+FP_D_worldtocamera,prev).z);}
+        depth=rounded_add(fp_z_depth(sd.P),-fp_z_depth(prev));}
+//#endif
+    // The near clip distance, for the first segment of a camera path only (not for an orthographic camera's
+    // negative near clip): a ray length through the near clip plane when the depth is a ray length.
+    let near=data_float(D_cam_nearclip);
+    if(state_half(S_path_bounce,index)==0u&&state_half(S_path_transparent_bounce,index)==0u&&state_half(S_path_volume_bounds_bounce,index)==0u&&near>0.0){
+        if(follow&&data_word(D_cam_type)==DN_CAMERA_PERSPECTIVE){
+            let t=p(6u)+FP_D_cameratoworld;let camD=vec3<f32>(heap_float(t+8u),heap_float(t+24u),heap_float(t+40u));
+            depth=rounded_add(depth,rounded_divide(near,rounded_dot(-sd.wi,camD)));}
+        else{depth=rounded_add(depth,near);}
+    }
+    return fp_finite(depth*fp_average(throughput));
+}
+// film_write_denoising_features_surface. path_flag is the path's flag from before film_write_data_passes ran (the
+// caller's copy, as the pinned integrate_surface passes it), so the first hit of a path still sees
+// PATH_RAY_SINGLE_PASS_DONE clear and writes the backward motion feature.
+fn film_denoising_surface(index:u32,path_flag:u32,sd:SurfaceData,r:SvmResult){
 //#if CAMERA_PANORAMA_INVERSE
     // A panoramic camera's backward and specular motion features (mutually exclusive) share one camera_motion_vector call
     // site below, so direction_to_panorama is inlined once for both (pipeline size guard).
     var dn_motion_kind=0u;var dn_motion_in=array<vec3<f32>,3>();var dn_motion_depth=0.0;
 //#endif
-    var flag=state_word(S_path_flag,index);
+    let flag=path_flag;
     if((flag&DN_PATH_RAY_DENOISING_FEATURES)==0u||(flag&FP_PATH_RAY_SHADOW_CATCHER_PASS)!=0u){return;}
     let options=data_word(DN_D_denoising_pass_options_flag);let weighting=(options&DN_USE_ALBEDO_ROUGHNESS_WEIGHTING)!=0u;
     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);let base=p(4u)+pixel*stride*4u;
@@ -400,13 +446,7 @@ fn film_denoising_surface(index:u32,sd:SurfaceData,r:SvmResult){
     let throughput=heap_vec3(state_address(S_path_denoising_feature_throughput,index,12u));
     if(first||follow){
         if(data_word(DN_D_pass_denoising_depth)!=PASS_NONE){
-            // denoising_depth_compute: the ray length minus tmin, or the camera z depth step.
-            let d=rounded_add(sd.ray_length,-heap_float(state_address(S_ray_tmin,index,4u)));var depth=d;
-            if(!follow){let prev=rounded_add3(sd.P,sd.wi*d);
-//#if CAMERA_PROJECTIONS else                 depth=rounded_add(surface_transform_point(p(6u)+FP_D_worldtocamera,sd.P).z,-surface_transform_point(p(6u)+FP_D_worldtocamera,prev).z);}
-                depth=rounded_add(fp_z_depth(sd.P),-fp_z_depth(prev));}
-//#endif
-            film_add(base+data_word(DN_D_pass_denoising_depth)*4u,fp_finite(depth*fp_average(throughput)));
+            film_add(base+data_word(DN_D_pass_denoising_depth)*4u,fp_denoising_depth(index,sd,throughput,follow));
         }
         if(data_word(DN_D_pass_denoising_normal)!=PASS_NONE&&feature_weight>0.0){
             // Transform the normal into camera space.
@@ -424,7 +464,12 @@ fn film_denoising_surface(index:u32,sd:SurfaceData,r:SvmResult){
         if(data_word(DN_D_pass_denoising_specular_albedo)!=PASS_NONE){
             film_rgb(base,data_word(DN_D_pass_denoising_specular_albedo),fp_finite3(specular_albedo*throughput));}
 //#if FILM_MOTION
-        if(data_word(FPM_D_pass_denoising_backward_motion)!=PASS_NONE){
+        // Only one hit of a path writes the motion, with the logic of film_write_data_passes (which sets
+        // PATH_RAY_SINGLE_PASS_DONE after it): surface_shader_alpha against the pass alpha threshold.
+        var dn_alpha=vec3<f32>(1);if((r.runtime_flag&(FP_SR_TRANSPARENT|FP_SR_RAY_PORTAL))!=0u){dn_alpha=clamp(vec3<f32>(1)-r.transparency,vec3<f32>(0),vec3<f32>(1));}
+        let dn_threshold=data_float(FP_D_pass_alpha_threshold);
+        if(data_word(FPM_D_pass_denoising_backward_motion)!=PASS_NONE&&(flag&PATH_RAY_SINGLE_PASS_DONE)==0u&&
+           ((r.runtime_flag&(FP_SR_TRANSPARENT|FP_SR_RAY_PORTAL))==0u||dn_threshold==0.0||fp_average(dn_alpha)>=dn_threshold)){
             // primitive_motion_vector_backward_depth_delta: the motion vector and the camera-space depth step.
             let m=fp_motion_data(sd);if(m.error){return;}
             let center_cam=surface_transform_point(p(6u)+FP_D_worldtocamera,m.center);let pre_cam=surface_transform_point(p(6u)+FPM_D_motion_pass_pre,m.pre);
@@ -471,7 +516,16 @@ fn film_denoising_surface(index:u32,sd:SurfaceData,r:SvmResult){
     let deferred_any=deferred_albedo;
     let a=abs(deferred_any);
     if(max(max(a.x,a.y),a.z)>1e-4){if(!follow){deferred_albedo=transparent_albedo;}state_vec3(S_path_denoising_feature_throughput,index,throughput*deferred_albedo);}
-    else{flag&=~DN_PATH_RAY_DENOISING_FEATURES;state_u32(S_path_flag,index,flag);}
+    else{state_u32(S_path_flag,index,state_word(S_path_flag,index)&~DN_PATH_RAY_DENOISING_FEATURES);}
+}
+// film_write_denoising_features_surface_volume: the depth segment that ends at a volume-only surface (a volume's
+// bounds), before integrate_surface_volume_only_bounce counts the bounds bounce. As pinned, no path flag is tested.
+fn film_denoising_surface_volume(index:u32,sd:SurfaceData){
+    let offset=data_word(DN_D_pass_denoising_depth);if(offset==PASS_NONE){return;}
+    let follow=(data_word(DN_D_denoising_pass_options_flag)&DN_FOLLOW_REFLECTIONS)!=0u;
+    if(state_half(S_path_bounce,index)!=0u&&!follow){return;}
+    let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);
+    film_add(p(4u)+pixel*stride*4u+offset*4u,fp_denoising_depth(index,sd,heap_vec3(state_address(S_path_denoising_feature_throughput,index,12u)),follow));
 }
 //#endif
 // The surface stage's data passes and denoising features, between
@@ -485,11 +539,20 @@ fn film_denoising_surface(index:u32,sd:SurfaceData,r:SvmResult){
     // The subsurface exit point (ss_exit): integrate_surface skips film_write_data_passes and the denoising features.
     if((stage.sd.runtime_flag&SS_SR_EXIT_POINT)!=0u){return;}
 //#endif
+    // integrate_surface's path_flag: both functions take the flag from before either ran.
+    let path_flag=state_word(S_path_flag,index);
 //#if FILM_DATA_PASSES
-    film_data_passes(index,stage.sd,stage.r);
+    film_data_passes(index,path_flag,stage.sd,stage.r);
+//#endif
+//#if !FILM_DATA_PASSES
+//#if FILM_DENOISING
+//#if FILM_MOTION
+    film_data_passes_bookkeeping(index,path_flag,stage.r);
+//#endif
+//#endif
 //#endif
 //#if FILM_DENOISING
-    film_denoising_surface(index,stage.sd,stage.r);
+    film_denoising_surface(index,path_flag,stage.sd,stage.r);
 //#endif
 }
 //#endif
