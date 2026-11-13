@@ -135,6 +135,15 @@ it is recorded again. What the release ADDED, feature by feature:
 | Dispersion (the Principled BSDF's Transmission Dispersion Scale and Abbe Number) | Not available on any backend, Metal included: its CIE D65 data table is published under CC BY-SA 4.0 and is not imported, so the kernels are built without spectral sampling. Refused by name when the two inputs that enable it are both linked or not 0 | "Dispersion is not available: of the Principled BSDF inputs Transmission Dispersion Scale and Transmission Weight one must be 0 and unlinked (this library renders without spectral sampling)" |
 | The dlss denoiser | Not available on any backend: never built (it needs a vendor SDK that is not part of this repository) | "Unsupported feature: the dlss denoiser is not available in this library (use openimagedenoise)" |
 
+Accepted deviations at this release (the maintainer's rulings, 2026-11-13; no tolerance, scene or comparator
+changed). Three corpus scenes fail narrowly on the WGSL device against the v5.3.0 CPU films, each at one pixel:
+
+| Scene | What differs | Cause | native/DEVICE.md |
+| --- | --- | --- | --- |
+| `passes/cryptomatte` | One pixel of the material layer: two ids in the other slot order across the `CryptoMaterial00`/`CryptoMaterial01` boundary, the same ids and weights (0.25 and 0.125) | The pinned post-process sorts only the first cryptomatte layer; the other layers keep slot-claim order, which follows path scheduling, and the release changed when camera paths are regenerated (a quarter of the paths active instead of a half) | item 44 |
+| `hair/chiang-absorption-thick` | 1 practical failure at one pixel, 1.84 times the tolerance | At one hair hit the oracle's glibc `logf` is one unit in the last place off the correctly rounded value the device computes; three hair-to-hair bounces amplify it. glibc's `logf` cannot be copied into this repository | item 189 |
+| `combinations/cov-camera-motion-heterogeneous-linking-catcher` | 3 practical failures at one pixel of the Shadow Catcher Matte pass | At one sample the CPU's primary ray transmits through the heterogeneous medium and the device's scatters; the CPU value is itself unstable in the last bit of the scene (16-sample sum between 3.14 and 4.14 as the medium box moves by one to six units in the last place; 3.94 unmoved, device 3.14) | item 190 |
+
 The open items are native/DEVICE.md items 185 to 187. Effect on the parity
 estimate below (INFERENCE from the pinned header's node list, not a re-run of
 the method): the release removed the two Vertex Color opcodes (the node now

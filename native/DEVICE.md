@@ -3135,9 +3135,26 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    stored in the other slot order than the CPU film (`slotOrderDiff` 1, judged as one practical failure per pass).
    That was one full corpus run under heavy machine load; an earlier corpus run of the same tree and three isolated
    repeats on an idle machine are perfect (`slotOrderDiff` 0; maximum 4.58e-5, 0 practical; the twelve cryptomatte
-   pass files bitwise identical across the three repeats). Inference: intermittent, not a deterministic error
-   (equal-weight ids accumulated in a different order are the likely cause). It stays open and is watched in the final
-   Linux pass.
+   pass files bitwise identical across the three repeats). The inference made then, that equal-weight ids were
+   accumulated in a different order, was WRONG and is corrected here.
+   **Cause established at Cycles v5.3.0; ACCEPTED deviation (the maintainer's ruling, 2026-11-13).** FACT: at this
+   release the difference is deterministic: one pixel, (28,10), of the material layer. CPU slots: (7f59c61a 0.625)
+   (0ce33ba4 0.25) (c7c244dc 0.125); WebGPU slots: (7f59c61a 0.625) (c7c244dc 0.125) (0ce33ba4 0.25). The same three ids
+   and the same weights; the weights of the two ids that swap are 0.25 and 0.125, not equal. They sit on either side of
+   the boundary between the `CryptoMaterial00` and `CryptoMaterial01` passes, and the comparator judges each pass as its
+   own id set, so it reports one practical failure in each (`slotOrderDiff` 1 each). The combined film and the object
+   and asset layers are perfect. Cause (FACT, read): the pinned post-process (`film_cryptomatte_post`,
+   `kernel/film/cryptomatte_passes.h`) sorts `2 * cryptomatte_depth` slots starting at `pass_cryptomatte`, which is the
+   first layer only (object); the material and asset layers keep the order in which `film_write_cryptomatte_slots`
+   claimed their slots (81 pixels of the CPU film's material layer are not in descending weight order). On the CPU the
+   claim order is the sample order; on a wavefront device it is the order in which the samples' first hits are shaded,
+   which follows path scheduling. The release changed that scheduling: the pinned scheduler regenerates camera paths
+   when fewer than a quarter of the maximum number of paths are active, where it was a half (upstream 27b4ded61,
+   `min_num_active_main_paths_ = max_num_paths_ / 4`). Experiment (FACT; a temporary build with the half restored,
+   removed again): pixel (28,10) then has the CPU's order, and of two repeats one differs at another pixel and one equals
+   the CPU exactly, so the order follows scheduling, its timing included. There is no device arithmetic to correct, and
+   sorting every layer on the device would not match the CPU either, which does not sort them. The scene, the
+   comparator and the criterion are unchanged; the corpus reports this scene's two material passes as failing.
 45. **Area light spread clamp in exact arithmetic (`area_region`); device validation owed.** `area_region`
    (`wavefront_emitters.wgsl`, pinned `area_light_spread_clamp_light`) used plain WGSL arithmetic, which a driver may
    contract (`a + b*c` into an FMA: Mesa 24.0.8's Intel compiler did on the HP). It now follows the pinned association
@@ -3938,14 +3955,15 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     cause (tried, by film): the conversion of an unbounded step count to an integer in `volume_transmittance` (item 188).
     No committed scene has an open volume mesh, so no committed scene fails for it. Nothing is refused: such a scene
     renders, and differs.
-184. **A strong noise Bump seen after a diffuse bounce: isolated pixels differ from the CPU: OPEN, older than the re-pin,
-    cause not established.** FACT (2026-11-13, a re-pin lane's scratch scenes, not committed): Lambert surfaces with a
-    Noise texture (scale 9, detail 2) driving a Bump node, seen after a diffuse bounce. With Filter Glossy 0: 31 practical
-    failures, worst 22 times the tolerance; with Filter Glossy 2: 6 practical failures in six film components, worst 8.3
-    times the tolerance, single isolated pixels; with Filter Glossy 0.5 the scene passes. The device as it was before the
-    re-port of the differential widening gives the same 6 failures at the same worst pixel for the Filter Glossy 2
-    scene, so they do not come from that re-port. The same scenes with a gentle Bump pass (0 practical failures at
-    Filter Glossy 0, 0.5 and 2).
+184. **A strong noise Bump seen after a diffuse bounce: one scratch scene still differs from the CPU: OPEN, cause not
+    established.** FACT (2026-11-13, a re-pin lane's scratch scenes, not committed): Lambert surfaces with a Noise
+    texture (scale 9, detail 2) driving a Bump node, seen after a diffuse bounce. Before the fix below: 31 practical
+    failures with Filter Glossy 0 (worst 22 times the tolerance) and 6 with Filter Glossy 2 (worst 8.3 times); the scene
+    with Filter Glossy 0.5 and the same scenes with a gentle Bump passed. Fixed since: the Bump node's non-curve branch
+    follows the pinned operation order with ordering barriers ("Re-pin to Cycles v5.3.0", "Surface integrator"), and the
+    Filter Glossy 2 scene is perfect (0 practical failures, 171 strict differences). What remains: the Filter Glossy 0
+    scene ("widen-0") still fails 9 components, worst 21.9 times the tolerance, at pixel (31,14); its cause is not
+    established.
 185. **Boolean Math, Integer Math and Get Vector Component nodes: refused by name on the WebGPU device, OPEN (new in
     Cycles v5.3.0, not ported).** "WebGPU Boolean Math node not implemented", "WebGPU Integer Math node not
     implemented", "WebGPU Get Vector Component node not implemented" (`svm_census`, referenced shaders only, before any
@@ -3992,6 +4010,42 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     practical failures in a scratch scene). (g) `volume_transmittance` converts an unbounded expected step count to an
     integer: INT_MIN on x86-64 (one sample), saturation on ARM64 and in WGSL (1,024 samples); by reading only, and a
     trial of the x86-64 form changed no film bit of the item 183 scene.
+189. **`hair/chiang-absorption-thick`: one pixel past the practical criterion; ACCEPTED deviation (the maintainer's
+    ruling, 2026-11-13).** FACT: deterministic at Cycles v5.3.0: 1 practical failure, pixel (41,14), red, CPU
+    0.0457193255, WebGPU 0.0456106, 1.84 times the tolerance (9 or 10 strict differences, largest 1.09e-4). The films
+    agree through sample index 4; at sample index 5 the first hair hit is bit-identical on both devices (position,
+    normal, incoming direction, t, u, v, differentials, closure normal, throughput), and inside the Chiang sample every
+    value agrees except the azimuth: CPU 1.95364308, WebGPU 1.9536432, one unit in the last place. It comes from the
+    logarithm of `sample_trimmed_logistic`, whose argument is 186.6949 (0x433ab1e5) on both: the oracle's glibc 2.41
+    `logf` returns 5.22947598 (0x40a757de), the device's `hair_logf` 5.2294755 (0x40a757dd). The exact value is
+    5.2294757364, just below the midpoint, so the device's result is the correctly rounded one and glibc's is its
+    neighbour (checked by calling the machine's libm). Three hair-to-hair bounces on thick curves then amplify it: the
+    hit position differs by 3.6e-7 at bounce 1, 4e-5 at bounce 2 and 1e-3 at bounce 3, the sample's radiance by 9.3%.
+    At the previous pinned revision the same pixel and the same sample already diverged (2.5% in that sample), below
+    the criterion (worst pixel of the scene, 0.384 times the tolerance); the Chiang closure and the device's hair code
+    did not change with the release. Matching the oracle here would take glibc's own `logf`, which cannot be copied into
+    this repository (item 52: glibc's `logf` and `expf` are not correctly rounded, and their algorithms' licence is not
+    compatible with this repository's; "Hair closures": the adapters are within one unit in the last place of glibc).
+    This scene is where that one unit is amplified past the criterion. Same family as items 77 and 78. The scene, the
+    comparator and the criterion are unchanged; the corpus reports the scene as failing by this one pixel.
+190. **`combinations/cov-camera-motion-heterogeneous-linking-catcher`: one pixel of the Shadow Catcher Matte pass past the
+    practical criterion; ACCEPTED deviation (the maintainer's ruling, 2026-11-13).** FACT: deterministic at Cycles
+    v5.3.0, not the driver fault of item 52: 3 practical failures (5 strict differences, largest 0.0629), all at pixel
+    (24,13), in the Shadow Catcher Matte pass (blue: CPU 0.335366279, WebGPU 0.27242589). The two films agree to the last
+    bits through sample index 9; at sample index 10, and again at index 14, the CPU's primary ray is transmitted through
+    the heterogeneous medium and the device's scatters. The pixel's guidance state is the one item 180 describes: a
+    single majorant sample of 0.00042057 from a clipped corner, so the null-scattering loop runs through hundreds of
+    candidates. The CPU value is itself unstable in the last bit of the scene: moving the medium box by one to six
+    units in the last place (2.4e-7 each) in y or z moves the pixel's 16-sample sum of red on the CPU between 3.14 and
+    4.14 (3.94 with the box unmoved); the device's sum is 3.14, one of the values the CPU produces. Nothing is missing
+    from the port: the release's volume changes (the octree set-up, the phase MIS, the differential widening) are
+    ported, the null-scattering step and the reservoir did not change, and `volume_gate` case 95, the lockstep of item
+    180, passes. The majorant pass at that pixel is one unit in the last place apart between the devices at both pinned
+    revisions; forcing the CPU's value on the device does not undo the flip. At the previous revision the scene was
+    perfect (the same pixel its worst, 0.135 times the tolerance); INFERENCE on why it shows now: the scene's CPU film
+    changed in 892 values with the release's closures, so the chain at that sample is another one. Same class as items
+    47, 180 and 182. The scene, the comparator and the criterion are unchanged; the corpus reports the scene as failing
+    by this one pixel.
 
 Resolved, or closed under the device reference policy:
 - [34 and 18 of this list] **AO, Bevel and Raycast `only_local` from a transform-applied object beside instances: RESOLVED.**
@@ -8234,7 +8288,20 @@ v5.3.0 CPU kernels), and the full passes belong to the next device checkpoint.
   `volume_gate` cases at scale 0, 0.37 and 1. The shadow ray's `dD` reaches no film value here; it is state the
   lighting gates compare. Item 184 is the strong-Bump remainder.
 - `SR_BSDF` is cleared when the closure filter (the integrator's use_diffuse, use_glossy and the like) leaves no BSDF
-  (`surf_prepare`). The subsurface exit and the holdout keep the non-closure runtime flags (`SR_BACKFACING`).
+  (`surf_prepare`), and only when a closure filter is set, as the pinned `surface_shader_prepare_closures` does it inside
+  its `filter_closures` block. Without a filter the flag stays even over an empty closure list: a Metallic BSDF whose
+  Fresnel record does not fit (`max_closures` 1) leaves `SR_BSDF` set with no closure, and the pinned pick samples the
+  removed closure. The first port cleared the flag for every camera path and failed the BSDF bounce gate's
+  closure-capacity case (case 13, 443 paths); with the filter test the gate passes (30 cases, 29,580 paths). No oracle
+  scene sets a closure filter. The subsurface exit and the holdout keep the non-closure runtime flags (`SR_BACKFACING`).
+- The Bump node's non-curve branch (`svm_set_bump`) follows the pinned operation order (`svm_node_set_bump`; the SSE
+  cross and dot of `util/math_float3.h`) with every product fenced before its sum by ordering barriers, as its curve
+  branch already did; before, the driver could contract those sums. With Filter Glossy 0 the differential is no longer
+  widened after a bounce, so a last-bit residue in a bumped normal became visible: `surface-nodes/tangent-node-bump`
+  had 6 practical failures at two pixels (one unit in the last place in the bump normal moved the next hit onto or off
+  a degenerate Tangent frame, where the CPU's closure normal is NaN) and is perfect now, as are
+  `surface-nodes/geometry-tangent-bump`, `displacement/bump`, `points/bump-on-points`, `subsurface/aov-cryptomatte-bump`
+  and `curves/geometry-thick`. Each entry that runs the node grew by 3,150 bytes. Item 184 is what remains.
 - Shadow linking with emitters whose emission is not constant (textured, or on curves or points): the dedicated light
   kernel stores the picked intersection in `shadow_isect[0]` and the light evaluation shades that hit; the linked
   triangle's uv comes from the traced hit. See the notes in "Shadow linking" and "Environment lighting and non-constant
@@ -8259,7 +8326,9 @@ v5.3.0 CPU kernels), and the full passes belong to the next device checkpoint.
   background light through two stacked media; no film rendered so far can tell it from the previous code (the CPU films
   of the reproducers are bit-identical between the revisions).
 - The transparent shadow loop was refactored upstream with no change of result; MNEE's kernel changed only in where
-  `eval_fac` is stored. 16 of the 18 `mnee` scenes have bit-identical CPU films at both revisions.
+  `eval_fac` is stored. The MNEE state gate compares `shadow_isect[2].t` at the MNEE step, where it compared
+  `shadow_ray.time`: the kernel no longer writes `shadow_ray.time` there, so after that step the field holds whatever
+  the slot held before on either device; it is still compared after the surface stage, which writes it. 16 of the 18 `mnee` scenes have bit-identical CPU films at both revisions.
 - The CPU crash of item 138 persists at this release; the host's protection stays.
 - Item 183 (open volume meshes) was found here and is older than the re-pin.
 
@@ -8286,6 +8355,21 @@ v5.3.0 CPU kernels), and the full passes belong to the next device checkpoint.
   new scenes `passes/denoising-motion-transparent`, `-transparent-orthographic` and `volumes/denoising-depth-bounds`: 0
   practical failures in every motion and depth row. Strict differences in the depth rows are the order of the
   per-sample film adds (two repeats of one scene differ from each other as much as from the CPU).
+
+**Accepted deviations at this release (the maintainer's rulings, 2026-11-13).** Three corpus scenes fail narrowly
+against the v5.3.0 CPU films, each at one pixel, each with its cause established and none a missing port:
+`passes/cryptomatte` (item 44), `hair/chiang-absorption-thick` (item 189) and
+`combinations/cov-camera-motion-heterogeneous-linking-catcher` (item 190). No tolerance, scene or comparator changed
+for them.
+
+**Size-guard rows known above 940,000 bytes at this release: warning rows, not ruled on.** Measured in single runs;
+every Intel instruction count given is under the 60,000 envelope.
+
+- `shade_volume_light`: `volumes/linking-tree-lamps` 1,061,099 bytes (53,367 instructions); `volumes/mixed-phase-world`
+  1,005,693 bytes (50,174 instructions).
+- `mnee_contribute` with a Principled BSDF caster: 992,990 bytes (48,465 instructions), with or without anisotropy.
+- `prepare_surface` of the BSDF gate fixture (`bsdf_bounce`): 1,006,459 bytes (instruction count not measured);
+  1,019,198 bytes in its glossy-filter case.
 
 **New in the release and not rendered by the device.** Items 185 to 187: the Boolean Math, Integer Math and Get Vector
 Component nodes, Gaussian splats with the quaternion and spherical-harmonics attribute types, dispersion and the dlss

@@ -151,13 +151,14 @@ static void fixture(Scene &scene,int mode){
   emission_graph->connect(emission->output("Emission"),emission_graph->output()->input("Surface"));auto emitter=scene.create_node<Shader>();emitter->set_graph(std::move(emission_graph));emitter->tag_update(&scene);
   mnee_fixture(scene,mode,emitter);for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
 }
-// MNEE shadow-slot fields written by integrator_state_write_mnee.
+// MNEE shadow-slot fields written by integrator_state_write_mnee. The light sample's eval_fac is in shadow_isect[2].t;
+// shadow_ray.time is not written at this step (the surface stage writes it with the shadow ray, shadow_fields below).
 struct SlotField {const char *name;uint32_t address;size_t stride,offset;bool floating;};
 static std::vector<SlotField> slot_fields(WebGPUDevice &d){
   std::vector<SlotField> out;auto &s=d.state;using S=IntegratorShadowStateCPU;
 #define F(field,member,type,fl) out.push_back({#field "." #member,uint32_t(uintptr_t(s.field.member)),sizeof(type),offsetof(S,field.member),fl});
   F(shadow_path,queued_kernel,uint16_t,false) F(shadow_path,throughput,packed_float3,true)
-  F(shadow_ray,P,packed_float3,true) F(shadow_ray,D,packed_float3,true) F(shadow_ray,tmin,float,true) F(shadow_ray,tmax,float,true) F(shadow_ray,time,float,true)
+  F(shadow_ray,P,packed_float3,true) F(shadow_ray,D,packed_float3,true) F(shadow_ray,tmin,float,true) F(shadow_ray,tmax,float,true) F(shadow_isect[2],t,float,true)
   F(shadow_ray,dP,float,true) F(shadow_ray,dD,float,true) F(shadow_ray,self_light_object,int,false) F(shadow_ray,self_light_prim,int,false)
   F(shadow_isect[0],t,float,true) F(shadow_isect[0],u,float,true) F(shadow_isect[0],v,float,true) F(shadow_isect[0],object,int,false) F(shadow_isect[0],prim,int,false) F(shadow_isect[0],type,int,false)
   F(shadow_isect[1],t,float,true) F(shadow_isect[1],u,float,true) F(shadow_isect[1],v,float,true) F(shadow_isect[1],object,int,false) F(shadow_isect[1],prim,int,false) F(shadow_isect[1],type,int,false)

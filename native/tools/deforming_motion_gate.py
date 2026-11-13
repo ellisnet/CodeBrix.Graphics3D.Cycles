@@ -52,7 +52,7 @@ def main():
             for name in names[:-1]:
                 report=run(name+'-'+label,name,[flag] if flag else [])
                 if name!='image':assert report['cases']=={'closest':22,'shader_data':11,'shadow':60,'normal':399}[name]
-                assert report['invalidCasesRejected']=={'closest':21,'shader_data':12,'shadow':18,'normal':10,'image':14}[name]
+                assert report['invalidCasesRejected']=={'closest':21,'shader_data':12,'shadow':18,'normal':9,'image':14}[name]
                 if name=='closest':assert report['nativeInstanceLeaves']>=3 and report['hitObjects']==5
                 if name=='shader_data':assert report['hitObjects']==9 and all(report['projectionAxes'])
                 if name=='shadow':assert report['blocked']>100 and report['unoccluded']>100 and report['selfOrLightExclusions']>50

@@ -317,7 +317,8 @@ fn surf_prepare(index:u32,r:ptr<function,SvmResult>){
     let closure_filter=data_word(D_integrator_filter_closures);if((closure_filter&FILTER_CLOSURE_EMISSION)!=0u){(*r).emission=vec3<f32>(0);}
     if((state_byte(S_path_visibility,index)&VIS_CAMERA)==0u){return;}
     if((closure_filter&FILTER_CLOSURE_DIRECT_LIGHT)!=0u){(*r).runtime_flag&=~SR_BSDF_HAS_EVAL;}
-    // No BSDF closure left after the filter: SR_BSDF is cleared (surface_shader_prepare_closures, CLOSURE_IS_BSDF).
+    // No BSDF closure left after the filter: SR_BSDF is cleared (surface_shader_prepare_closures, CLOSURE_IS_BSDF),
+    // only with a closure filter set: without one the flag stands, also over an empty closure list (surf_sample).
     var has_bsdf=false;
     for(var i=0u;i<(*r).count;i++){var c=svm_closure_read(*r,i);
         if((surf_diffuse(c.kind)&&(closure_filter&FILTER_CLOSURE_DIFFUSE)!=0u)||(surf_glossy(c.kind)&&(closure_filter&FILTER_CLOSURE_GLOSSY)!=0u)||
@@ -328,7 +329,7 @@ fn surf_prepare(index:u32,r:ptr<function,SvmResult>){
         else if(c.kind!=CLOSURE_NONE_ID&&c.kind<=CLOSURE_BSDF_TRANSPARENT_ID){has_bsdf=true;}
         svm_closure_write((*r).closure_base+i*SVM_CLOSURE_BYTES,c);
     }
-    if(!has_bsdf){(*r).runtime_flag&=~SR_BSDF;}
+    if(!has_bsdf&&closure_filter!=0u){(*r).runtime_flag&=~SR_BSDF;}
 }
 //#if SURFACE_FILTER_GLOSSY
 // surface_shader_prepare_closures' glossy filter (integrator filter_glossy; pinned
