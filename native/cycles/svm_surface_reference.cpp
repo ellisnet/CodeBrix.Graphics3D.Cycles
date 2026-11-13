@@ -3,7 +3,7 @@
 #include "device/device.h"
 #include "image_reference.h"
 #include "kernel/globals.h"
-#include "kernel/device/cpu/image.h"
+#include "kernel/util/image.h"
 #include "kernel/integrator/state.h"
 #include "kernel/integrator/state_util.h"
 #include "kernel/geom/shader_data.h"
@@ -55,7 +55,7 @@ std::vector<ccl::SurfaceSvmRecord> original_surface_svm(ccl::DeviceScene &scene,
         if(p.fresnel_type==MicrofacetFresnel::GENERALIZED_SCHLICK){auto &f=*reinterpret_cast<const FresnelGeneralizedSchlick*>(p.fresnel);
           if(!(f.exponent<0&&isequal(f.f90,one_spectrum())))throw std::runtime_error("Unrepresentable generalized Schlick reference");
           if(f.thin_film.thickness>THINFILM_THICKNESS_CUTOFF){r.a=f.thin_film.thickness;r.b=f.thin_film.ior;}
-          r.fresnel_f0=f.f0.x;r.multiscatter=f.f0;r.reflection_tint=f.reflection_tint;r.transmission_tint=f.transmission_tint;}
+          r.fresnel_f0=f.f0.x;r.multiscatter=f.f0;r.reflection_tint=f.tint.reflectance;r.transmission_tint=f.tint.transmittance;}
         if(p.fresnel_type==MicrofacetFresnel::F82_TINT){auto &f=*reinterpret_cast<const FresnelF82Tint*>(p.fresnel);
           if(f.thin_film.thickness>THINFILM_THICKNESS_CUTOFF){r.a=f.thin_film.thickness;r.b=f.thin_film.ior;}
           r.multiscatter=f.f0;r.reflection_tint=f.b;}

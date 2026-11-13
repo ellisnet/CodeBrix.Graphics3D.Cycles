@@ -37,7 +37,7 @@
     let mis=forward_mis_weight(index,pdf);
     // light_sample_shader_eval_nee_constant, then the weights in the pinned order.
     let shader=table_at(G_shaders,light_shader&SHADER_MASK,SIZE_shaders);let constant=(load_word(shader+SH_flags)&SD_HAS_CONSTANT_EMISSION)!=0u;
-    let weight=factor*mis*heap_float(state_address(S_shadow_link_dedicated_light_weight,index,4u));
+    let weight=factor*mis*f32(state_half(S_shadow_link_dedicated_light_weight,index));
     let value=select(vec3<f32>(1),heap_vec3(shader+SH_constant_emission),constant)*heap_vec3(light+L_strength)*weight;
     let group=load_word(table_at(G_objects,load_word(light+L_object_id),SIZE_objects)+O_lightgroup);
     store_word(at+4u,bitcast<u32>(mis));store_word(at+8u,bitcast<u32>(value.x));store_word(at+12u,bitcast<u32>(value.y));store_word(at+16u,bitcast<u32>(value.z));

@@ -1,3 +1,5 @@
+// Modified by CodeBrix: the dispersion functions, which read the D65 table and hold constants fitted from it, are not included.
+// Copyright (c) 2026 Jeremy Ellis and contributors
 /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
  * SPDX-License-Identifier: Apache-2.0 */
@@ -5,6 +7,7 @@
 #pragma once
 
 #include "kernel/globals.h"
+#include "kernel/tables.h"
 
 #include "util/types_spectrum.h"
 
@@ -50,5 +53,7 @@ ccl_device float spectrum_to_gray(KernelGlobals kg, Spectrum c)
 {
   return linear_rgb_to_gray(kg, spectrum_to_rgb(c));
 }
+
+/* The dispersion functions (wavelength_to_rgb_d65, sample_wavelength) are not included: see kernel/tables.h. */
 
 CCL_NAMESPACE_END

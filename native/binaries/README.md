@@ -13,25 +13,28 @@ native/binaries/<rid>/symbols/
 ```
 
 The nine RIDs remain win-x64, win-arm64, osx-x64, osx-arm64, linux-x64,
-linux-arm64, linux-riscv64, android-arm64 and android-x64. An empty directory
-does not imply a completed port. `osx-arm64` holds the first reviewed payload
-(Cycles with its Metal device; see [MACOS_ARM64.md](../host/MACOS_ARM64.md));
-`win-x64` and `win-arm64` hold the Windows payloads (the WGSL/WebGPU device on
-Direct3D 12 with the pinned DXC compiler, or Vulkan; see
-[WINDOWS_X64.md](../host/WINDOWS_X64.md)); `osx-x64` holds the Intel Mac
-payload (the WGSL/WebGPU device through the runtime's Metal route; see
-[MACOS_X64.md](../host/MACOS_X64.md)), validated on an Intel UHD 630 on
-2026-10-26. Both Windows payloads are built on
-an x64 machine: `win-arm64` is cross-compiled and carries the gate's test
-executables (`tests/`) so an ARM64 device validates it without building. Windows
-binaries have no symbol tables, so there is no `unstripped/` copy; their line
-tables are in `symbols/*.pdb`. `linux-x64` holds the Linux x64 payload (the
-WGSL/WebGPU device; `native/tools/stage_linux_binaries.py`); the Linux build has no
-DWARF, so there is no `symbols/` folder. Its `unstripped/` folder is git-ignored
-while the library is a work in progress, and is committed with the final payload
-(remove the line from `.gitignore` and stage again, which also approves it for the
-audit); until then `provenance.json` records its hashes under `binaries` only, and
-staging recreates it. No NuGet release has been made.
+linux-arm64, linux-riscv64, android-arm64 and android-x64. An empty or absent
+directory does not imply a completed port. A payload is built from the pinned
+Cycles source of the commit that carries it: a payload built from another
+revision is removed, not kept, and comes back when its platform is rebuilt and
+reviewed on that platform's own machine. Only `linux-x64` is present. The
+`osx-arm64` payload (Cycles with its Metal device; see
+[MACOS_ARM64.md](../host/MACOS_ARM64.md)), the `win-x64` and `win-arm64`
+payloads (the WGSL/WebGPU device on Direct3D 12 with the pinned DXC compiler, or
+Vulkan; see [WINDOWS_X64.md](../host/WINDOWS_X64.md)) and the `osx-x64` payload
+(the WGSL/WebGPU device through the runtime's Metal route; see
+[MACOS_X64.md](../host/MACOS_X64.md)) are staged by their recipes when rebuilt.
+Both Windows payloads are built on an x64 machine: `win-arm64` is
+cross-compiled and carries the gate's test executables (`tests/`) so an ARM64
+device validates it without building. Windows binaries have no symbol tables,
+so there is no `unstripped/` copy; their line tables are in `symbols/*.pdb`.
+`linux-x64` holds the Linux x64 payload (the WGSL/WebGPU device;
+`native/tools/stage_linux_binaries.py`); the Linux build has no DWARF, so there
+is no `symbols/` folder. Its `unstripped/` folder is git-ignored while the
+library is a work in progress, and is committed with the final payload (remove
+the line from `.gitignore` and stage again, which also approves it for the
+audit); until then `provenance.json` records its hashes under `binaries` only,
+and staging recreates it. No NuGet release has been made.
 
 Each delivery must carry source/dependency manifest hashes, toolchain and build
 options, binary hashes, a passing dependency/license audit and the applicable

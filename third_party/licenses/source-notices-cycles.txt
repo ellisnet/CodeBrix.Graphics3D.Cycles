@@ -1,6 +1,6 @@
 Source notice supplement for cycles
 Origin: https://github.com/blender/cycles
-Pin: a456b761034dda42c32eef9f4aae0fa5a5c9f604
+Pin: b3f6262640f1a2f2d10b55b6ffccbf310ce0f981
 Collected verbatim comment blocks from the reviewed snapshot.
 Identical notices are grouped; original source notices remain intact.
 Complete component license texts and selected licenses are in the root notices.
@@ -182,7 +182,6 @@ third_party/cycles/src/kernel/data_template.h
 third_party/cycles/src/kernel/device/cpu/compat.h
 third_party/cycles/src/kernel/device/cpu/globals.cpp
 third_party/cycles/src/kernel/device/cpu/globals.h
-third_party/cycles/src/kernel/device/cpu/image.h
 third_party/cycles/src/kernel/device/cpu/kernel.cpp
 third_party/cycles/src/kernel/device/cpu/kernel.h
 third_party/cycles/src/kernel/device/cpu/kernel_arch.h
@@ -325,7 +324,6 @@ third_party/cycles/src/kernel/svm/util.h
 third_party/cycles/src/kernel/svm/value.h
 third_party/cycles/src/kernel/svm/vector_rotate.h
 third_party/cycles/src/kernel/svm/vector_transform.h
-third_party/cycles/src/kernel/svm/vertex_color.h
 third_party/cycles/src/kernel/svm/voronoi.h
 third_party/cycles/src/kernel/svm/wave.h
 third_party/cycles/src/kernel/svm/white_noise.h
@@ -334,6 +332,7 @@ third_party/cycles/src/kernel/types.h
 third_party/cycles/src/kernel/util/colorspace.h
 third_party/cycles/src/kernel/util/differential.h
 third_party/cycles/src/kernel/util/ies.h
+third_party/cycles/src/kernel/util/image.h
 third_party/cycles/src/kernel/util/lookup_table.h
 third_party/cycles/src/kernel/util/profiler.h
 third_party/cycles/src/scene/attribute.cpp
@@ -916,6 +915,15 @@ third_party/cycles/src/hydra/volume.h
  * SPDX-License-Identifier: Apache-2.0 */
 
 Sources:
+third_party/cycles/src/integrator/denoiser_dlss.cpp
+third_party/cycles/src/integrator/denoiser_dlss.h
+
+/* SPDX-FileCopyrightText: 2025 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
 third_party/cycles/src/integrator/denoiser_oidn_base.cpp
 third_party/cycles/src/integrator/denoiser_oidn_base.h
 third_party/cycles/src/integrator/denoiser_oidn_gpu.cpp
@@ -924,10 +932,18 @@ third_party/cycles/src/kernel/util/image_2d.h
 third_party/cycles/src/scene/image_cache.h
 third_party/cycles/src/scene/image_loader.cpp
 third_party/cycles/src/scene/image_loader.h
+third_party/cycles/src/test/util_math_float3x3_test.cpp
+third_party/cycles/src/test/util_math_quaternion_test.cpp
+third_party/cycles/src/test/util_types_spherical_harmonics_test.cpp
 third_party/cycles/src/util/colorspace.cpp
 third_party/cycles/src/util/colorspace.h
 third_party/cycles/src/util/half.h
+third_party/cycles/src/util/math_float3x3.h
+third_party/cycles/src/util/math_quaternion.h
+third_party/cycles/src/util/types_float3x3.h
+third_party/cycles/src/util/types_gpu_compressed.h
 third_party/cycles/src/util/types_normal.h
+third_party/cycles/src/util/types_quaternion.h
 
 /* SPDX-FileCopyrightText: 2011-2026 Blender Foundation
  *
@@ -949,15 +965,21 @@ third_party/cycles/src/kernel/device/optix/CMakeLists.txt
 
 Sources:
 third_party/cycles/src/kernel/bvh/intersect_filter.h
+third_party/cycles/src/kernel/constants.h
+third_party/cycles/src/kernel/geom/gsplat.h
+third_party/cycles/src/kernel/geom/gsplat_intersect.h
 third_party/cycles/src/kernel/svm/scene_time.h
 third_party/cycles/src/scene/scene_attributes.cpp
 third_party/cycles/src/session/cache_eviction.cpp
 third_party/cycles/src/session/cache_eviction.h
+third_party/cycles/src/test/util_colorspace_test.cpp
 third_party/cycles/src/test/util_half_avx2_test.cpp
 third_party/cycles/src/test/util_half_test.cpp
 third_party/cycles/src/test/util_half_test.h
 third_party/cycles/src/util/implicit_sharing.h
+third_party/cycles/src/util/math_spherical_harmonics.h
 third_party/cycles/src/util/scoped_defer.h
+third_party/cycles/src/util/types_spherical_harmonics.h
 
 /* SPDX-FileCopyrightText: 2026 Blender Foundation
  *
@@ -1110,6 +1132,12 @@ third_party/cycles/src/kernel/device/oneapi/context_intersect_end.h
  * SPDX-License-Identifier: Apache-2.0 */
 
 Sources:
+third_party/cycles/src/kernel/features.h
+
+// Modified by CodeBrix: dispersion (__SPECTRAL__) is switched off because its D65 data table is not included.
+// Copyright (c) 2026 Jeremy Ellis and contributors
+
+Sources:
 third_party/cycles/src/kernel/film/adaptive_sampling.h
 third_party/cycles/src/scene/tabulated_sobol.cpp
 third_party/cycles/src/scene/tabulated_sobol.h
@@ -1127,6 +1155,13 @@ third_party/cycles/src/kernel/geom/curve_intersect.h
  * SPDX-License-Identifier: Apache-2.0
  *
  * Adapted from Embree with modifications. */
+
+Sources:
+third_party/cycles/src/kernel/geom/motion_gsplat.h
+
+/* SPDX-FileCopyrightText: 2021-2026 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 Sources:
 third_party/cycles/src/kernel/geom/triangle_intersect.h
@@ -1207,6 +1242,16 @@ third_party/cycles/src/kernel/osl/shaders/node_voronoi.h
  */
 
 Sources:
+third_party/cycles/src/kernel/svm/boolean_math.h
+third_party/cycles/src/kernel/svm/integer_math.h
+third_party/cycles/src/util/implicit_sharing.cpp
+third_party/cycles/src/util/random_access_iterator_mixin.h
+
+/* SPDX-FileCopyrightText: 2026 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
 third_party/cycles/src/kernel/svm/voronoi.h
 
 /*
@@ -1225,6 +1270,18 @@ third_party/cycles/src/kernel/svm/voronoi.h
  * With optimization to change -2..2 scan window to -1..1 for better performance,
  * as explained in https://www.shadertoy.com/view/llG3zy.
  */
+
+Sources:
+third_party/cycles/src/kernel/tables.h
+
+// Modified by CodeBrix: the CIE standard illuminant D65 table and its normalisation constant are not included (CC BY-SA 4.0 data); the colour-matching table comment records the table's public-domain origin.
+// Copyright (c) 2026 Jeremy Ellis and contributors
+
+Sources:
+third_party/cycles/src/kernel/util/colorspace.h
+
+// Modified by CodeBrix: the dispersion functions, which read the D65 table and hold constants fitted from it, are not included.
+// Copyright (c) 2026 Jeremy Ellis and contributors
 
 Sources:
 third_party/cycles/src/kernel/util/nanovdb.h
@@ -1280,6 +1337,15 @@ third_party/cycles/src/util/half.h
  * https://gist.github.com/rygorous/2144712
  * https://gist.github.com/rygorous/2156668
  * https://gist.github.com/rygorous/4d9e9e88cab13c703773dc767a23575f
+ *
+ * The half exponent and mantissa, shifted into float position, need to be scaled by 2^112 to get
+ * the matching float exponent. This is done by adding to the exponent field rather than by
+ * multiplying with 2^112, so that no denormal float is used as intermediate value. Such a value
+ * would be flushed to zero when the CPU runs with flush-to-zero and denormals-are-zero enabled
+ * (as it is for threads that use Embree), making every denormal half decode as zero.
+ *
+ * Denormal halves have a zero exponent, so they instead get a bias that makes them normal floats,
+ * with the implicit leading one that introduces subtracted again afterwards.
  */
 
 Sources:
@@ -1299,14 +1365,6 @@ third_party/cycles/src/util/image_metadata.cpp
 third_party/cycles/src/util/image_metadata.h
 
 /* SPDX-FileCopyrightText: 2011-2026 Blender Authors
- *
- * SPDX-License-Identifier: Apache-2.0 */
-
-Sources:
-third_party/cycles/src/util/implicit_sharing.cpp
-third_party/cycles/src/util/random_access_iterator_mixin.h
-
-/* SPDX-FileCopyrightText: 2026 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 

@@ -13,14 +13,18 @@ void WebGPUDevice::update_state(const IntegratorStateGPU &value){
 #endif
   require(data.volume_stack_size>=0&&data.volume_stack_size<=MAX_VOLUME_STACK_SIZE,"Invalid volume stack size");
   std::vector<uint32_t> descriptors;uint32_t shadow=0;
+  // The stride of a field is the size of the type the host allocates for it (gpu_state_storage, as in
+  // integrator/path_trace_work_gpu.cpp), not of the template's type: the compressed-on-GPU wrappers hold a full
+  // Spectrum on the host, while this device stores float and PackedSpectrum (native/tools/cycles_overlay.py).
+  static_assert(sizeof(gpu_state_storage<FloatCompressedOnGPU>::gpu_type)==sizeof(float)&&sizeof(gpu_state_storage<SpectrumCompressedOnGPU>::gpu_type)==sizeof(PackedSpectrum));
   auto field=[&](const void *pointer,size_t stride){if(!pointer)return;
     uint64_t address=reinterpret_cast<uintptr_t>(pointer);validate(address,stride);
     descriptors.insert(descriptors.end(),{uint32_t(address),uint32_t(stride),shadow,uint32_t(remaining(address)/stride)});};
 #define KERNEL_STRUCT_BEGIN(name) for(int array_index=0;;array_index++) {
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature) KERNEL_STRUCT_BEGIN(name)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) field(value.parent.name,sizeof(type));
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) field(value.parent.name,sizeof(gpu_state_storage<type>::gpu_type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
-#define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature) field(value.parent[array_index].name,sizeof(type));
+#define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature) field(value.parent[array_index].name,sizeof(gpu_state_storage<type>::gpu_type));
 #define KERNEL_STRUCT_END(name) (void)array_index;break; }
 #define KERNEL_STRUCT_END_ARRAY(name,cpu_size,gpu_size) if(array_index>=gpu_size-1)break; }
 #define KERNEL_STRUCT_VOLUME_STACK_SIZE data.volume_stack_size
@@ -46,7 +50,10 @@ class WebGPUQueue final:public DeviceQueue {
   explicit WebGPUQueue(WebGPUDevice *device):DeviceQueue(device),d(*device){if(std::getenv("CODEBRIX_CYCLES_RENDER_CAPTURE"))scene_capture=std::make_unique<SceneCapture>(d);}
   int num_concurrent_states(size_t state_size)const override {
     return int(std::min<size_t>(4096,std::max<size_t>(64,(16*1024*1024)/std::max<size_t>(1,state_size))));}
-  int num_concurrent_busy_states(size_t s)const override{return num_concurrent_states(s)/2;}
+  // The number of states is fixed by num_concurrent_states above and does not follow free device memory, so the
+  // parameters name that one value and no memory is reported.
+  ConcurrentStatesParams concurrent_states_params()const override{ConcurrentStatesParams p;p.baseline=4096;p.min=4096;p.max=4096;return p;}
+  void get_memory_info(size_t &total,size_t &free)const override{total=0;free=0;}
   void init_execution()override{d.guard([&]{debug_init_execution();d.load_image_info();d.sync();});}
   void load_image_info()override{d.guard([&]{d.load_image_info();});}
   bool synchronize()override{d.guard([&]{d.sync();debug_synchronize();});return !d.have_error();}

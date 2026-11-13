@@ -9,14 +9,14 @@ It does not certify unbuilt RIDs or a future NuGet payload.
 
 Current repository source and retained evidence, all 19 imported dependency snapshots and their embedded code/data, external runtime/toolchain notice obligations, and geometry-only test captures. Full per-file hashes and license decisions are in the import manifests. Permissive third-party licenses retain their own terms. Historical notice documents may discuss excluded implementations; those texts are not an approval to use the implementation. This is not a clearance of unbuilt RIDs or future NuGet payloads.
 
-Cycles a456b761034dda42c32eef9f4aae0fa5a5c9f604
+Cycles 5.3.0 (b3f6262640f1a2f2d10b55b6ffccbf310ce0f981)
 Origin: https://github.com/blender/cycles.git
 Selected license: Apache-2.0 AND BSD-3-Clause AND MIT AND Zlib AND LicenseRef-Public-Domain
 Use: Filtered vendored native host, CPU reference and derived WGSL kernels. Registration, OCIO cache-identity and Android platform adaptations are generated from reviewed local snapshots by native/tools/build_cycles.py and build_cycles_android.py. Inventory: third_party/cycles-import.json.
-Attribution: Blender Foundation, Blender Authors, NVIDIA, Intel, Sony Pictures Imageworks, Larry Gritz, Industrial Light & Magic, Francois Beaune and appleseedhq, Inigo Quilez, Aladdin Enterprises, Lukas Hosek, Alexander Wilkie, Fernando Garcia Linan; exact notices retained per file. Public-domain adaptations also credit Austin Appleby (MurmurHash3), Fabian Giesen (half conversion) and NVIDIA Mesh Tools; complete retained comment notices are included.
-Pinned revision: a456b761034dda42c32eef9f4aae0fa5a5c9f604
-Conditions: Filtered manifest in cycles-import.json; independent Apache-2.0 atomics and build adapter. Historical notice inventory describes excluded upstream files; those implementation files are not imported.
-Notices: third_party/licenses/Cycles-Apache-2.0.txt, third_party/licenses/Cycles-BSD-3-Clause.txt, third_party/licenses/Cycles-MIT.txt, third_party/licenses/Cycles-Zlib.txt, native/THIRD-PARTY-NOTICES.txt, parity/THIRD-PARTY-NOTICES.txt, research/THIRD-PARTY-NOTICES.txt, third_party/Cycles-file-notices.txt, third_party/licenses/source-notices-cycles.txt, third_party/cycles/AUTHORS
+Attribution: Blender Foundation, Blender Authors, NVIDIA, Intel, Sony Pictures Imageworks, Larry Gritz, Industrial Light & Magic, Francois Beaune and appleseedhq, Inigo Quilez, Aladdin Enterprises, Lukas Hosek, Alexander Wilkie, Fernando Garcia Linan; exact notices retained per file. Two quaternion-to-rotation functions of util/math_float3x3.h are marked as adopted from Ceres Solver (Copyright Google Inc., BSD-3-Clause); its notice is supplied here because the file does not carry it. Public-domain adaptations also credit Austin Appleby (MurmurHash3), Fabian Giesen (half conversion) and NVIDIA Mesh Tools; complete retained comment notices are included.
+Pinned revision: b3f6262640f1a2f2d10b55b6ffccbf310ce0f981 (tag v5.3.0)
+Conditions: Filtered manifest in cycles-import.json; independent Apache-2.0 atomics and build adapter. Historical notice inventory describes excluded upstream files; those implementation files are not imported. Dispersion is switched off and the CIE standard illuminant D65 table (published under CC BY-SA 4.0) is not imported; kernel/tables.h and kernel/features.h are recorded as modified for that.
+Notices: third_party/licenses/Cycles-Apache-2.0.txt, third_party/licenses/Cycles-BSD-3-Clause.txt, third_party/licenses/Cycles-MIT.txt, third_party/licenses/Cycles-Zlib.txt, third_party/licenses/CeresSolver-BSD-3-Clause.txt, native/THIRD-PARTY-NOTICES.txt, parity/THIRD-PARTY-NOTICES.txt, research/THIRD-PARTY-NOTICES.txt, third_party/Cycles-file-notices.txt, third_party/licenses/source-notices-cycles.txt, third_party/cycles/AUTHORS
 
 OpenImageIO 2.5.18.0
 Origin: https://github.com/AcademySoftwareFoundation/OpenImageIO.git
@@ -634,6 +634,38 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 
 ======================================================================
+third_party/licenses/CeresSolver-BSD-3-Clause.txt
+======================================================================
+
+Ceres Solver - A fast non-linear least squares minimizer
+Copyright 2023 Google Inc. All rights reserved.
+http://ceres-solver.org/
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+* Neither the name of Google Inc. nor the names of its contributors may be
+  used to endorse or promote products derived from this software without
+  specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+======================================================================
 native/THIRD-PARTY-NOTICES.txt
 ======================================================================
 
@@ -687,10 +719,12 @@ original state-copy/move bodies unchanged, with GPU-address access adapted
 to host arrays and MNEE ownership repair disabled as documented in DEVICE.md.
 The registration overlay preserves upstream notices and leaves the pinned
 snapshot unchanged; its modifications are Jeremy's contributions. It also
-adapts src/util/colorspace.cpp at the same Cycles revision to invalidate native
-color caches by full OCIO configuration identity instead of scene-linear name.
-That file retains its 2011-2026 Blender Foundation copyright and Apache-2.0
-license identifier, with Jeremy's modification notice. The
+adapts, at the same Cycles revision, src/util/types_gpu_compressed.h (builds
+with the WebGPU device store the integrator state in full precision) and
+src/kernel/integrator/mnee.h (one unused-variable attribute). Those files
+retain their Blender Foundation copyright and Apache-2.0 license identifier,
+with Jeremy's modification notice. src/util/colorspace.cpp is handed through
+unchanged. The
 overlay is generated by tools/build_cycles.py from the reviewed local snapshot.
 Native host and .NET interop implementation and test contributions are original
 CodeBrix code under the copyright statement and Apache-2.0 license above.
@@ -882,7 +916,6 @@ pinned Cycles revision:
   src/kernel/geom/triangle.h
   src/kernel/geom/primitive.h
   src/kernel/svm/attribute.h
-  src/kernel/svm/vertex_color.h
   src/kernel/svm/util.h
   src/kernel/svm/node_types.h
   src/kernel/util/colorspace.h
@@ -898,7 +931,7 @@ remain explicit continuation work. No new runtime dependency is introduced.
 
 The native resident-image extension additionally adapts these files from the
 same pinned Cycles revision:
-  src/kernel/device/cpu/image.h
+  src/kernel/util/image.h
   src/kernel/util/image_2d.h
   src/kernel/svm/image.h
   src/kernel/camera/projection.h
@@ -1773,7 +1806,7 @@ SHA-256: d5bebee15c9e386ba24bff78f58ecf7fcb98fa34166379d858831ba68009ed4d
 # - Find Universal Scene Description (USD) library
 
 File: src/cmake/Modules/FindUSDHoudini.cmake
-SHA-256: ee317d7caeae109d8092fd154c24267aa8b5486176402ab62d92006c268a0148
+SHA-256: 96144d53d7cb081d9050245dfb30b31228ded24b677c20160803106c56e959f8
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2019 Blender Foundation.
 
@@ -1830,7 +1863,7 @@ SHA-256: cad9dc95eeee4995b6af99bca8b3d62262e36232f736733650d20580c0d49a1f
  * Adapted code from Open Shading Language. */
 
 File: src/kernel/closure/bsdf.h
-SHA-256: aa6419b97c01f6a014fe97d711b19139ca47596a034ee55e856116d582d59051
+SHA-256: cb8eceb55938c18077c80e5613ab7ca3176a08b6d7fdf8fef30ff0928400cce0
 /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
  * SPDX-License-Identifier: Apache-2.0 */
@@ -1884,7 +1917,7 @@ SHA-256: 63526cd2756a1b29fe9a73cc41e929b0bcd10923df0f34b3f243c68978bd0de0
  * Adapted code from Open Shading Language. */
 
 File: src/kernel/closure/bsdf_microfacet.h
-SHA-256: 5ff498e2491f130b4938249fab02442ca0ee1c3e662ea412a679e834866ca7c4
+SHA-256: 99dd6d0877fc2f6c78888f16fa896da094866afd45b33013259b31c7c7edbcb8
 /* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
  * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
@@ -1920,7 +1953,7 @@ SHA-256: e33e261e897243dbeca61bfde40a0e9beecd56c2b0a6ab40548e6048a0638982
  * Adapted code from Open Shading Language. */
 
 File: src/kernel/closure/bsdf_util.h
-SHA-256: 6c8bbcf245e131a019f39858507d21bbc11e1dcbc244b8abe1f656118d56d6d9
+SHA-256: 4a70d456d495242be473e8f4d4b394fbafccbb9a36541dc9e67c9c189346a24b
 /* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
  * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
@@ -1954,7 +1987,7 @@ SHA-256: e93df7616b1ac2d1e7844bad69ae4687553dd183bfa4d28cc394988fcec904fc
  * Adapted code from Open Shading Language. */
 
 File: src/kernel/osl/closures_setup.h
-SHA-256: fa48215b0989ce552f5970b8f144ebdefe11e56e5737ccf872930ccca6c48f89
+SHA-256: c2bfb67d2f5663ced46a3089a19654ac6403662b17d4d8ce019ee800e6ab3929
 /* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
  * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
@@ -1963,7 +1996,7 @@ SHA-256: fa48215b0989ce552f5970b8f144ebdefe11e56e5737ccf872930ccca6c48f89
  * Adapted code from Open Shading Language. */
 
 File: src/kernel/osl/osl.h
-SHA-256: 0316be1bfe7b27068f0ac97bd4c8d288fe84714e1c1320568181cbb86cc29015
+SHA-256: 69ae66f2bc007298725f4691b0ec0f01fde416cc3c791a76936aeabcdf1b3b6d
 /* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
  * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
@@ -1972,7 +2005,7 @@ SHA-256: 0316be1bfe7b27068f0ac97bd4c8d288fe84714e1c1320568181cbb86cc29015
  * Adapted code from Open Shading Language. */
 
 File: src/kernel/osl/services_gpu.h
-SHA-256: 6c7808a4751e25d274e5fc3edb4037778b47c0fc65c5ef0bfc80b466aa4ab538
+SHA-256: b05cf0392deff0e8d72b2e4e6b88e808249b497a2d5a337d08998205d1aac7ba
 /* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
  * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
@@ -2011,7 +2044,7 @@ SHA-256: e756b10dfcf08201a88d5b4355ee6ad8e64fca418760c4e96d10edaaa4cd33fe
  */
 
 File: src/kernel/osl/shaders/stdcycles.h
-SHA-256: 3864818640c5df24fd495cd7f094d55222d8b6e78311dab336f109dfcf5dc935
+SHA-256: 48f6046fe63aa60057780628c8cf36de9fc561d679c0bc0b3a6ea1ca7abef895
 /* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
  * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
@@ -2020,7 +2053,7 @@ SHA-256: 3864818640c5df24fd495cd7f094d55222d8b6e78311dab336f109dfcf5dc935
  * Adapted code from Open Shading Language. */
 
 File: src/kernel/osl/strings.h
-SHA-256: 39dd54e840481c1c0ea4e721ca62dd42dd2c6c42e7f0d5c688fe052ab339c90f
+SHA-256: 5e42bdb83494106f17e93372d3c0f532f91084c1c3025a87dd79f4f996bc42be
 /* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
  * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
@@ -2065,7 +2098,7 @@ SHA-256: 465a600a17434b610d563eb26013b876629ff9b48b8015c6479418b3e7674732
  * Adapted code from Open Shading Language. */
 
 File: src/kernel/svm/voronoi.h
-SHA-256: 68511e52e595faf833a8c43cc2bbef147ebf77685a0c358e8dd976336a4c87bf
+SHA-256: 95d93c96f3202b5abd58ed92c5568f5e5cef1e36e7ffd796728177225d3b72a2
 /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
  * SPDX-License-Identifier: Apache-2.0 */
@@ -2165,7 +2198,7 @@ SHA-256: cfc216ab67df93c4573e479978b5dc7683bfcb3cd1daa314790b5b1206a95e90
  * Originally by Intel Corporation, modified by the Blender Foundation. */
 
 File: third_party/atomic/atomic_ops.h
-SHA-256: 4dc711e284348a4c77f81af9a26b2ed067d80ebc9cbf2481922c9e4a7ff292d8
+SHA-256: f22c47048cde4546bd4ffb815e2c788e51e802cd255d64406d1c06317fa1c73c
 /*
  * Original code from jemalloc with this license:
  *
@@ -2192,9 +2225,6 @@ SHA-256: 4dc711e284348a4c77f81af9a26b2ed067d80ebc9cbf2481922c9e4a7ff292d8
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -2209,24 +2239,12 @@ SHA-256: 4dc711e284348a4c77f81af9a26b2ed067d80ebc9cbf2481922c9e4a7ff292d8
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2016 Blender Foundation.
- * All rights reserved.
- *
- * The Original Code is: adapted from jemalloc.
- *
- * ***** END GPL LICENSE BLOCK *****
- */
-/**
- * \file atomic_ops.h
- * \ingroup Atomic
- *
- * \author Copyright (C) 2016 Blender Foundation, adapted from jemalloc.
- * \brief Provides wrapper around system-specific atomic primitives, and some extensions (faked-atomic operations
- *        over float numbers).
+ * The Original Code is adapted from jemalloc.
+ * Modifications Copyright (C) 2016 Blender Foundation
  */
 
 File: third_party/atomic/intern/atomic_ops_ext.h
-SHA-256: b11453786e9c5465fd5d9b291b50aa96189ebd62abe800420758719af82dd5fc
+SHA-256: 9b6499495416eed6c47d05ed887766e5ca4e2234ec426feebe1b6646639121e1
 /*
  * Original code from jemalloc with this license:
  *
@@ -2253,9 +2271,6 @@ SHA-256: b11453786e9c5465fd5d9b291b50aa96189ebd62abe800420758719af82dd5fc
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -2270,16 +2285,12 @@ SHA-256: b11453786e9c5465fd5d9b291b50aa96189ebd62abe800420758719af82dd5fc
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2016 Blender Foundation.
- * All rights reserved.
- *
- * The Original Code is: adapted from jemalloc.
- *
- * ***** END GPL LICENSE BLOCK *****
+ * The Original Code is adapted from jemalloc.
+ * Modifications Copyright (C) 2016 Blender Foundation
  */
 
 File: third_party/atomic/intern/atomic_ops_unix.h
-SHA-256: 7ebf124672bdb63dbddb7dd15998b279b5c5af6cb1ef92ee1bd6ae0c9c38c1d6
+SHA-256: f2b0731b18e0dd4535705cf86ce662ed56550b8b5f5299f29b427e5402306ad0
 /*
  * Original code from jemalloc with this license:
  *
@@ -2306,9 +2317,6 @@ SHA-256: 7ebf124672bdb63dbddb7dd15998b279b5c5af6cb1ef92ee1bd6ae0c9c38c1d6
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -2323,16 +2331,12 @@ SHA-256: 7ebf124672bdb63dbddb7dd15998b279b5c5af6cb1ef92ee1bd6ae0c9c38c1d6
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2016 Blender Foundation.
- * All rights reserved.
- *
- * The Original Code is: adapted from jemalloc.
- *
- * ***** END GPL LICENSE BLOCK *****
+ * The Original Code is adapted from jemalloc.
+ * Modifications Copyright (C) 2016 Blender Foundation
  */
 
 File: third_party/atomic/intern/atomic_ops_utils.h
-SHA-256: 063c83a582acf549416ae31422f5f5fbb56ac28be01e9858dd7f49c086b93aa3
+SHA-256: ec5aeb830ac40cb945cfc9542cd93c63bd34518598956605189d56eca4d8cfdf
 /*
  * Original code from jemalloc with this license:
  *
@@ -2359,9 +2363,6 @@ SHA-256: 063c83a582acf549416ae31422f5f5fbb56ac28be01e9858dd7f49c086b93aa3
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -2376,12 +2377,8 @@ SHA-256: 063c83a582acf549416ae31422f5f5fbb56ac28be01e9858dd7f49c086b93aa3
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2016 Blender Foundation.
- * All rights reserved.
- *
- * The Original Code is: adapted from jemalloc.
- *
- * ***** END GPL LICENSE BLOCK *****
+ * The Original Code is adapted from jemalloc.
+ * Modifications Copyright (C) 2016 Blender Foundation
  */
 
 File: third_party/sky/CMakeLists.txt
@@ -2485,7 +2482,7 @@ third_party/licenses/source-notices-cycles.txt
 
 Source notice supplement for cycles
 Origin: https://github.com/blender/cycles
-Pin: a456b761034dda42c32eef9f4aae0fa5a5c9f604
+Pin: b3f6262640f1a2f2d10b55b6ffccbf310ce0f981
 Collected verbatim comment blocks from the reviewed snapshot.
 Identical notices are grouped; original source notices remain intact.
 Complete component license texts and selected licenses are in the root notices.
@@ -2667,7 +2664,6 @@ third_party/cycles/src/kernel/data_template.h
 third_party/cycles/src/kernel/device/cpu/compat.h
 third_party/cycles/src/kernel/device/cpu/globals.cpp
 third_party/cycles/src/kernel/device/cpu/globals.h
-third_party/cycles/src/kernel/device/cpu/image.h
 third_party/cycles/src/kernel/device/cpu/kernel.cpp
 third_party/cycles/src/kernel/device/cpu/kernel.h
 third_party/cycles/src/kernel/device/cpu/kernel_arch.h
@@ -2810,7 +2806,6 @@ third_party/cycles/src/kernel/svm/util.h
 third_party/cycles/src/kernel/svm/value.h
 third_party/cycles/src/kernel/svm/vector_rotate.h
 third_party/cycles/src/kernel/svm/vector_transform.h
-third_party/cycles/src/kernel/svm/vertex_color.h
 third_party/cycles/src/kernel/svm/voronoi.h
 third_party/cycles/src/kernel/svm/wave.h
 third_party/cycles/src/kernel/svm/white_noise.h
@@ -2819,6 +2814,7 @@ third_party/cycles/src/kernel/types.h
 third_party/cycles/src/kernel/util/colorspace.h
 third_party/cycles/src/kernel/util/differential.h
 third_party/cycles/src/kernel/util/ies.h
+third_party/cycles/src/kernel/util/image.h
 third_party/cycles/src/kernel/util/lookup_table.h
 third_party/cycles/src/kernel/util/profiler.h
 third_party/cycles/src/scene/attribute.cpp
@@ -3401,6 +3397,15 @@ third_party/cycles/src/hydra/volume.h
  * SPDX-License-Identifier: Apache-2.0 */
 
 Sources:
+third_party/cycles/src/integrator/denoiser_dlss.cpp
+third_party/cycles/src/integrator/denoiser_dlss.h
+
+/* SPDX-FileCopyrightText: 2025 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
 third_party/cycles/src/integrator/denoiser_oidn_base.cpp
 third_party/cycles/src/integrator/denoiser_oidn_base.h
 third_party/cycles/src/integrator/denoiser_oidn_gpu.cpp
@@ -3409,10 +3414,18 @@ third_party/cycles/src/kernel/util/image_2d.h
 third_party/cycles/src/scene/image_cache.h
 third_party/cycles/src/scene/image_loader.cpp
 third_party/cycles/src/scene/image_loader.h
+third_party/cycles/src/test/util_math_float3x3_test.cpp
+third_party/cycles/src/test/util_math_quaternion_test.cpp
+third_party/cycles/src/test/util_types_spherical_harmonics_test.cpp
 third_party/cycles/src/util/colorspace.cpp
 third_party/cycles/src/util/colorspace.h
 third_party/cycles/src/util/half.h
+third_party/cycles/src/util/math_float3x3.h
+third_party/cycles/src/util/math_quaternion.h
+third_party/cycles/src/util/types_float3x3.h
+third_party/cycles/src/util/types_gpu_compressed.h
 third_party/cycles/src/util/types_normal.h
+third_party/cycles/src/util/types_quaternion.h
 
 /* SPDX-FileCopyrightText: 2011-2026 Blender Foundation
  *
@@ -3434,15 +3447,21 @@ third_party/cycles/src/kernel/device/optix/CMakeLists.txt
 
 Sources:
 third_party/cycles/src/kernel/bvh/intersect_filter.h
+third_party/cycles/src/kernel/constants.h
+third_party/cycles/src/kernel/geom/gsplat.h
+third_party/cycles/src/kernel/geom/gsplat_intersect.h
 third_party/cycles/src/kernel/svm/scene_time.h
 third_party/cycles/src/scene/scene_attributes.cpp
 third_party/cycles/src/session/cache_eviction.cpp
 third_party/cycles/src/session/cache_eviction.h
+third_party/cycles/src/test/util_colorspace_test.cpp
 third_party/cycles/src/test/util_half_avx2_test.cpp
 third_party/cycles/src/test/util_half_test.cpp
 third_party/cycles/src/test/util_half_test.h
 third_party/cycles/src/util/implicit_sharing.h
+third_party/cycles/src/util/math_spherical_harmonics.h
 third_party/cycles/src/util/scoped_defer.h
+third_party/cycles/src/util/types_spherical_harmonics.h
 
 /* SPDX-FileCopyrightText: 2026 Blender Foundation
  *
@@ -3595,6 +3614,12 @@ third_party/cycles/src/kernel/device/oneapi/context_intersect_end.h
  * SPDX-License-Identifier: Apache-2.0 */
 
 Sources:
+third_party/cycles/src/kernel/features.h
+
+// Modified by CodeBrix: dispersion (__SPECTRAL__) is switched off because its D65 data table is not included.
+// Copyright (c) 2026 Jeremy Ellis and contributors
+
+Sources:
 third_party/cycles/src/kernel/film/adaptive_sampling.h
 third_party/cycles/src/scene/tabulated_sobol.cpp
 third_party/cycles/src/scene/tabulated_sobol.h
@@ -3612,6 +3637,13 @@ third_party/cycles/src/kernel/geom/curve_intersect.h
  * SPDX-License-Identifier: Apache-2.0
  *
  * Adapted from Embree with modifications. */
+
+Sources:
+third_party/cycles/src/kernel/geom/motion_gsplat.h
+
+/* SPDX-FileCopyrightText: 2021-2026 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 Sources:
 third_party/cycles/src/kernel/geom/triangle_intersect.h
@@ -3692,6 +3724,16 @@ third_party/cycles/src/kernel/osl/shaders/node_voronoi.h
  */
 
 Sources:
+third_party/cycles/src/kernel/svm/boolean_math.h
+third_party/cycles/src/kernel/svm/integer_math.h
+third_party/cycles/src/util/implicit_sharing.cpp
+third_party/cycles/src/util/random_access_iterator_mixin.h
+
+/* SPDX-FileCopyrightText: 2026 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
 third_party/cycles/src/kernel/svm/voronoi.h
 
 /*
@@ -3710,6 +3752,18 @@ third_party/cycles/src/kernel/svm/voronoi.h
  * With optimization to change -2..2 scan window to -1..1 for better performance,
  * as explained in https://www.shadertoy.com/view/llG3zy.
  */
+
+Sources:
+third_party/cycles/src/kernel/tables.h
+
+// Modified by CodeBrix: the CIE standard illuminant D65 table and its normalisation constant are not included (CC BY-SA 4.0 data); the colour-matching table comment records the table's public-domain origin.
+// Copyright (c) 2026 Jeremy Ellis and contributors
+
+Sources:
+third_party/cycles/src/kernel/util/colorspace.h
+
+// Modified by CodeBrix: the dispersion functions, which read the D65 table and hold constants fitted from it, are not included.
+// Copyright (c) 2026 Jeremy Ellis and contributors
 
 Sources:
 third_party/cycles/src/kernel/util/nanovdb.h
@@ -3765,6 +3819,15 @@ third_party/cycles/src/util/half.h
  * https://gist.github.com/rygorous/2144712
  * https://gist.github.com/rygorous/2156668
  * https://gist.github.com/rygorous/4d9e9e88cab13c703773dc767a23575f
+ *
+ * The half exponent and mantissa, shifted into float position, need to be scaled by 2^112 to get
+ * the matching float exponent. This is done by adding to the exponent field rather than by
+ * multiplying with 2^112, so that no denormal float is used as intermediate value. Such a value
+ * would be flushed to zero when the CPU runs with flush-to-zero and denormals-are-zero enabled
+ * (as it is for threads that use Embree), making every denormal half decode as zero.
+ *
+ * Denormal halves have a zero exponent, so they instead get a bias that makes them normal floats,
+ * with the implicit leading one that introduces subtracted again afterwards.
  */
 
 Sources:
@@ -3784,14 +3847,6 @@ third_party/cycles/src/util/image_metadata.cpp
 third_party/cycles/src/util/image_metadata.h
 
 /* SPDX-FileCopyrightText: 2011-2026 Blender Authors
- *
- * SPDX-License-Identifier: Apache-2.0 */
-
-Sources:
-third_party/cycles/src/util/implicit_sharing.cpp
-third_party/cycles/src/util/random_access_iterator_mixin.h
-
-/* SPDX-FileCopyrightText: 2026 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 

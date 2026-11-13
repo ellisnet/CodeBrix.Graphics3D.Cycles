@@ -106,7 +106,7 @@ static unsigned attribute_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline 
   }
   require(saved.at(at).id==uint64_t(attr),"Missing native attribute fixture map");
   for(unsigned test=0;test<7;test++){
-    Program program(ds);program.add(NODE_ATTR,SVMNodeAttr{.attr=attr,.out_offset=SVMStackOffset(test==5?253:0),.output_type=NodeAttributeOutputType(test==6?255:NODE_ATTR_OUTPUT_FLOAT3)});emit_stack(program,0,true);program.install(ds);
+    Program program(ds);program.add(NODE_ATTR,SVMNodeAttr{.attr=attr,.missing_alpha=SVMInputFloat{__float_as_uint(1.0f)},.out_offset=SVMStackOffset(test==5?253:0),.output_type=NodeAttributeOutputType(test==6?255:NODE_ATTR_OUTPUT_FLOAT3)});emit_stack(program,0,true);program.install(ds);
     if(test==0)ds.objects[0].attribute_map_offset=ds.attributes_map.size();
     if(test==1){ds.attributes_map[object.attribute_map_offset]={ATTR_STD_NONE,int(object.attribute_map_offset),1,0,0};}
     if(test==2)ds.attributes_map[at].offset=0x7fffffff;
@@ -140,27 +140,30 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     attributes.push_back(int(scene.shader_manager->get_attribute_id(ATTR_STD_GENERATED)));attributes.push_back(int(scene.shader_manager->get_attribute_id(ATTR_STD_UV)));
     for(int attr:attributes)for(unsigned output=0;output<3;output++)for(unsigned variant=0;variant<6;variant++){
       Program p(ds);bool derivative=variant!=0;bool stored=variant>=3;unsigned bump=variant==1?1:variant==2?2:0;
-      p.add(derivative?NODE_ATTR_DERIVATIVE:NODE_ATTR,SVMNodeAttr{.attr=attr,.out_offset=0,.output_type=NodeAttributeOutputType(output),.bump_offset=NodeBumpOffset(bump),.store_derivatives=uint8_t(stored),.bump_filter_width=.73f});
+      p.add(derivative?NODE_ATTR_DERIVATIVE:NODE_ATTR,SVMNodeAttr{.attr=attr,.missing_alpha=SVMInputFloat{__float_as_uint(1.0f)},.out_offset=0,.output_type=NodeAttributeOutputType(output),.bump_offset=NodeBumpOffset(bump),.store_derivatives=uint8_t(stored),.bump_filter_width=.73f});
       unsigned offset=variant>=4?(variant-3)*(output==NODE_ATTR_OUTPUT_FLOAT3?3:1):0;emit_stack(p,offset,output==NODE_ATTR_OUTPUT_FLOAT3);p.install(ds);
       evaluate(d,scene,shader,layout,initial,small,"Attribute "+std::to_string(attr)+" output "+std::to_string(output)+" variant "+std::to_string(variant),m);typed++;
     }
+    // The Vertex Color node: the pinned compiler emits it as an Attribute node per linked output (VertexColorNode::expand:
+    // Color is the float3 output, Alpha the alpha output, Missing and Missing Alpha both 0).
     for(const char *name:{"corner_byte","vertex_color","missing"})for(unsigned bump=0;bump<3;bump++)for(unsigned alpha=0;alpha<2;alpha++){
-      auto id=scene.shader_manager->get_attribute_id(ustring(name));require(id<256,"Vertex color layer id does not fit native payload");
-      Program p(ds);p.add(bump?NODE_VERTEX_COLOR_DERIVATIVE:NODE_VERTEX_COLOR,SVMNodeVertexColor{.layer_id=uint8_t(id),.color_offset=0,.alpha_offset=3,.bump_offset=NodeBumpOffset(bump),.bump_filter_width=.73f});emit_stack(p,alpha?3:0,!alpha);p.install(ds);
+      auto id=scene.shader_manager->get_attribute_id(ustring(name));
+      Program p(ds);p.add(bump?NODE_ATTR_DERIVATIVE:NODE_ATTR,SVMNodeAttr{.attr=int(id),.missing={},.missing_alpha={},.out_offset=SVMStackOffset(alpha?3:0),
+        .output_type=alpha?NODE_ATTR_OUTPUT_FLOAT_ALPHA:NODE_ATTR_OUTPUT_FLOAT3,.bump_offset=NodeBumpOffset(bump),.store_derivatives=0,.bump_filter_width=.73f});emit_stack(p,alpha?3:0,!alpha);p.install(ds);
       evaluate(d,scene,shader,layout,initial,small,std::string("Vertex color ")+name+" bump "+std::to_string(bump)+" alpha "+std::to_string(alpha),m);typed++;
     }
     auto original_film=ds.data.film;ds.data.film.is_rec709=0;
     ds.data.film.rec709_to_r=make_float4(.8f,.1f,.1f,0);ds.data.film.rec709_to_g=make_float4(.2f,.7f,.1f,0);ds.data.film.rec709_to_b=make_float4(.1f,.2f,.7f,0);
     d.const_copy_to("data",&ds.data,sizeof(KernelData));
     for(unsigned output=0;output<3;output++){
-      Program p(ds);p.add(NODE_ATTR_DERIVATIVE,SVMNodeAttr{.attr=int(scene.shader_manager->get_attribute_id(ustring("corner_byte"))),.out_offset=0,.output_type=NodeAttributeOutputType(output),.bump_offset=NODE_BUMP_OFFSET_DX,.store_derivatives=true,.bump_filter_width=.73f});emit_stack(p,0,output==NODE_ATTR_OUTPUT_FLOAT3);p.install(ds);
+      Program p(ds);p.add(NODE_ATTR_DERIVATIVE,SVMNodeAttr{.attr=int(scene.shader_manager->get_attribute_id(ustring("corner_byte"))),.missing_alpha=SVMInputFloat{__float_as_uint(1.0f)},.out_offset=0,.output_type=NodeAttributeOutputType(output),.bump_offset=NODE_BUMP_OFFSET_DX,.store_derivatives=true,.bump_filter_width=.73f});emit_stack(p,0,output==NODE_ATTR_OUTPUT_FLOAT3);p.install(ds);
       evaluate(d,scene,shader,layout,initial,small,"Non-Rec709 byte colors "+std::to_string(output),m);typed++;
     }
     ds.data.film=original_film;d.const_copy_to("data",&ds.data,sizeof(KernelData));
     const int collision_id=attributes[0];
     for(auto &a:std::span(ds.attributes_map.data(),ds.attributes_map.size()))if(a.id==uint64_t(collision_id))a.id|=uint64_t(1)<<32;
     ds.attributes_map.copy_to_device();
-    {Program p(ds);p.add(NODE_ATTR,SVMNodeAttr{.attr=collision_id,.out_offset=0,.output_type=NODE_ATTR_OUTPUT_FLOAT3});emit_stack(p,0,true);p.install(ds);evaluate(d,scene,shader,layout,initial,small,"64-bit attribute identity collision",m);typed++;}
+    {Program p(ds);p.add(NODE_ATTR,SVMNodeAttr{.attr=collision_id,.missing_alpha=SVMInputFloat{__float_as_uint(1.0f)},.out_offset=0,.output_type=NODE_ATTR_OUTPUT_FLOAT3});emit_stack(p,0,true);p.install(ds);evaluate(d,scene,shader,layout,initial,small,"64-bit attribute identity collision",m);typed++;}
     for(auto &a:std::span(ds.attributes_map.data(),ds.attributes_map.size()))if(a.id==(uint64_t(1)<<32|uint64_t(collision_id)))a.id=collision_id;
     ds.attributes_map.copy_to_device();
     rejected=attribute_rejections(d,scene,shader);

@@ -1,3 +1,5 @@
+// Modified by CodeBrix: the CIE standard illuminant D65 table and its normalisation constant are not included (CC BY-SA 4.0 data); the colour-matching table comment records the table's public-domain origin.
+// Copyright (c) 2026 Jeremy Ellis and contributors
 /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
  * SPDX-License-Identifier: Apache-2.0 */
@@ -38,6 +40,18 @@ ccl_inline_constant float blackbody_table_b[][4] = {
  {6.72650283e-13f, -2.73078809e-08f, 4.24098264e-04f, -7.52335691e-01f}
 };
 
+/* CIE1931 visible wavelength range in um. */
+#define WAVELENGTH_CIE_MIN 0.38f
+#define WAVELENGTH_CIE_MAX 0.78f
+/* Wavelength steps in um. */
+#define WAVELENGTH_DLAMBDA 0.005f
+/* Table resolution, (WAVELENGTH_CIE_MAX - WAVELENGTH_CIE_MIN) / WAVELENGTH_DLAMBDA */
+#define WAVELENGTH_RESOLUTION 80
+
+/* CIE 1931 colour-matching functions, 2 degree observer
+ * x, y, and z for wavelengths from 380 to 780 nm, 5 nm wavelength steps.
+ * Values as in "Colour Rendering of Spectra" (specrend.c) by John Walker, a public-domain program.
+ */
 ccl_inline_constant float cie_color_match[][3] = {
   {0.0014f, 0.0000f, 0.0065f}, {0.0022f, 0.0001f, 0.0105f}, {0.0042f, 0.0001f, 0.0201f},
   {0.0076f, 0.0002f, 0.0362f}, {0.0143f, 0.0004f, 0.0679f}, {0.0232f, 0.0006f, 0.1102f},

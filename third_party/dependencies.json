@@ -5,16 +5,17 @@
     {
       "id": "cycles",
       "name": "Cycles",
-      "version": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+      "version": "5.3.0 (b3f6262640f1a2f2d10b55b6ffccbf310ce0f981)",
       "license": "Apache-2.0 AND BSD-3-Clause AND MIT AND Zlib AND LicenseRef-Public-Domain",
       "source": "https://github.com/blender/cycles.git",
       "use": "Filtered vendored native host, CPU reference and derived WGSL kernels. Registration, OCIO cache-identity and Android platform adaptations are generated from reviewed local snapshots by native/tools/build_cycles.py and build_cycles_android.py. Inventory: third_party/cycles-import.json.",
-      "attribution": "Blender Foundation, Blender Authors, NVIDIA, Intel, Sony Pictures Imageworks, Larry Gritz, Industrial Light & Magic, Francois Beaune and appleseedhq, Inigo Quilez, Aladdin Enterprises, Lukas Hosek, Alexander Wilkie, Fernando Garcia Linan; exact notices retained per file. Public-domain adaptations also credit Austin Appleby (MurmurHash3), Fabian Giesen (half conversion) and NVIDIA Mesh Tools; complete retained comment notices are included.",
+      "attribution": "Blender Foundation, Blender Authors, NVIDIA, Intel, Sony Pictures Imageworks, Larry Gritz, Industrial Light & Magic, Francois Beaune and appleseedhq, Inigo Quilez, Aladdin Enterprises, Lukas Hosek, Alexander Wilkie, Fernando Garcia Linan; exact notices retained per file. Two quaternion-to-rotation functions of util/math_float3x3.h are marked as adopted from Ceres Solver (Copyright Google Inc., BSD-3-Clause); its notice is supplied here because the file does not carry it. Public-domain adaptations also credit Austin Appleby (MurmurHash3), Fabian Giesen (half conversion) and NVIDIA Mesh Tools; complete retained comment notices are included.",
       "notices": [
         "third_party/licenses/Cycles-Apache-2.0.txt",
         "third_party/licenses/Cycles-BSD-3-Clause.txt",
         "third_party/licenses/Cycles-MIT.txt",
         "third_party/licenses/Cycles-Zlib.txt",
+        "third_party/licenses/CeresSolver-BSD-3-Clause.txt",
         "native/THIRD-PARTY-NOTICES.txt",
         "parity/THIRD-PARTY-NOTICES.txt",
         "research/THIRD-PARTY-NOTICES.txt",
@@ -22,8 +23,8 @@
         "third_party/licenses/source-notices-cycles.txt",
         "third_party/cycles/AUTHORS"
       ],
-      "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
-      "conditions": "Filtered manifest in cycles-import.json; independent Apache-2.0 atomics and build adapter. Historical notice inventory describes excluded upstream files; those implementation files are not imported."
+      "revision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981 (tag v5.3.0)",
+      "conditions": "Filtered manifest in cycles-import.json; independent Apache-2.0 atomics and build adapter. Historical notice inventory describes excluded upstream files; those implementation files are not imported. Dispersion is switched off and the CIE standard illuminant D65 table (published under CC BY-SA 4.0) is not imported; kernel/tables.h and kernel/features.h are recorded as modified for that."
     },
     {
       "id": "oiio",
@@ -936,10 +937,10 @@
     "third_party/licenses/Cycles-BSD-3-Clause.txt": "78176499683c1e601241d901486dfdebcd0d511826e67905dd54881f5dc1d7e3",
     "third_party/licenses/Cycles-MIT.txt": "7a91b4754c06385f87b319313871b064d4d9e0dc1570ca94928b09fe74ed03ee",
     "third_party/licenses/Cycles-Zlib.txt": "52a1da7db7828498bb11719974c41f875e310ea241c97c8e27af7cda21887c19",
-    "native/THIRD-PARTY-NOTICES.txt": "ac2d16b93399577bedf14be93cff91a8aa57333c98e873513bbd6c99f23e5f40",
+    "native/THIRD-PARTY-NOTICES.txt": "7685a51fbbefc08dac6479f1e849e40fabc02a33fd39a5bdd6e4c196d9429789",
     "parity/THIRD-PARTY-NOTICES.txt": "6d0d3b721f32aea3ed0f54569f5e9cee7c5e3ebaaf0229e77e9f4079bd9a2b4f",
     "research/THIRD-PARTY-NOTICES.txt": "f773ade844c3e433707edc6642f82cb2c71bbc9b22704899bc9909f3614621d1",
-    "third_party/Cycles-file-notices.txt": "543b1434934bdb47cfe6f3b4ad70d7a657d277a1961a6b54ad249cdc7689800a",
+    "third_party/Cycles-file-notices.txt": "c0c37aba1c4c04b8f3524027c446838fe5cf52ed2ee8fa23f687dca0c36b4986",
     "third_party/deps/oiio/LICENSE.md": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
     "third_party/deps/oiio/THIRD-PARTY.md": "8ed8420b86ca8b4385dfe3a30dae6bd9f8bee03cfa739f2f2c8ffd717ff2d0cf",
     "third_party/licenses/source-notices-oiio.txt": "35387a1c2342b2c7d36fcebcb862aa8765028a709b57fc5005c7c8d5799cac05",
@@ -1006,7 +1007,7 @@
     "third_party/licenses/Linux-UAPI-exception.txt": "8e378ab93586eb55135d3bc119cce787f7324f48394777d00c34fa3d0be3303f",
     "third_party/licenses/GitHub-gitignore-LICENSE.txt": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
     "third_party/licenses/Godot-MIT.txt": "b0435e3b3e4e55238f05f4b306f30524a1b2e20147810d436eaa554fa6855c80",
-    "third_party/licenses/source-notices-cycles.txt": "0fa1279f3339b9198820d315720fc3e01b8c01219b86e3f78bc832b810b6db73",
+    "third_party/licenses/source-notices-cycles.txt": "21419f3d2852d38ff5fb932fabdcde481964c1e69bbd8f402287467b82a9faa0",
     "third_party/cycles/AUTHORS": "a604f34abb9021668f91219c96b0f0cd9359f5aecb1faa838bee85537c4a7b80",
     "third_party/arm-optimized-routines/LICENSE": "d75af3c6aeaac9021a266599d65d8555658022175c7aae8ccaa7212ca5b0df13",
     "native/oracle/scenes/assets/ForestVillage/PROVENANCE.txt": "a3128422b8e56f64189ca7bdcfc9aadefa4228c9dbdadccc84c9d90940c7c11b",
@@ -1015,7 +1016,8 @@
     "third_party/deps/oidn/weights/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "third_party/licenses/source-notices-oidn.txt": "ac38aa72ff6dacdb697d230f49322b7e625d6c7d22a8a3bc933f261977284fa7",
     "third_party/deps/embree/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-    "third_party/licenses/source-notices-embree.txt": "971312384b33415bfc8aa19319b1fcd52fce7f2f8020f1d89d7d48afe0a78a41"
+    "third_party/licenses/source-notices-embree.txt": "971312384b33415bfc8aa19319b1fcd52fce7f2f8020f1d89d7d48afe0a78a41",
+    "third_party/licenses/CeresSolver-BSD-3-Clause.txt": "9835983061082dba9c68729717a1edb4c450bc10fc9431dc771a1705abd20d83"
   },
   "historicalLinuxSystemPackages": [
     {

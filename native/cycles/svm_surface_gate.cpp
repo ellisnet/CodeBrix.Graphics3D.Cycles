@@ -18,6 +18,7 @@ static void principled(Program &p,const PrincipledArgs &a){
   n.transmission_weight=value(a.transmission);n.subsurface_weight=value(a.subsurface);n.base_color=color(.8f,.5f,.2f);n.alpha=value(a.alpha);
   n.diffuse_roughness=value(a.diffuse_roughness);n.normal_offset=a.normal;n.tangent_offset=a.tangent;n.coat_normal_offset=a.coat_normal;
   n.specular_tint=a.tinted?color(.9f,.7f,.5f):color(1,1,1);n.specular_ior_level=value(a.level);n.anisotropic=value(a.anisotropic);n.anisotropic_rotation=value(a.rotation);
+  n.transmission_dispersion_scale=value(0);n.transmission_dispersion_abbe_number=value(20.0f);
   n.emission_color=color(1,.6f,.3f);n.emission_strength=value(a.emission);n.sheen_tint=a.tinted?color(.9f,.5f,.7f):color(1,1,1);n.sheen_roughness=value(a.sheen_roughness);
   n.coat_tint=a.tinted?color(.6f,.8f,.9f):color(1,1,1);n.coat_roughness=value(a.coat_roughness);n.coat_ior=value(a.coat_ior);
   n.subsurface_method=a.ss_method;n.subsurface_radius=color(a.ss_radius.x,a.ss_radius.y,a.ss_radius.z);n.subsurface_scale=value(a.ss_scale);n.subsurface_ior=value(a.ss_ior);n.subsurface_anisotropy=value(a.ss_anisotropy);

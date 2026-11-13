@@ -230,7 +230,7 @@ std::string wavefront_layout(){
   source<<"//#endif\n";
   constant("O_tfm",offsetof(KernelObject,tfm));constant("O_motion_offset",offsetof(KernelObject,motion_offset));
   constant("O_num_tfm_steps",offsetof(KernelObject,num_tfm_steps));
-  constant("O_num_geom_steps",offsetof(KernelObject,num_geom_steps));constant("O_numverts",offsetof(KernelObject,numverts));constant("O_numprims",offsetof(KernelObject,numprims));constant("MOTION_SIZE",sizeof(DecomposedTransform));
+  constant("O_num_geom_steps",offsetof(KernelObject,num_geom_steps));constant("O_numverts",offsetof(KernelObject,numverts));constant("O_numprims",offsetof(KernelObject,mesh_volume.num_prims));constant("MOTION_SIZE",sizeof(DecomposedTransform));
   constant("O_itfm",offsetof(KernelObject,itfm));constant("O_position_offset",offsetof(KernelObject,position_offset));
   constant("O_ao_distance",offsetof(KernelObject,ao_distance));constant("SH_flags",offsetof(KernelShader,flags));
 #define ENUM(name) constant(#name,uint32_t(name))
@@ -363,7 +363,7 @@ void WebGPUDevice::enqueue_camera(int work,const DeviceKernelArguments &args){
   // All mandatory fields must cover the same capacity before any shader writes.
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING)validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING)validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(gpu_state_storage<type>::gpu_type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
 #define KERNEL_STRUCT_END(name)

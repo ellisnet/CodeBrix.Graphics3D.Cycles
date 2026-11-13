@@ -624,7 +624,7 @@ fn vd_sample_3d(index:u32,dimension:u32)->vec3<f32>{
         var sigma=0.0;if((result.runtime_flag&SR_EXTINCTION)!=0u){sigma=max(result.transparency.x,max(result.transparency.y,result.transparency.z));}
         let value=max(sigma,emission);lo=min(lo,value);hi=max(hi,value);
     }
-    let scale=heap_float(table_at(G_objects,object,SIZE_objects)+O_volume_density);
+    let scale=object_volume_density(object);
     if(!(scale>0.0)){fail();return;}
     store_word(p(4u)+offset*8u,bitcast<u32>(rounded_divide(lo,scale)));store_word(p(4u)+offset*8u+4u,bitcast<u32>(rounded_divide(hi,scale)));
 //#endif
@@ -632,7 +632,7 @@ fn vd_sample_3d(index:u32,dimension:u32)->vec3<f32>{
     let result=svm_evaluate_mode(NONE,sd,0u,0u,true);if(result.error!=0u){return;}
 //#if VOLUME_EMISSION else     if((result.runtime_flag&SR_EMISSION)!=0u){fail();return;}
 //#endif
-    let scale=heap_float(table_at(G_objects,object,SIZE_objects)+O_volume_density);
+    let scale=object_volume_density(object);
     if(!(scale>0.0)){fail();return;}
 //#if VOLUME_EMISSION else     let value=max(result.transparency.x,max(result.transparency.y,result.transparency.z))/scale;
     // max(sigma, emission) of the extinction and the emission (zero without one).

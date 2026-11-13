@@ -32,6 +32,9 @@ int main()
     check(atomic_fetch_and_sub_uint32(&word, 1) == 0 && word == UINT32_MAX, "unsigned wrap/sub return");
     word = 1;
     check(atomic_fetch_and_or_uint32(&word, 4) == 1 && word == 5, "OR prior value");
+    check(atomic_load_uint32(&word) == 5, "integer load");
+    atomic_store_uint32(&word, 5u);
+    check(atomic_load_uint32(&word) == 5 && word == 5, "integer store");
     check(atomic_cas_uint32(&word, 4, 9) == 5 && word == 5, "failed integer CAS");
     check(atomic_cas_uint32(&word, 5, 9) == 5 && word == 9, "successful integer CAS");
     std::int32_t signed_word = INT32_MAX;

@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=ROOT/'third_party/cycles'
-REVISION='a456b761034dda42c32eef9f4aae0fa5a5c9f604'
+REVISION='b3f6262640f1a2f2d10b55b6ffccbf310ce0f981'
 
 
 def verify():

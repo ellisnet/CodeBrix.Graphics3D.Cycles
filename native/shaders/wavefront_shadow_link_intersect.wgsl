@@ -145,7 +145,8 @@ fn dedicated_lamp_distance(light:u32,kind:u32,origin:vec3<f32>,direction:vec3<f3
     if(hits!=0u){
         // shadow_linking_store_last_primitives, integrator_state_write_isect: the intersection
         // state now names the emitter; shade_dedicated_light restores the two self fields.
-        state_f32(S_shadow_link_dedicated_light_weight,index,f32(hits));
+        // The number of dedicated light hits, a uint16_t (state_template.h): the stored value wraps as the assignment does.
+        state_u16(S_shadow_link_dedicated_light_weight,index,hits&0xffffu);
         state_u32(S_shadow_link_last_isect_prim,index,self_prim);state_u32(S_shadow_link_last_isect_object,index,self_object);
         state_f32(S_isect_t,index,pick.t);state_f32(S_isect_u,index,pick.u);state_f32(S_isect_v,index,pick.v);
         state_u32(S_isect_object,index,pick.object);state_u32(S_isect_prim,index,pick.prim);state_u32(S_isect_type,index,pick.kind);

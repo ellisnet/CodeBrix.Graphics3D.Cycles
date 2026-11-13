@@ -282,7 +282,7 @@ fn ss_volume_record(from_P:vec3<f32>,to_P:vec3<f32>,self_prim:u32){
         var t=rounded_divide(-vp_logf(rounded_add(1.0,-randt)),sample_sigma_t);
         if(bounce==0u){ray_tmax=max(t,rounded_divide(10.0,min(min(sigma_t.x,sigma_t.y),sigma_t.z)));}
         else{ray_tmax=t;self_prim=NONE;}
-        hits=raytrace_traverse(geometry,ray_P,ray_D,0.0,ray_tmax,object,NONE,self_prim,AO_VISIBILITY_ALL,0u,false);
+        hits=raytrace_traverse(geometry,ray_P,ray_D,0.0,ray_tmax,object,NONE,self_prim,AO_VISIBILITY_OBJECT_ALL,0u,false);
         if(load_word(p(17u))!=0u){return;}
         hit=hits.count>0u;if(hit){ray_tmax=hits.t[0];}
         if(bounce==0u){
@@ -414,7 +414,7 @@ fn ss_disk_lcg(index:u32)->u32{
 //#if MOTION_OBJECT
     ss_motion_geometry(&geometry,id.x,object);if(load_word(p(17u))!=0u){return;}
 //#endif
-    let hits=raytrace_traverse(geometry,ray_P,ray_D,0.0,2.0*disk_height,object,NONE,NONE,AO_VISIBILITY_ALL,ss_disk_lcg(index),true);
+    let hits=raytrace_traverse(geometry,ray_P,ray_D,0.0,2.0*disk_height,object,NONE,NONE,AO_VISIBILITY_OBJECT_ALL,ss_disk_lcg(index),true);
     if(load_word(p(17u))!=0u){return;}
     let count=min(hits.count,SS_MAX_HITS);if(count==0u){ss_terminate(index);return;}
     // sort_intersections_and_normals (bubble sort by t).

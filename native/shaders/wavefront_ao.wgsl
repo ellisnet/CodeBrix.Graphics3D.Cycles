@@ -85,7 +85,7 @@ fn ao_trace(origin:vec3<f32>,direction:vec3<f32>,tmax:f32,time:f32,self_object:u
     // intersection_ray_valid
     if((bitcast<u32>(origin.x)&0x7f800000u)==0x7f800000u||(bitcast<u32>(direction.x)&0x7f800000u)==0x7f800000u||dot(direction,direction)==0.0){return false;}
     if(table_count(G_prim_index)==0u){return false;}
-    let visibility=select(AO_VISIBILITY_ALL,AO_VISIBILITY_SHADOW_OPAQUE,local==NONE);
+    let visibility=select(AO_VISIBILITY_OBJECT_ALL,AO_VISIBILITY_SHADOW_OPAQUE,local==NONE);
     var pos=origin;var dir=ao_clamp_direction(direction);var inv=ao_inverse_direction(dir);
     if(p(30u)==0u||svm_slot>=p(1u)){fail();return false;}let stack_at=p(30u)+svm_slot*AO_STACK_BYTES;store_word(stack_at,0x76543210u);var sp=0i;
     var node=bitcast<i32>(data_word(D_bvh_root));var object=NONE;var visits=0u;
@@ -581,7 +581,7 @@ fn raytrace_node_trace(index:u32,sd:SurfaceData,bevel:bool,radius:f32,samples:u3
         }
         let global=!bevel&&!only_local;
         let hits=raytrace_traverse(sd,origin,dir,ray_tmin,tmax,select(sd.object_id,NONE,global),select(NONE,sd.object_id,avoid),self_prim,
-            select(AO_VISIBILITY_ALL,RAYTRACE_VISIBILITY_RAYCAST,global),lcg,bevel);lcg=hits.lcg;
+            select(AO_VISIBILITY_OBJECT_ALL,RAYTRACE_VISIBILITY_RAYCAST,global),lcg,bevel);lcg=hits.lcg;
         if(load_word(p(17u))!=0u){result.error=1u;return result;}
         for(var hit=0u;hit<min(hits.count,RAYTRACE_LOCAL_MAX_HITS);hit++){
 //#if POINTS

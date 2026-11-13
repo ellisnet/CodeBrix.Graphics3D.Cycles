@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Generated Cycles overlay shared by every RID: device registration names and
-the color-cache correction. WGSL generation stays in build_cycles.py."""
+the render-scheduling and maintainer-tool additions. WGSL generation stays in build_cycles.py."""
 import difflib
 import sys
 from pathlib import Path
@@ -13,7 +13,7 @@ from cycles_source import SOURCE as UPSTREAM
 def registration_overlay(out):
     out=Path(out)
     (out/'device').mkdir(parents=True,exist_ok=True)
-    before={name:(UPSTREAM/'src'/name).read_text() for name in ['device/device.h','device/device.cpp','integrator/path_trace.cpp','util/colorspace.cpp']};after=dict(before)
+    before={name:(UPSTREAM/'src'/name).read_text() for name in ['device/device.h','device/device.cpp','integrator/path_trace.cpp','util/colorspace.cpp','util/types_gpu_compressed.h','kernel/integrator/mnee.h']};after=dict(before)
     def replace(name,old,new):
         if after[name].count(old)!=1:raise RuntimeError('Upstream overlay anchor changed: '+old)
         after[name]=after[name].replace(old,new)
@@ -67,25 +67,27 @@ def registration_overlay(out):
             '      fclose(file);\n'
             '    }\n'
             '  }\n')
-    # Configuration transforms may change while scene-linear names stay equal.
-    replace('util/colorspace.cpp', '#include "util/colorspace.h"',
-            '// Modifications: Copyright (c) 2026 Jeremy Ellis and contributors\n#include "util/colorspace.h"')
-    replace('util/colorspace.cpp', '  static string cache_scene_linear_name;',
-            '  static string cache_config_id;')
-    replace('util/colorspace.cpp',
-            '  /* Invalidate cached processors and colorspace, in case Blender changed it.\n'
-            '   * Note this should not happen during rendering, all render should be stopped\n'
-            '   * before it is changed. */',
-            '  /* Configurations can change transforms, roles and aliases while retaining\n'
-            '   * the same scene-linear name. Invalidate every derived cache when the full\n'
-            '   * OCIO configuration identity changes. All renders must be stopped first. */')
-    replace('util/colorspace.cpp',
-            '  const OCIO::ConstColorSpaceRcPtr scene_linear_colorspace = config->getColorSpace("scene_linear");\n'
-            '  if (scene_linear_colorspace && cache_scene_linear_name != scene_linear_colorspace->getName()) {\n'
-            '    cache_scene_linear_name = scene_linear_colorspace->getName();',
-            '  const string config_id = config->getCacheID();\n'
-            '  if (cache_config_id != config_id) {\n'
-            '    cache_config_id = config_id;')
+    # Integrator state precision: the pinned source stores some state fields in half precision on GPU devices
+    # (FloatCompressedOnGPU, SpectrumCompressedOnGPU). The WebGPU device keeps them in full precision, in the types
+    # those fields had before the compressed wrappers existed (float and PackedSpectrum). Only the host-side choice of
+    # the stored type changes, and only with WITH_WEBGPU: a build without it compiles the upstream text.
+    replace('util/types_gpu_compressed.h',
+            'template<typename T> struct gpu_state_storage<T, gpu_void_t<typename T::compressed_type>> {\n'
+            '  using gpu_type = typename T::compressed_type;\n};\n',
+            'template<typename T> struct gpu_state_storage<T, gpu_void_t<typename T::compressed_type>> {\n'
+            '  using gpu_type = typename T::compressed_type;\n};\n'
+            '#ifdef WITH_WEBGPU\n'
+            '/* CodeBrix WebGPU: compressed-on-GPU state fields are stored in full precision. */\n'
+            'template<> struct gpu_state_storage<FloatCompressedOnGPU, void> {\n  using gpu_type = float;\n};\n'
+            'template<> struct gpu_state_storage<SpectrumCompressedOnGPU, void> {\n  using gpu_type = PackedSpectrum;\n};\n'
+            '#endif\n')
+    # MNEE: the import compiles spectral sampling out, which leaves this flag written and never read
+    # (-Wunused-but-set-variable in every translation unit with the CPU kernel). No behaviour changes.
+    replace('kernel/integrator/mnee.h','  bool has_dispersion = false;\n','  [[maybe_unused]] bool has_dispersion = false;\n')
+    # util/colorspace.cpp is handed over UNCHANGED. The pinned source invalidates its caches when the OpenColorIO
+    # configuration object changes (it keeps the configuration it cached for), which covers a configuration whose
+    # transforms change while its scene-linear name stays the same, so the earlier correction is gone. The file stays
+    # in the overlay only because every platform's build recipe and host gate still take it from here.
     for name in after:
         if name != 'util/colorspace.cpp':
             after[name]='// Copyright (c) 2026 Jeremy Ellis and contributors\n// CodeBrix WebGPU registration additions; upstream notices follow.\n'+after[name]

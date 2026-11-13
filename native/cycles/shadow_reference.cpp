@@ -3,7 +3,7 @@
 #include "device/device.h"
 #include "image_reference.h"
 #include "kernel/globals.h"
-#include "kernel/device/cpu/image.h"
+#include "kernel/util/image.h"
 #include "kernel/integrator/state.h"
 // Keep the original CPU state ABI; compile untouched shadow algorithms with
 // the native GPU intersection capacity for stage-by-stage state comparisons.
@@ -15,6 +15,7 @@
 #include "kernel/integrator/state_util.h"
 #include "kernel/geom/primitive.h"
 #include "kernel/integrator/intersect_shadow.h"
+#include "kernel/integrator/surface_shader.h"
 #include "kernel/integrator/shade_shadow.h"
 #include "scene/scene.h"
 #include "shadow_reference.h"

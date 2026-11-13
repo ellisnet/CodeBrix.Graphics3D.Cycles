@@ -35,7 +35,7 @@ void WebGPUDevice::validate_geometry_motion() const{
       // (the base order of these rejections), then the steps.
       if(object.primitive_type==PRIMITIVE_TRIANGLE||object.primitive_type==PRIMITIVE_POINT)require(film_motion_vectors(),"Invalid deforming triangle flags/type");
       else{moving=true;require(object.primitive_type==PRIMITIVE_MOTION_TRIANGLE||object.primitive_type==PRIMITIVE_MOTION_POINT,"Invalid deforming triangle flags/type");}
-      require(object.num_geom_steps>=2&&object.numverts>0&&(object.numprims>0||(object.primitive_type&PRIMITIVE_POINT)),"Invalid deforming triangle steps/size");
+      require(object.num_geom_steps>=2&&object.numverts>0&&((object.primitive_type&PRIMITIVE_POINT)||object.mesh_volume.num_prims>0),"Invalid deforming triangle steps/size");
     }else require(object.primitive_type!=PRIMITIVE_MOTION_TRIANGLE&&object.primitive_type!=PRIMITIVE_MOTION_POINT,"Invalid deforming triangle flags/type");
     if(flags&SD_OBJECT_MOTION){
       // A light object with motion (PRIMITIVE_LAMP): ObjectManager decomposes its motion and sets SD_OBJECT_MOTION, but no pinned
@@ -86,6 +86,12 @@ void WebGPUDevice::validate_points(){
   }
 }
 uint32_t WebGPUDevice::scene_tables(){
+  // Not implemented by the device, refused by name: Gaussian splats (a 64-bit feature flag the WGSL cannot read) and the
+  // attribute types that come with them, whose arrays have no table here.
+  require(!(data.kernel_features&KERNEL_FEATURE_GSPLATS),"WebGPU Gaussian splats not implemented");
+  for(const auto &[name,message]:{std::pair{"attributes_quaternion","WebGPU quaternion attributes not implemented"},
+      std::pair{"attributes_spherical_harmonics_rest","WebGPU spherical harmonics attributes not implemented"}}){
+    const auto it=globals.find(name);require(it==globals.end()||!it->second||!remaining(it->second),message);}
   load_image_info();
   std::vector<uint32_t> descriptors;
 #define TABLE(name,type) {auto it=globals.find(#name);uint32_t address=it==globals.end()?0:it->second;size_t bytes=address?remaining(address):0; \
@@ -132,7 +138,7 @@ void WebGPUDevice::enqueue_closest(int work,const DeviceKernelArguments &args){
   if(!p[2])require(uint32_t(n)<=p[10],"Closest dispatch exceeds path capacity");
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING)validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING)validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(gpu_state_storage<type>::gpu_type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
 #define KERNEL_STRUCT_END(name)

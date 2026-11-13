@@ -6,7 +6,7 @@
 #include "device/device.h"
 #include "image_reference.h"
 #include "kernel/globals.h"
-#include "kernel/device/cpu/image.h"
+#include "kernel/util/image.h"
 #include "kernel/integrator/state.h"
 #include "kernel/integrator/state_flow.h"
 #include "kernel/integrator/state_util.h"

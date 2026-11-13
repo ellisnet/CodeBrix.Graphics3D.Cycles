@@ -113,7 +113,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
 #define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||((data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)&&feature==KERNEL_FEATURE_LIGHT_PASSES)||\
   ((data.kernel_features&KERNEL_FEATURE_DENOISING)&&feature==KERNEL_FEATURE_DENOISING)||((data.kernel_features&KERNEL_FEATURE_NODE_PORTAL)&&feature==KERNEL_FEATURE_NODE_PORTAL))\
-  validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
+  validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(gpu_state_storage<type>::gpu_type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
 #define KERNEL_STRUCT_END(name)
@@ -134,7 +134,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
     p[25]=uint32_t(remaining(uintptr_t(state.shadow_path.render_pixel_index))/4);
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(KernelFeatureRequest(feature).test(data.kernel_features))validate(uintptr_t(state.parent.name),size_t(p[25])*sizeof(type));
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(KernelFeatureRequest(feature).test(data.kernel_features))validate(uintptr_t(state.parent.name),size_t(p[25])*sizeof(gpu_state_storage<type>::gpu_type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
 #define KERNEL_STRUCT_END(name)

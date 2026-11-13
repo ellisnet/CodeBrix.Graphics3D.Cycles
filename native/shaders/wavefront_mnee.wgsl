@@ -916,7 +916,7 @@ fn mn_contribution(at:u32,index:u32,slot:u32,sd:SurfaceData){
     state_u32(S_path_mnee_shadow_state,index,shadow);state_u32(MNEE_S_I2_prim,shadow,index);
     state_f32(MNEE_S_I0_t,shadow,ls.P.x);state_f32(MNEE_S_I0_u,shadow,ls.P.y);state_f32(MNEE_S_I0_v,shadow,ls.P.z);
     state_f32(MNEE_S_I1_t,shadow,receiver_wo.x);state_f32(MNEE_S_I1_u,shadow,receiver_wo.y);state_f32(MNEE_S_I1_v,shadow,receiver_wo.z);
-    state_f32(S_shadow_ray_tmin,shadow,ls.t);state_f32(S_shadow_ray_tmax,shadow,ls.pdf);state_f32(S_shadow_ray_time,shadow,ls.eval_fac);
+    state_f32(S_shadow_ray_tmin,shadow,ls.t);state_f32(S_shadow_ray_tmax,shadow,ls.pdf);state_f32(MNEE_S_I2_t,shadow,ls.eval_fac);
     state_u32(S_shadow_ray_self_light_object,shadow,ls.object);state_u32(S_shadow_ray_self_light_prim,shadow,ls.prim);
     state_u32(MNEE_S_I0_object,shadow,ls.shader);state_u32(MNEE_S_I0_prim,shadow,ls.group+1u);state_u32(MNEE_S_I0_type,shadow,ls.kind);
     state_u32(MNEE_S_I1_prim,shadow,count);state_vec3(S_shadow_path_throughput,shadow,throughput);

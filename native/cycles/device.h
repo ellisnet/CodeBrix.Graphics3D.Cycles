@@ -88,7 +88,7 @@ class WebGPUDevice final:public Device {
   uint64_t svm_generation=0,census_generation=~uint64_t(0);ShaderFeatures enabled_features;
   SvmCensus census;
   // Principled features refused at upload (pipelines.cpp shader_features).
-  uint64_t unsupported_generation=~uint64_t(0);ShaderFeatures principled_features;ShaderFeatures displacement_features;ShaderFeatures displacement_program_features;std::string unsupported_feature;
+  uint64_t unsupported_generation=~uint64_t(0);ShaderFeatures principled_features;ShaderFeatures attribute_features;ShaderFeatures displacement_features;ShaderFeatures displacement_program_features;std::string unsupported_feature;
   std::vector<uint32_t> tri_shader_words; // per-triangle shader words (Principled census roots)
   // BVH primitive -> triangle and object (the MNEE caster census, mnee_unused_svm_features); mnee_generation counts
   // their uploads, and the census is kept per (svm_generation, mnee_generation).
@@ -293,7 +293,7 @@ class WebGPUDevice final:public Device {
   std::vector<uint32_t> intersection_table_cache;
   WebGPUDevice(const DeviceInfo&,Stats&,Profiler&,bool);
   ~WebGPUDevice() override;
-  BVHLayoutMask get_bvh_layout_mask(uint) const override{return BVH_LAYOUT_BVH2;}
+  BVHLayoutMask get_bvh_layout_mask(uint64_t) const override{return BVH_LAYOUT_BVH2;}
   unique_ptr<DeviceQueue> gpu_queue_create() override;
   void const_copy_to(const char*,void*,size_t) override;
   void mem_alloc(device_memory&) override;

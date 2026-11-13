@@ -18,18 +18,21 @@ using namespace ccl;
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
 static void healthy(WebGPUDevice &d){if(d.have_error())throw std::runtime_error(d.error_message());}
 struct StateFixture {
-  struct Field {std::string name;std::vector<uint8_t> expected;std::unique_ptr<device_vector<uint8_t>> memory;};
+  // stride: the element the device stores (gpu_state_storage); host: the element of the oracle's native arrays (the
+  // template's type). They differ for a Spectrum stored as PackedSpectrum: its leading bytes are the stored element.
+  struct Field {std::string name;std::vector<uint8_t> expected;std::unique_ptr<device_vector<uint8_t>> memory;size_t stride,host;};
   WebGPUDevice &d;IntegratorStateGPU gpu{},cpu{};std::vector<Field> fields;unsigned count;
   StateFixture(WebGPUDevice &device,unsigned n):d(device),count(n){
-    auto add=[&](const std::string &name,size_t stride,void *gpu_pointer,void *cpu_pointer){
-      Field f{name,std::vector<uint8_t>(stride*n),std::make_unique<device_vector<uint8_t>>(&d,name.c_str(),MEM_READ_WRITE)};
-      f.memory->alloc(f.expected.size());f.memory->zero_to_device();healthy(d);
+    auto add=[&](const std::string &name,size_t stride,size_t host_stride,void *gpu_pointer,void *cpu_pointer){
+      require(stride<=host_stride,"State field stored larger than its host type");
+      Field f{name,std::vector<uint8_t>(host_stride*n),std::make_unique<device_vector<uint8_t>>(&d,name.c_str(),MEM_READ_WRITE),stride,host_stride};
+      f.memory->alloc(stride*n);f.memory->zero_to_device();healthy(d);
       std::memcpy(gpu_pointer,&f.memory->device_pointer,sizeof(device_ptr));void *host=f.expected.data();std::memcpy(cpu_pointer,&host,sizeof(host));fields.push_back(std::move(f));};
 #define KERNEL_STRUCT_BEGIN(name) for(unsigned array_index=0;;array_index++) {
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature) KERNEL_STRUCT_BEGIN(name)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) add(#parent "." #name,sizeof(type),&gpu.parent.name,&cpu.parent.name);
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) add(#parent "." #name,sizeof(gpu_state_storage<type>::gpu_type),sizeof(type),&gpu.parent.name,&cpu.parent.name);
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
-#define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature) add(#parent "." #name+std::to_string(array_index),sizeof(type),&gpu.parent[array_index].name,&cpu.parent[array_index].name);
+#define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature) add(#parent "." #name+std::to_string(array_index),sizeof(gpu_state_storage<type>::gpu_type),sizeof(type),&gpu.parent[array_index].name,&cpu.parent[array_index].name);
 #define KERNEL_STRUCT_END(name) (void)array_index;break; }
 #define KERNEL_STRUCT_END_ARRAY(name,cpu_size,gpu_size) if(array_index>=gpu_size-1)break; }
 #define KERNEL_STRUCT_VOLUME_STACK_SIZE 2
@@ -54,9 +57,9 @@ struct StateFixture {
       cpu.path.shader_sort_key[i]=(i*13+7)%29;
     }
   }
-  void upload(){for(auto &f:fields){std::memcpy(f.memory->data(),f.expected.data(),f.expected.size());f.memory->copy_to_device();}healthy(d);}
+  void upload(){for(auto &f:fields){for(unsigned i=0;i<count;i++)std::memcpy(f.memory->data()+i*f.stride,f.expected.data()+i*f.host,f.stride);f.memory->copy_to_device();}healthy(d);}
   void compare(){for(auto &f:fields){f.memory->copy_from_device();healthy(d);
-      if(std::memcmp(f.memory->data(),f.expected.data(),f.expected.size()))throw std::runtime_error("State mismatch: "+f.name);}}
+      for(unsigned i=0;i<count;i++)if(std::memcmp(f.memory->data()+i*f.stride,f.expected.data()+i*f.host,f.stride))throw std::runtime_error("State mismatch: "+f.name);}}
 };
 struct SchedulerProbe:PathTraceWorkGPU {
   using PathTraceWorkGPU::PathTraceWorkGPU;

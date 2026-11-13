@@ -50,11 +50,13 @@ fn image_interpolate(info:ImageInfo,xy:vec2<f32>)->vec4<f32>{
 // is the f32 bound's bit pattern): the Intel Vulkan driver on Windows compiles
 // the float comparison as true for NaN (docs/TESTING-WINDOWS-X64.md, W2).
 fn image_below(v:vec2<f32>,bound:u32)->bool{return all((bitcast<vec2<u32>>(v)&vec2<u32>(0x7fffffffu))<vec2<u32>(bound));}
-fn image_sample(s:ptr<function,SvmState>,input_id:i32,input_uv:vec2<f32>)->vec4<f32>{
+// kernel_image_interp_with_udim: missing is the value of an image that is not there (no tile for the UDIM, no image, no
+// XX
+fn image_sample(s:ptr<function,SvmState>,input_id:i32,input_uv:vec2<f32>,missing:vec4<f32>)->vec4<f32>{
     var id=input_id;var uv=input_uv;
     if(!image_below(uv,0x4e6e6b28u)){svm_error(s,128u);return vec4<f32>(0);}// 1.0e9
     if(id<0){
-        let tx=i32(uv.x);let ty=i32(uv.y);if(tx<0||ty<0||tx>=10){return vec4<f32>(1,0,1,1);}
+        let tx=i32(uv.x);let ty=i32(uv.y);if(tx<0||ty<0||tx>=10){return missing;}
         // IDs are encoded as -tableOffset-1; unsigned arithmetic avoids INT_MIN overflow.
         let at=0u-bitcast<u32>(id)-1u;let count=table_count(G_image_texture_udims);
         if(at>=count||ty>(2147483647-1010)/10){svm_error(s,128u);return vec4<f32>(0);}
@@ -66,12 +68,12 @@ fn image_sample(s:ptr<function,SvmState>,input_id:i32,input_uv:vec2<f32>)->vec4<
             if(bitcast<i32>(load_word(entry+IU_tile))==tile){id=bitcast<i32>(load_word(entry+IU_image_texture_id));uv-=vec2<f32>(f32(tx),f32(ty));break;}
         }
     }
-    if(id==i32(KERNEL_IMAGE_NONE)){return vec4<f32>(1,0,1,1);}
+    if(id==i32(KERNEL_IMAGE_NONE)){return missing;}
     if(id<0||u32(id)>=table_count(G_image_textures)){svm_error(s,128u);return vec4<f32>(0);}
     let tex=table_at(G_image_textures,u32(id),SIZE_image_textures);
     if(load_word(tex+IT_tile_descriptor_offset)!=KERNEL_TILE_LOAD_NONE){svm_error(s,256u);return vec4<f32>(0);}
     if(load_word(tex+IT_use_transform_3d)!=0u){svm_error(s,16u);return vec4<f32>(0);}
-    let info_id=load_word(tex+IT_image_info_id);if(info_id==KERNEL_IMAGE_NONE){return vec4<f32>(1,0,1,1);}
+    let info_id=load_word(tex+IT_image_info_id);if(info_id==KERNEL_IMAGE_NONE){return missing;}
     if(info_id>=table_count(G_image_info)||info_id>=table_count(G_image_bounds)){svm_error(s,128u);return vec4<f32>(0);}
     let a=table_at(G_image_info,info_id,SIZE_image_info);let bounds=table_at(G_image_bounds,info_id,SIZE_image_bounds);
     var info:ImageInfo;info.data=load_word(a+II_data);info.kind=load_word(a+II_data_type);
@@ -90,9 +92,9 @@ fn image_sample(s:ptr<function,SvmState>,input_id:i32,input_uv:vec2<f32>)->vec4<
     if(info.kind==IMAGE_DATA_TYPE_FLOAT||info.kind==IMAGE_DATA_TYPE_HALF||info.kind==IMAGE_DATA_TYPE_BYTE||info.kind==IMAGE_DATA_TYPE_USHORT){result.w=1.0;}
     return result;
 }
-fn svm_image_sample(s:ptr<function,SvmState>,id:i32,uv:vec2<f32>,flags:u32)->vec4<f32>{
+fn svm_image_sample(s:ptr<function,SvmState>,id:i32,uv:vec2<f32>,flags:u32,missing:vec4<f32>)->vec4<f32>{
     if((flags&~(NODE_IMAGE_ALPHA_UNASSOCIATE|NODE_IMAGE_COMPRESS_AS_SRGB))!=0u){svm_error(s,16u);return vec4<f32>(0);}
-    var result=image_sample(s,id,uv);let alpha=result.w;
+    var result=image_sample(s,id,uv,missing);let alpha=result.w;
     if((flags&NODE_IMAGE_ALPHA_UNASSOCIATE)!=0u&&alpha!=1.0&&alpha!=0.0){result/=alpha;result.w=alpha;}
     if((flags&NODE_IMAGE_COMPRESS_AS_SRGB)!=0u){result=vec4<f32>(attribute_srgb(result.x),attribute_srgb(result.y),attribute_srgb(result.z),alpha);}
     return result;
@@ -130,7 +132,7 @@ fn environment_projection(s:ptr<function,SvmState>,input:vec3<f32>,projection:u3
 }
 //#endif
 //#if SVM_TEX_IMAGE_BOX
-fn image_box(s:ptr<function,SvmState>,co:vec3<f32>,id:i32,blend:f32,flags:u32)->vec4<f32>{
+fn image_box(s:ptr<function,SvmState>,co:vec3<f32>,id:i32,blend:f32,flags:u32,missing:vec4<f32>)->vec4<f32>{
     var n=(*s).geometry.N;let object=(*s).geometry.object_id;
     if(object!=NONE){n=surface_object_normal((*s).geometry,n,true);}
     let signed_n=n;n=abs(n);n/=(n.x+n.y+n.z);let limit=0.5*(1.0+blend);var weight=vec3<f32>(0);
@@ -151,7 +153,7 @@ fn image_box(s:ptr<function,SvmState>,co:vec3<f32>,id:i32,blend:f32,flags:u32)->
         var uv=vec2<f32>(select(co.y,1.0-co.y,signed_n.x<0.0),co.z);
         if(axis==1u){uv=vec2<f32>(select(co.x,1.0-co.x,signed_n.y>0.0),co.z);}
         else if(axis==2u){uv=vec2<f32>(select(co.y,1.0-co.y,signed_n.z>0.0),co.x);}
-        result+=weight[axis]*svm_image_sample(s,id,uv,flags);
+        result+=weight[axis]*svm_image_sample(s,id,uv,flags,missing);
     }
     return result;
 }
@@ -163,14 +165,17 @@ fn svm_image(s:ptr<function,SvmState>,node:u32,mode:u32,derivative:bool){
         if(!all(abs(dx)<=vec3<f32>(3.402823e38))||!all(abs(dy)<=vec3<f32>(3.402823e38))){svm_error(s,128u);}}
     if((*s).error!=0u){return;}
     let id=bitcast<i32>(load_word(node+N_TexImage_id));let flags=svm_byte(node+N_TexImage_flags);var result:vec4<f32>;
+    // The node's Missing colour and Missing Alpha (same offsets in the three image records).
+    let missing=vec4<f32>(svm_input3(s,node+N_TexImage_missing),svm_input(s,node+N_TexImage_missing_alpha));
+    if((*s).error!=0u){return;}
 //#if SVM_TEX_IMAGE_BOX else     if(false){}
-    if(mode==1u){result=image_box(s,co,id,heap_float(node+N_TexImageBox_blend),flags);}
+    if(mode==1u){result=image_box(s,co,id,heap_float(node+N_TexImageBox_blend),flags,missing);}
 //#endif
     else{var uv:vec2<f32>;let projection=load_word(node+N_TexImage_projection);
 //#if SVM_TEX_ENVIRONMENT else         uv=image_projection(s,co,projection);
         if(mode==2u){uv=environment_projection(s,co,projection);}else{uv=image_projection(s,co,projection);}
 //#endif
-        if((*s).error==0u){result=svm_image_sample(s,id,uv,flags);}}
+        if((*s).error==0u){result=svm_image_sample(s,id,uv,flags,missing);}}
     if((*s).error!=0u){return;}
     svm_optional_store3(s,svm_byte(node+N_TexImage_out_offset),result.xyz);svm_optional_store(s,svm_byte(node+N_TexImage_alpha_offset),result.w);
 }

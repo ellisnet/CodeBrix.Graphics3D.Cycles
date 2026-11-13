@@ -45,7 +45,7 @@ static uint64_t sample_gate(WebGPUDevice &d,Scene &scene,const std::vector<Image
   std::string source=svm_surface_source()+R"WGSL(
 @compute @workgroup_size(64) fn image_probe(@builtin(global_invocation_id) id:vec3<u32>){
  if(id.x>=p(1u)){return;}let at=p(2u)+id.x*16u;var s:SvmState;
- let color=svm_image_sample(&s,bitcast<i32>(load_word(at)),vec2<f32>(heap_float(at+8u),heap_float(at+12u)),load_word(at+4u));
+ let color=svm_image_sample(&s,bitcast<i32>(load_word(at)),vec2<f32>(heap_float(at+8u),heap_float(at+12u)),load_word(at+4u),vec4<f32>(1,0,1,1));
  if(s.error!=0u){return;}let out=p(4u)+id.x*16u;for(var i=0u;i<4u;i++){store_word(out+i*4u,bitcast<u32>(color[i]));}
 })WGSL";
   source=gate_probe_wgsl(d,source);std::ofstream(prefix+".sampling.wgsl")<<source;
@@ -115,9 +115,9 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       program.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=3,.value=make_float3(.13,.07,-.05)});program.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=6,.value=make_float3(-.17,.11,.03)});
       program.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=9,.value=normals[variant%7]});program.add(NODE_CLOSURE_SET_NORMAL,SVMNodeClosureSetNormal{.direction_offset=9,.normal_offset=12});
       int id=handles[(variant*7+mode*11)%handles.size()].kernel_id();
-      if(mode<3){const unsigned projections[]={NODE_IMAGE_PROJ_FLAT,NODE_IMAGE_PROJ_SPHERE,NODE_IMAGE_PROJ_TUBE};program.add(derivative?NODE_TEX_IMAGE_DERIVATIVE:NODE_TEX_IMAGE,SVMNodeTexImage{.id=id,.projection=projections[mode],.flags=uint8_t(flags),.co=0,.out_offset=20,.alpha_offset=23});}
-      else if(mode<9){const float blends[]={0,.01f,.2f,.5f,.9f,1};program.add(derivative?NODE_TEX_IMAGE_BOX_DERIVATIVE:NODE_TEX_IMAGE_BOX,SVMNodeTexImageBox{.id=id,.blend=blends[mode-3],.flags=uint8_t(flags),.co=0,.out_offset=20,.alpha_offset=23});}
-      else program.add(derivative?NODE_TEX_ENVIRONMENT_DERIVATIVE:NODE_TEX_ENVIRONMENT,SVMNodeTexEnvironment{.id=id,.projection=NodeEnvironmentProjection(mode-9),.flags=uint8_t(flags),.co=0,.out_offset=20,.alpha_offset=23});
+      if(mode<3){const unsigned projections[]={NODE_IMAGE_PROJ_FLAT,NODE_IMAGE_PROJ_SPHERE,NODE_IMAGE_PROJ_TUBE};program.add(derivative?NODE_TEX_IMAGE_DERIVATIVE:NODE_TEX_IMAGE,SVMNodeTexImage{.id=id,.projection=projections[mode],.missing=SVMInputFloat3{{__float_as_uint(1.0f)},{__float_as_uint(0.0f)},{__float_as_uint(1.0f)}},.missing_alpha=SVMInputFloat{__float_as_uint(1.0f)},.flags=uint8_t(flags),.co=0,.out_offset=20,.alpha_offset=23});}
+      else if(mode<9){const float blends[]={0,.01f,.2f,.5f,.9f,1};program.add(derivative?NODE_TEX_IMAGE_BOX_DERIVATIVE:NODE_TEX_IMAGE_BOX,SVMNodeTexImageBox{.id=id,.blend=blends[mode-3],.missing=SVMInputFloat3{{__float_as_uint(1.0f)},{__float_as_uint(0.0f)},{__float_as_uint(1.0f)}},.missing_alpha=SVMInputFloat{__float_as_uint(1.0f)},.flags=uint8_t(flags),.co=0,.out_offset=20,.alpha_offset=23});}
+      else program.add(derivative?NODE_TEX_ENVIRONMENT_DERIVATIVE:NODE_TEX_ENVIRONMENT,SVMNodeTexEnvironment{.id=id,.projection=NodeEnvironmentProjection(mode-9),.missing=SVMInputFloat3{{__float_as_uint(1.0f)},{__float_as_uint(0.0f)},{__float_as_uint(1.0f)}},.missing_alpha=SVMInputFloat{__float_as_uint(1.0f)},.flags=uint8_t(flags),.co=0,.out_offset=20,.alpha_offset=23});
       if(alpha)program.add(NODE_CONVERT,SVMNodeConvert{.convert_type=NODE_CONVERT_FV,.from_offset=23,.to_offset=20});
       program.add(NODE_CLOSURE_WEIGHT,SVMNodeClosureWeight{.weight_offset=20});program.add(NODE_CLOSURE_EMISSION,SVMNodeClosureEmission{.mix_weight_offset=SVM_STACK_INVALID});program.install(ds);
       evaluate(d,scene,shader,layout,states,small,"Image projection "+std::to_string(mode)+" variant "+std::to_string(variant),m);typed++;

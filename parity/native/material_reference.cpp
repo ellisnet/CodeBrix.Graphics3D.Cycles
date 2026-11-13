@@ -3,7 +3,7 @@
 // Invoke the complete original Cycles SVM interpreter and original BSDFs.
 #include "device/device.h"
 #include "kernel/globals.h"
-#include "kernel/device/cpu/image.h"
+#include "kernel/util/image.h"
 #include "kernel/integrator/state.h"
 #include "kernel/integrator/state_flow.h"
 #include "kernel/integrator/state_util.h"

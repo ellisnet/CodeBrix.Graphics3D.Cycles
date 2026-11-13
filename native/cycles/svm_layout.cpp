@@ -3,6 +3,7 @@
 #include "wavefront.h"
 #include "surface_closure.h"
 #include "kernel/types.h"
+#include "kernel/constants.h"
 #include "util/types_image.h"
 #include "kernel/svm/node_types.h"
 #include <sstream>
@@ -23,13 +24,13 @@ std::string svm_layout(bool surface){
   SIZE(Convert);FIELD(Convert,convert_type);FIELD(Convert,from_offset);FIELD(Convert,to_offset);
   SIZE(Geometry);FIELD(Geometry,geom_type);FIELD(Geometry,bump_offset);FIELD(Geometry,store_derivatives);FIELD(Geometry,out_offset);FIELD(Geometry,bump_filter_width);
   SIZE(TexCoord);FIELD(TexCoord,texco_type);FIELD(TexCoord,bump_offset);FIELD(TexCoord,store_derivatives);FIELD(TexCoord,out_offset);FIELD(TexCoord,bump_filter_width);
-  SIZE(Attr);FIELD(Attr,attr);FIELD(Attr,out_offset);FIELD(Attr,output_type);FIELD(Attr,bump_offset);FIELD(Attr,store_derivatives);FIELD(Attr,bump_filter_width);
+  SIZE(Attr);FIELD(Attr,attr);FIELD(Attr,missing);FIELD(Attr,missing_alpha);FIELD(Attr,out_offset);FIELD(Attr,output_type);FIELD(Attr,bump_offset);FIELD(Attr,store_derivatives);FIELD(Attr,bump_filter_width);
   SIZE(NormalMap);FIELD(NormalMap,space);FIELD(NormalMap,invert_green);FIELD(NormalMap,use_original_base);FIELD(NormalMap,attr);FIELD(NormalMap,attr_sign);FIELD(NormalMap,color);FIELD(NormalMap,strength);FIELD(NormalMap,normal_offset);
   SIZE(Tangent);FIELD(Tangent,direction_type);FIELD(Tangent,axis);FIELD(Tangent,attr);FIELD(Tangent,tangent_offset);
-  SIZE(TexImage);FIELD(TexImage,id);FIELD(TexImage,projection);FIELD(TexImage,flags);FIELD(TexImage,co);FIELD(TexImage,out_offset);FIELD(TexImage,alpha_offset);
+  SIZE(TexImage);FIELD(TexImage,id);FIELD(TexImage,projection);FIELD(TexImage,missing);FIELD(TexImage,missing_alpha);FIELD(TexImage,flags);FIELD(TexImage,co);FIELD(TexImage,out_offset);FIELD(TexImage,alpha_offset);
   SIZE(TexImageBox);FIELD(TexImageBox,blend);SIZE(TexEnvironment);
 #define SHARED_FIELD(member) static_assert(offsetof(SVMNodeTexImage,member)==offsetof(SVMNodeTexImageBox,member));static_assert(offsetof(SVMNodeTexImage,member)==offsetof(SVMNodeTexEnvironment,member));
-  SHARED_FIELD(id) SHARED_FIELD(flags) SHARED_FIELD(co) SHARED_FIELD(out_offset) SHARED_FIELD(alpha_offset)
+  SHARED_FIELD(id) SHARED_FIELD(missing) SHARED_FIELD(missing_alpha) SHARED_FIELD(flags) SHARED_FIELD(co) SHARED_FIELD(out_offset) SHARED_FIELD(alpha_offset)
 #undef SHARED_FIELD
   static_assert(offsetof(SVMNodeTexImage,projection)==offsetof(SVMNodeTexEnvironment,projection));
   // Bump stages (wavefront_svm_derivatives.wgsl): emitted only for scenes that reach them.
@@ -93,9 +94,8 @@ std::string svm_layout(bool surface){
   constant("RAYTRACE_VISIBILITY_RAYCAST",PATH_RAY_VISIBILITY_RAYCAST);
   source<<"//#endif\n//#endif\n";
   source<<"//#if RAYTRACE_ANY\n";
-  constant("AO_VISIBILITY_ALL",PATH_RAY_VISIBILITY_ALL);constant("AO_VISIBILITY_SHADOW_OPAQUE",PATH_RAY_VISIBILITY_SHADOW_OPAQUE);constant("AO_PRNG_SURFACE_AO",PRNG_SURFACE_AO);
+  constant("AO_VISIBILITY_ALL",PATH_RAY_VISIBILITY_ALL);constant("AO_VISIBILITY_OBJECT_ALL",PATH_RAY_VISIBILITY_OBJECT_ALL);constant("AO_VISIBILITY_SHADOW_OPAQUE",PATH_RAY_VISIBILITY_SHADOW_OPAQUE);constant("AO_PRNG_SURFACE_AO",PRNG_SURFACE_AO);
   source<<"//#endif\n";
-  SIZE(VertexColor);FIELD(VertexColor,layer_id);FIELD(VertexColor,color_offset);FIELD(VertexColor,alpha_offset);FIELD(VertexColor,bump_offset);FIELD(VertexColor,bump_filter_width);
   SIZE(VectorMath);FIELD(VectorMath,math_type);FIELD(VectorMath,a);FIELD(VectorMath,b);FIELD(VectorMath,c);FIELD(VectorMath,param1);FIELD(VectorMath,value_offset);FIELD(VectorMath,vector_offset);
   SIZE(SeparateVector);FIELD(SeparateVector,vector);FIELD(SeparateVector,vector_index);FIELD(SeparateVector,out_offset);
   SIZE(CombineVector);FIELD(CombineVector,in);FIELD(CombineVector,vector_index);FIELD(CombineVector,out_offset);
@@ -124,7 +124,7 @@ std::string svm_layout(bool surface){
   SIZE(SimpleBsdfData);FIELD(SimpleBsdfData,param1);FIELD(SimpleBsdfData,normal_offset);
   SIZE(GlossyBsdfData);FIELD(GlossyBsdfData,color);FIELD(GlossyBsdfData,roughness);FIELD(GlossyBsdfData,anisotropy);FIELD(GlossyBsdfData,rotation);FIELD(GlossyBsdfData,normal_offset);FIELD(GlossyBsdfData,tangent_offset);
   SIZE(RefractionBsdfData);FIELD(RefractionBsdfData,roughness);FIELD(RefractionBsdfData,ior);FIELD(RefractionBsdfData,normal_offset);
-  SIZE(GlassBsdfData);FIELD(GlassBsdfData,color);FIELD(GlassBsdfData,roughness);FIELD(GlassBsdfData,ior);FIELD(GlassBsdfData,normal_offset);FIELD(GlassBsdfData,thin_film_thickness);FIELD(GlassBsdfData,thin_film_ior);
+  SIZE(GlassBsdfData);FIELD(GlassBsdfData,color);FIELD(GlassBsdfData,roughness);FIELD(GlassBsdfData,anisotropy);FIELD(GlassBsdfData,rotation);FIELD(GlassBsdfData,ior);FIELD(GlassBsdfData,normal_offset);FIELD(GlassBsdfData,tangent_offset);FIELD(GlassBsdfData,thin_film_thickness);FIELD(GlassBsdfData,thin_film_ior);
   SIZE(ClosureSetNormal);FIELD(ClosureSetNormal,direction_offset);FIELD(ClosureSetNormal,normal_offset);
   SIZE(EmissionWeight);FIELD(EmissionWeight,color);FIELD(EmissionWeight,strength);
   SIZE(MixClosure);FIELD(MixClosure,fac);FIELD(MixClosure,in_weight_offset);FIELD(MixClosure,weight1_offset);FIELD(MixClosure,weight2_offset);
@@ -263,8 +263,25 @@ std::string svm_layout(bool surface){
   constant("D_caustics_reflective",offsetof(KernelData,integrator.caustics_reflective));
   constant("D_ggx_E",offsetof(KernelData,tables.ggx_E));
   constant("D_ggx_Eavg",offsetof(KernelData,tables.ggx_Eavg));
+  // Resolutions of the albedo lookup tables (kernel/constants.h).
+#define LUT(name) constant("LUT_" #name,name)
+  LUT(GGX_E_RES_ROUGH);LUT(GGX_E_RES_MU);LUT(GGX_GLASS_E_RES_ROUGH);LUT(GGX_GLASS_E_RES_MU);LUT(GGX_GLASS_E_RES_IOR);
+  LUT(GGX_GEN_SCHLICK_S_RES_ROUGH);LUT(GGX_GEN_SCHLICK_S_RES_MU);LUT(GGX_GEN_SCHLICK_S_RES_IOR);
+  LUT(GGX_GEN_SCHLICK_IOR_S_RES_ROUGH);LUT(GGX_GEN_SCHLICK_IOR_S_RES_MU);LUT(GGX_GEN_SCHLICK_IOR_S_RES_IOR);LUT(SHEEN_RES_ROUGH);LUT(SHEEN_RES_MU);
+#undef LUT
+  // One three-dimensional reader serves the glass energy tables and the two generalized Schlick tables
+  // (microfacet_lut3, huang_table): its resolutions are theirs. The two-dimensional reader of ggx_E and the sheen
+  // table (microfacet_lut2) and the ggx_Eavg read keep their 32.
+  static_assert(GGX_GEN_SCHLICK_S_RES_ROUGH==GGX_GLASS_E_RES_ROUGH&&GGX_GEN_SCHLICK_IOR_S_RES_ROUGH==GGX_GLASS_E_RES_ROUGH&&
+                GGX_GEN_SCHLICK_S_RES_MU==GGX_GLASS_E_RES_MU&&GGX_GEN_SCHLICK_IOR_S_RES_MU==GGX_GLASS_E_RES_MU&&
+                GGX_GEN_SCHLICK_S_RES_IOR==GGX_GLASS_E_RES_IOR&&GGX_GEN_SCHLICK_IOR_S_RES_IOR==GGX_GLASS_E_RES_IOR,"microfacet_lut3 resolutions");
+  static_assert(GGX_E_RES_ROUGH==32&&GGX_E_RES_MU==32&&SHEEN_RES_ROUGH==32&&SHEEN_RES_MU==32,"microfacet_lut2 resolutions");
+  constant("LUT3_RES_ROUGH",GGX_GLASS_E_RES_ROUGH);constant("LUT3_RES_MU",GGX_GLASS_E_RES_MU);constant("LUT3_RES_IOR",GGX_GLASS_E_RES_IOR);
   constant("D_max_closures",offsetof(KernelData,max_closures));
-  constant("O_volume_density",offsetof(KernelObject,volume_density));
+  // KernelObject::mesh_volume is written only for mesh and volume objects: every read of volume_density goes through
+  // object_volume_density (geom/object.h), which tests the object's primitive type first.
+  constant("O_volume_density",offsetof(KernelObject,mesh_volume.volume_density));
+  constant("OVD_primitive_type",offsetof(KernelObject,primitive_type));constant("OVD_PRIMITIVE_TRIANGLE",PRIMITIVE_TRIANGLE);
   constant("O_dupli_generated",offsetof(KernelObject,dupli_generated));constant("O_dupli_uv",offsetof(KernelObject,dupli_uv));
   constant("D_film_rgb_to_y",offsetof(KernelData,film.rgb_to_y));
 #define II(member) constant("II_" #member,offsetof(KernelImageInfo,member))
@@ -298,7 +315,7 @@ std::string svm_layout(bool surface){
   FIELD(distribution);FIELD(ior);FIELD(roughness);FIELD(sheen_weight);FIELD(coat_weight);FIELD(metallic);
   FIELD(transmission_weight);FIELD(subsurface_weight);FIELD(base_color);FIELD(alpha);FIELD(diffuse_roughness);
   FIELD(normal_offset);FIELD(tangent_offset);FIELD(coat_normal_offset);FIELD(specular_tint);FIELD(specular_ior_level);
-  FIELD(anisotropic);FIELD(anisotropic_rotation);FIELD(emission_color);FIELD(emission_strength);FIELD(sheen_tint);
+  FIELD(anisotropic);FIELD(anisotropic_rotation);FIELD(transmission_dispersion_scale);FIELD(transmission_dispersion_abbe_number);FIELD(emission_color);FIELD(emission_strength);FIELD(sheen_tint);
   FIELD(sheen_roughness);FIELD(coat_tint);FIELD(coat_roughness);FIELD(coat_ior);FIELD(thin_film_thickness);FIELD(thin_film_ior);FIELD(thin_wall);
 #undef FIELD
   // The WGSL reads SVMInputInt's stack offset byte at +4.
@@ -431,7 +448,7 @@ std::string svm_volume_source(){
   kinds({CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID,CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID},sizeof(SVMNodeGlassBsdfData));
   kinds({CLOSURE_BSDF_GLOSSY_TOON_ID,CLOSURE_BSDF_DIFFUSE_TOON_ID},sizeof(SVMNodeToonBsdfData));
   kinds({CLOSURE_BSDF_HAIR_REFLECTION_ID,CLOSURE_BSDF_HAIR_TRANSMISSION_ID},sizeof(SVMNodeHairBsdfData));
-  kinds({CLOSURE_BSSRDF_BURLEY_ID,CLOSURE_BSSRDF_RANDOM_WALK_ID,CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID},sizeof(SVMNodeBssrdfData));
+  kinds({CLOSURE_BSSRDF_BURLEY_ID,CLOSURE_BSSRDF_RANDOM_WALK_ID,CLOSURE_BSSRDF_RANDOM_WALK_LEGACY_ID,CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID},sizeof(SVMNodeBssrdfData));
   skip<<"default:{}}_=svm_take(s,bytes);";
   layout.replace(at,call.size(),skip.str());
   return shader_data_source()+layout+svm_surface_fragment;

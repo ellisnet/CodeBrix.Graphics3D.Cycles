@@ -16,7 +16,7 @@ from cycles_source import SOURCE, verify as verify_cycles
 from native_runner import PACKAGE,NDK
 from audit_webgpu import audit
 from translate import generate
-REVISION='a456b761034dda42c32eef9f4aae0fa5a5c9f604'
+REVISION='b3f6262640f1a2f2d10b55b6ffccbf310ce0f981'
 
 def shaders():
     out=WORK/'generated';out.mkdir(parents=True,exist_ok=True)

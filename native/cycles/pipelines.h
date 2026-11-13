@@ -57,7 +57,7 @@ inline constexpr ShaderFeatures SF_IMAGE=ShaderFeatures::bit(2);
 inline constexpr ShaderFeatures SF_ATTR=ShaderFeatures::bit(3);
 inline constexpr ShaderFeatures SF_NORMAL_MAP=ShaderFeatures::bit(4);
 inline constexpr ShaderFeatures SF_TANGENT=ShaderFeatures::bit(5);
-inline constexpr ShaderFeatures SF_VERTEX_COLOR=ShaderFeatures::bit(6);
+// Bit 6 is unused (it was the Vertex Color node, which the pinned SVM compiler now emits as an Attribute node).
 inline constexpr ShaderFeatures SF_MATH=ShaderFeatures::bit(7);
 inline constexpr ShaderFeatures SF_VECTOR_MATH=ShaderFeatures::bit(8);
 inline constexpr ShaderFeatures SF_CLAMP=ShaderFeatures::bit(9);

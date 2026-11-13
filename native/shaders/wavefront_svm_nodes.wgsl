@@ -887,7 +887,7 @@ fn sky_scattering(s:ptr<function,SvmState>,dir:vec3<f32>,data:u32,flag:u32)->vec
     }
     let t=rounded_add(rounded_add(-direction.y,-1.5707963705062866),sun_rotation)*0.15915493667125702;let x=rounded_add(t,-floor(t));
     let y=rounded_add(sign(dir_elevation)*abs(rounded_sqrt(abs(dir_elevation)*0.6366197466850281))*0.5,0.5);
-    let image=image_sample(s,bitcast<i32>(load_word(data+N_TexSkyNishitaData_texture_id)),vec2<f32>(x,y));
+    let image=image_sample(s,bitcast<i32>(load_word(data+N_TexSkyNishitaData_texture_id)),vec2<f32>(x,y),vec4<f32>(1,0,1,1));
     if((*s).error!=0u){return vec3<f32>(0);}
     return sky_xyz_to_rgb_clamped(rounded_add3(xyz,image.xyz));
 }

@@ -40,12 +40,12 @@ void WebGPUDevice::enqueue_dedicated_light(DeviceKernel kernel,int work,const De
   p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=sample_pattern_table("dedicated light");
   p[10]=uint32_t(remaining(uintptr_t(state.path.render_pixel_index))/4);
   if(!p[2])require(uint32_t(n)<=p[10],"Dedicated light dispatch exceeds path capacity");
-  validate(uintptr_t(state.shadow_link.dedicated_light_weight),size_t(p[10])*sizeof(float));
+  validate(uintptr_t(state.shadow_link.dedicated_light_weight),size_t(p[10])*sizeof(uint16_t));
   validate(uintptr_t(state.shadow_link.last_isect_prim),size_t(p[10])*sizeof(int));
   validate(uintptr_t(state.shadow_link.last_isect_object),size_t(p[10])*sizeof(int));
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||((data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)&&feature==KERNEL_FEATURE_LIGHT_PASSES))validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||((data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)&&feature==KERNEL_FEATURE_LIGHT_PASSES))validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(gpu_state_storage<type>::gpu_type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
 #define KERNEL_STRUCT_END(name)
@@ -74,7 +74,7 @@ void WebGPUDevice::enqueue_dedicated_light(DeviceKernel kernel,int work,const De
   p[25]=uint32_t(remaining(uintptr_t(state.shadow_path.render_pixel_index))/4);
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(KernelFeatureRequest(feature).test(data.kernel_features))validate(uintptr_t(state.parent.name),size_t(p[25])*sizeof(type));
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(KernelFeatureRequest(feature).test(data.kernel_features))validate(uintptr_t(state.parent.name),size_t(p[25])*sizeof(gpu_state_storage<type>::gpu_type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
 #define KERNEL_STRUCT_END(name)

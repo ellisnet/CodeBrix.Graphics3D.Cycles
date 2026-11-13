@@ -47,6 +47,11 @@ endif()
 # Embree: the reviewed snapshot (third_party/deps/embree) built as a static library into
 # the dependency prefix; FindEmbree.cmake supplies the variables. Its tasking system is
 # the reviewed oneTBB.
+# The Cycles build files test WITH_EMBREE, which external_libs.cmake sets from WITH_CYCLES_EMBREE. A request for
+# Embree that did not arrive there would silently build the CPU device on BVH2, so it is an error here.
+if(WITH_CYCLES_EMBREE AND NOT WITH_EMBREE)
+  message(FATAL_ERROR "WITH_CYCLES_EMBREE is ON but WITH_EMBREE is not set: the CPU device would be built without Embree")
+endif()
 if(WITH_CYCLES_EMBREE)
   target_compile_definitions(codebrix_optional_embree INTERFACE WITH_EMBREE)
   target_link_libraries(codebrix_optional_embree INTERFACE ${EMBREE_LIBRARIES} ${TBB_LIBRARIES})

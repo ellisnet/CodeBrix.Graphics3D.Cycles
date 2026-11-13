@@ -353,7 +353,7 @@ fn svm_volume(s:ptr<function,SvmState>,node:u32){
 //#endif
     let mix_weight=svm_optional(s,svm_byte(node+N_ClosureVolume_mix_weight_offset),1.0);if(mix_weight==0.0){return;}
     var density=mix_weight*max(svm_input(s,node+N_ClosureVolume_density),0.0);
-    if((*s).geometry.object_id!=NONE){density*=heap_float(table_at(G_objects,(*s).geometry.object_id,SIZE_objects)+O_volume_density);}
+    if((*s).geometry.object_id!=NONE){density*=object_volume_density((*s).geometry.object_id);}
     var weight=(*s).weight;if(kind==CLOSURE_VOLUME_ABSORPTION_ID){weight=vec3<f32>(1)-weight;}weight*=density;
     if(kind==CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID){
         let sample_weight=abs((weight.x+weight.y+weight.z)*(1.0/3.0));
@@ -716,7 +716,7 @@ fn vp_scatter(s:ptr<function,SvmState>,kind:u32,weight:vec3<f32>,param1:f32,para
 // svm_node_volume_coefficients (volume programs only).
 fn svm_volume_coefficients(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
     let mix_weight=svm_optional(s,svm_byte(node+N_VolumeCoefficients_mix_weight_offset),1.0);if(mix_weight==0.0){return;}
-    var weight=mix_weight;if((*s).geometry.object_id!=NONE){weight*=heap_float(table_at(G_objects,(*s).geometry.object_id,SIZE_objects)+O_volume_density);}
+    var weight=mix_weight;if((*s).geometry.object_id!=NONE){weight*=object_volume_density((*s).geometry.object_id);}
     let kind=load_word(node+N_VolumeCoefficients_closure_type);let scatter=(*s).weight;
     if(any(scatter!=vec3<f32>(0))){
         if(kind==CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID){let w=weight*scatter;
@@ -754,7 +754,7 @@ fn vp_attribute_float(v:vec4<f32>)->f32{return rounded_add(rounded_add(v.x,v.y),
 //#endif
 fn svm_principled_volume(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
     let mix_weight=svm_optional(s,svm_byte(node+N_PrincipledVolume_mix_weight_offset),1.0);if(mix_weight==0.0){return;}
-    var weight=mix_weight;if((*s).geometry.object_id!=NONE){weight*=heap_float(table_at(G_objects,(*s).geometry.object_id,SIZE_objects)+O_volume_density);}
+    var weight=mix_weight;if((*s).geometry.object_id!=NONE){weight*=object_volume_density((*s).geometry.object_id);}
     var density=weight*max(svm_input(s,node+N_PrincipledVolume_density),0.0);
 //#if PRINCIPLED_VOLUME_ATTRIBUTE else     if(density>0.0&&attribute_find(s,load_word(node+N_PrincipledVolume_attr_density),0u).found){svm_error(s,16u);return;}
     if(density>0.0){let desc=attribute_find(s,load_word(node+N_PrincipledVolume_attr_density),0u);

@@ -3,7 +3,8 @@
 #include "device/device.h"
 #include "image_reference.h"
 #include "kernel/globals.h"
-#include "kernel/device/cpu/image.h"
+#include "util/color.h"
+#include "kernel/util/image.h"
 #include "kernel/integrator/state.h"
 #include "kernel/integrator/state_flow.h"
 #include "kernel/integrator/state_util.h"
@@ -28,6 +29,8 @@ struct Globals {
   }
 };
 template<class T> void three(float (&out)[3],const T &v){out[0]=v.x;out[1]=v.y;out[2]=v.z;}
+// A state field the GPU devices may store compressed: the CPU state holds the full Spectrum.
+inline void three(float (&out)[3],const ccl::SpectrumCompressedOnGPU &v){three(out,v.v);}
 }
 void original_dedicated(ccl::DeviceScene &scene,ccl::DeviceKernel kernel,const std::vector<int> &ids,std::vector<ccl::IntegratorStateCPU> &states){
   using namespace ccl;Globals globals(scene);KernelGlobals kg=globals.thread.get();

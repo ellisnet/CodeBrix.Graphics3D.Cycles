@@ -46,6 +46,17 @@ inline std::remove_volatile_t<T> atomic_fetch_and_or_uint32(
 {
   return codebrix_atomic_detail::reference(address).fetch_or(value);
 }
+template<class T, codebrix_atomic_detail::enable_word<T> = 0>
+inline std::remove_volatile_t<T> atomic_load_uint32(const T *address) noexcept
+{
+  // Atomic reads share the same synchronization discipline as atomic writes.
+  return codebrix_atomic_detail::reference(const_cast<T *>(address)).load();
+}
+template<class T, codebrix_atomic_detail::enable_word<T> = 0>
+inline void atomic_store_uint32(T *address, std::remove_volatile_t<T> value) noexcept
+{
+  codebrix_atomic_detail::reference(address).store(value);
+}
 inline std::uint32_t atomic_cas_uint32(volatile std::uint32_t *address,
                                      std::uint32_t expected,
                                      std::uint32_t desired) noexcept

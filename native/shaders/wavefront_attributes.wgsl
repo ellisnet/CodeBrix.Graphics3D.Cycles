@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Jeremy Ellis and contributors
 // SPDX-License-Identifier: Apache-2.0
 // Modified from pinned Cycles geom/attribute.h, geom/triangle.h, geom/primitive.h,
-// svm/attribute.h, svm/vertex_color.h, svm/util.h, util/color.h and
+// svm/attribute.h, svm/util.h, util/color.h and
 // kernel/util/colorspace.h. Native layouts, bounded virtual-address loads and
 // explicit unsupported-domain errors replace native pointers/templates.
 struct AttributeDesc {element:u32, kind:u32, offset:i32, found:bool,}
@@ -270,10 +270,25 @@ fn svm_attribute(s:ptr<function,SvmState>,node:u32,derivative:bool){
     var desc=attribute_find(s,id,select(0u,0xffffffffu,(id&0x80000000u)!=0u));
     if(!desc.found){desc.kind=output;}
     var value:vec3<f32>;var dx:vec3<f32>;var dy:vec3<f32>;
+    // svm_node_attr_volume: an attribute a volume shader does not find is the node's Missing value (Fac: its average,
+    // Alpha: Missing Alpha as stored, not averaged).
+    if((*s).volume&&!desc.found){
+        let offset=svm_byte(node+N_Attr_out_offset);
+        if(output==NODE_ATTR_OUTPUT_FLOAT3){svm_store3(s,offset,svm_input3(s,node+N_Attr_missing));}
+        else if(output==NODE_ATTR_OUTPUT_FLOAT){let missing=svm_input3(s,node+N_Attr_missing);svm_store(s,offset,(missing.x+missing.y+missing.z)*(1.0/3.0));}
+        else{svm_store(s,offset,svm_input(s,node+N_Attr_missing_alpha));}
+        return;
+    }
     if(id==ATTR_STD_GENERATED&&!desc.found){
         let sd=(*s).geometry;value=sd.P;dx=sd.dPdu*sd.du.x+sd.dPdv*sd.dv.x;dy=sd.dPdu*sd.du.y+sd.dPdv*sd.dv.y;
         if(sd.object_id!=NONE){let object=table_at(G_objects,sd.object_id,SIZE_objects);
             value=surface_object_point(sd,value,true);dx=surface_object_direction(sd,dx,true);dy=surface_object_direction(sd,dy,true);}
+    }else if(!desc.found){
+        // svm_node_attr_surface_eval: an attribute that is not found is the node's Missing value (Alpha output: Missing
+        // Alpha in every component), with zero derivatives.
+        if(output==NODE_ATTR_OUTPUT_FLOAT_ALPHA){value=vec3<f32>(svm_input(s,node+N_Attr_missing_alpha));}
+        else{value=svm_input3(s,node+N_Attr_missing);}
+        dx=vec3<f32>(0);dy=vec3<f32>(0);
     }else{
         let data=attribute_read(s,desc);value=attribute_convert(data.value,desc.kind,output,false);
         dx=attribute_convert(data.dx,desc.kind,output,true);dy=attribute_convert(data.dy,desc.kind,output,true);
@@ -283,19 +298,4 @@ fn svm_attribute(s:ptr<function,SvmState>,node:u32,derivative:bool){
         if(bump==NODE_BUMP_OFFSET_DX){value+=dx*width;}else if(bump==NODE_BUMP_OFFSET_DY){value+=dy*width;}}
     let offset=svm_byte(node+N_Attr_out_offset);attribute_store(s,offset,output,value);
     if(derivative&&store!=0u){let stride=select(1u,3u,output==NODE_ATTR_OUTPUT_FLOAT3);attribute_store(s,offset+stride,output,dx);attribute_store(s,offset+2u*stride,output,dy);}
-}
-fn svm_vertex_color(s:ptr<function,SvmState>,node:u32,derivative:bool){
-    let desc=attribute_find(s,svm_byte(node+N_VertexColor_layer_id),0u);
-    let bump=svm_byte(node+N_VertexColor_bump_offset);
-    if(derivative&&bump>NODE_BUMP_OFFSET_DY){svm_error(s,16u);return;}
-    var color=vec3<f32>(0);var alpha=0.0;
-    if(desc.found){
-        if(desc.kind!=NODE_ATTR_FLOAT3&&desc.kind!=NODE_ATTR_FLOAT4&&desc.kind!=NODE_ATTR_RGBA){svm_error(s,16u);return;}
-        var data=attribute_read(s,desc);
-        if(derivative){let width=heap_float(node+N_VertexColor_bump_filter_width);
-            if(bump==NODE_BUMP_OFFSET_DX){data.value+=data.dx*width;}else if(bump==NODE_BUMP_OFFSET_DY){data.value+=data.dy*width;}}
-        color=data.value.xyz;alpha=select(1.0,data.value.w,desc.kind==NODE_ATTR_FLOAT4||desc.kind==NODE_ATTR_RGBA);
-    }
-    if((*s).error!=0u){return;}
-    svm_optional_store3(s,svm_byte(node+N_VertexColor_color_offset),color);svm_optional_store(s,svm_byte(node+N_VertexColor_alpha_offset),alpha);
 }

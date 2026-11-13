@@ -82,19 +82,22 @@ fn ggx_dielectric(cosine:f32,eta:f32)->vec2<f32>{
     let rp=rounded_divide(rounded_add(ct,eta*ci),rounded_add(eta*ci,-ct));
     return vec2<f32>(rounded_add(rs*rs,rp*rp)*0.5,ct);
 }
-fn microfacet_lut2_size(s:ptr<function,SvmState>,x:f32,y:f32,offset:u32,size:u32)->f32{
+// lookup_table_read_2D with the table's resolutions (xsize values per row, ysize rows).
+fn microfacet_lut2_size(s:ptr<function,SvmState>,x:f32,y:f32,offset:u32,xsize:u32,ysize:u32)->f32{
     let count=table_count(G_lookup_table);
-    if(offset>count||size*size>count-offset){svm_error(s,512u);return 0.0;}
-    let value=clamp(y,0.0,1.0)*f32(size-1u);let index=min(u32(value),size-1u);let t=value-f32(index);
-    let a=microfacet_lut1(s,x,offset+size*index,size);if(t==0.0){return a;}
-    let b=microfacet_lut1(s,x,offset+size*min(index+1u,size-1u),size);return (1.0-t)*a+t*b;
+    if(xsize==0u||ysize==0u||offset>count||xsize*ysize>count-offset){svm_error(s,512u);return 0.0;}
+    let value=clamp(y,0.0,1.0)*f32(ysize-1u);let index=min(u32(value),ysize-1u);let t=value-f32(index);
+    let a=microfacet_lut1(s,x,offset+xsize*index,xsize);if(t==0.0){return a;}
+    let b=microfacet_lut1(s,x,offset+xsize*min(index+1u,ysize-1u),xsize);return (1.0-t)*a+t*b;
 }
+// lookup_table_read_3D of the glass energy and generalized Schlick tables: LUT3_RES_ROUGH x LUT3_RES_MU x LUT3_RES_IOR
+// (kernel/constants.h; the layout generator asserts that the tables read here share them).
 fn microfacet_lut3(s:ptr<function,SvmState>,x:f32,y:f32,z:f32,offset:u32)->f32{
-    let count=table_count(G_lookup_table);
-    if(offset>count||4096u>count-offset){svm_error(s,512u);return 0.0;}
-    let value=clamp(z,0.0,1.0)*15.0;let index=min(u32(value),15u);let t=value-f32(index);
-    let a=microfacet_lut2_size(s,x,y,offset+256u*index,16u);if(t==0.0){return a;}
-    let b=microfacet_lut2_size(s,x,y,offset+256u*min(index+1u,15u),16u);return (1.0-t)*a+t*b;
+    let count=table_count(G_lookup_table);let slice=LUT3_RES_ROUGH*LUT3_RES_MU;
+    if(offset>count||slice*LUT3_RES_IOR>count-offset){svm_error(s,512u);return 0.0;}
+    let value=clamp(z,0.0,1.0)*f32(LUT3_RES_IOR-1u);let index=min(u32(value),LUT3_RES_IOR-1u);let t=value-f32(index);
+    let a=microfacet_lut2_size(s,x,y,offset+slice*index,LUT3_RES_ROUGH,LUT3_RES_MU);if(t==0.0){return a;}
+    let b=microfacet_lut2_size(s,x,y,offset+slice*min(index+1u,LUT3_RES_IOR-1u),LUT3_RES_ROUGH,LUT3_RES_MU);return (1.0-t)*a+t*b;
 }
 fn svm_glass(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibility:u32){
     let glass=kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID;
@@ -281,7 +284,7 @@ fn principled_preserve(s:ptr<function,SvmState>,c:ptr<function,SvmClosure>,wi:ve
     if((*c).kind!=CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID){e=microfacet_lut2(s,rough,mu,data_word(D_ggx_E));average=microfacet_lut1(s,rough,data_word(D_ggx_Eavg),32u);}
     else{var ior=(*c).ior;var table=data_word(D_ggx_glass_E);var average_table=data_word(D_ggx_glass_Eavg);
         if(ior<1.0){ior=rounded_divide(1.0,ior);table=data_word(D_ggx_glass_inv_E);average_table=data_word(D_ggx_glass_inv_Eavg);}
-        let z=sqrt(abs((ior-1.0)/(ior+1.0)));e=microfacet_lut3(s,rough,mu,z,table);average=microfacet_lut2_size(s,rough,z,average_table,16u);}
+        let z=sqrt(abs((ior-1.0)/(ior+1.0)));e=microfacet_lut3(s,rough,mu,z,table);average=microfacet_lut2_size(s,rough,z,average_table,LUT_GGX_GLASS_E_RES_ROUGH,LUT_GGX_GLASS_E_RES_IOR);}
     if((*s).error!=0u){return;}
     let missing=(1.0-e)/e;(*c).energy_scale=1.0+missing;
     if(any(fss!=vec3<f32>(1))){let fms=fss*average/(vec3<f32>(1)-fss*(1.0-average));let darkening=(vec3<f32>(1)+fms*missing)/(*c).energy_scale;

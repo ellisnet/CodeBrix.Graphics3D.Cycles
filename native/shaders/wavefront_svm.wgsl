@@ -72,6 +72,13 @@ fn svm_take(s:ptr<function,SvmState>,bytes:u32)->u32{
 // error 8. The select chain reads the same component.
 fn svm_component(v:vec3<f32>,i:u32)->f32{return select(select(v.z,v.y,i==1u),v.x,i==0u);}
 fn svm_byte(address:u32)->u32{return (load_word(address)>>(8u*(address%4u)))&255u;}
+// object_volume_density (geom/object.h) for an object that is not OBJECT_NONE: KernelObject::mesh_volume is written
+// only for mesh and volume objects, so the density of every other primitive type (curves, points) is 1.
+fn object_volume_density(object:u32)->f32{
+    let at=table_at(G_objects,object,SIZE_objects);
+    if((load_word(at+OVD_primitive_type)&OVD_PRIMITIVE_TRIANGLE)!=0u){return heap_float(at+O_volume_density);}
+    return 1.0;
+}
 fn svm_load_bits(s:ptr<function,SvmState>,index:u32)->u32{
     if(index>=SVM_STACK_SIZE){svm_error(s,8u);return 0u;}
     if((svm_stack_get(255u+index/32u)&(1u<<(index%32u)))==0u){svm_error(s,8u);return 0u;}
@@ -327,7 +334,6 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
             case NODE_ATTR,NODE_ATTR_DERIVATIVE:{size=SZ_Attr;}
             case NODE_NORMAL_MAP:{size=SZ_NormalMap;}
             case NODE_TANGENT,NODE_TANGENT_DERIVATIVE:{size=SZ_Tangent;}
-            case NODE_VERTEX_COLOR,NODE_VERTEX_COLOR_DERIVATIVE:{size=SZ_VertexColor;}
             case NODE_VECTOR_MATH:{size=SZ_VectorMath;}
             case NODE_SEPARATE_VECTOR:{size=SZ_SeparateVector;}
             case NODE_COMBINE_VECTOR:{size=SZ_CombineVector;}
@@ -601,11 +607,6 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
             case NODE_TANGENT,NODE_TANGENT_DERIVATIVE:{
 //#if SVM_NODE_TANGENT else svm_error(&s,2u);
                 svm_tangent(&s,node,opcode==NODE_TANGENT_DERIVATIVE);
-//#endif
-            }
-            case NODE_VERTEX_COLOR,NODE_VERTEX_COLOR_DERIVATIVE:{
-//#if SVM_NODE_VERTEX_COLOR else svm_error(&s,2u);
-                svm_vertex_color(&s,node,opcode==NODE_VERTEX_COLOR_DERIVATIVE);
 //#endif
             }
             case NODE_MATH:{

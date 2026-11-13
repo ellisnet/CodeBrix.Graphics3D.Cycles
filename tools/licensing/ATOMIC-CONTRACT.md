@@ -18,6 +18,8 @@ Required behavior:
 | `atomic_fetch_and_add_uint32` | previous integer | add, modulo word width |
 | `atomic_fetch_and_sub_uint32` | previous integer | subtract, modulo word width |
 | `atomic_fetch_and_or_uint32` | previous integer | bitwise OR |
+| `atomic_load_uint32` | observed integer | none |
+| `atomic_store_uint32` | nothing | replace unconditionally |
 | `atomic_cas_uint32` | observed integer | replace only when expected matches |
 | `atomic_add_and_fetch_u` | new unsigned integer | add |
 | `atomic_add_and_fetch_z` | new size counter | add |

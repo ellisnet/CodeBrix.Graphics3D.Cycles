@@ -10,10 +10,29 @@ inline uint32_t atomic_fetch_and_add_uint32(int *pointer,uint32_t value){
   return ::atomic_fetch_and_add_uint32(reinterpret_cast<uint32_t*>(pointer),value);
 }
 }
+// The pinned helpers address one block of GPU threads through the device compatibility names (CUDA-style built-ins,
+// block-shared arrays, block-local atomics). The oracle runs them as a block of one thread: the whole array is that
+// thread's partition and a barrier has nothing to wait for. The block-sort passes are compiled but never called.
+#define ccl_gpu_thread_idx_x 0
+#define ccl_gpu_block_dim_x 1
+#define ccl_gpu_block_idx_x 0
+#define ccl_gpu_syncthreads() ((void)0)
+#define ccl_gpu_shared
+#define atomic_store_local(p,x) (*(p)=(x))
+#define atomic_load_local(p) (*(p))
+#define atomic_fetch_and_add_uint32_shared atomic_fetch_and_add_uint32
 #define __device__ inline
 #include "kernel/device/gpu/parallel_prefix_sum.h"
 #include "kernel/device/gpu/parallel_sorted_index.h"
 #undef __device__
+#undef ccl_gpu_thread_idx_x
+#undef ccl_gpu_block_dim_x
+#undef ccl_gpu_block_idx_x
+#undef ccl_gpu_syncthreads
+#undef ccl_gpu_shared
+#undef atomic_store_local
+#undef atomic_load_local
+#undef atomic_fetch_and_add_uint32_shared
 namespace oracle {
 using namespace ccl;
 using KernelGlobals=void*;

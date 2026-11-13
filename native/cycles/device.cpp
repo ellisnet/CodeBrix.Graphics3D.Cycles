@@ -125,7 +125,7 @@ void WebGPUDevice::fingerprint_kernel_begin(DeviceKernel kernel){
   if(kernel>=DEVICE_KERNEL_SHADER_EVAL_DISPLACE&&kernel<=DEVICE_KERNEL_SHADER_EVAL_VOLUME_DENSITY){f.preparing=true;f.evaluation_begin=std::chrono::steady_clock::now();}
   // A bake's paths start in INIT_FROM_BAKE (bake.cpp) where a render's start in INIT_FROM_CAMERA: the same walk follows.
   if((kernel==DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA||kernel==DEVICE_KERNEL_INTEGRATOR_INIT_FROM_BAKE)&&!f.visit_ready&&f.kind==WebGPUFingerprint::Render){
-    f.visit_ready=true;const uint features=data.kernel_features;const int capacity=int(remaining(uintptr_t(state.path.queued_kernel))/sizeof(uint16_t));
+    f.visit_ready=true;const uint64_t features=data.kernel_features;const int capacity=int(remaining(uintptr_t(state.path.queued_kernel))/sizeof(uint16_t));
     std::vector<DeviceKernel> kernels={DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST,DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND,DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE};
     if(features&KERNEL_FEATURE_NODE_RAYTRACE)kernels.push_back(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE);
     if(data.integrator.use_light_mis||data.integrator.num_lights)kernels.push_back(DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD);

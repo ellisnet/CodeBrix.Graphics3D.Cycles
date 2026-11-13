@@ -129,7 +129,7 @@ static void evaluate(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const st
     m.objects.insert(wanted.object);m.backfacing+=(wanted.runtime_flag&SR_BACKFACING)!=0;m.smooth+=(wanted.shader&SHADER_SMOOTH_NORMAL)!=0;
     m.corner+=(wanted.object_flag&SD_OBJECT_HAS_CORNER_NORMALS)!=0;m.applied+=(wanted.object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0;
     m.instances+=(wanted.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0;m.negative+=(wanted.object_flag&SD_OBJECT_NEGATIVE_SCALE)!=0;
-    const auto &object=scene.dscene.objects[wanted.object];m.negative_position_offsets+=object.position_offset<0;m.negative_normal_offsets+=object.normal_offset<0;
+    const auto &object=scene.dscene.objects[wanted.object];m.negative_position_offsets+=object.position_offset<0;m.negative_normal_offsets+=object.mesh_volume.normal_offset<0;
     unsigned axis=2;auto n=wanted.Ng;if(std::abs(n.z)<std::abs(n.x)||std::abs(n.z)<std::abs(n.y))axis=(std::abs(n.y)<std::abs(n.x)||std::abs(n.y)<std::abs(n.z))?0:1;
     m.projection_axes[axis]++;
   }
@@ -165,9 +165,9 @@ static unsigned rejected(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,cons
     if(test==5)scene.dscene.objects[initial[0].isect.object].position_offset=INT_MAX;
     if(test==6)scene.dscene.tri_vindex[initial[0].isect.prim].x=0x7fffffffu;
     if(test==7)scene.dscene.tri_shader[initial[0].isect.prim]=SHADER_MASK;
-    if(test==8){scene.dscene.tri_shader[initial[0].isect.prim]|=SHADER_SMOOTH_NORMAL;scene.dscene.objects[initial[0].isect.object].normal_offset=INT_MAX;}
+    if(test==8){scene.dscene.tri_shader[initial[0].isect.prim]|=SHADER_SMOOTH_NORMAL;scene.dscene.objects[initial[0].isect.object].mesh_volume.normal_offset=INT_MAX;}
     if(test==10)scene.dscene.tri_vindex[initial[0].isect.prim].x=scene.dscene.tri_vindex[initial[0].isect.prim].y;
-    if(test==11){scene.dscene.tri_shader[initial[0].isect.prim]|=SHADER_SMOOTH_NORMAL;scene.dscene.objects[initial[0].isect.object].normal_offset=INT_MIN;}
+    if(test==11){scene.dscene.tri_shader[initial[0].isect.prim]|=SHADER_SMOOTH_NORMAL;scene.dscene.objects[initial[0].isect.object].mesh_volume.normal_offset=INT_MIN;}
     scene.dscene.objects.copy_to_device();scene.dscene.object_flag.copy_to_device();scene.dscene.tri_vindex.copy_to_device();scene.dscene.tri_shader.copy_to_device();
     upload(d,layout,states);device_vector<uint> out(&d,"invalid_shader_data",MEM_READ_WRITE);out.alloc(sizeof(ShaderDataRecord)/4);std::fill_n(out.data(),out.size(),0xa5a5a5a5u);out.copy_to_device();
     device_vector<int> selected(&d,"invalid_shader_data_index",MEM_READ_WRITE);selected.alloc(1);selected[0]=test==9?states.size():0;selected.copy_to_device();
@@ -200,7 +200,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     auto &ds=scene.dscene;std::vector<packed_uint3> saved_tri(ds.tri_vindex.data(),ds.tri_vindex.data()+ds.tri_vindex.size());
     std::vector<KernelObject> saved_objects(ds.objects.data(),ds.objects.data()+ds.objects.size());
     for(size_t i=0;i<ds.tri_vindex.size();i++){ds.tri_vindex[i].x+=17;ds.tri_vindex[i].y+=17;ds.tri_vindex[i].z+=17;}
-    for(auto ob:scene.objects){unsigned id=ob->get_device_index();ds.objects[id].position_offset-=17;if(!(ds.object_flag[id]&SD_OBJECT_HAS_CORNER_NORMALS))ds.objects[id].normal_offset-=17;}
+    for(auto ob:scene.objects){unsigned id=ob->get_device_index();ds.objects[id].position_offset-=17;if(!(ds.object_flag[id]&SD_OBJECT_HAS_CORNER_NORMALS))ds.objects[id].mesh_volume.normal_offset-=17;}
     ds.tri_vindex.copy_to_device();ds.objects.copy_to_device();evaluate(d,scene,shader,layout,states,indices,"Signed attribute offsets",m,true);
     std::copy(saved_tri.begin(),saved_tri.end(),ds.tri_vindex.data());std::copy(saved_objects.begin(),saved_objects.end(),ds.objects.data());ds.tri_vindex.copy_to_device();ds.objects.copy_to_device();
     invalid=rejected(d,scene,shader,layout,states);

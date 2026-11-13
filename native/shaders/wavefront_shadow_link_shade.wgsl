@@ -59,7 +59,7 @@
 //#endif
             store_word(at+4u,bitcast<u32>(mis));
             let shader=table_at(G_shaders,sd.shader&SHADER_MASK,SIZE_shaders);constant=(load_word(shader+SH_flags)&SD_HAS_CONSTANT_EMISSION)!=0u;
-            value=select(vec3<f32>(1),heap_vec3(shader+SH_constant_emission),constant)*(mis*heap_float(state_address(S_shadow_link_dedicated_light_weight,index,4u)));
+            value=select(vec3<f32>(1),heap_vec3(shader+SH_constant_emission),constant)*(mis*f32(state_half(S_shadow_link_dedicated_light_weight,index)));
             group=load_word(table_at(G_objects,sd.object_id,SIZE_objects)+O_lightgroup);wanted=true;
         }
     }

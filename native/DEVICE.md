@@ -3175,7 +3175,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
      each): `logf(1 - r)` for uniform r differs from the correctly rounded result on 0.72%, `expf` on 0.06-0.08%, so the CPU's
      sampling distances are not correctly rounded either, and a path with more than 100 null collisions meets such an input
      with high probability (INFERENCE: about half of them). Matching the oracle bit for bit would take glibc's own `logf` and
-     `expf` algorithms, which cannot be copied into this repository (LGPL). The operation where the two sides first part was
+     `expf` algorithms, which cannot be copied into this repository (their licence is not compatible with this repository's). The operation where the two sides first part was
      not traced again (the earlier lockstep found 1-2 ulp differences that select another reservoir candidate).
    - The same class appears in two variants of committed scenes that are not committed for that reason:
      `volumes/tree-heterogeneous` with Sobol-Burley (38 practical, a 14-pixel cluster spread by the guidance's denoised passes,

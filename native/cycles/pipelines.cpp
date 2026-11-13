@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <random>
@@ -29,7 +30,7 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     // background light, the lamp and IES coordinates.
     {"TRIG_ATAN2_GUARD",SF_TEX_ENVIRONMENT|SF_LIGHT_BACKGROUND|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_TEX_SKY|SF_TEX_SKY_SCATTERING|SF_BSDF_HAIR_CHIANG|SF_BSDF_HAIR_HUANG|SF_CAMERA_PANORAMA_INVERSE},
     {"SVM_NODE_ATTR",SF_ATTR},{"SVM_NODE_NORMAL_MAP",SF_NORMAL_MAP},{"SVM_NODE_TANGENT",SF_TANGENT},
-    {"SVM_NODE_VERTEX_COLOR",SF_VERTEX_COLOR},{"SVM_NODE_MATH",SF_MATH},{"SVM_NODE_VECTOR_MATH",SF_VECTOR_MATH},
+    {"SVM_NODE_MATH",SF_MATH},{"SVM_NODE_VECTOR_MATH",SF_VECTOR_MATH},
     {"SVM_NODE_CLAMP",SF_CLAMP},{"SVM_NODE_CONVERT",SF_CONVERT},{"SVM_NODE_SEPARATE_VECTOR",SF_SEPARATE_VECTOR},
     {"SVM_NODE_COMBINE_VECTOR",SF_COMBINE_VECTOR},{"SVM_NODE_CLOSURE_VOLUME",SF_CLOSURE_VOLUME},
     {"SVM_NODE_CLOSURE_HOLDOUT",SF_CLOSURE_HOLDOUT},{"SVM_NODE_CLOSURE_SET_NORMAL",SF_CLOSURE_SET_NORMAL},
@@ -198,7 +199,9 @@ OpInfo op_info(uint32_t op){
     OP(NODE_TEX_ENVIRONMENT,TexEnvironment,SF_IMAGE|SF_TEX_ENVIRONMENT) OP(NODE_TEX_ENVIRONMENT_DERIVATIVE,TexEnvironment,SF_IMAGE|SF_TEX_ENVIRONMENT)
     OP(NODE_ATTR,Attr,SF_ATTR) OP(NODE_ATTR_DERIVATIVE,Attr,SF_ATTR) OP(NODE_NORMAL_MAP,NormalMap,SF_NORMAL_MAP)
     OP(NODE_TANGENT,Tangent,SF_TANGENT) OP(NODE_TANGENT_DERIVATIVE,Tangent,SF_TANGENT)
-    OP(NODE_VERTEX_COLOR,VertexColor,SF_VERTEX_COLOR) OP(NODE_VERTEX_COLOR_DERIVATIVE,VertexColor,SF_VERTEX_COLOR)
+    // Not implemented by the device: sized here so the census decodes past them and refuses the scene by name (svm_census).
+    OP(NODE_BOOLEAN_MATH,BooleanMath,SF_NONE) OP(NODE_INTEGER_MATH,IntegerMath,SF_NONE)
+    OP(NODE_GET_VECTOR_COMPONENT,GetVectorComponent,SF_NONE) OP(NODE_GET_VECTOR_COMPONENT_DERIVATIVE,GetVectorComponent,SF_NONE)
     OP(NODE_VECTOR_MATH,VectorMath,SF_VECTOR_MATH) OP(NODE_SEPARATE_VECTOR,SeparateVector,SF_SEPARATE_VECTOR)
     OP(NODE_COMBINE_VECTOR,CombineVector,SF_COMBINE_VECTOR) OP(NODE_CLOSURE_VOLUME,ClosureVolume,SF_CLOSURE_VOLUME)
     OP(NODE_VOLUME_COEFFICIENTS,VolumeCoefficients,SF_NODE_VOLUME_COEFFICIENTS) OP(NODE_PRINCIPLED_VOLUME,PrincipledVolume,SF_NODE_PRINCIPLED_VOLUME)
@@ -288,7 +291,24 @@ PrincipledCensus principled_census(const std::vector<uint32_t> &w,size_t data){
     if(w[wall]==0||wall_linked){out.features|=SF_SUBSURFACE;
       if(field(offsetof(SVMNodePrincipledBsdfData,subsurface_method))==CLOSURE_BSSRDF_BURLEY_ID)out.features|=SF_SUBSURFACE_DISK;}
   }
+  // Anisotropic transmission (svm/closure.h, the Principled transmission component without a thin wall): the lobe takes the
+  // tangent and the two roughnesses when the Tangent input is on the stack and saturate(Anisotropic) is above 0. The device
+  // has the isotropic lobe only, so such a record is refused: a linked Anisotropic, Transmission Weight or Thin Wall counts
+  // as enabling; a constant non-zero Thin Wall (the thin glass closures, always isotropic) does not.
+  {const bool wall_linked=byte_at(w,wall,offsetof(SVMInputInt,offset))!=SVM_STACK_INVALID;
+    if(byte_at(w,data,offsetof(SVMNodePrincipledBsdfData,tangent_offset))!=SVM_STACK_INVALID&&above(offsetof(SVMNodePrincipledBsdfData,anisotropic),0.0f,true)&&
+       above(offsetof(SVMNodePrincipledBsdfData,transmission_weight),CLOSURE_WEIGHT_CUTOFF,true)&&(w[wall]==0||wall_linked))
+      out.unsupported="WebGPU anisotropic transmission not implemented";}
   return out;
+}
+// Glass BSDF record (svm/closure.h CLOSURE_BSDF_MICROFACET_*_GLASS_ID): anisotropic when the Tangent input is on the stack
+// and |Anisotropy| is not at most 1e-4 (the clamp to +-0.99 does not change that test); a linked Anisotropy counts as
+// anisotropic. The device has the isotropic lobe only.
+const char *glass_census(const std::vector<uint32_t> &w,size_t data){
+  if(byte_at(w,data,offsetof(SVMNodeGlassBsdfData,tangent_offset))==SVM_STACK_INVALID)return nullptr;
+  const uint32_t bits=w[data+offsetof(SVMNodeGlassBsdfData,anisotropy)/4];float anisotropy;std::memcpy(&anisotropy,&bits,4);
+  const bool linked=(bits>>8)==(SVM_INPUT_STACK_OFFSET_MASK>>8);
+  return linked||!(std::fabs(anisotropy)<=1e-4f)?"WebGPU anisotropic transmission not implemented":nullptr;
 }
 // Metallic BSDF record census (svm/closure.h CLOSURE_BSDF_PHYSICAL_CONDUCTOR /
 // CLOSURE_BSDF_F82_CONDUCTOR): the Beckmann distribution (its region) and the thin film
@@ -362,8 +382,16 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
         if(kind==CLOSURE_BSSRDF_BURLEY_ID)out.features|=SF_SUBSURFACE_DISK;
         if(kind==CLOSURE_BSDF_PRINCIPLED_ID){const auto principled=principled_census(w,data_at);out.features|=principled.features;
           if(principled.unsupported&&out.unsupported.empty())out.unsupported=principled.unsupported;}
+        if(kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID||kind==CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID||kind==CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID){
+          const char *glass=glass_census(w,data_at);if(glass&&out.unsupported.empty())out.unsupported=glass;}
         if(kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR||kind==CLOSURE_BSDF_F82_CONDUCTOR){const auto metallic=metallic_census(w,data_at,kind);out.features|=metallic.features;
           if(metallic.unsupported&&out.unsupported.empty())out.unsupported=metallic.unsupported;}
+      }
+      // Node types the device has no handler for: the scene is refused by the node's name.
+      if(out.unsupported.empty()){
+        if(op==NODE_BOOLEAN_MATH)out.unsupported="WebGPU Boolean Math node not implemented";
+        else if(op==NODE_INTEGER_MATH)out.unsupported="WebGPU Integer Math node not implemented";
+        else if(op==NODE_GET_VECTOR_COMPONENT||op==NODE_GET_VECTOR_COMPONENT_DERIVATIVE)out.unsupported="WebGPU Get Vector Component node not implemented";
       }
       // Radial Tiling with two sides and a roundness strictly between 0 and 1: the CPU kernel's
       // outputs there are binary32 rounding residue (tangent and secant of the binary32 pi/2,
@@ -604,6 +632,7 @@ uint32_t declared_workgroup_size(const std::string &source,const char *entry){
 #include "fingerprint.h"
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -627,6 +656,13 @@ ShaderFeatures WebGPUDevice::shader_features(){
     std::sort(roots.begin(),roots.end());roots.erase(std::unique(roots.begin(),roots.end()),roots.end());
     const SvmCensus referenced=svm_census(svm_node_words,shader_records.size(),&roots);
     unsupported_feature=referenced.unsupported;principled_features=referenced.features&SF_PRINCIPLED_ALL;unsupported_generation=svm_generation;
+    // Dispersion (a referenced shader that needs a wavelength): the kernels and this device have no spectral sampling. The
+    // host refuses the request on every backend; this is the device's own refusal.
+    if(unsupported_feature.empty())for(uint32_t s:roots)if(s<shader_records.size()&&(shader_records[s].flags&SD_REQUIRES_WAVELENGTH)){unsupported_feature="WebGPU dispersion not implemented";break;}
+    // The Attribute node counts only from referenced shaders too: Cycles' default Gaussian splat shader (an Attribute
+    // node into an Emission closure, compiled into every scene) would otherwise compile the attribute handler into
+    // every scene. An evaluation of a shader outside these roots would report the node as unsupported, never skip it.
+    attribute_features=referenced.features&SF_ATTR;
     // True displacement (displacement method True or Both): the displacement programs of the referenced shaders
     // run in shader_eval_displace (SHADER_EVAL_DISPLACE) during scene preparation, without integrator state.
     // Nodes whose pinned handlers need a path or the scene's BVH there are refused, never approximated.
@@ -676,7 +712,7 @@ ShaderFeatures WebGPUDevice::shader_features(){
   if(specialization_mode==SpecializationMode::Off)return SF_ALL;
   if(census_generation!=svm_generation){
     census=svm_census(svm_node_words,shader_records.size());census_generation=svm_generation;
-    enabled_features|=(census.features&~SF_PRINCIPLED_ALL)|principled_features|displacement_features;
+    enabled_features|=(census.features&~(SF_PRINCIPLED_ALL|SF_ATTR))|principled_features|attribute_features|displacement_features;
     for(const KernelLight &light:lamp_records())if(light.type==LIGHT_AREA)enabled_features|=SF_LIGHT_AREA;
     // Shader-defined volumes: shadow paths through media, and the volume direct light (volume.cpp).
     if(data.kernel_features&KERNEL_FEATURE_VOLUME){enabled_features|=SF_VOLUME_SHADOW;if(data.integrator.use_direct_light)enabled_features|=SF_VOLUME_LIGHT;
@@ -806,7 +842,7 @@ ShaderFeatures WebGPUDevice::shader_features(){
         size_t top=size_t(std::count_if(prim_index_words.begin(),prim_index_words.end(),[](int prim){return prim<0;}));
         bool applied_any=false;
         for(size_t i=0;i<object_records.size()&&i<object_flag_records.size();i++)if(object_flag_records[i]&SD_OBJECT_TRANSFORM_APPLIED){
-          applied_any=true;if(object_records[i].primitive_type&PRIMITIVE_TRIANGLE)top+=size_t(std::max(object_records[i].numprims,0));}
+          applied_any=true;if(object_records[i].primitive_type&PRIMITIVE_TRIANGLE)top+=size_t(std::max(object_records[i].mesh_volume.num_prims,0));}
         bool exact=curve_records.empty()&&point_shader_words.empty()&&prim_index_words.size()==prim_object_words.size()&&top<=prim_index_words.size();
         for(size_t i=top;exact&&i<prim_index_words.size();i++)exact=prim_index_words[i]>=0&&prim_object_words[i]==0;
         if(!exact)local_skip=applied_any;

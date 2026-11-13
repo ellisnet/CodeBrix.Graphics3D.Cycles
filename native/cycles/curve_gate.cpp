@@ -36,9 +36,9 @@ struct ShadowField {std::string name;uint32_t address;size_t stride,offset;};
 static std::vector<ShadowField> shadow_fields(WebGPUDevice &d){std::vector<ShadowField> out;
 #define KERNEL_STRUCT_BEGIN(name) for(int index=0;;index++){
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature) KERNEL_STRUCT_BEGIN(name)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(d.state.parent.name)out.push_back({#parent "." #name,uint32_t(uintptr_t(d.state.parent.name)),sizeof(type),offsetof(IntegratorShadowStateCPU,parent.name)});
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(d.state.parent.name)out.push_back({#parent "." #name,uint32_t(uintptr_t(d.state.parent.name)),sizeof(gpu_state_storage<type>::gpu_type),offsetof(IntegratorShadowStateCPU,parent.name)});
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
-#define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature) if(d.state.parent[index].name)out.push_back({#parent "." #name+std::to_string(index),uint32_t(uintptr_t(d.state.parent[index].name)),sizeof(type),offsetof(IntegratorShadowStateCPU,parent)+size_t(index)*sizeof(IntegratorShadowStateCPU{}.parent[0])+offsetof(std::remove_reference_t<decltype(IntegratorShadowStateCPU{}.parent[0])>,name)});
+#define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature) if(d.state.parent[index].name)out.push_back({#parent "." #name+std::to_string(index),uint32_t(uintptr_t(d.state.parent[index].name)),sizeof(gpu_state_storage<type>::gpu_type),offsetof(IntegratorShadowStateCPU,parent)+size_t(index)*sizeof(IntegratorShadowStateCPU{}.parent[0])+offsetof(std::remove_reference_t<decltype(IntegratorShadowStateCPU{}.parent[0])>,name)});
 #define KERNEL_STRUCT_END(name) (void)index;break;}
 #define KERNEL_STRUCT_END_ARRAY(name,cpu_size,gpu_size) if(index>=gpu_size-1)break;}
 #define KERNEL_STRUCT_VOLUME_STACK_SIZE d.data.volume_stack_size

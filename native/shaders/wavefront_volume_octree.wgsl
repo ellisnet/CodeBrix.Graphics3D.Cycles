@@ -54,7 +54,7 @@ fn vh_voxel_intersect(o:ptr<function,VhOctree>,ray_tmax:f32)->f32{
 // volume_object_get_extrema for camera rays or shaders without a Light Path node: the node's density bounds.
 fn vh_extrema(o:VhOctree)->vec2<f32>{
     let node=vh_node(o.node);var density=1.0;
-    if(o.object!=NONE){density=heap_float(table_at(G_objects,o.object,SIZE_objects)+O_volume_density);}
+    if(o.object!=NONE){density=object_volume_density(o.object);}
     return vec2<f32>(heap_float(node+8u),heap_float(node+12u))*density;
 }
 // volume_octree_setup<false> over the path's volume stack (entries in stack order).

@@ -160,16 +160,17 @@ fn huang_fresnel_cos(cosine:f32,eta:f32)->f32{
 fn huang_refract(incident:vec3<f32>,normal:vec3<f32>,cos_normal:f32,cos_theta_t:f32,inv_eta:f32)->vec3<f32>{
     return rounded_add3(rounded_add(inv_eta*cos_normal,cos_theta_t)*normal,-(inv_eta*incident));
 }
-// lookup_table_read_3D (16 x 16 x 16) of the energy compensation table: the eight corners with scalars, each
+// lookup_table_read_3D (LUT3_RES_ROUGH x LUT3_RES_MU x LUT3_RES_IOR) of the energy compensation table: the eight corners with scalars, each
 // interpolation (1 - t) * a + t * b through one rounded_add body. A corner with t == 0 weighs 0: the same value.
 fn huang_table(x:f32,y:f32,z:f32,offset:u32)->f32{
-    let count=table_count(G_lookup_table);if(offset>count||4096u>count-offset){fail();return 0.0;}
-    let vx=clamp(x,0.0,1.0)*15.0;let vy=clamp(y,0.0,1.0)*15.0;let vz=clamp(z,0.0,1.0)*15.0;
-    let ix=min(u32(vx),15u);let iy=min(u32(vy),15u);let iz=min(u32(vz),15u);
+    let count=table_count(G_lookup_table);let slice=LUT3_RES_ROUGH*LUT3_RES_MU;if(offset>count||slice*LUT3_RES_IOR>count-offset){fail();return 0.0;}
+    let mx=LUT3_RES_ROUGH-1u;let my=LUT3_RES_MU-1u;let mz=LUT3_RES_IOR-1u;
+    let vx=clamp(x,0.0,1.0)*f32(mx);let vy=clamp(y,0.0,1.0)*f32(my);let vz=clamp(z,0.0,1.0)*f32(mz);
+    let ix=min(u32(vx),mx);let iy=min(u32(vy),my);let iz=min(u32(vz),mz);
     let t=vec3<f32>(vx-f32(ix),vy-f32(iy),vz-f32(iz));
     var held=vec3<f32>(0);var result=0.0;let corners=rounded_steps(8u);let levels=rounded_steps(3u);
     for(var corner=0u;corner<corners;corner++){
-        let at=offset+256u*min(iz+(corner>>2u),15u)+16u*min(iy+((corner>>1u)&1u),15u)+min(ix+(corner&1u),15u);
+        let at=offset+slice*min(iz+(corner>>2u),mz)+LUT3_RES_ROUGH*min(iy+((corner>>1u)&1u),my)+min(ix+(corner&1u),mx);
         var value=heap_float(table_at(G_lookup_table,at,SIZE_lookup_table));var level=0u;var open=true;
         for(var step=0u;step<levels&&open;step++){
             // This axis' bit: 0 holds the value for its pair, 1 completes the pair.

@@ -47,7 +47,7 @@ std::string mnee_layout(){
   constant("MNEE_CAUSTICS_MAX_CLOSURE",CAUSTICS_MAX_CLOSURE);constant("MR_CLOSURES",mnee_closure_offset);constant("MR_STACK",mnee_stack_offset);constant("MR_SELECT",mnee_select_offset);constant("MNEE_RECORD_BYTES",mnee_record_bytes);
 #define ISECT(index,member) constant("MNEE_S_I" #index "_" #member,offsetof(IntegratorStateGPU,shadow_isect[index].member))
   ISECT(0,t);ISECT(0,u);ISECT(0,v);ISECT(0,object);ISECT(0,prim);ISECT(0,type);
-  ISECT(1,t);ISECT(1,u);ISECT(1,v);ISECT(1,object);ISECT(1,prim);ISECT(1,type);ISECT(2,prim);
+  ISECT(1,t);ISECT(1,u);ISECT(1,v);ISECT(1,object);ISECT(1,prim);ISECT(1,type);ISECT(2,prim);ISECT(2,t);
 #undef ISECT
   static_assert(INTEGRATOR_SHADOW_ISECT_SIZE_GPU>=4,"MNEE payload and the shadow ray self record share shadow_isect");
   out<<"//#endif\n";return out.str();
@@ -83,7 +83,7 @@ void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){
   require(uint32_t(work)<=svm_stack_slots,"MNEE dispatch exceeds the SVM stack slots");
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||feature==KERNEL_FEATURE_MNEE)validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||feature==KERNEL_FEATURE_MNEE)validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(gpu_state_storage<type>::gpu_type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
 #define KERNEL_STRUCT_END(name)
