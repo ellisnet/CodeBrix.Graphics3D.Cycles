@@ -155,6 +155,13 @@ std::string wavefront_layout(){
 #undef KERNEL_STRUCT_ARRAY_MEMBER
 #undef KERNEL_STRUCT_END
 #undef KERNEL_STRUCT_END_ARRAY
+  // The shadow path's bounce counters for the Light Path node's depths in shadow evaluations (LIGHT_PATH_STATE,
+  // wavefront_svm_nodes.wgsl svm_light_path): their own names, since the shadow module also defines the S_shadow_path_* set.
+  source<<"//#if LIGHT_PATH_STATE\n";
+  constant("LP_shadow_bounce",offsetof(IntegratorStateGPU,shadow_path.bounce));constant("LP_shadow_diffuse_bounce",offsetof(IntegratorStateGPU,shadow_path.diffuse_bounce));
+  constant("LP_shadow_glossy_bounce",offsetof(IntegratorStateGPU,shadow_path.glossy_bounce));constant("LP_shadow_transparent_bounce",offsetof(IntegratorStateGPU,shadow_path.transparent_bounce));
+  constant("LP_shadow_transmission_bounce",offsetof(IntegratorStateGPU,shadow_path.transmission_bounce));constant("LP_shadow_portal_bounce",offsetof(IntegratorStateGPU,shadow_path.portal_bounce));
+  source<<"//#endif\n";
   // Shadow linking (wavefront_shadow_link_*.wgsl, the traversal's blocker filter): one region, so other modules are unchanged.
   source<<"//#if SHADOW_LINKING\n";
   constant("DL_K_INTERSECT",DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT);constant("DL_K_SHADE",DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT);

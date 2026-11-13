@@ -1,6 +1,9 @@
 // Copyright (c) 2026 Jeremy Ellis and contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using CodeBrix.Graphics3D.Cycles.Diagnostics;
 using SilverAssertions;
@@ -86,7 +89,7 @@ public class CapabilityReportTests
             report.GpuBackendName.Should().Be("metal");
             report.BackendScopes["metal"].CameraTypes.Should().Equal("perspective", "orthograph", "panorama");
             report.BackendScopes["metal"].PassesNote.Should().NotBeNullOrEmpty();
-            report.BackendScopes["metal"].RenderTimeRejections.Should().BeEmpty();
+            report.BackendScopes["metal"].RenderTimeRejections.Should().Equal(RejectionsOf("metal"));
             return;
         }
         report.CompiledBackends.Should().Equal("cpu", "webgpu", "cpu-embree");
@@ -99,6 +102,52 @@ public class CapabilityReportTests
             "shadow_catcher_matte", "denoising_albedo", "denoising_normal", "denoising_specular_albedo", "denoising_roughness", "denoising_depth",
             "denoising_backward_motion", "denoising_specular_motion", "volume_majorant", "volume_majorant_sample_count", "volume_direct", "volume_indirect");
         report.BackendScopes["webgpu"].RenderTimeRejections.Should().NotBeEmpty();
+    }
+
+    // AGENT-README.txt, RENDER-TIME REJECTIONS: the "  - " entries under each group heading, in order.
+    private static readonly string[] RejectionGroups = ["Every backend:", "The CPU backends and the WebGPU backend:", "The WebGPU backend:"];
+
+    private static Dictionary<string, List<string>> ReadmeRejections()
+    {
+        string[] lines = File.ReadAllLines(Path.Combine(RepositoryPaths.Root, "AGENT-README.txt"));
+        int start = Array.IndexOf(lines, "RENDER-TIME REJECTIONS");
+        Dictionary<string, List<string>> groups = [];
+        List<string> current = null;
+        for (int i = start + 2; i < lines.Length && !lines[i].StartsWith("Why.", StringComparison.Ordinal); i++)
+        {
+            if (RejectionGroups.Contains(lines[i])) groups[lines[i]] = current = [];
+            else if (lines[i].StartsWith("  - ", StringComparison.Ordinal)) current.Add(lines[i][4..]);
+        }
+        return groups;
+    }
+
+    // The entries AGENT-README.txt lists for one backend scope of the capability report.
+    private static IReadOnlyList<string> RejectionsOf(string backend)
+    {
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+        IEnumerable<string> entries = groups[RejectionGroups[0]];
+        if (backend != "metal") entries = entries.Concat(groups[RejectionGroups[1]]);
+        if (backend == "webgpu") entries = entries.Concat(groups[RejectionGroups[2]]);
+        return entries.ToList();
+    }
+
+    [Fact]
+    public void render_time_rejections_of_every_backend_match_the_agent_readme_list_word_for_word()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+
+        //Assert
+        groups.Keys.Should().BeEquivalentTo(RejectionGroups);
+        groups.Values.All(group => group.Count > 0).Should().BeTrue();
+        report.BackendScopes.Count.Should().Be(report.CompiledBackends.Count);
+        foreach (string backend in report.CompiledBackends)
+            report.BackendScopes[backend].RenderTimeRejections.Should().Equal(RejectionsOf(backend), backend);
     }
 
     [Fact]

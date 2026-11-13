@@ -272,13 +272,14 @@ socket layer cannot express (lifetime, buffers, callbacks, queries).
 
 | Topic | How |
 | --- | --- |
-| Singletons | `cbc_host_scene_node`: `camera`, `background`, `film`, `integrator` |
+| Singletons | `cbc_host_scene_node`: `camera`, `background`, `film`, `integrator`, `scene_attributes` (`time` in seconds and `frame`, which the Scene Time node reads) |
 | Scene nodes | `cbc_host_create_node`: `mesh`, `hair`, `pointcloud`, `volume`, `object`, `particle_system`, `pass`, `shader`, `pointlight`, `spotlight`, `arealight`, `sunlight`, `backgroundlight` |
 | Lights | create the light, set `strength`, `used_shaders` (an emission shader), type-specific sockets (`radius`/`is_sphere`, `angle`/`smooth`, `sizeu`/`sizev`/`ellipse`/`spread`, sun `angle`), then an `object` whose `geometry` is the light and whose `tfm` places it. Area and sun lights emit along the object's -Z. |
-| Cameras | `camera_type` (`perspective`, `orthograph`, `panorama`; `custom` needs OSL, not compiled), `panorama_type`, `fov`, `matrix`, clipping, `shuttertime`, `motion` (transform array) |
+| Cameras | `camera_type` (`perspective`, `orthograph`, `panorama`; `custom` needs OSL, not compiled), `panorama_type`, `fov`, `matrix`, clipping, `shuttertime`, `motion` (transform array). The orthographic view size follows the scale of `matrix`. `viewplane.*` set by the caller (lens shift, sensor fit) is kept for every render (left below right, bottom below top); all four zero restores the automatic viewplane, which the render otherwise computes from the film's aspect. `full_width`, `full_height` come from each render's `CBCRenderConfig` (a set that would change them is `CBC_INVALID`). `border.*` (fractions of the film, lower-left origin; the default 0..1 or all zero is the whole film) renders only that region: the film and every pass come back at full size with zero outside it; the region's pixel edges are the fractions times the film size rounded to the nearest pixel; a border with left >= right or bottom >= top, outside 0..1, or covering no whole pixel is `CBC_INVALID` |
+| Sampling | `CBCRenderConfig.samples` is the render's sample count (the integrator's `aa_samples` follows it; a set that would change it is `CBC_INVALID`); the integrator's `use_sample_subset`, `sample_subset_offset`, `sample_subset_length` render a subset of those samples; `cbc_host_render_time_limit` stops a render early. With denoising, a `denoiser_upscale_factor` other than 1 is refused at render on the CPU and WebGPU backends (`CBC_UNSUPPORTED`: their Open Image Denoise runs on the CPU, which does not upscale). The film's `display_pass` and `show_active_pixels` are viewport settings with no effect on the returned film, and `use_sample_count` is Cycles' session state (set by every render); a set that would change any of them is `CBC_INVALID` (read the sample count through a `sample_count` pass) |
 | Integrator, film | sockets of the singletons, for example `max_bounce`, `sampling_pattern`, `seed`, `motion_blur`, `exposure`, `filter_type` |
-| Shader graphs | `cbc_host_shader_output`, `cbc_host_shader_node`, `cbc_host_connect` |
-| Geometry | `cbc_host_mesh` (triangles; every face starts on material 0), the `shader`/`smooth` face sockets, attributes (`cbc_host_attribute_*`) |
+| Shader graphs | `cbc_host_shader_output`, `cbc_host_shader_node`, `cbc_host_connect`. A link between different value types (a colour into a float input, a float into a shader input, ...) gets Cycles' own conversion node when the graph is built; a closure output links only into a closure input (`CBC_UNSUPPORTED`) |
+| Geometry | `cbc_host_mesh` (triangles; every face starts on material 0), the `shader`/`smooth` face sockets, attributes (`cbc_host_attribute_*`; on meshes the standard names `P`, `N`, `uv`, `generated`, `tangent`, `tangent_sign`, and `pointiness` per vertex and `random_per_island` per face, which the Geometry node reads and the caller computes). Subdivision: `cbc_host_subd_mesh` gives a mesh a control cage of polygon faces, tessellated by each render with Cycles' adaptive dicing when `subdivision_type` is `linear` (subdivision attributes with `CBC_ATTR_SUBDIVISION`); subdivision faces with `subdivision_type` none are `CBC_INVALID` at render; Catmull-Clark is refused at render (`CBC_UNSUPPORTED`): it needs OpenSubdiv, which the library does not include |
 | Curves | `cbc_host_curves` (keys, one radius per key, each curve's first key; every curve starts on material 0), `cbc_host_curve_shape` per hair geometry, `cbc_host_curve_subdivisions` for the scene, `cbc_host_curve_motion` (deformation motion, below), the `curve_shader` socket, attributes on `CBC_ATTR_CURVE` and `CBC_ATTR_CURVE_KEY` after the curves (standard names `uv`, `generated`, `curve_intercept` per key, `curve_length` and `curve_random` per curve, which the Hair Info node reads) |
 | Point clouds | `cbc_host_points` (positions, one radius per point; every point starts on material 0), `cbc_host_point_motion` (deformation motion with one radius per position), the `shader` socket, attributes on `CBC_ATTR_VERTEX`, standard attribute `point_random` |
 | Particles | `cbc_host_particles` on a `particle_system`, read by the Particle Info node of objects with `particle_system` and `particle_index` sockets; `CBC_PARTICLE_FLOATS` floats per particle |
@@ -463,11 +464,11 @@ A bake clears the last render's results (`cbc_host_pass_floats` and
 results of its own to them. Failed and cancelled bakes never write the output buffer.
 Events, `cbc_host_cancel` and threading are those of `cbc_host_render`. The integrator's
 settings apply: adaptive sampling works; with denoising the Combined output is denoised as an image of the
-UV layout, so values bleed across island edges and into empty pixels. A scene with an
-approximate shadow catcher and an opaque background is refused (`CBC_UNSUPPORTED`):
-its film gains a background pass, which the kernel reads as a request to bake the world.
+UV layout, so values bleed across island edges and into empty pixels. In a scene with an
+approximate shadow catcher and an opaque background the film gains a background pass, which
+the kernel reads as a request to bake the world: the bake is the world's, as Cycles writes it.
 
-## Exports (ABI 1, 58 functions)
+## Exports (ABI 1, 60 functions)
 
 | Function | Purpose |
 | --- | --- |
@@ -522,6 +523,8 @@ its film gains a background pass, which the kernel reads as a request to bake th
 | `cbc_host_render_passes_json` | list the passes captured by the last render |
 | `cbc_host_bake` | bake one mesh's UV layout to raw floats (`CBCBakeConfig`) |
 | `cbc_host_bake_map` | the map of a bake: triangle and coordinates per pixel, no rendering |
+| `cbc_host_subd_mesh` | replace a mesh's geometry with a subdivision cage (polygon faces) |
+| `cbc_host_render_time_limit` | wall-clock time limit of the host's later renders and bakes (0 = every sample) |
 
 ## Structs and enums
 
@@ -627,7 +630,7 @@ if (cbc_host_create(&config, &host) != CBC_OK) { /* cbc_host_error(...) */ }
 
 CBCNode integrator, camera, material, diffuse, output, mesh, object;
 cbc_host_scene_node(host, "integrator", &integrator);
-const int64_t off = 0;                            /* features WebGPU does not implement */
+const int64_t off = 0;                            /* a plain, deterministic film for the example */
 cbc_host_set_ints(host, integrator, "use_light_tree", &off, 1);
 cbc_host_set_ints(host, integrator, "use_denoise", &off, 1);
 cbc_host_set_ints(host, integrator, "use_adaptive_sampling", &off, 1);

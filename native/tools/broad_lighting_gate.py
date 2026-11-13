@@ -73,7 +73,7 @@ def main():
                 save(out/'results.json', reports)
         assert source == inputs() and all(sha(Path(name)) == digest for name, digest in pins.items())
         status.update(complete=True, passed=True, phase='complete', inputsUnchanged=True,
-                      scope='Native constant spot/area forward and NEE MIS, shape/spread sampling, lamp continuation, visibility, passes and independent CPU images. Mesh/environment emitters, light trees and degenerate area dimensions remain unsupported. Transparent shadows are validated separately by transparent_shadow_gate.py.')
+                      scope='Native constant spot/area forward and NEE MIS, shape/spread sampling, lamp continuation, visibility, passes and independent CPU images. Mesh/environment emitters and light trees remain unsupported here; emitter_sample includes an area light whose axis length underflows to zero. Transparent shadows are validated separately by transparent_shadow_gate.py.')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error))
         raise

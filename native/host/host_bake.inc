@@ -167,23 +167,28 @@ extern "C" int cbc_host_bake(CBCHost handle, const CBCBakeConfig *config, float 
     const uint64_t floats = uint64_t(config->width) * config->height * pass_components;
     *required = floats; *components = pass_components;
     require(capacity >= floats, "Result buffer is too small", CBC_SMALL_BUFFER);
-    // With an approximate shadow catcher the film gains a background pass, and the
-    // kernel treats any background pass as a request to bake the world.
-    require(!(request.type->pass != PASS_BACKGROUND && scene.has_shadow_catcher() && scene.film->get_use_approximate_shadow_catcher() && !scene.background->get_transparent()),
-            "Baking a scene with an approximate shadow catcher and an opaque background is not supported", CBC_UNSUPPORTED);
+    // With an approximate shadow catcher and an opaque background the film gains a background pass, and the pinned
+    // kernel (integrator_init_from_bake) takes any background pass as a request to bake the world: the bake is the
+    // world's, as Cycles writes it on every device.
     validate_geometry(host);
     TextureBakeMap map = bake_map(*request.mesh, *request.uv, int(config->width), int(config->height));
     struct Prune { Host &host; ~Prune() { prune_bakes(host); } } prune{host};
     reconcile_bakes(host);
     host.prepare_graphs();
+    WorldVolumeLight world_light{scene}; world_volume_light(host, world_light);
     recover_device(host);
     // The position pass is not divided by the sample count, but the kernel adds to it
     // once per sample: one sample, at the texel centre, is the exact value.
     const int samples = request.type->pass == PASS_POSITION ? 1 : int(config->samples);
     host.requested_samples = uint64_t(samples);
     scene.camera->set_full_width(int(config->width)); scene.camera->set_full_height(int(config->height));
-    scene.camera->set_screen_size(int(config->width), int(config->height)); scene.camera->compute_auto_viewplane();
+    scene.camera->set_screen_size(int(config->width), int(config->height)); host.fit_viewplane();
     auto params = session.params; params.samples = samples;
+    // The integrator's sample subset, as cbc_host_render takes it.
+    params.use_sample_subset = scene.integrator->get_use_sample_subset();
+    params.sample_subset_offset = scene.integrator->get_sample_subset_offset();
+    params.sample_subset_length = scene.integrator->get_sample_subset_length();
+    params.time_limit = host.time_limit;
     scene.integrator->set_aa_samples(params.samples);
     BufferParams buffers; buffers.width = buffers.full_width = buffers.window_width = int(config->width);
     buffers.height = buffers.full_height = buffers.window_height = int(config->height);

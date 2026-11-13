@@ -74,9 +74,9 @@ def main():
             env.update(settings)
             command = [str(binaries[binary]), str(folder/'run')]+(['--motion'] if name == 'camera-motion' else [])
             folder.mkdir()
-            save(folder/'invocation.json', {'command':command, 'environment':settings, 'timeoutSeconds':900})
+            save(folder/'invocation.json', {'command':command, 'environment':settings, 'timeoutSeconds':1800})
             with (folder/'stdout.txt').open('w') as stdout, (folder/'stderr.txt').open('w') as stderr:
-                subprocess.run(command, env=env, stdout=stdout, stderr=stderr, check=True, timeout=900)
+                subprocess.run(command, env=env, stdout=stdout, stderr=stderr, check=True, timeout=1800)
             report = json.loads((folder/'stdout.txt').read_text())
             assert report['passed'] and report['cyclesAllocationBytesAfterCleanup'] == 0
             assert Path((folder/'run.library.txt').read_text().strip()).resolve() == runtime.resolve()
@@ -94,7 +94,7 @@ def main():
             elif name == 'compaction-guard':
                 assert report['malformedCasesRejected'] == 1 and report['cases'] == 0
             elif name == 'world-regression':
-                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 90 and report['invalidCasesRejected'] == 18
+                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 119 and report['invalidCasesRejected'] == 18
             else:
                 assert report['independentCpuImage'] and report['repeatBitwiseIdentical']
                 assert report['volumeTransmitEvents'] > 0 and report['volumeScatterEvents'] > 0

@@ -92,7 +92,7 @@ def main():
         expected = set(re.findall(r'\b(cbc_host_\w+)\(', (ROOT/'host/cycles_host.h').read_text()))
         exports = call(['nm', '-D', '--defined-only', library], 'exports')
         actual = {line.split()[-1].split('@')[0] for line in exports.splitlines()} - {'CBC_HOST_EXPERIMENT_1'}
-        assert actual == expected and len(actual) == 58
+        assert actual == expected and len(actual) == 60
         for kind in ['session', 'session64', 'image']:
             link_map = (build/f'codebrix_host_{kind}_reference.map').read_text()
             assert 'CMakeFiles/codebrix_host_reference_color.dir/src/util/colorspace.cpp.o' in link_map
@@ -188,8 +188,23 @@ def main():
                 assert host_caps['host']['backend'] == ('cpu' if mode == 'cpu' else 'webgpu')
                 assert host_caps['host']['deviceReport']['backend'] == host_caps['host']['backend']
                 assert row['lightTypes'] == 5 and row['cancelledByCallback'] and row['refusedReentry'] == row['progressEvents'] + row['statusEvents']
+                # A heterogeneous medium inside a world volume with no background light object renders on both
+                # backends (the host adds the light the world volume's octree is built from), also with a caller's
+                # background light that does not list the world shader (CBC_OK). The CPU film repeats bitwise and
+                # equals the film with the caller's light listing the world shader; the films are judged as scenes by
+                # the oracle corpus (volumes/heterogeneous-in-world-volume), not here (native/DEVICE.md 52).
+                assert row['worldVolumeLightStatus'] == 0
                 if mode == 'cpu':
-                    assert all(row[k] for k in ['lightDeletionRestores', 'graphRebuildRestores', 'motionRemovalRestores', 'imageUpdateRestores'])
+                    assert row['worldVolumeRepeat'] and row['worldVolumeExplicit']
+                # Render-owned sockets, explicit viewplane, sample subset, scene_attributes, link conversion, Catmull-Clark
+                # refusal, a camera border region (film 'border' compared below), the render time limit, film display
+                # settings, denoiser upscale refusal, a linear subdivision cage.
+                assert row['apiReach'] == 11
+                # Undoing an edit restores the film: bit for bit on the CPU, by the practical criterion on the WebGPU device,
+                # whose films differ between repeats in the last bits (baseRepeatBitIdentical records it; abi_consumer.c).
+                assert all(row[k] for k in ['lightDeletionRestores', 'graphRebuildRestores', 'motionRemovalRestores', 'imageUpdateRestores'])
+                if mode == 'cpu':
+                    assert row['baseRepeatBitIdentical']
                     assert row['litRenders'] == 4 and row['projections'] == 2 and row['errorEvents'] == 0
                     assert all(row[k] == 0 for k in ['depthStatus', 'normalStatus', 'aovStatus', 'dataPassRender', 'lightPassRender',
                                                      'diffuseDirectStatus', 'backgroundStatus'])
@@ -200,7 +215,7 @@ def main():
                     # Orthographic and panoramic cameras render on WebGPU too.
                     assert row['litRenders'] == 4 and row['projections'] == 2 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 0
                 abi[mode] = folder
-            for name in ['base', 'object-motion', 'deforming']:
+            for name in ['base', 'object-motion', 'deforming', 'border']:
                 compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin')
             # The four light films (point, spot, area and sun in one device lifetime):
             # the practical criterion is required and strict differences are recorded.
@@ -219,7 +234,7 @@ def main():
                                         referenceSha256=reference_hashes, commands=commands))
         if args.cpu_only:
             state.update(cpuOnly=True, skipped='managed (.NET) consumers and every GPU step (--cpu-only)')
-        state.update(complete=True, passed=True, phase='complete', exportCount=58,
+        state.update(complete=True, passed=True, phase='complete', exportCount=60,
                      independentReferenceFilms=786, comparisons=len(comparisons), results=results,
                      maximumAbsoluteError=max(row['maximumAbsoluteError'] for row in comparisons),
                      practicalFailures=sum(row['practicalFailures'] for row in comparisons),

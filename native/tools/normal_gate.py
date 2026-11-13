@@ -75,7 +75,7 @@ def collect():
     result = json.loads((OUT/'linux-x64/run.stdout.txt').read_text())
     assert result['passed'] and result['originalCpuSurfaceSvm']
     expected = {'nativeGraphs':48,'typedPrograms':398,'cases':399,'paths':10704,
-                'invalidCasesRejected':10,'cyclesAllocationBytesAfterCleanup':0}
+                'invalidCasesRejected':9,'cyclesAllocationBytesAfterCleanup':0}
     assert all(result[k] == v for k,v in expected.items()), 'Normal coverage changed'
     render = json.loads((OUT/'render/run.stdout.txt').read_text())
     assert all(render[k] for k in ('passed','nativeSceneAndScheduler','independentCpuImage','repeatBitwiseIdentical','nativeImageTextures','nativeNormalMaps'))
@@ -114,7 +114,7 @@ def collect():
         scope='Native static-triangle normal-map and tangent SVM, analytic tangent derivatives and independent complete normal-mapped image render',
         nativeNormals=result,nativeRender=render,replays=replays,
         replayScope='48 native graphs, selected tangent value/dx/dy captures and complete normal-mapped render on four GPUs. Remaining typed and malformed-input cases run on Linux only. Android native hosts remain pending.',
-        remaining='Full bump entry/exit, motion and other geometry, native degenerate plain-tangent nonfinite behavior, original asset materials/closures and all nine native hosts',
+        remaining='Full bump entry/exit, motion and other geometry, original asset materials/closures and all nine native hosts',
         absoluteTolerance=5e-5,relativeTolerance=2e-4,strictAbsoluteTolerance=1e-7,strictRelativeTolerance=1e-7,
         strictNumericalParityPassed=False,matchesPinnedPackage=True,webGpuSha256=sha(library),
         imageRegressionSha256=sha(image_gate.OUT/'validation.json'),fileRegressionSha256=sha(image_file_gate.OUT/'validation.json'),

@@ -133,7 +133,8 @@ public class NodeTypeTests
             foreach (System.Reflection.PropertyInfo property in info.ClrType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 if (!property.CanWrite || property.DeclaringType.Namespace?.StartsWith("CodeBrix.Graphics3D.Cycles.Generated", StringComparison.Ordinal) != true) continue;
-                SocketInfo socket = info.Inputs.FirstOrDefault(candidate => Pascal(candidate.Name) == property.Name || Pascal(candidate.Name) + "Value" == property.Name);
+                SocketInfo socket = info.Inputs.FirstOrDefault(candidate => Pascal(candidate.Name) == property.Name || Pascal(candidate.Name) + "Value" == property.Name ||
+                    (TypedViews.TryGetValue(property.Name, out string native) && candidate.Name == native));
                 // The node name of objects and shaders (Nodes/NodeNames.cs) is a host property, not a socket.
                 bool nodeName = property.Name == "Name" && (info.ClrType == typeof(ObjectNode) || info.ClrType == typeof(ShaderNode));
                 if (socket == null && !nodeName) failures.Add($"{info.Name}.{property.Name}: no matching socket");
@@ -161,6 +162,13 @@ public class NodeTypeTests
             .Select(socket => socket.TypeName).ToHashSet();
         coveredTypes.Should().BeEquivalentTo(typedKinds);
     }
+
+    // Hand-written flag views of integer sockets (Nodes/*.cs partial classes): property name -> native socket.
+    private static readonly Dictionary<string, string> TypedViews = new()
+    {
+        ["RayVisibility"] = "visibility",
+        ["DenoiserGuides"] = "denoiser_passes",
+    };
 
     private static CyclesNode Instantiate(CyclesScene scene, ShaderNode graph, NodeTypeInfo info) => info.Creation switch
     {

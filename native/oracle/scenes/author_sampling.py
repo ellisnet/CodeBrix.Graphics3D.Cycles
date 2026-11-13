@@ -65,7 +65,8 @@ def scene(scene_id, description, integrator, samples=8, width=32, height=24, sam
                 'sampling_pattern': 'tabulated_sobol', 'scrambling_distance': 1.0}
     settings.update(integrator)
     nodes = [{'handle': 'integrator', 'scene': 'integrator', 'set': settings},
-             {'handle': 'film', 'scene': 'film', 'set': {'use_sample_count': sample_count}},
+             # Film use_sample_count is Cycles' session state (the host refuses a changing set): only the default is written.
+             {'handle': 'film', 'scene': 'film', 'set': {} if sample_count else {'use_sample_count': False}},
              {'handle': 'camera', 'scene': 'camera', 'set': {'fov': 0.9, 'matrix': [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, -7.0]}},
              single('wall', 'diffuse_bsdf', {'color': [0.6, 0.62, 0.65], 'roughness': 0.25}),
              single('floor-material', 'diffuse_bsdf', {'color': [0.5, 0.45, 0.35], 'roughness': 0.0}),
@@ -118,6 +119,9 @@ def scenes():
                                               {**adaptive(0.05, 8), 'sampling_pattern': 'sobol_burley'}, samples=64, sample_count=True)
     out['adaptive-blue-noise.json'] = scene('sampling/adaptive-blue-noise', 'Adaptive sampling (threshold 0.05, minimum 8 samples) with the blue-noise pure pattern',
                                             {**adaptive(0.05, 8), 'sampling_pattern': 'blue_noise_pure'}, samples=64, sample_count=True)
+    out['tabulated-sobol-room.json'] = scene('sampling/tabulated-sobol-room', 'The room with the fixed integrator settings only (tabulated Sobol, 8 samples) at 64 x 48: '
+                                             'a near-peak highlight of the sphere lamp on the rough (0.1) glass sphere, where one last bit of the '
+                                             'light direction moves the GGX distribution by about 9e-4 (native/DEVICE.md, item 152)', {}, samples=8, width=64, height=48)
     return out
 
 

@@ -75,11 +75,11 @@ static void film_compare(WebGPUDevice &d,device_vector<float> &film,const std::v
     m.strict+=error>1e-7+1e-7*std::abs(double(expected[i]));
     require(std::isfinite(film[i])&&error<=5e-5+2e-4*std::abs(double(expected[i])),"Shadow film mismatch at "+std::to_string(i));}
 }
-static void prepare(Scene &scene){
+static void prepare(Scene &scene,bool light_path=false){
   scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);scene.integrator->set_transparent_max_bounce(16);
   std::array<Mesh*,5> meshes{};
   for(unsigned mode=0;mode<5;mode++){
-    auto mesh=scene.create_node<Mesh>();meshes[mode]=mesh;array<Node*> shaders;shaders.push_back_slow(mode==4?scene.default_surface:transparent_material(scene,mode));mesh->set_used_shaders(shaders);mesh->resize_mesh(4,2);
+    auto mesh=scene.create_node<Mesh>();meshes[mode]=mesh;array<Node*> shaders;shaders.push_back_slow(mode==4?scene.default_surface:transparent_material(scene,light_path&&mode==1?5:mode));mesh->set_used_shaders(shaders);mesh->resize_mesh(4,2);
     const float positions[][3]={{-1,-1,0},{1,-1,0},{1,1,0},{-1,1,0}};for(int i=0;i<4;i++)mesh->get_position_for_write()[i]=make_float3(positions[i][0],positions[i][1],positions[i][2]);
     const int triangles[]={0,1,2,0,2,3};std::copy_n(triangles,6,mesh->get_triangles().data());std::ranges::fill(mesh->get_smooth(),false);std::ranges::fill(mesh->get_shader(),0);mesh->tag_triangles_modified();
   }
@@ -133,22 +133,26 @@ static States initial(int count,int variant){
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2,"Usage: shadow_gate OUTPUT_PREFIX");std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"transparent_shadow_gate device creation");Metrics m;
-  {
+  // The second pass: the single coloured pane of every column through a Light Path material (fixture mode 5: its depths in
+  // the shadow evaluation read the shadow path's counters, LIGHT_PATH_STATE), the counters varied per path.
+  for(const bool light_path:{false,true}){
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
-    Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
+    Scene scene(params,&d);prepare(scene,light_path);Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
     for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)m.instances+=scene.dscene.bvh_leaf_nodes[i].x<0;
     require(m.instances>=3,"Shadow fixture has no native instances");
     d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));bool cancel=false;ShadowScheduler scheduler(&d,scene.film,&scene.dscene,&cancel);
     scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);const auto original=scene.dscene.data;
     BufferParams bp;bp.width=193;bp.height=1;bp.pass_stride=48;auto buffers=scheduler.get_render_buffers();buffers->reset(bp);
     for(int variant=0;variant<12;variant++)for(int count:{1,63,64,65,193}){
-      std::cerr<<"shadow variant="<<variant<<" count="<<count<<"\n";
+      if(light_path&&!((variant==0||variant==6||variant==7)&&count==193))continue;
+      std::cerr<<"shadow variant="<<variant<<" count="<<count<<(light_path?" light-path":"")<<"\n";
       scene.dscene.data=original;auto &data=scene.dscene.data;
       if(variant>=6){data.integrator.transparent_max_bounce=4;data.integrator.sample_clamp_direct=100;data.integrator.sample_clamp_indirect=100;}
       if(variant==10){data.film.light_pass_flag=0;data.film.pass_adaptive_aux_buffer=PASS_UNUSED;}
       if(variant==11){data.film.pass_glossy_direct=PASS_UNUSED;data.film.pass_transmission_indirect=PASS_UNUSED;}
       d.const_copy_to("data",&data,sizeof(data));scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Shadow reset failed");
       auto expected=initial(193,variant%6);std::vector<int> indices;
+      if(light_path)for(int i=0;i<193;i++){auto &p=expected[i].shadow_path;p.bounce=uint16_t(i%5);p.diffuse_bounce=uint16_t(i%3);p.glossy_bounce=uint16_t((i/3)%2);p.transmission_bounce=uint16_t((i/7)%3);}
       for(int i=0;i<count;i++)if(variant<6||i%3!=0){expected[i].shadow_path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW;indices.push_back(i);}
       if(variant%6==1||variant%6==2){
         auto before=expected;std::vector<float> unused(buffers->buffer.size());original_shadow(scene.dscene,DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW,indices,before,unused);
@@ -162,7 +166,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       IntegratorQueueCounter counter{};counter.num_queued[DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW]=indices.size();d.upload(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));
       scheduler.active(count);require(scheduler.update_queue_counter_and_cache(),"Shadow counters failed");
       std::unique_ptr<RenderCapture> capture;std::string captured;
-      if(count==193&&(variant==0||variant==6)){
+      if(!light_path&&count==193&&(variant==0||variant==6)){
         captured=prefix+(variant==0?".capture-direct/run":".capture-indexed/run");
         std::filesystem::create_directories(std::filesystem::path(captured).parent_path());
         capture=std::make_unique<RenderCapture>(d,captured);

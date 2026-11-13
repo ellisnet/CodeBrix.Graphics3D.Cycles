@@ -235,7 +235,11 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
     var n=(*s).geometry.N;if(normal_index!=SVM_STACK_INVALID){n=svm_load3(s,normal_index);}
     // safe_normalize_fallback(N, sd->N): len() = sqrt(dot) rounded once each, then
     // N * (1 / len) with a correctly rounded reciprocal (WGSL length and '/' are not).
-    let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+//#if SVM_NODE_TANGENT else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+    // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
+    // test is on the bits, since the driver's float != is false for NaN.
+    let magnitude=rounded_sqrt(rounded_dot(n,n));if((bitcast<u32>(magnitude)&0x7fffffffu)!=0u){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+//#endif
     var roughness=0.0;var color=vec3<f32>(0);
     if(kind==CLOSURE_BSDF_DIFFUSE_ID){roughness=svm_input(s,data+N_DiffuseBsdfData_roughness);
         if(!(roughness<1e-5)){color=clamp(svm_input3(s,data+N_DiffuseBsdfData_color),vec3<f32>(0),vec3<f32>(1));}}
@@ -311,7 +315,11 @@ fn ss_setup(s:ptr<function,SvmState>,i:u32,record:SvmClosure,kind:u32,flag:u32){
 // The Subsurface Scattering node (svm_node_closure_bsdf, CLOSURE_BSSRDF_*_ID): albedo is the closure weight.
 fn svm_bssrdf(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,flag:u32){
     let normal_index=svm_byte(data+N_BssrdfData_normal_offset);var n=(*s).geometry.N;if(normal_index!=SVM_STACK_INVALID){n=svm_load3(s,normal_index);}
-    let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+//#if SVM_NODE_TANGENT else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+    // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
+    // test is on the bits, since the driver's float != is false for NaN.
+    let magnitude=rounded_sqrt(rounded_dot(n,n));if((bitcast<u32>(magnitude)&0x7fffffffu)!=0u){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+//#endif
     let i=ss_alloc(s,(*s).weight*mix_weight);if(i==NONE){return;}
     var c=svm_closure_read((*s).output,i);
     c.multiscatter=max(svm_input3(s,data+N_BssrdfData_radius)*svm_input(s,data+N_BssrdfData_scale),vec3<f32>(0));c.T=(*s).weight;
@@ -363,7 +371,11 @@ fn svm_volume(s:ptr<function,SvmState>,node:u32){
 // safe_normalize_fallback(N, sd->N) of an optional SVM normal input, as in svm_bsdf.
 fn svm_family_normal(s:ptr<function,SvmState>,index:u32)->vec3<f32>{
     var n=(*s).geometry.N;if(index!=SVM_STACK_INVALID){n=svm_load3(s,index);}
-    let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){return n*rounded_divide(1.0,magnitude);}return (*s).geometry.N;
+//#if SVM_NODE_TANGENT else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){return n*rounded_divide(1.0,magnitude);}return (*s).geometry.N;
+    // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
+    // test is on the bits, since the driver's float != is false for NaN.
+    let magnitude=rounded_sqrt(rounded_dot(n,n));if((bitcast<u32>(magnitude)&0x7fffffffu)!=0u){return n*rounded_divide(1.0,magnitude);}return (*s).geometry.N;
+//#endif
 }
 // bsdf_alloc with closure_weight * mix_weight (closure_sample_weight cutoff).
 fn svm_family_allocate(s:ptr<function,SvmState>,kind:u32,mix_weight:f32)->u32{
@@ -724,14 +736,36 @@ fn svm_volume_coefficients(s:ptr<function,SvmState>,node:u32,flag:u32,visibility
 //#if SVM_NODE_PRINCIPLED_VOLUME
 // svm_node_principled_volume (volume programs only). Density, colour and temperature attributes are voxel data
 // (OpenVDB grids, excluded): a reachable attribute refuses the evaluation.
+//#if PRINCIPLED_VOLUME_ATTRIBUTE
+// volume_attribute_float4 (geom/volume.h) of the shading point's attribute: an object- or mesh-element attribute is its
+// one value (float (f, f, f, 1), float2 (x, y, 0, 1), float3 (x, y, z, 1), float4 and RGBA as stored, matrix 0); other
+// elements give 0; voxel grids come only with OpenVDB data (error 16).
+fn vp_attribute(s:ptr<function,SvmState>,desc:AttributeDesc)->vec4<f32>{
+    if((desc.element&(ATTR_ELEMENT_OBJECT|ATTR_ELEMENT_MESH))==0u){if((desc.element&ATTR_ELEMENT_VOXEL)!=0u){svm_error(s,16u);}return vec4<f32>(0);}
+    if(desc.kind!=NODE_ATTR_FLOAT&&desc.kind!=NODE_ATTR_FLOAT2&&desc.kind!=NODE_ATTR_FLOAT3&&desc.kind!=NODE_ATTR_FLOAT4&&desc.kind!=NODE_ATTR_RGBA){return vec4<f32>(0);}
+    let v=attribute_fetch(s,desc,0u);
+    if(desc.kind==NODE_ATTR_FLOAT){return vec4<f32>(v.x,v.x,v.x,1.0);}
+    if(desc.kind==NODE_ATTR_FLOAT2){return vec4<f32>(v.x,v.y,0.0,1.0);}
+    if(desc.kind==NODE_ATTR_FLOAT3){return vec4<f32>(v.xyz,1.0);}
+    return v;
+}
+// volume_attribute_value<float>: average(), (x + y + z) * (1/3).
+fn vp_attribute_float(v:vec4<f32>)->f32{return rounded_add(rounded_add(v.x,v.y),v.z)*(1.0/3.0);}
+//#endif
 fn svm_principled_volume(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
     let mix_weight=svm_optional(s,svm_byte(node+N_PrincipledVolume_mix_weight_offset),1.0);if(mix_weight==0.0){return;}
     var weight=mix_weight;if((*s).geometry.object_id!=NONE){weight*=heap_float(table_at(G_objects,(*s).geometry.object_id,SIZE_objects)+O_volume_density);}
     var density=weight*max(svm_input(s,node+N_PrincipledVolume_density),0.0);
-    if(density>0.0&&attribute_find(s,load_word(node+N_PrincipledVolume_attr_density),0u).found){svm_error(s,16u);return;}
+//#if PRINCIPLED_VOLUME_ATTRIBUTE else     if(density>0.0&&attribute_find(s,load_word(node+N_PrincipledVolume_attr_density),0u).found){svm_error(s,16u);return;}
+    if(density>0.0){let desc=attribute_find(s,load_word(node+N_PrincipledVolume_attr_density),0u);
+        if(desc.found){density=max(density*vp_attribute_float(vp_attribute(s,desc)),0.0);if((*s).error!=0u){return;}}}
+//#endif
     if(density>0.0){
         var color=(*s).weight;
-        if(attribute_find(s,load_word(node+N_PrincipledVolume_attr_color),0u).found){svm_error(s,16u);return;}
+//#if PRINCIPLED_VOLUME_ATTRIBUTE else         if(attribute_find(s,load_word(node+N_PrincipledVolume_attr_color),0u).found){svm_error(s,16u);return;}
+        let color_desc=attribute_find(s,load_word(node+N_PrincipledVolume_attr_color),0u);
+        if(color_desc.found){color*=vp_attribute(s,color_desc).xyz;if((*s).error!=0u){return;}}
+//#endif
         let w=color*density;
         let sample_weight=abs((w.x+w.y+w.z)*(1.0/3.0));
         if(sample_weight>0.0){let i=svm_allocate(s,CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID,w);if(i!=NONE){
@@ -747,7 +781,10 @@ fn svm_principled_volume(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u
         if(((*s).output.runtime_flag&SR_EMISSION)!=0u){(*s).output.emission+=e;}else{(*s).output.emission=e;(*s).output.runtime_flag|=SR_EMISSION;}}
     if(blackbody>0.0){
         var T=svm_input(s,node+N_PrincipledVolume_temperature);
-        if(attribute_find(s,load_word(node+N_PrincipledVolume_attr_temperature),0u).found){svm_error(s,16u);return;}
+//#if PRINCIPLED_VOLUME_ATTRIBUTE else         if(attribute_find(s,load_word(node+N_PrincipledVolume_attr_temperature),0u).found){svm_error(s,16u);return;}
+        let t_desc=attribute_find(s,load_word(node+N_PrincipledVolume_attr_temperature),0u);
+        if(t_desc.found){T*=max(vp_attribute_float(vp_attribute(s,t_desc)),0.0);if((*s).error!=0u){return;}}
+//#endif
         T=max(T,0.0);let T4=(T*T)*(T*T);
         let intensity=bitcast<f32>(0x28a292fcu)*rounded_add(1.0,blackbody*rounded_add(T4,-1.0));
         if(intensity>0.0){

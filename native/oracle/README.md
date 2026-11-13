@@ -54,7 +54,7 @@ reciprocal math and are not comparable bit for bit.
 `scenes/author_starters.py` regenerates the starter scenes exactly.
 
 Each node entry has a unique `handle` and either `scene` (a singleton:
-`integrator`, `camera`, `film`, `background`) or `create` (a type accepted by
+`integrator`, `camera`, `film`, `background`, `scene_attributes`) or `create` (a type accepted by
 `cbc_host_create_node`, for example `shader`, `mesh`, `object`, `pointlight`,
 `arealight`). Entries are applied in order:
 
@@ -69,6 +69,9 @@ Each node entry has a unique `handle` and either `scene` (a singleton:
   arrays whose center equals `positions`; `cbc_host_motion_positions`). Face
   material indices and smoothing are the mesh sockets `shader` and `smooth` in
   `set`; object and camera motion are their `motion` transform arrays.
+- `subdivision` (on a `mesh`, instead of `mesh`): a control cage, `positions` (x, y, z triples), `faceCorners` (the
+  corner count of each face) and `corners` (vertex indices in face order), `cbc_host_subd_mesh`, with optional
+  `attributes` as for a mesh; `subdivision_type` and the `subd_*` dicing sockets go in `set`.
 - `hair`: `keys` (x, y, z triples) and `radius` (one per key), or `keysFile` and `radiusFile` (raw little-endian
   float32), `firstKey` or `firstKeyFile` (uint32, one per curve), optional `shape` (`ribbon`, `thick`, `thick_linear`;
   `cbc_host_curve_shape`) and `attributes` as for a mesh, with the domains `curve`, `curve_key` and `curve_key_normal`.

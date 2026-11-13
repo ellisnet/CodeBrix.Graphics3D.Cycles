@@ -85,8 +85,10 @@ fn vl_sample_method(index:u32,entries:u32)->u32{
     let origin=heap_vec3(state_address(S_ray_P,index,12u));let direction=heap_vec3(state_address(S_ray_D,index,12u));
     let tmin=heap_float(state_address(S_ray_tmin,index,4u));var tmax=bitcast<f32>(0x7f7fffffu);if(prim!=NONE){tmax=heap_float(state_address(S_isect_t,index,4u));}
 //#if VOLUME_LIGHT_TREE
-    // The selection of shade_volume_tree_select (light_tree_sample<true>): none means no direct light.
-    light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;
+    // The selection of shade_volume_tree_select (light_tree_sample<true>): none means no direct light. Only while the scene uses
+    // the tree: the region stays compiled after a light tree scene on the same device (the device's features only grow), and
+    // without the tree shade_volume_tree_select does not run (native/DEVICE.md 181).
+    if(data_word(LT_D_use_light_tree)!=0u){light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;}
 //#endif
 //#if VOLUME_LIGHT_SHAPES else     let selection=light_select(index);if(selection.prim>=0){atomicOr(&heap[p(17u)/4u],2u);return;}
     let selection=light_select(index);
@@ -149,8 +151,19 @@ fn vl_sample_method(index:u32,entries:u32)->u32{
         // light_sample<true> of a point or spot light from the segment start (point.h, spot.h).
         point=vl_lamp_point(light,rounded_add3(origin,direction*tmin),selection.random.xy);distant=false;
     }else if(kind==LIGHT_AREA){
+//#if LIGHT_AREA_DEGENERATE
+        // An axis of zero length (native/DEVICE.md, item 148): the CPU's sample point is NaN (its axis is NaN), but
+        // area_light_sample<true> still succeeds and volume_valid_direct_ray_segment uses only the light's geometry, so
+        // the record keeps the segment's sample method (the MIS rescale of rscatter) with a NaN equiangular point; the
+        // direct light from the scatter point then gives nothing (area_light_sample<false> fails).
+        if(heap_float(light+L_area_len_u)==0.0||heap_float(light+L_area_len_v)==0.0){
+            point=vec3<f32>(bitcast<f32>(0x7fc00000u|(kind&0u)));distant=false;}else{
+//#endif
         // area_light_sample<true>: a uniform point of the rectangle or the ellipse.
         point=vl_area_point(light,selection.random.xy);distant=false;
+//#if LIGHT_AREA_DEGENERATE
+        }
+//#endif
     }else if(kind!=LIGHT_SUN&&kind!=LIGHT_BACKGROUND){atomicOr(&heap[p(17u)/4u],2u);return;}
 //#endif
     if((load_word(light+L_shader_id)&VL_SHADER_EXCLUDE_SCATTER)!=0u){return;}
@@ -266,7 +279,7 @@ fn vl_background_light_sample(index:u32,P:vec3<f32>,selection:LightSelection)->N
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let vl=p(24u)+id.x*VL_RECORD_BYTES;store_word(vl+128u,0u);if(load_word(vl+32u)==0u){return;}
 //#if VOLUME_LIGHT_TREE
-    light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;
+    if(data_word(LT_D_use_light_tree)!=0u){light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;}
 //#endif
     if(index>=p(10u)||load_word(p(17u))!=0u){return;}
     let selection=light_select(index);
@@ -288,7 +301,7 @@ fn vl_background_light_sample(index:u32,P:vec3<f32>,selection:LightSelection)->N
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let vl=p(24u)+id.x*VL_RECORD_BYTES;if(load_word(vl+32u)==0u){return;}
 //#if VOLUME_LIGHT_TREE
-    light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;
+    if(data_word(LT_D_use_light_tree)!=0u){light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;}
 //#endif
     if(index>=p(10u)||load_word(p(17u))!=0u){return;}
     let selection=light_select(index);if(selection.prim<0){return;}
@@ -465,7 +478,7 @@ fn vl_phase_scatter(index:u32,r:SvmResult,sampled_t:f32,object:u32){
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let vl=p(24u)+id.x*VL_RECORD_BYTES;let direct=load_word(vl+32u);let indirect=load_word(vl+64u);
 //#if VOLUME_LIGHT_TREE
-    light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;
+    if(data_word(LT_D_use_light_tree)!=0u){light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;}
 //#endif
 //#if PHASE_STAGE else     if(direct==0u&&indirect==0u){return;}store_word(vl+32u,0u);store_word(vl+64u,0u);
     // The indirect phase scatter is shade_volume_phase's (it reads and clears word 64).

@@ -227,6 +227,9 @@ fn background_mis_weight(index:u32,flag:u32)->f32{
     let a=direction_du-direction;let b=direction_dv-direction;
     let dD=0.5*rounded_add(rounded_sqrt(rounded_dot(a,a)),rounded_sqrt(rounded_dot(b,b)));
     let sd=bgl_world_data(direction,dD,0.5);if(sd.error!=0u){return;}
+//#if LIGHT_PATH_STATE
+    svm_lp_masked=true;
+//#endif
     let r=svm_evaluate_context(NONE,sd,0u,0u,PATH_RAY_EMISSION|BGL_IMPORTANCE_BAKE,0u,0u,false);if(r.error!=0u){return;}
     var color=r.emission;
     color=select(color,vec3<f32>(0),(bitcast<vec3<u32>>(color)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));

@@ -195,7 +195,11 @@ fn principled_slot(s:ptr<function,SvmState>,c:SvmClosure,local:bool,extra:bool)-
 fn principled_store(s:ptr<function,SvmState>,i:u32,c:SvmClosure){if(i!=PRINCIPLED_LOCAL){svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);}}
 fn principled_normal(s:ptr<function,SvmState>,index:u32,fallback:vec3<f32>)->vec3<f32>{
     var n=fallback;if(index!=SVM_STACK_INVALID){n=svm_load3(s,index);}
-    if(any(n!=vec3<f32>(0))){return surface_normalize(n);}return (*s).geometry.N;
+//#if SVM_NODE_TANGENT else     if(any(n!=vec3<f32>(0))){return surface_normalize(n);}return (*s).geometry.N;
+    // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
+    // test is on the bits, since the driver's float != is false for NaN.
+    if(any((bitcast<vec3<u32>>(n)&vec3<u32>(0x7fffffffu))!=vec3<u32>(0u))){return surface_normalize(n);}return (*s).geometry.N;
+//#endif
 }
 //#endif
 //#if SVM_BSDF_FRESNEL_MODELS
@@ -558,7 +562,11 @@ fn svm_metallic(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibi
     var c=svm_closure_read((*s).output,i);c.sample_weight=sample_weight;
     // safe_normalize_fallback(N, sd->N) as in svm_bsdf.
     var n=(*s).geometry.N;let ni=svm_byte(data+N_MetallicBsdfData_normal_offset);if(ni!=SVM_STACK_INVALID){n=svm_load3(s,ni);}
-    let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+//#if SVM_NODE_TANGENT else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+    // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
+    // test is on the bits, since the driver's float != is false for NaN.
+    let magnitude=rounded_sqrt(rounded_dot(n,n));if((bitcast<u32>(magnitude)&0x7fffffffu)!=0u){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+//#endif
     let valid=principled_valid(s,n);
     let anisotropy=clamp(svm_input(s,data+N_MetallicBsdfData_anisotropy),0.0,1.0);let r=clamp(svm_input(s,data+N_MetallicBsdfData_roughness),0.0,1.0);
     c.alpha_x=r*r;c.alpha_y=c.alpha_x;c.T=vec3<f32>(0);let ti=svm_byte(data+N_MetallicBsdfData_tangent_offset);

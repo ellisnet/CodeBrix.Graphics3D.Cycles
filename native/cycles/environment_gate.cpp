@@ -28,6 +28,7 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <set>
 #include <sstream>
 using namespace ccl;
 using namespace wavefront_test;
@@ -68,6 +69,9 @@ static const Case cases[]={
   // The volume direct light's background sample with portals (the sampler of shade_volume_light_background).
   {"hdri-mis-portals-volume-probe",EnvironmentWorld::Hdri,0,1,64,-1,false,2,1,true},
   {"procedural-portals-no-mis-volume-probe",EnvironmentWorld::Procedural,0,0,32,-1,true,2,1,true},
+  // The Light Path node's depths in the world (LIGHT_PATH_STATE): the importance map (depths 0, Ray Depth 1), the background
+  // hits (the main path's counters) and light sampling (the shadow path's).
+  {"procedural-light-path-mis",EnvironmentWorld::LightPath,0,1,64,-1,false},
 };
 constexpr unsigned case_count=sizeof(cases)/sizeof(cases[0]);
 struct Metrics {uint64_t floats=0,strict=0,repeat_differences=0,nee=0,shadows=0,visible=0,background_hits=0,stages=0,map_checks=0,map_strict=0,sample_checks=0,sample_strict=0,valid_samples=0;
@@ -199,6 +203,31 @@ static std::vector<IntegratorStateCPU> sample_states(const std::vector<PathInput
     s.path.bounce=in.bounce;s.path.flag=in.flag;s.ray.time=in.time;s.ray.P=make_float3(in.P[0],in.P[1],in.P[2]);s.ray.D=make_float3(in.D[0],in.D[1],in.D[2]);}
   return states;
 }
+// The module text without the functions that no entry point named in `keep` reaches (the portal diagnostic below).
+static std::string prune_wgsl(const std::string &source,const std::vector<std::string> &keep){
+  auto ident=[](char c){return std::isalnum(static_cast<unsigned char>(c))||c=='_';};
+  std::map<std::string,std::pair<size_t,size_t>> bodies; // name -> [start of the line holding "fn", end of the body]
+  for(size_t at=source.find("fn ");at!=std::string::npos;at=source.find("fn ",at+3)){
+    if(at>0&&ident(source[at-1]))continue;
+    const size_t line=source.rfind('\n',at);const size_t start=line==std::string::npos?0:line+1;
+    if(source.compare(start,2,"//")==0)continue;
+    size_t n=at+3;while(n<source.size()&&source[n]==' ')n++;size_t e=n;while(e<source.size()&&ident(source[e]))e++;
+    if(e==n||e>=source.size()||source[e]!='(')continue;
+    const size_t open=source.find('{',e);if(open==std::string::npos)break;
+    int depth=0;size_t j=open;for(;j<source.size();j++){if(source[j]=='{')depth++;else if(source[j]=='}'&&--depth==0)break;}
+    bodies[source.substr(n,e-n)]={start,j+1};
+  }
+  std::set<std::string> reached;std::vector<std::string> todo(keep.begin(),keep.end());
+  while(!todo.empty()){const std::string name=todo.back();todo.pop_back();if(!bodies.count(name)||!reached.insert(name).second)continue;
+    const auto [start,stop]=bodies[name];
+    for(size_t i=source.find('{',start);i<stop;){if(!ident(source[i])){i++;continue;}size_t e=i;while(e<stop&&ident(source[e]))e++;
+      if(e<stop&&source[e]=='('&&bodies.count(source.substr(i,e-i))){todo.push_back(source.substr(i,e-i));}
+      i=e;}}
+  std::vector<std::pair<size_t,size_t>> drop;for(const auto &[name,range]:bodies)if(!reached.count(name))drop.push_back(range);
+  std::sort(drop.begin(),drop.end());std::string out;size_t at=0;
+  for(const auto &[start,stop]:drop){if(start<at)continue;out.append(source,at,start-at);at=stop;}
+  out.append(source,at,std::string::npos);return out;
+}
 static void sample_check(WebGPUDevice &d,Scene &scene,const std::filesystem::path &folder,const std::vector<IntegratorStateCPU> &states,const std::vector<float> &expected,Metrics &m,bool volume=false){
   if(!scene.dscene.data.integrator.use_direct_light)return;
   bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
@@ -213,7 +242,13 @@ static void sample_check(WebGPUDevice &d,Scene &scene,const std::filesystem::pat
   // The volume probe compiles the volume direct light's regions (VOLUME_LIGHT, VOLUME_SHADOW) into the probe module, with
   // SF_BACKGROUND_SAMPLE_ENTRY as the volume light entries are built in a portal scene: light_sample_lamp leaves a background
   // lamp pending and the probe completes it with vl_background_light_sample, the sampler of shade_volume_light_background.
-  std::string source=(volume?specialize_wgsl(surface_source(),d.shader_features()|SF_VOLUME_LIGHT|SF_VOLUME_SHADOW|SF_BACKGROUND_SAMPLE_ENTRY):d.module_wgsl(surface_source()))+R"WGSL(
+  // Diagnostic for native/DEVICE.md 107, never a verdict (CODEBRIX_CYCLES_ENVIRONMENT_PORTAL_TWICE=1, or =pruned): the volume
+  // probe of case 17 built without SF_BACKGROUND_SAMPLE_ENTRY samples the background lamp twice (light_sample_native, then
+  // light_sample_lamp) and records the second sample: two inlined copies of the portal sampler, the shape build_pipelines
+  // refuses. On Intel graphics (Mesa 25.0.7) the case then fails its sample check; "pruned" also drops every function the
+  // two probe entries do not reach, and probe.wgsl in the case folder is the module compiled.
+  const char *twice_mode=volume?cbc::diagnostic_env("CODEBRIX_CYCLES_ENVIRONMENT_PORTAL_TWICE"):nullptr;
+  std::string source=(volume?specialize_wgsl(surface_source(),d.shader_features()|SF_VOLUME_LIGHT|SF_VOLUME_SHADOW|(twice_mode?SF_NONE:SF_BACKGROUND_SAMPLE_ENTRY)):d.module_wgsl(surface_source()))+R"WGSL(
 @compute @workgroup_size(1) fn environment_sample_probe(@builtin(global_invocation_id) id:vec3<u32>){
  svm_invocation(id.x);if(id.x>=p(1u)){return;}var sd:SurfaceData;sd.time=heap_float(state_address(S_ray_time,id.x,4u));sd.P=heap_vec3(state_address(S_ray_P,id.x,12u));sd.N=heap_vec3(state_address(S_ray_D,id.x,12u));var r:SvmResult;
  if((state_word(S_path_flag,id.x)&PATH_RAY_MIS_HAD_TRANSMISSION)!=0u){r.runtime_flag=SR_BSDF_HAS_TRANSMISSION;}
@@ -232,10 +267,13 @@ static void sample_check(WebGPUDevice &d,Scene &scene,const std::filesystem::pat
  if(ls.is_light){e*=heap_vec3(table_at(G_lights,ls.prim,SIZE_lights)+L_strength);}
  store_word(at+48u,bitcast<u32>(e.x));store_word(at+52u,bitcast<u32>(e.y));store_word(at+56u,bitcast<u32>(e.z));
 })WGSL";
-  const std::string probe=nee?"let v=light_nee_eval(ls.object_id,ls.prim,P,ls.D,ls.t,time,0.0,0.0);e=v.xyz;":"atomicOr(&heap[p(17u)/4u],2u);";
+  // With LIGHT_PATH_STATE the evaluation reads the probe path's counters, as the CPU reference evaluates it with that state.
+  const std::string path_state=(d.shader_features()&SF_LIGHT_PATH_STATE).any()?"svm_emission_path=id.x;svm_emission_shadow=false;":"";
+  const std::string probe=nee?path_state+"let v=light_nee_eval(ls.object_id,ls.prim,P,ls.D,ls.t,time,0.0,0.0);e=v.xyz;":"atomicOr(&heap[p(17u)/4u],2u);";
   source.replace(source.find("PROBE_NEE"),9,probe);
   const std::string volume_probe=volume?"var ls=light_sample_native(id.x,sd,r);if(light_background_pending){light_background_pending=false;ls=vl_background_light_sample(id.x,sd.P,light_select(id.x));}":"var ls=light_sample_native(id.x,sd,r);";
-  source.replace(source.find("PROBE_VOLUME"),12,volume_probe);
+  source.replace(source.find("PROBE_VOLUME"),12,twice_mode?"var ls=light_sample_native(id.x,sd,r);{let s=light_select(id.x);ls=light_sample_lamp(id.x,sd,r,s);}":volume_probe);
+  if(twice_mode&&std::string(twice_mode)=="pruned")source=prune_wgsl(source,{"environment_sample_probe","environment_eval_probe"});
   std::ofstream(folder/"probe.wgsl")<<source;
   WGPUShaderSourceWGSL code{};code.chain.sType=WGPUSType_ShaderSourceWGSL;code.code={source.data(),source.size()};WGPUShaderModuleDescriptor descriptor{};descriptor.nextInChain=&code.chain;
   d.gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(wgpuDeviceCreateShaderModule(d.gpu.get(),&descriptor));d.gpu.pop_scope();
@@ -290,12 +328,27 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   if(selected.empty())for(unsigned i=0;i<case_count;i++)selected.push_back(i);
   auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");Stats stats;Profiler profiler;
   auto owner=Device::create(infos[0],stats,profiler,true);auto &device=require_webgpu_device(owner.get(),"environment_gate device creation");Metrics total;
+  // native/DEVICE.md 107: two inlined copies of the portal light sampler in one entry compute wrong light samples on Intel.
+  // Every built entry holds at most one (build_pipelines refuses more before the driver sees the text): the counter follows
+  // call paths, and the guard refuses an entry that reaches the sampler twice through one helper.
+  unsigned portal_guard_checks=0;
+  {const std::string f=portal_sampler_function;
+   const std::string text="fn "+f+"(x:f32)->f32{return x*0.5;}\nfn helper(x:f32)->f32{return "+f+"(x)+"+f+"(x+1.0);}\n"
+     "fn once(x:f32)->f32{return "+f+"(x);}\n@compute @workgroup_size(1) fn portal_guard_twice(){_=helper(1.0);}\n"
+     "@compute @workgroup_size(1) fn portal_guard_once(){_=once(1.0);}\n@compute @workgroup_size(1) fn portal_guard_three(){_=helper(once(1.0));}\n";
+   const auto copies=wgsl_inlined_copies(text,{"portal_guard_twice","portal_guard_once","portal_guard_three"},f);
+   require(copies==std::vector<size_t>{2,1,3},"Portal sampler copy count");portal_guard_checks++;
+   bool refused=false;
+   try{device.build_pipelines("portal_guard",text,{"portal_guard_once","portal_guard_twice"});}
+   catch(const std::exception &e){refused=std::string(e.what())==portal_sampler_copies_error("portal_guard","portal_guard_twice",2);}
+   require(refused,"An entry with two inlined portal sampler copies was not refused");portal_guard_checks++;}
   std::ostringstream case_reports;
   for(unsigned image:selected){
     require(image<case_count,"Unknown environment case");const Case &c=cases[image];
     std::cerr<<"environment case="<<image<<" "<<c.name<<'\n';auto folder=out/("case-"+std::to_string(image));std::filesystem::create_directories(folder);const auto prefix=(folder/"run").string();Metrics metrics;
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;
     Scene scene(params,&device);fixture(scene,c);Progress progress;scene.device_update(&device,progress);healthy(device);require(!progress.get_error(),"Environment scene preparation failed");
+    if(c.world==EnvironmentWorld::LightPath)require((device.shader_features()&SF_LIGHT_PATH_STATE).any(),"Light Path world case without LIGHT_PATH_STATE");
     const auto &data=scene.dscene.data;
     std::cerr<<"native lights="<<data.integrator.num_lights<<" direct="<<data.integrator.use_direct_light<<" mis="<<data.integrator.use_light_mis<<" background_mis="<<data.background.use_mis
              <<" map="<<data.background.map_res_x<<"x"<<data.background.map_res_y<<" triangles="<<data.integrator.distribution_pdf_triangles<<"\n";
@@ -359,5 +412,5 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     <<",\"mapChecks\":"<<total.map_checks<<",\"mapStrictDifferences\":"<<total.map_strict<<",\"mapMaximumAbsoluteError\":"<<total.map_maximum
     <<",\"sampleChecks\":"<<total.sample_checks<<",\"sampleStrictDifferences\":"<<total.sample_strict<<",\"sampleMaximumAbsoluteError\":"<<total.sample_maximum
     <<",\"filmChecks\":"<<total.floats<<",\"strictDifferences\":"<<total.strict<<",\"maximumAbsoluteError\":"<<total.maximum<<",\"repeatBitwiseDifferences\":"<<total.repeat_differences
-    <<",\"caseReports\":["<<case_reports.str()<<"],\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
+    <<",\"portalSamplerGuardChecks\":"<<portal_guard_checks<<",\"caseReports\":["<<case_reports.str()<<"],\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &error){std::cerr<<error.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

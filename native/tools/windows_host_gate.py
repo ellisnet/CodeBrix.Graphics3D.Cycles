@@ -138,7 +138,7 @@ def main():
   assert all(sha(Path(path))==digest for path,digest in pins.items()),'Binaries changed since they were recorded'
   # Binary review: exports, machine type, the DLLs the host needs.
   exported=set(pe_exports(library))
-  expected=set(re.findall(r'\b(cbc_host_\w+)\(',(REPO/'native/host/cycles_host.h').read_text()));assert exported==expected and len(exported)==58,sorted(exported^expected)
+  expected=set(re.findall(r'\b(cbc_host_\w+)\(',(REPO/'native/host/cycles_host.h').read_text()));assert exported==expected and len(exported)==60,sorted(exported^expected)
   want={'win-x64':'AMD64','win-arm64':'ARM64'}[a.rid]
   review=[dict(path=str(f),sha256=sha(f),machine=pe_machine(f)) for f in sorted(binary.glob('*.dll'))+sorted(tests.glob('codebrix_*.exe'))]
   wrong=[r['path'] for r in review if r['machine']!=want];assert not wrong,wrong

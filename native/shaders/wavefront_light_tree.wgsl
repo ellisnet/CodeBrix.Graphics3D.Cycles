@@ -253,6 +253,15 @@ fn lt_item_importance(P:vec3<f32>,N:vec3<f32>,transmission:bool,item:u32,item_is
             let unit=lt_safe_normalize_len(centroid-Pc);to_centroid=unit.xyz;max_distance=unit.w;min_distance=unit.w;
 //#endif
         }
+//#if LIGHT_AREA_DEGENERATE
+        // A zero-length area axis (native/DEVICE.md, item 148): the CPU's corners are NaN, so area_light_tree_parameters keeps
+        // cos_theta_u = FLT_MAX and both distances (fminf and fmaxf drop a NaN) and returns false (a NaN sum is not above 0).
+        // At a transmissive point (is_visible |= has_transmission) the CPU's importance is then computed from cos_theta_u =
+        // FLT_MAX, which overflows to infinite weights in the reservoir: refused by name (error bit 131072).
+        if(kind==LT_LIGHT_AREA+2u&&(heap_float(light+L_area_len_u)==0.0||heap_float(light+L_area_len_v)==0.0)){
+            if(transmission){atomicOr(&heap[p(17u)/4u],131072u);return vec2<f32>(0);}
+            corners=0u;cos_u=bitcast<f32>(0x7f7fffffu);visible=false;}
+//#endif
         if(corners!=0u){
             cos_u=bitcast<f32>(0x7f7fffffu);var above=false;
             for(var i=0u;i<corners;i++){

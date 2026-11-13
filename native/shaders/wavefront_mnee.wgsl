@@ -535,6 +535,7 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
 }
 //#endif
 //#if MNEE_ENTRIES
+//#if !MNEE_WALK_STAGES
 @compute @workgroup_size(64) fn mnee_solve(@builtin(global_invocation_id) id:vec3<u32>){
     if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}if(load_word(at+MR_STAGE)!=MN_SOLVE){return;}
     store_word(at+MR_STAGE,MN_DONE);
@@ -598,6 +599,118 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     store_word(at+MR_META+MM_ITERATIONS,iterations);store_word(at+MR_META+MM_SOLVER,select(solved,6u,solved==0u));
     if(solved==1u){store_word(at+MR_STAGE,MN_TRANSFER);}
 }
+//#endif
+//#if MNEE_WALK_STAGES
+// MNEE_WALK_STAGES: the walk of mnee_newton_solver in two entries (compiler pressure: with motion and curve or point leaves
+// the walk's traversal and mnee_setup_manifold_vertex inlined into one entry passed the compile envelope). mnee_solve takes
+// the constraints and the Newton step of an iteration, then the checks after its projection; mnee_project projects every
+// vertex onto its caster. The host dispatches mnee_solve, then mnee_project and mnee_solve in turn once per iteration;
+// beta, tmin, the iteration, the flags and dx persist in the record (MR_WALK, the closure slots past
+// MNEE_CAUSTICS_MAX_CLOSURE, which no MNEE shader evaluation reaches). The operations and their order are the one-entry
+// walk's, so the walk's outcome, iterations and vertices are bit-identical.
+const MN_PROJECT:u32=7u;
+const MN_WALK:u32=8u;
+const MR_WALK:u32=MR_CLOSURES+MNEE_CAUSTICS_MAX_CLOSURE*SVM_CLOSURE_BYTES;
+const MW_ITERATION:u32=0u;
+const MW_BETA:u32=4u;
+const MW_FLAGS:u32=8u;
+const MW_TMIN:u32=12u;
+const MW_DX:u32=16u;
+const MW_RESOLVE:u32=1u;
+const MW_REDUCE:u32=2u;
+const MW_STUCK:u32=4u;
+@compute @workgroup_size(64) fn mnee_solve(@builtin(global_invocation_id) id:vec3<u32>){
+    if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}let stage=load_word(at+MR_STAGE);if(stage!=MN_SOLVE&&stage!=MN_WALK){return;}
+    store_word(at+MR_STAGE,MN_DONE);
+    let sd=surface_data_read(at+MR_SD);let count=load_word(at+MR_META+MM_COUNT);let ls=mn_light_read(at+MR_LS);
+    let fixed=load_word(at+MR_META+MM_FIXED)!=0u;
+    let light_sample=select(ls.P,ls.D,fixed);let w=at+MR_WALK;
+    var beta=0.1;var resolve_constraint=true;var iteration=0u;var solved=0u;
+    // projection_ray.tmin is set once (pinned): later misses on other objects keep advancing it (mnee_project).
+    if(stage==MN_SOLVE){mn_sf(w+MW_TMIN,0.0);}
+    else{
+        // The rest of iteration `iteration` after its projection.
+        iteration=load_word(w+MW_ITERATION);beta=mn_f(w+MW_BETA);let flags=load_word(w+MW_FLAGS);
+        var reduce_stepsize=(flags&MW_REDUCE)!=0u;
+        if((flags&MW_STUCK)!=0u){solved=4u;}
+        else{
+            if(!reduce_stepsize){
+                for(var vi=0u;vi<count;vi++){
+                    let tv=mn_read(at+MR_T+vi*MN_VERTEX_BYTES);
+                    var previous=sd.P;if(vi>0u){previous=heap_vec3(at+MR_T+(vi-1u)*MN_VERTEX_BYTES);}
+                    let wi=mn_sub(previous,tv.p);
+                    var wo:vec3<f32>;
+                    if(vi==count-1u){if(fixed){wo=ls.D;}else{wo=mn_sub(ls.P,tv.p);}}else{wo=mn_sub(heap_vec3(at+MR_T+(vi+1u)*MN_VERTEX_BYTES),tv.p);}
+                    if(rounded_dot(tv.n,wi)*rounded_dot(tv.n,wo)>=0.0){reduce_stepsize=true;break;}
+                }
+            }
+            if(reduce_stepsize){
+                resolve_constraint=false;beta*=0.5;
+                if(beta<MNEE_MINIMUM_STEP_SIZE){solved=5u;}
+            }else{
+                for(var vi=0u;vi<count;vi++){mn_write(at+MR_V+vi*MN_VERTEX_BYTES,mn_read(at+MR_T+vi*MN_VERTEX_BYTES));}
+                resolve_constraint=true;beta=min(1.0,2.0*beta);
+            }
+        }
+        if(solved==0u){iteration++;}
+    }
+    // Iteration `iteration` up to its projection.
+    if(solved==0u&&iteration<MNEE_MAX_ITERATIONS){
+        if(resolve_constraint){
+            if(!mn_constraints(at+MR_V,count,sd.P,fixed,light_sample)){solved=2u;}
+            else{
+                var norm=0.0;for(var vi=0u;vi<count;vi++){norm=max(norm,mn_len2(mn_v2(at+MR_V+vi*MN_VERTEX_BYTES+116u)));}
+                // Diagnostic: the first 48 constraint norms reuse the consumed hit records.
+                if(iteration<48u){mn_sf(at+MR_HITS+iteration*4u,norm);}
+                if(norm<MNEE_SOLVER_THRESHOLD){solved=1u;}
+                else{
+                    var dx:array<vec2<f32>,6>;
+                    if(!mn_solve_h_to_x(at+MR_V,count,&dx)){solved=3u;}
+                    else{for(var vi=0u;vi<count;vi++){mn_s2(w+MW_DX+vi*8u,dx[vi]);}}
+                }
+            }
+        }
+        if(solved==0u){
+            store_word(w+MW_ITERATION,iteration);mn_sf(w+MW_BETA,beta);store_word(w+MW_FLAGS,select(0u,MW_RESOLVE,resolve_constraint));
+            store_word(at+MR_STAGE,MN_PROJECT);return;
+        }
+    }
+    let iterations=select(iteration,iteration+1u,solved!=0u);
+    store_word(at+MR_META+MM_ITERATIONS,iterations);store_word(at+MR_META+MM_SOLVER,select(solved,6u,solved==0u));
+    if(solved==1u){store_word(at+MR_STAGE,MN_TRANSFER);}
+}
+// The projection of iteration MW_ITERATION: every vertex's tentative position traced onto its caster.
+@compute @workgroup_size(64) fn mnee_project(@builtin(global_invocation_id) id:vec3<u32>){
+    if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}if(load_word(at+MR_STAGE)!=MN_PROJECT){return;}
+    store_word(at+MR_STAGE,MN_DONE);
+    let sd=surface_data_read(at+MR_SD);let count=load_word(at+MR_META+MM_COUNT);let w=at+MR_WALK;
+    let beta=mn_f(w+MW_BETA);var tmin=mn_f(w+MW_TMIN);var reduce_stepsize=false;var stuck=false;
+    for(var vi=0u;vi<count;vi++){
+        let mv=mn_read(at+MR_V+vi*MN_VERTEX_BYTES);let dx=mn_v2(w+MW_DX+vi*8u);
+        let step=rounded_add3(dx.x*mv.dp_du,dx.y*mv.dp_dv);
+        var tentative_p=mn_sub(mv.p,beta*step);
+        if(vi==0u){if(rounded_dot(sd.Ng,mn_sub(tentative_p,sd.P))<=0.0){tentative_p=rounded_add3(mv.p,beta*step);}}
+        var origin:vec3<f32>;var self_object:u32;var self_prim:u32;
+        if(vi==0u){self_object=sd.object_id;self_prim=sd.prim;origin=sd.P;}
+        else{let pv=mn_read(at+MR_V+(vi-1u)*MN_VERTEX_BYTES);self_object=pv.object;self_prim=pv.prim;origin=pv.p;}
+        let ray=mn_normalize_len(mn_sub(tentative_p,origin));let tmax=ray.w*MNEE_PROJECTION_DISTANCE_MULTIPLIER;
+        var success=false;var hit:NativeHit;
+        for(var isect_count=0u;isect_count<MNEE_MAX_INTERSECTION_COUNT;isect_count++){
+            hit=mn_trace(origin,ray.xyz,tmin,tmax,sd.time,self_object,self_prim,NONE,NONE);if(load_word(p(17u))!=0u){return;}
+            if(hit.prim==NONE){break;}
+            if(hit.object==mv.object){success=true;break;}
+            self_object=hit.object;self_prim=hit.prim;tmin=mn_t_offset(hit.t);
+        }
+        if(!success){reduce_stepsize=true;break;}
+        let tv=mn_setup_vertex(hit.object,hit.prim,hit.u,hit.v,sd.time,mv.eta,mv.n_offset,mv.ci);
+        mn_write(at+MR_T+vi*MN_VERTEX_BYTES,tv);
+        if(mn_len(mn_sub(tv.p,mv.p))<MNEE_MIN_PROGRESS_DISTANCE){stuck=true;break;}
+    }
+    mn_sf(w+MW_TMIN,tmin);
+    store_word(w+MW_FLAGS,(load_word(w+MW_FLAGS)&MW_RESOLVE)|select(0u,MW_REDUCE,reduce_stepsize)|select(0u,MW_STUCK,stuck));
+    store_word(at+MR_STAGE,MN_WALK);
+}
+//#endif
 //#endif
 //#if MNEE_ENTRIES
 //#if MNEE_LIGHT_STAGES
@@ -950,7 +1063,8 @@ fn mn_spot_local(light:u32,ray:vec3<f32>)->vec3<f32>{
     let a=table_at(G_objects,load_word(light+L_object_id),SIZE_objects)+O_itfm;let x=heap_vec4(a);let y=heap_vec4(a+16u);let z=heap_vec4(a+32u);
     let c0=vec3<f32>(x.x,y.x,z.x)*ray.x;let c1=vec3<f32>(x.y,y.y,z.y)*ray.y;let c2=vec3<f32>(x.z,y.z,z.z)*ray.z;
     var d=rounded_add3(rounded_add3(c0,c1),c2);if(CAMERA_NATIVE_VECTOR_DIVIDE!=0u){d=rounded_add3(c0,rounded_add3(c1,c2));}
-    var local=mn_safe_normalize_len(d).xyz;local.z=-local.z;return local;
+    // safe_normalize: the reciprocal of the length (util/math_float3.h; native/DEVICE.md, item 151).
+    var local=d;let t=mn_len(d);if(t!=0.0){local=d*rounded_divide(1.0,t);}local.z=-local.z;return local;
 }
 // spot_light_attenuation: smoothstepf((ray.z - cos_half_spot_angle) * spot_smooth).
 fn mn_spot_attenuation(light:u32,local:vec3<f32>)->f32{
@@ -1147,6 +1261,10 @@ fn mn_area_sample(index:u32,sd:SurfaceData,selection:LightSelection)->NativeLigh
     if(f32(state_half(S_path_bounce,index))>heap_float(light+L_max_bounces)){return ls;}
     ls.shader=load_word(light+L_shader_id);ls.object_id=load_word(light+L_object_id);
     let co=heap_vec3(light+L_co);if(rounded_dot(mn_sub(co,sd.P),heap_vec3(light+L_area_dir))>0.0){return ls;}
+//#if LIGHT_AREA_DEGENERATE
+    // A zero-length axis: area_light_sample rejects every sample (wavefront_emitters.wgsl area_evaluate; item 148).
+    if(heap_float(light+L_area_len_u)==0.0||heap_float(light+L_area_len_v)==0.0){return ls;}
+//#endif
     var m:MnLight;m.P=co;if(!mn_area_eval(&m,light,sd.P,random.xy,true)){return ls;}
     if(heap_float(light+L_area_normalize_spread)>0.0){
         let inplane=mn_sub(m.P,co);let u=rounded_dot(inplane,heap_vec3(light+L_area_axis_u));let v=rounded_dot(inplane,heap_vec3(light+L_area_axis_v));

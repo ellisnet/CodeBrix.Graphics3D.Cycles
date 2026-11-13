@@ -278,6 +278,7 @@ public sealed class OracleSceneBundle
             if (!Nodes.TryAdd(handle, target)) throw new FormatException("Duplicate node handle: " + handle);
             if (entry.TryGetProperty("graph", out JsonElement graph)) Graph(target, graph);
             if (entry.TryGetProperty("mesh", out JsonElement mesh)) Mesh(target, mesh);
+            if (entry.TryGetProperty("subdivision", out JsonElement cage)) Subdivision(target, cage);
             if (entry.TryGetProperty("hair", out JsonElement hair)) Hair(target, hair);
             if (entry.TryGetProperty("points", out JsonElement points)) Points(target, points);
             if (entry.TryGetProperty("particles", out JsonElement particles)) Particles(target, particles);
@@ -324,6 +325,17 @@ public sealed class OracleSceneBundle
                 foreach (JsonElement attribute in attributes.EnumerateArray()) Attribute(target, attribute);
             if (mesh.TryGetProperty("motion", out JsonElement motion))
                 host.MotionPositions(target, Required(motion, "steps").GetUInt32(), Required(motion, "positions").EnumerateArray().Select(v => v.GetSingle()).ToArray());
+        }
+
+        private void Subdivision(Node target, JsonElement cage)
+        {
+            float[] positions = Required(cage, "positions").EnumerateArray().Select(v => v.GetSingle()).ToArray();
+            uint[] faceCorners = Required(cage, "faceCorners").EnumerateArray().Select(v => v.GetUInt32()).ToArray();
+            uint[] corners = Required(cage, "corners").EnumerateArray().Select(v => v.GetUInt32()).ToArray();
+            if (positions.Length % 3 != 0) throw new FormatException("Subdivision cage positions must be complete triples.");
+            host.SubdivisionMesh(target, positions, faceCorners, corners);
+            if (cage.TryGetProperty("attributes", out JsonElement attributes))
+                foreach (JsonElement attribute in attributes.EnumerateArray()) Attribute(target, attribute);
         }
 
         private void Hair(Node target, JsonElement hair)

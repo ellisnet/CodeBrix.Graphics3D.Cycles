@@ -1051,7 +1051,8 @@ fn surf_removed_metallic(r:SvmResult)->bool{
     if(object>=table_count(G_objects)||object>=table_count(G_object_flag)||prim>=table_count(G_tri_vindex)||prim>=table_count(G_tri_shader)){fail();return;}
     var sd:SurfaceData;sd.object_id=object;sd.prim=prim;sd.primitive_type=PRIMITIVE_TRIANGLE;sd.u=u;sd.v=v;sd.time=0.5;sd.ray_length=0.0;sd.runtime_flag=0u;
     sd.object_flag=load_word(table_at(G_object_flag,object,4u));
-    if((sd.object_flag&SD_OBJECT_HAS_VERTEX_MOTION)!=0u){fail();return;}
+//#if DISPLACE_VERTEX_MOTION else     if((sd.object_flag&SD_OBJECT_HAS_VERTEX_MOTION)!=0u){fail();return;}
+//#endif
     if((sd.object_flag&SD_OBJECT_MOTION)!=0u){
 //#if MOTION_OBJECT else         atomicOr(&heap[p(17u)/4u],2u);return;
         sd.motion_tfm=motion_object(object,0.5);sd.motion_itfm=motion_inverse(sd.motion_tfm);

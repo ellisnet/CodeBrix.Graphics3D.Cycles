@@ -120,6 +120,8 @@ struct TextureBakeMap {
 struct Result {
   std::vector<float> pixels;
   int width = 0, height = 0;
+  // The rendered region (the camera border) in film pixels, lower-left origin; zero size means the whole film.
+  int region_x = 0, region_y = 0, region_width = 0, region_height = 0;
   unsigned writes = 0;
   bool valid = false;
   // Named caller passes, read from the same complete tile as Combined.
@@ -135,12 +137,29 @@ class HostOutput final : public OutputDriver {
   explicit HostOutput(Result &value) : result(value) {}
   void write_render_tile(const Tile &tile) override {
     result.writes++;
+    if (result.region_width) {
+      // A border render: Cycles' buffer holds only the region; it lands at its place in the film, the rest stays zero.
+      result.valid = tile.offset.x == 0 && tile.offset.y == 0 && tile.size.x == result.region_width && tile.size.y == result.region_height &&
+        region_pixels(tile, "Combined", 4, result.pixels);
+      if (!result.valid) return;
+      for (auto &pass : result.passes)
+        pass.written = region_pixels(tile, pass.source.empty() ? pass.name : pass.source, pass.components, pass.pixels);
+      return;
+    }
     result.valid = tile.offset.x == 0 && tile.offset.y == 0 &&
       tile.size.x == result.width && tile.size.y == result.height &&
       tile.get_pass_pixels("Combined", 4, result.pixels.data());
     if (!result.valid) return;
     for (auto &pass : result.passes)
       pass.written = tile.get_pass_pixels(pass.source.empty() ? pass.name : pass.source, int(pass.components), pass.pixels.data());
+  }
+  bool region_pixels(const Tile &tile, const std::string &name, unsigned components, std::vector<float> &film) const {
+    std::vector<float> region(size_t(result.region_width) * result.region_height * components);
+    if (!tile.get_pass_pixels(name, int(components), region.data())) return false;
+    const size_t row = size_t(result.region_width) * components;
+    for (int y = 0; y < result.region_height; ++y)
+      std::copy_n(region.data() + y * row, row, film.data() + (size_t(result.region_y + y) * result.width + result.region_x) * components);
+    return true;
   }
   bool read_render_tile(const Tile &tile) override {
     if (!result.bake_map) return false;
@@ -173,6 +192,21 @@ struct Host {
   int64_t last_sample = -1;
   uint64_t requested_samples = 0;
   uint32_t backend = 0;
+  // The caller set a camera viewplane socket (lens shift, sensor fit): renders and bakes keep that viewplane
+  // instead of Cycles' automatic one, until all four sides are zero again.
+  bool explicit_viewplane = false;
+  // cbc_host_render_time_limit: seconds, 0 for none (SessionParams::time_limit of every render and bake).
+  double time_limit = 0;
+  void fit_viewplane() {
+    Camera &camera = *session->scene->camera;
+    const BoundBox2D plane = camera.viewplane;
+    if (explicit_viewplane && (plane.left != 0.0f || plane.right != 0.0f || plane.bottom != 0.0f || plane.top != 0.0f)) {
+      require(plane.left < plane.right && plane.bottom < plane.top,
+              "Camera viewplane needs left < right and bottom < top (all four zero restores the automatic viewplane)");
+      return;
+    }
+    explicit_viewplane = false; camera.compute_auto_viewplane();
+  }
   void emit(uint32_t kind, uint64_t done, double elapsed, const std::string &message) {
     if (!callback || closing.load()) return;
     CBCEvent event{sizeof(CBCEvent), kind, done, requested_samples, elapsed, message.c_str()};
@@ -319,6 +353,20 @@ const SocketType &socket(Entry &entry, const char *name) {
   require(name && *name, "Socket name is required");
   auto input = entry.node->type->find_input(ustring(name));
   require(input != nullptr, "Unknown input socket"); return *input;
+}
+// Integer, boolean and enumeration sockets the host itself sets, or whose value never reaches the returned film or
+// passes: a set that would change one is refused with this message instead of being lost (a set to the current
+// value is accepted).
+const char *fixed_socket(const Node &node, const SocketType &input) {
+  if ((dynamic_cast<const Camera *>(&node) && (input.name == "full_width" || input.name == "full_height")) ||
+      (dynamic_cast<const Integrator *>(&node) && input.name == "aa_samples"))
+    return "This socket is set by every render from the render configuration (width, height, samples) and cannot be set";
+  if (dynamic_cast<const Film *>(&node) && (input.name == "display_pass" || input.name == "show_active_pixels"))
+    return "This film socket is a viewport display setting with no effect on the returned film or passes; read a pass through a pass node instead";
+  // Session::update_scene sets it on every render (true only for tiled renders, which this host never makes).
+  if (dynamic_cast<const Film *>(&node) && input.name == "use_sample_count")
+    return "Film use_sample_count is Cycles' session state, set by every render; add a pass of type sample_count to read the sample count";
+  return nullptr;
 }
 // The node name of objects and shaders (Node::name, not a socket: their
 // cryptomatte object and material ids hash it) is the string property "name".
@@ -614,6 +662,7 @@ extern "C" int cbc_host_scene_node(CBCHost handle, const char *name, CBCNode *ou
     else if (std::strcmp(name, "background") == 0) node = scene.background;
     else if (std::strcmp(name, "film") == 0) node = scene.film;
     else if (std::strcmp(name, "integrator") == 0) node = scene.integrator;
+    else if (std::strcmp(name, "scene_attributes") == 0) node = scene.scene_attribute;
     require(node, "Unknown singleton node"); *out = host.remember(node);
   });
 }
@@ -652,10 +701,18 @@ extern "C" int cbc_host_connect(CBCHost handle, CBCNode from, const char *output
     auto first = static_cast<ShaderNode *>(a.node), second = static_cast<ShaderNode *>(b.node);
     auto source = first->output(ustring(output)); auto target = second->input(ustring(input));
     require(source && target, "Unknown shader link socket");
-    require(source->type() == target->type() || (SocketType::is_float3(source->type()) && SocketType::is_float3(target->type())), "Shader link type conversion is not implemented", CBC_UNSUPPORTED);
+    const bool same = source->type() == target->type() || (SocketType::is_float3(source->type()) && SocketType::is_float3(target->type()));
+    require(same || source->type() != SocketType::CLOSURE, "A shader output can link to a shader input only", CBC_UNSUPPORTED);
     std::set<ShaderNode *> visited; require(!reaches(second, first, visited), "Shader link would create a cycle");
     if (target->link) a.graph->authoring->disconnect(target);
-    a.graph->authoring->connect(source, target); a.graph->dirty = true;
+    if (same) a.graph->authoring->connect(source, target);
+    else {
+      // Different value types (a float into a colour, a colour into a shader input, ...): the authoring graph keeps the
+      // link as made, and building the render graph (prepare_graphs) lets ShaderGraph::connect insert Cycles' own
+      // conversion node, as Cycles converts every such link.
+      target->link = source; source->links.push_back(target);
+    }
+    a.graph->dirty = true;
   });
 }
 extern "C" int cbc_host_set_floats(CBCHost handle, CBCNode id, const char *name, const float *values, uint64_t count) {
@@ -701,6 +758,8 @@ extern "C" int cbc_host_set_ints(CBCHost handle, CBCNode id, const char *name, c
       host.changed(entry); return;
     }
     require(count == 1, "Scalar integer socket required"); auto value = values[0];
+    if (const char *why = fixed_socket(node, input))
+      require(value == (input.type == SocketType::BOOLEAN ? int64_t(node.get_bool(input)) : int64_t(node.get_int(input))), why);
     if (input.type == SocketType::BOOLEAN) { require(value == 0 || value == 1, "Boolean must be zero or one"); node.set(input, value != 0); }
     else if (input.type == SocketType::INT || input.type == SocketType::ENUM) { require(value >= INT_MIN && value <= INT_MAX, "Integer exceeds socket range");
       if (input.type == SocketType::ENUM) {
@@ -739,7 +798,9 @@ extern "C" int cbc_host_set_string(CBCHost handle, CBCNode id, const char *name,
     // Native automatic colorspace is the default-constructed empty ustring.
     // OIIO distinguishes its null interned pointer from ustring("").
     if (input.type == SocketType::STRING) entry.node->set(input, *value ? ustring(value) : ustring());
-    else if (input.type == SocketType::ENUM) { require(input.enum_values && input.enum_values->exists(ustring(value)), "Unknown enumeration label"); entry.node->set(input, (*input.enum_values)[value]); }
+    else if (input.type == SocketType::ENUM) { require(input.enum_values && input.enum_values->exists(ustring(value)), "Unknown enumeration label");
+      if (const char *why = fixed_socket(*entry.node, input)) require((*input.enum_values)[value] == entry.node->get_int(input), why);
+      entry.node->set(input, (*input.enum_values)[value]); }
     else throw Failure(CBC_INVALID, "Socket is not a string or enumeration");
     host.changed(entry);
   });
@@ -771,10 +832,45 @@ extern "C" int cbc_host_mesh(CBCHost handle, CBCNode id, const float *xyz, uint6
     for (uint64_t i = 0; i < vertices * 3; ++i) require(std::isfinite(xyz[i]), "Mesh position is nonfinite");
     for (uint64_t i = 0; i < triangles * 3; ++i) require(indices[i] < vertices, "Triangle index is outside the vertex array");
     before_edit(host, entry, nullptr);
+    // Triangles replace subdivision faces a cbc_host_subd_mesh call left (their attributes go with them).
+    if (mesh->get_num_subd_faces()) { mesh->resize_subd_faces(0, 0); mesh->subd_attributes.clear(); }
     mesh->resize_mesh(int(vertices), int(triangles));
     for (size_t i = 0; i < vertices; ++i) mesh->get_position_for_write()[i] = make_float3(xyz[3*i],xyz[3*i+1],xyz[3*i+2]);
     for (size_t i = 0; i < triangles * 3; ++i) mesh->get_triangles()[i] = int(indices[i]);
     std::ranges::fill(mesh->get_shader(), 0); std::ranges::fill(mesh->get_smooth(), false);
+    mesh->tag_triangles_modified(); host.changed(entry);
+  });
+}
+// Subdivision geometry (ABI.md "Geometry"): the control cage's positions and polygon faces, each face's corner count and
+// its corners in order. Mesh::resize_subd_faces sets the face count Cycles' tessellation reads (Mesh::num_subd_faces,
+// which the subd_* sockets alone leave at zero) and the cage positions are the subdivision position attribute
+// (subd_attributes ATTR_STD_POSITION, which Mesh::tessellate reads); the render tessellates them by subdivision_type.
+extern "C" int cbc_host_subd_mesh(CBCHost handle, CBCNode id, const float *xyz, uint64_t vertices, const uint32_t *face_corners,
+                                  uint64_t faces, const uint32_t *corners, uint64_t corner_count) {
+  return edit(handle, [&](Host &host) {
+    require(vertices <= INT_MAX / 3 && faces <= INT_MAX && corner_count <= INT_MAX && (vertices == 0 || xyz) && (faces == 0 || face_corners) &&
+            (corner_count == 0 || corners), "Invalid subdivision mesh dimensions");
+    auto &entry = host.entry(id); auto mesh = dynamic_cast<Mesh *>(entry.node); require(mesh && !mesh->is_volume(), "Handle is not a mesh");
+    for (uint64_t i = 0; i < vertices * 3; ++i) require(std::isfinite(xyz[i]), "Mesh position is nonfinite");
+    uint64_t total = 0;
+    for (uint64_t f = 0; f < faces; ++f) { require(face_corners[f] >= 3, "A subdivision face needs at least three corners"); total += face_corners[f]; }
+    require(total == corner_count, "Face corner counts do not add up to the corner array");
+    for (uint64_t i = 0; i < corner_count; ++i) require(corners[i] < vertices, "Face corner is outside the vertex array");
+    before_edit(host, entry, nullptr);
+    mesh->subd_attributes.clear();
+    mesh->resize_mesh(int(vertices), 0);
+    for (size_t i = 0; i < vertices; ++i) mesh->get_position_for_write()[i] = make_float3(xyz[3*i],xyz[3*i+1],xyz[3*i+2]);
+    mesh->resize_subd_faces(int(faces), int(corner_count));
+    int start = 0, ptex = 0;
+    for (size_t f = 0; f < faces; ++f) {
+      const int n = int(face_corners[f]);
+      mesh->get_subd_start_corner()[f] = start; mesh->get_subd_num_corners()[f] = n;
+      mesh->get_subd_shader()[f] = 0; mesh->get_subd_smooth()[f] = false; mesh->get_subd_ptex_offset()[f] = ptex;
+      start += n; ptex += n == 4 ? 1 : n;
+    }
+    for (size_t i = 0; i < corner_count; ++i) mesh->get_subd_face_corners()[i] = int(corners[i]);
+    Attribute *cage = mesh->subd_attributes.add(ATTR_STD_POSITION);
+    for (size_t i = 0; i < vertices; ++i) cage->data_for_write<packed_float3>()[i] = make_float3(xyz[3*i],xyz[3*i+1],xyz[3*i+2]);
     mesh->tag_triangles_modified(); host.changed(entry);
   });
 }
@@ -846,6 +942,12 @@ extern "C" int cbc_host_curve_shape(CBCHost handle, CBCNode id, uint32_t shape) 
     auto &entry = host.entry(id); auto hair = dynamic_cast<Hair *>(entry.node); require(hair, "Handle is not a hair geometry");
     if (hair->curve_shape == CurveShapeType(shape)) return;
     before_edit(host, entry, nullptr); hair->curve_shape = CurveShapeType(shape); hair->tag_curve_first_key_modified(); host.changed(entry);
+  });
+}
+extern "C" int cbc_host_render_time_limit(CBCHost handle, double seconds) {
+  return edit(handle, [&](Host &host) {
+    require(std::isfinite(seconds) && seconds >= 0, "Render time limit must be finite and not negative");
+    host.time_limit = seconds;
   });
 }
 extern "C" int cbc_host_curve_subdivisions(CBCHost handle, uint32_t subdivisions) {
@@ -1033,12 +1135,46 @@ extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, fl
     struct Prune { Host &host; ~Prune() { prune_bakes(host); } } prune{host};
     reconcile_bakes(host);
     host.prepare_graphs();
+    WorldVolumeLight world_light{*host.session->scene}; world_volume_light(host, world_light);
     auto &session = *host.session; auto &scene = *session.scene;
     host.requested_samples = config->samples;
     recover_device(host);
     scene.camera->set_full_width(int(config->width)); scene.camera->set_full_height(int(config->height));
-    scene.camera->set_screen_size(int(config->width), int(config->height)); scene.camera->compute_auto_viewplane();
+    scene.camera->set_screen_size(int(config->width), int(config->height)); host.fit_viewplane();
+    // The camera border (a render region, fractions of the film with a lower-left origin): Cycles renders only that
+    // region (BufferParams full_x/full_y inside full_width/full_height, the camera keeping the whole film's raster), and
+    // the film returned is the whole film with zero outside the region. None (all zero) or 0..1 renders the whole film.
+    const BoundBox2D border = scene.camera->border;
+    const bool whole = (border.left == 0 && border.right == 0 && border.bottom == 0 && border.top == 0) ||
+                       (border.left == 0 && border.right == 1 && border.bottom == 0 && border.top == 1);
+    int region_x = 0, region_y = 0, region_width = int(config->width), region_height = int(config->height);
+    if (!whole) {
+      require(border.left >= 0 && border.left < border.right && border.right <= 1 && border.bottom >= 0 && border.bottom < border.top && border.top <= 1,
+              "Camera border needs 0 <= left < right <= 1 and 0 <= bottom < top <= 1");
+      // The region's pixel edges: the border's fractions of the film size, rounded to the nearest pixel edge.
+      region_x = int(std::lround(double(border.left) * config->width)); region_y = int(std::lround(double(border.bottom) * config->height));
+      region_width = int(std::lround(double(border.right) * config->width)) - region_x;
+      region_height = int(std::lround(double(border.top) * config->height)) - region_y;
+      require(region_width > 0 && region_height > 0, "Camera border covers no whole pixel of this film");
+    }
+    // Cycles upscales only in its GPU denoisers; the Open Image Denoise CPU denoiser that the CPU and WebGPU backends
+    // use resets the factor to 1 (integrator/denoiser.cpp), so the setting would be lost.
+    require(host.backend == CBC_HOST_METAL || !scene.integrator->get_use_denoise() || scene.integrator->get_denoiser_upscale_factor() == 1.0f,
+            "Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)",
+            CBC_UNSUPPORTED);
+    // Adaptive dicing of subdivision surfaces measures in the dicing camera's pixels: with subdivision faces in the scene
+    // the host keeps it equal to the render camera (Cycles' own scene leaves it at its defaults).
+    if (std::any_of(scene.geometry.begin(), scene.geometry.end(), [](Geometry *g) {
+          auto mesh = dynamic_cast<Mesh *>(g); return mesh && mesh->get_num_subd_faces() && mesh->get_subdivision_type() != Mesh::SUBDIVISION_NONE; }))
+      for (const SocketType &input : scene.camera->type->inputs)
+        if (!scene.dicing_camera->equals_value(*scene.camera, input)) scene.dicing_camera->set_value(input, *scene.camera, input);
     auto params = session.params; params.samples = int(config->samples);
+    // The integrator's sample subset sockets: Session::update_scene copies the session's values over them, so the
+    // render takes them from the integrator (they act only with use_sample_subset).
+    params.use_sample_subset = scene.integrator->get_use_sample_subset();
+    params.sample_subset_offset = scene.integrator->get_sample_subset_offset();
+    params.sample_subset_length = scene.integrator->get_sample_subset_length();
+    params.time_limit = host.time_limit;
     // A new synchronous render owns its sample budget, including decreases.
     // Session's incremental update otherwise preserves a larger prior budget.
     scene.integrator->set_aa_samples(params.samples);
@@ -1046,6 +1182,13 @@ extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, fl
     buffers.height = buffers.full_height = buffers.window_height = int(config->height);
     host.result = Result{}; host.result.width = buffers.width; host.result.height = buffers.height;
     host.result.pixels.assign(size_t(count), -1000.0f); host.cancellation = false;
+    if (!whole) {
+      buffers.full_x = region_x; buffers.full_y = region_y;
+      buffers.width = buffers.window_width = region_width; buffers.height = buffers.window_height = region_height;
+      host.result.region_x = region_x; host.result.region_y = region_y;
+      host.result.region_width = region_width; host.result.region_height = region_height;
+      std::fill(host.result.pixels.begin(), host.result.pixels.end(), 0.0f);
+    }
     // Caller-created passes with a name are captured for cbc_host_pass_floats,
     // light group passes (PASS_COMBINED with a light group) included.
     for (auto &[id, entry] : host.nodes) if (auto pass = dynamic_cast<Pass *>(entry.node)) {

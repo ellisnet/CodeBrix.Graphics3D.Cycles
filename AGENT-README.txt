@@ -41,8 +41,7 @@ RAW PIXELS ONLY. Textures go in as decoded pixels in one of eight layouts
 reads and writes no image files. Convert any image format (PNG, JPEG, JPEG XL,
 TIFF, EXR, ...) to and from these buffers with CodeBrix.Imaging.
 
-STATUS: experimental. The package is not yet published to nuget.org, and it
-does not yet carry native runtime assets (see INSTALLATION).
+STATUS: experimental. The packages are not yet published to nuget.org.
 
 
 INSTALLATION
@@ -112,7 +111,8 @@ KEY NAMESPACES / USINGS
                                                           // CyclesBackend, Backend, ImageFormat,
                                                           // Transform3x4, CyclesException, CyclesVersion
     using CodeBrix.Graphics3D.Cycles.Rendering;           // RenderSettings, FilmBuffer, RenderProgress,
-                                                          // RenderEvent, RenderPassInfo
+                                                          // RenderEvent, RenderPassInfo, BakeSettings,
+                                                          // DenoiserGuides
     using CodeBrix.Graphics3D.Cycles.Generated.Scene;     // CameraNode, FilmNode, IntegratorNode,
                                                           // BackgroundNode, ObjectNode, ShaderNode, ...
     using CodeBrix.Graphics3D.Cycles.Generated.Geometry;  // GeometryBaseNode, MeshNode, HairNode,
@@ -153,6 +153,14 @@ CyclesScene : IDisposable, IAsyncDisposable                     (sealed)
                                render runs (see CALLBACKS AND THREADING)
     CameraNode Camera / FilmNode Film / IntegratorNode Integrator /
     BackgroundNode Background  the scene singletons (typed)
+    SceneAttributesNode SceneAttributes
+                               the scene's Time (seconds) and Frame, which a
+                               SceneTimeNode reads (0 and 1 until set)
+    TimeSpan RenderTimeLimit   wall-clock limit of later renders and bakes
+                               (Cycles' time limit); Zero (default) renders
+                               every sample, otherwise a render stops after
+                               the limit with the samples done by then (such
+                               a film is not reproducible)
     T Create<T>() where T : CyclesNode
                                objects, geometry, lights, shader graphs,
                                particle systems, passes (NodeCreation.Scene);
@@ -245,8 +253,18 @@ values come through Cycles' own pass accessor (for example Mist is already
   - Data passes: Depth, Position, Normal, Roughness, Uv (the mesh's standard
     "uv" attribute), ObjectId (ObjectNode.PassId), MaterialId
     (ShaderNode.PassId), Mist (FilmNode.MistStart, MistDepth, MistFalloff),
-    SampleCount (FilmNode.UseSampleCount), RenderTime (GPU backends do not
-    measure it: it reads zero there).
+    SampleCount (the samples each pixel received; FilmNode.UseSampleCount is
+    Cycles' own session state, set by every render: setting a different value
+    throws), RenderTime (GPU backends do not measure it: it reads zero there).
+  - Volume passes: VolumeDirect, VolumeIndirect and Volume (their sum), and
+    VolumeMajorant and VolumeMajorantSampleCount (the volume integrator's
+    majorant statistics).
+  - Internal passes: AdaptiveAuxBuffer (adaptive sampling's work buffer) and
+    VolumeScatter / VolumeTransmit (volume scattering guiding's buffers) are
+    Cycles' own working passes; reading them is possible but they are not
+    images.
+  - PassNode.IncludeAlbedo keeps the surface colour in a Diffuse, Glossy or
+    Transmission light pass (by default those passes are divided by it).
   - Motion and MotionWeight: written only when IntegratorNode.MotionBlur is
     false (Cycles' motion pass mode); object and camera motion transforms
     give the vectors.
@@ -325,6 +343,9 @@ native report states, nothing inferred)
     or null off WebGPU), IReadOnlyList<string> Warnings
     bool PipelineCacheActive, string PipelineCacheDirectory (null when not
     active), string PipelineCacheReason (null without a device)
+    bool CanDenoise, IReadOnlyDictionary<string, string> DenoiseDevices
+    (backend -> denoiser device), IReadOnlyDictionary<string, string>
+    BakingBackends, IReadOnlyList<string> BakeTypes
     IReadOnlyList<string> CompiledBackends, string GpuBackendName,
     bool GpuFallsBackToCpu (always false)
     IReadOnlyDictionary<string, BackendScope> BackendScopes, BackendScope Scope
@@ -334,7 +355,7 @@ native report states, nothing inferred)
     IReadOnlyDictionary<string, long> Limits        maxRenderWidth, maxMotionSteps...
     string DeterminismReference, string Json (the full native report)
 BackendScope: Device, CameraTypes, Primitives, WrittenPasses, PassesNote,
-    RenderTimeRejections, Reference
+    RenderTimeRejections (see RENDER-TIME REJECTIONS), Reference
 Warnings also carries a notice when a scene compiles to an unusually large GPU
 program that some older Intel graphics drivers may fail to compile; the notice
 never changes the rendered result.
@@ -394,10 +415,17 @@ Hand-maintained conveniences on a few generated classes:
   ParticleSystemNode.SetParticles(ReadOnlySpan<Particle>): what the Particle Info
     node reads through ObjectNode.ParticleSystem and ObjectNode.ParticleIndex
   MeshNode.SetTriangles(ReadOnlySpan<float> or ReadOnlySpan<Vector3>, indices)
+  MeshNode.SetSubdivisionCage(positions, faceCorners, corners)   polygon faces
+    for SubdivisionType Linear (see SCENE SETTINGS)
   MeshNode.SetMotionPositions(uint steps, ReadOnlySpan<float> or
   ReadOnlySpan<Vector3>) / ClearMotionPositions()   deformation motion
   (before or after a render; see MOTION)
   ImageTextureNode / EnvironmentTextureNode .Bind(CyclesImage) / .Unbind()
+  ObjectNode.RayVisibility / BackgroundNode.RayVisibility   the Visibility
+    socket as RayVisibility flags (Camera, Transmit, Diffuse, Glossy,
+    VolumeScatter, ShadowOpaque, ShadowTransparent, Shadow, Raycast, All)
+  IntegratorNode.DenoiserGuides   the DenoiserPasses socket as DenoiserGuides
+    flags (Open Image Denoise reads Albedo and Normal, the default)
 
 CyclesNode (base of every generated class)
     CyclesScene Scene, Node Handle, NodeTypeInfo TypeInfo,
@@ -414,8 +442,8 @@ NodeTypeInfo: Name, Category (Scene, Camera, Film, Integrator, Background,
 SocketInfo: Name, UiName, TypeName, Kind (ValueKind), Components, Flags
     (PropertyFlags), NodeTypeName, EnumValues (EnumEntry(Name, Value))
   Creation = Unavailable marks base types and types the native host does not
-  create directly (buffer_params, buffer_pass, denoise_params,
-  scene_attributes); they are catalogued for completeness.
+  create directly (buffer_params, buffer_pass, denoise_params); they are
+  catalogued for completeness.
 
 TIER 3 - INTEROP (STABLE LOW-LEVEL TIER)
 ----------------------------------------
@@ -436,6 +464,8 @@ CyclesHost : IDisposable  (root namespace; by name, throws NativeFailure)
     Mesh, SetAttribute, SetAttributeBytes, GetAttribute, GetAttributeBytes,
     RemoveAttribute, CreateImage, BindImage, ReleaseImage
     void Render(uint w, uint h, uint samples, Span<float> rgba)
+    void SetRenderTimeLimit(double seconds)   0 = every sample
+    void SubdivisionMesh(Node mesh, positions, faceCorners, corners)   a subdivision cage
     bool Bake(Node, in BakeSettings, Span<float>, out required, out components)
     bool BakeMap(Node, in BakeSettings, Span<int>, Span<float>, out required)
     static ConfigureColor(string path)       process-wide OCIO config
@@ -498,6 +528,7 @@ Shared value types and enums (root namespace)
     PropertyFlags   None, Array, Linkable, Internal, Readable, Writable
     AttributeValue, AttributeDomain, AttributeFlags (geometry attributes)
     CurveShape      Ribbon, Thick, ThickLinear
+    RayVisibility   object and world ray visibility flags
     ImageFormat     Float, Float4, Half, Half4, Byte, Byte4, UShort, UShort4
     PipelineTier, PipelineTierFlags (WebGPU pipeline-tier selection)
     PipelineCacheMode (the persistent GPU pipeline cache's switch)
@@ -581,12 +612,10 @@ pipelines it creates after a Cycles GPU scene exists are compiled the same way
 WEBGPU ON WINDOWS. WebGPU reaches the GPU through Direct3D 12 by default, on
 any GPU with a Direct3D 12 driver (every GPU vendor's Windows driver, including
 the Qualcomm Adreno GPUs of Windows on ARM devices); shaders are compiled with
-dxcompiler.dll from the host library's folder. Set the environment variable
-CODEBRIX_CYCLES_WEBGPU_BACKEND=vulkan before the first scene is created to use
-the Vulkan driver instead (for diagnostics or comparison; it needs a Vulkan
-driver on the machine). There is no automatic fallback from one backend to the
-other, nor to the CPU: if the selected one is unavailable, scene creation fails
-with a CyclesException. GetCapabilities().Json names the backend in use.
+dxcompiler.dll from the host library's folder. There is no automatic fallback
+to another graphics API, nor to the CPU: if Direct3D 12 is unavailable, scene
+creation fails with a CyclesException. GetCapabilities().Json names the
+graphics API in use.
 Windows x64 is tested on Direct3D 12 and on Vulkan. On Intel GPUs with Direct3D 12
 the shaders that use the light tree are compiled anew in every process (a
 workaround for an Intel driver shader-cache bug), so the first render of such a
@@ -594,22 +623,15 @@ scene takes longer there; the image is unaffected. Windows ARM64 binaries are
 built (the same code and layout) but not yet validated: on the one ARM64 GPU
 tested so far (Qualcomm Adreno 680, Direct3D 12) some scenes render wrongly
 because of driver problems (smooth-shaded surfaces render black, among others),
-and that work is in progress. Environment variables named
-CODEBRIX_CYCLES_WGSL_LOAD, CODEBRIX_CYCLES_WEBGPU_ADAPTER,
-CODEBRIX_CYCLES_WEBGPU_ALLOW_NONCOMPLIANT, CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL,
-CODEBRIX_CYCLES_WEBGPU_INSTANCE_FLAGS, CODEBRIX_CYCLES_WEBGPU_LOG,
-CODEBRIX_CYCLES_DRIVER_WORKAROUNDS and CODEBRIX_CYCLES_DEBUG_OUTPUT are
-maintainer diagnostics for such driver problems: never set them in an
-application (a debug output mode replaces the rendered image).
+and that work is in progress.
 
 WHAT DIFFERS BETWEEN THE GPU BACKENDS. The scene API, the edits, the events,
 the film layout and the device-error contract are the same on every platform.
 What a consumer can observe:
   - Feature coverage. Metal is Cycles' own device with upstream's GPU feature
-    set: all cameras and passes and the integrator defaults render
-    (GetCapabilities().Scope.RenderTimeRejections is empty). The WebGPU device does not yet cover all of Cycles (WEBGPU
-    RENDER-TIME LIMITS below); it is being extended toward the same coverage.
-    Check GetCapabilities().Scope instead of the platform.
+    set. The WebGPU device renders the same scenes, with the few exceptions
+    listed in RENDER-TIME REJECTIONS (below), each refused by name. Check
+    GetCapabilities().Scope instead of the platform.
   - First render. Metal compiles its kernels at run time the first time a
     machine renders (several seconds; the library carries the kernel sources
     as codebrix-cycles/source beside the native library) and caches them in
@@ -626,45 +648,14 @@ What a consumer can observe:
     interpolation by more than that criterion on magnified textures. Those are
     characteristics of Cycles' Metal backend, not defects.
 
-WEBGPU RENDER-TIME LIMITS. The WebGPU device rejects some scenes when the
-render runs (the render fails with NativeStatus.Failed, not at edit time):
-  - the passes the WebGPU device does not write fail the render with
-    "WebGPU film pass <name> not implemented" (the path guiding passes); the
-    motion pass and the denoising motion features render with every camera
-    type and with deforming geometry;
-  - custom cameras need OSL, which is outside the package; stereo cameras (a
-    StereoEye other than None, with InterocularDistance, ConvergenceDistance
-    and pole merge) and a texture coordinate node's Window output with a
-    panoramic camera render;
-  - the integrator defaults: switch off UseGuiding before a WebGPU render
-    (the light tree, UseLightTree, adaptive sampling, UseAdaptiveSampling, and
-    denoising, UseDenoise, render);
-  - subsurface scattering: the random walk and Christensen-Burley methods
-    render (and a thin-walled PrincipledBsdfNode with subsurface, which has
-    no BSSRDF), also with film passes, denoising, light and shadow linking,
-    holdout objects, the shadow catcher, object and deformation motion blur,
-    volumes and MNEE caustics from point and sun lights;
-  - shader nodes the WebGPU device does not implement (the point info and
-    particle info nodes, the sky texture, IES texture and
-    light falloff nodes, the AOV output nodes, the bump node, the Gabor texture (GaborTextureNode,
-    2D and 3D), the displacement and vector displacement nodes and the bevel,
-    raycast and radial tiling nodes are implemented, and so are the Geometry
-    node's Tangent output and smooth normals of deforming meshes inside a bump
-    height; light path, ambient occlusion, bevel, raycast and wireframe nodes
-    feeding a true displacement output render as Cycles evaluates them there);
-  - a RadialTilingNode with at most two sides and a roundness strictly
-    between 0 and 1: "Unsupported feature: Radial Tiling node with two sides"
-    (the Cycles CPU outputs there are binary32 rounding residue, and Cycles' own
-    Metal device does not reproduce them either); when Sides
-    or Roundness is linked the render fails with an unsupported-parameter
-    error instead;
-  - the classes listed in GetCapabilities().Scope.RenderTimeRejections.
-The WebGPU device implements the AmbientOcclusionNode (Inside, OnlyLocal,
-Samples, Distance, Normal) and fast GI ambient occlusion: IntegratorNode
-AoBounces, AoFactor, AoDistance and AoAdditiveFactor, and ObjectNode.AoDistance,
-as the CPU device does; AddPass(PassType.Ao, name) is written and ReadPass
-returns it.
-The CPU reference backend renders all of these.
+WHAT RENDERS WHERE. Every backend renders the same scene API: Cycles' cameras,
+closures, shader nodes, lights, world, volumes, subsurface scattering, curves,
+point clouds, motion blur, passes, light groups, AOVs, Cryptomatte, denoising,
+light and shadow linking, shadow caustics, the shadow catcher and baking
+(SCENE SETTINGS below says how to reach each). The exceptions are few and each
+is refused by name when the render runs, never approximated: they are listed in
+RENDER-TIME REJECTIONS, and GetCapabilities().Scope.RenderTimeRejections lists
+the ones of the scene's backend.
 
 DEVICE ERRORS. After a render fails with NativeStatus.Failed (scene.IsFaulted
 is true), remove the cause (for example a custom
@@ -676,13 +667,166 @@ successful render clears IsFaulted. Only a device that cannot recover (a lost
 WebGPU device, or an error on the CPU device) keeps failing, with a message
 that starts with "Host faulted": then dispose the scene and build a new one.
 
+SCENE SETTINGS
+--------------
+Every setting is a typed property of a generated node (TIER 2); what each one
+means is Cycles' meaning. This list says how to reach the features and what is
+special here.
+
+Cameras (scene.Camera):
+  - CameraType Perspective (Fov, radians), Orthograph or Panorama. The view is
+    the camera's viewplane in camera space: by default 2 units across the
+    film's shorter side, so scale Matrix (or set the viewplane, below) to
+    change an orthographic view's size.
+  - PanoramaType: Equirectangular (LatitudeMin/Max, LongitudeMin/Max),
+    EquiangularCubemapFace, Mirrorball, FisheyeEquidistant (FisheyeFov),
+    FisheyeEquisolid (FisheyeLens, FisheyeFov, Sensorwidth, Sensorheight),
+    FisheyeLensPolynomial (FisheyeFov, FisheyePolynomialK0..K4) and
+    PanoramaCentralCylindrical (CentralCylindricalRangeUMin/UMax/VMin/VMax).
+  - Depth of field: Aperturesize, Focaldistance, Blades, Bladesrotation and
+    ApertureRatio (anamorphic bokeh). Clipping: Nearclip, Farclip.
+  - Lens shift and sensor fit: ViewplaneLeft/Right/Bottom/Top. A viewplane you
+    set is kept for every render; setting all four to 0 returns to the
+    automatic one (for a W x H film: +-W/H by +-1 when W >= H, else +-1 by
+    +-H/W), which a render otherwise writes there. FullWidth and FullHeight are
+    the render's size: a different value throws (NativeStatus.Invalid).
+  - Render region: BorderLeft/Right/Bottom/Top (fractions of the film,
+    bottom-left origin; 0..1, the default, or all 0 is the whole film).
+    Only the region renders; the film returned is the whole film, zero
+    outside the region, every pass too. Its pixel edges are the fractions
+    times the film size, rounded to the nearest pixel.
+  - Stereo: StereoEye (Left or Right), InterocularDistance,
+    ConvergenceDistance, UseSphericalStereo, UsePoleMerge,
+    PoleMergeAngleFrom/To.
+  - Motion: Motion (transforms), Shuttertime, MotionPosition (Start, Center,
+    End), RollingShutterType and RollingShutterDuration, ShutterCurve,
+    UsePerspectiveMotion with FovPre and FovPost (see MOTION).
+  - ViewportCameraBorder* map a viewport onto the camera; keep the default
+    0..1 for renders. OffscreenDicingScale scales the dicing rate of
+    subdivision faces outside the view.
+
+Film (scene.Film): Exposure, FilterType (Box, Gaussian, BlackmanHarris) and
+FilterWidth (pixels), PassAlphaThreshold, MistStart/MistDepth/MistFalloff, the
+Cryptomatte settings (see PASSES) and the denoising-pass options. DisplayPass
+and ShowActivePixels are viewport display settings with no effect on the film
+or the passes: setting a different value throws (NativeStatus.Invalid).
+
+Sampling (scene.Integrator):
+  - RenderSettings.Samples is the sample count; AaSamples follows it (setting
+    a different value throws). SamplingPattern (TabulatedSobol, SobolBurley,
+    BlueNoisePure, BlueNoiseRound, BlueNoiseFirst), Seed, ScramblingDistance.
+  - Adaptive sampling: UseAdaptiveSampling, AdaptiveThreshold (0 = chosen
+    from the sample count) and AdaptiveMinSamples (0 = chosen from the
+    threshold). Pixels stop when their noise is below the threshold.
+  - UsePixelJitter (off by default) replaces the per-sample pixel filter with
+    one sub-pixel offset per render, for temporal anti-aliasing (successive
+    renders of a scene step through a Halton sequence);
+    UseCustomPixelJitterSample with CustomPixelJitterSample (two floats)
+    chooses the offset.
+  - UseSampleSubset with SampleSubsetOffset and SampleSubsetLength renders only
+    those samples of RenderSettings.Samples (for splitting one image's samples
+    between renders). scene.RenderTimeLimit stops a render early.
+  - Bounces and path controls: MinBounce, MaxBounce and the per-type maxima
+    (MaxDiffuseBounce, MaxGlossyBounce, MaxTransmissionBounce, MaxVolumeBounce,
+    TransparentMinBounce, TransparentMaxBounce), FilterGlossy (blurs glossy
+    reflections after blurry bounces: less noise, less accuracy),
+    CausticsReflective and CausticsRefractive (off removes those caustic
+    paths), SampleClampDirect, SampleClampIndirect, LightSamplingThreshold,
+    UseLightTree (on by default).
+  - Path guiding (UseGuiding and the other guiding settings) is off by default
+    and is not rendered by the WebGPU device (RENDER-TIME REJECTIONS).
+
+Denoising (scene.Integrator): UseDenoise (off by default), DenoiserType
+Openimagedenoise, DenoiserPrefilter, DenoiserQuality, DenoiseStartSample and
+DenoiserGuides (the guide passes; Open Image Denoise reads Albedo and Normal,
+the default). DenoiseUseGpu lets Open Image Denoise use the GPU where it can
+(Metal); the CPU and WebGPU backends denoise on the CPU (GetCapabilities().
+DenoiseDevices). DenoiserUpscaleFactor other than 1 is refused on the CPU and
+WebGPU backends (RENDER-TIME REJECTIONS).
+
+Lights (CreateLight<T>, placed by an object; see A light): every LightNode has
+Strength, CastShadow, UseMis, UseCaustics, MaxBounces, IsEnabled, Normalize
+and UsedShaders (the emission shader; a LightFalloffNode or an IesLightNode in
+it shapes the emission: pass the IES file's text in IesLightNode.Ies).
+PointLightNode Radius and IsSphere; SpotLightNode Angle and Smooth (plus the
+point radius); AreaLightNode Sizeu, Sizev, Ellipse, Spread and IsPortal (see
+the HDRI example); SunLightNode Angle; BackgroundLightNode MapResolution.
+
+Objects (ObjectNode): Tfm, Motion, Visibility / RayVisibility, Color, Alpha,
+RandomId (the Object Info node's Random), PassId, AssetName, UseHoldout (the
+object cuts a hole in the film's alpha; the HoldoutNode does it per material),
+IsShadowCatcher, IsCausticsCaster and IsCausticsReceiver (shadow caustics,
+with the light's UseCaustics), DupliGenerated and DupliUv (the Texture
+Coordinate node's From Instancer values), HideOnMissingMotion, AoDistance,
+ShadowTerminatorShadingOffset and ShadowTerminatorGeometryOffset, Lightgroup,
+ParticleSystem and ParticleIndex (the Particle Info node).
+  - Light linking: an emitter object's LightSetMembership is a bit mask of
+    light sets, a receiver object's ReceiverLightSet one set number; the
+    emitter lights the receiver when bit ReceiverLightSet of its membership is
+    set. Defaults: every bit, set 0 (everything lit).
+  - Shadow linking: a light object's ShadowSetMembership is a bit mask, a
+    blocker object's BlockerShadowSet a set number; the blocker casts that
+    light's shadow when that bit is set. Defaults: every bit, set 0.
+
+World (scene.Background): Shader, Transparent (alpha 0 where the world is
+seen), TransparentGlass and TransparentRoughnessThreshold, UseShader,
+Visibility / RayVisibility, Lightgroup; a BackgroundLightNode samples a
+varying world (see the HDRI example).
+
+Geometry attributes (GeometryBaseNode.SetAttribute): with
+AttributeFlags.Standard these names are Cycles' standard attributes:
+  - meshes: P, N (vertex or corner normal), uv, generated, tangent,
+    tangent_sign, pointiness (per vertex) and random_per_island (per face),
+    which the Geometry node's Pointiness and Random Per Island outputs read
+    (compute them yourself; Cycles does not);
+  - curves (HairNode): uv, generated, radius, curve_intercept (per key),
+    curve_length and curve_random (per curve), for the Hair Info node;
+  - point clouds: uv, generated, radius, point_random (the Point Info node).
+  Any other name is a custom attribute, read by the Attribute node.
+
+Shader graphs: a link between different value types (a colour into a float
+input, a float into a colour or vector input, a value into a shader input)
+gets Cycles' own conversion node, as in Blender; the Convert*Node classes do
+the same explicitly. A shader output links only into a shader input.
+Displacement: ShaderNode.DisplacementMethod Bump, True or Both, with a
+DisplacementNode or VectorDisplacementNode into OutputNode.DisplacementInput;
+BumpNode for bump mapping inside a graph.
+
+Volumes: a volume shader (ScatterVolumeNode, AbsorptionVolumeNode,
+PrincipledVolumeNode, VolumeCoefficientsNode, emission) into
+OutputNode.VolumeInput of a closed mesh's shader. Settings:
+ShaderNode.VolumeSamplingMethod, VolumeInterpolationMethod and VolumeStepRate;
+IntegratorNode.VolumeRayMarching (biased ray marching), VolumeMaxSteps,
+VolumeStepRate and MaxVolumeBounce. VolumeNode is Cycles' volume geometry for
+voxel grids (OpenVDB), which this package does not read: use a mesh. The
+VolumeInfoNode reads voxel grids, so here it returns its defaults.
+
+Subdivision surfaces: MeshNode.SetSubdivisionCage(positions, faceCorners,
+corners) gives a mesh polygon faces (a control cage) instead of triangles;
+with SubdivisionType Linear every render tessellates them with Cycles'
+adaptive dicing (SubdDicingRate, in pixels of the render camera with
+SubdAdaptiveSpace Pixel or in object units with Object, and SubdMaxLevel).
+Subdivision attributes go on the cage with
+AttributeFlags.Subdivision. Catmull-Clark needs OpenSubdiv and is refused.
+
+Subsurface: SubsurfaceScatteringNode or PrincipledBsdfNode with the
+RandomWalk, RandomWalkLegacy or Burley (Christensen-Burley) method, also on a
+thin-walled PrincipledBsdfNode.
+
 MOTION
 ------
 Object motion is ObjectNode.Motion, camera motion CameraNode.Motion (with
 CameraNode.Shuttertime), deformation MeshNode.SetMotionPositions(steps,
 positions) (odd steps 3..129; the center step must equal the mesh positions
 bit for bit); all need Integrator.MotionBlur = true. Motion can be set, changed
-or cleared before or after a render.
+or cleared before or after a render. Curves and point clouds have their own
+deformation motion (HairNode.SetMotionKeys, PointCloudNode.SetMotion).
+Camera exposure: CameraNode.MotionPosition puts the frame's moment at the
+start, centre or end of the shutter; RollingShutterType Top with
+RollingShutterDuration exposes the rows one after another; ShutterCurve (a
+float array) weights the exposure over the shutter time; UsePerspectiveMotion
+with FovPre and FovPost gives a perspective camera's field of view at shutter
+open and close (a zoom during the exposure).
 
 EDITS AFTER A RENDER. Every edit made after a render (ObjectNode.Tfm and Motion,
 CameraNode.Motion, deformation motion, MotionBlur, material values, lights,
@@ -711,21 +855,21 @@ writes the matte with the shadow approximated into it (a background pass is
 added for it). Lights contribute to the ShadowCatcher pass only when their own
 object is also marked IsShadowCatcher, as in Cycles. Both backends render all
 of this, also together with a volume (world or object) and with shadow
-caustics (MNEE). A shadow catcher together with ambient occlusion (the AO
-node, the AO pass or the integrator's fast-GI ambient occlusion) is not yet
-validated on the WebGPU device and is not refused: its shadow stage writes the
-ambient-occlusion term without the catcher handling the CPU applies, so the
-passes of such a scene may differ from the CPU device; keep the two features
-apart until this note is gone.
+caustics (MNEE) and with ambient occlusion (the AO node, the AO pass and the
+integrator's fast-GI ambient occlusion).
 
 BAKING TEXTURES
 ---------------
 scene.Bake bakes one mesh's UV layout into a raw float film through Cycles' bake
 kernel, one BakeType at a time. The CPU backends and the WebGPU device bake,
-every BakeType on each. On the WebGPU device a bake of a mesh with deformation
-motion, or of a mesh whose UV layout covers triangles with no area, throws
-NativeFailure (status 3) naming it, and never falls back to the CPU. On Apple
-Silicon it runs Cycles' Metal bake kernel, which is not validated yet.
+every BakeType on each, also of meshes with deformation motion (baked at the
+mesh's static positions, as Cycles bakes). On the WebGPU device a bake of a
+mesh whose UV layout covers triangles with no area throws NativeFailure
+(status 3) naming it, for every BakeType but Position, Background and Normal
+(Normal through a shader with a bump is refused too); a flat Normal bake of
+such a texel fails on every backend (its normal is not a number). A bake never
+falls back to the CPU. On Apple Silicon it runs Cycles' Metal bake kernel,
+which is not validated yet.
 GetCapabilities().BakingBackends states which (validated, unvalidated),
 BakeTypes the types.
 
@@ -769,8 +913,10 @@ clears the last render's passes (ReadPass throws InvalidOperationException until
 render succeeds), and a later render is unaffected. Pass nodes other than AOVs take no
 part in a bake. With UseDenoise the Combined bake is denoised as an image of the UV
 layout, so values bleed across island edges and into empty pixels: for bakes
-you will sample, denoise with care. A scene with an approximate shadow catcher and an opaque
-background cannot be baked (status 2). Baked normals are world space; tangent or object
+you will sample, denoise with care. In a scene with an approximate shadow catcher and an
+opaque background a Combined bake is the world's, not the object's, as Cycles bakes it: each
+covered texel holds the background in the direction of its surface point seen from the origin,
+and every alpha is 1. Baked normals are world space; tangent or object
 space is yours to convert.
 
 CALLBACKS AND THREADING
@@ -903,7 +1049,9 @@ evaluation buffers must fit one GPU storage binding, so a large map (0 means
 4096 x 2048) needs an adapter whose limits allow a binding that large (WebGPU's
 default is 128 MiB; see the pitfall EXCEEDING THE GPU STORAGE-BINDING LIMIT).
 When the binding is too small, the render fails with the device's allocation
-error.
+error. A world with a volume (a closure on the world shader's Volume input)
+needs no background light of its own, and a background light the scene has
+need not list the world shader in UsedShaders for the volume to render.
 
 Light portals guide the world's light samples through openings such as
 windows: an area light with IsPortal = true, placed by its object's transform
@@ -1036,9 +1184,17 @@ COMMON PITFALLS TO AVOID
 - EXPECTING A MOTION PASS WITH MOTION BLUR. Cycles writes the motion pass
   only when IntegratorNode.MotionBlur is false; with motion blur on, the
   Motion pass reads zero on every backend.
-- READING THE REGISTRY AS A FEATURE LIST. A node type being registered (and
-  generated) does not mean a GPU backend implements it; the CPU reference is
-  the complete implementation.
+- READING THE REGISTRY AS A FEATURE LIST. The registry describes Cycles' node
+  types and sockets, not what a backend renders: a few registered types and
+  settings are refused when a scene uses them (RENDER-TIME REJECTIONS), and
+  some sockets are Cycles' own state that a render sets (FilmNode.UseSampleCount,
+  CameraNode.FullWidth and FullHeight, IntegratorNode.AaSamples).
+- SETTING A SOCKET THE RENDER OWNS. CameraNode.FullWidth/FullHeight and
+  IntegratorNode.AaSamples come from RenderSettings, FilmNode.UseSampleCount
+  is Cycles' session state, and FilmNode.DisplayPass and ShowActivePixels are
+  viewport settings: setting a different value throws (NativeStatus.Invalid).
+  Set the size and samples in RenderSettings; read the sample count through a
+  SampleCount pass.
 - JUDGING ANDROID GPU OUTPUT AGAINST AN ON-DEVICE CPU RENDER. Android's C
   library (bionic) does not round acosf/asinf/atan2f/tanf correctly; the GPU
   backend follows correctly rounded math. A CyclesBackend.CpuReference render
@@ -1062,7 +1218,7 @@ COMMON PITFALLS TO AVOID
   UI names ("Color", "BSDF"); the setters take native socket names ("color",
   "value"). The typed tier handles both for you.
 - TRUSTING ONE RENDER OF A HETEROGENEOUS VOLUME ON AN INTEL GPU. A driver fault
-  can compute a path wrongly and put a NaN in the film; see KNOWN DRIVER
+  could compute a path wrongly and put a NaN in the film; see KNOWN DRIVER
   LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS.
 
 
@@ -1094,9 +1250,9 @@ CLAMP_TO_EDGE -> "clamp", MIRRORED_REPEAT -> "mirror"; magFilter NEAREST ->
 interpolation "closest", otherwise "linear"; Cycles has no mipmaps.
 Textures need decoded pixels: the example decodes the glTF's images with
 CodeBrix.Imaging (Image.Load<Rgba32>, rows flipped to bottom-first) and passes
-the RGBA8 bytes to CreateImage. The WebGPU backend renders PrincipledBsdfNode
+the RGBA8 bytes to CreateImage. Every backend renders PrincipledBsdfNode
 (every lobe, thin-walled too; subsurface with the random walk and
-Christensen-Burley methods, see WEBGPU RENDER-TIME LIMITS).
+Christensen-Burley methods).
 
 
 KNOWN DRIVER LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS
@@ -1107,18 +1263,20 @@ KNOWN DRIVER LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS
 On Intel integrated graphics with the Mesa Vulkan driver (found on
 12th-generation Intel UHD Graphics under Linux; Intel Xe Graphics under Android
 x64 shows the same behaviour at a similar rate), a WebGPU render of a scene with
-a heterogeneous volume can, rarely and unpredictably, compute one light path
+a heterogeneous volume could, rarely and unpredictably, compute one light path
 wrongly. Two renders of the same scene can then differ in a pixel, and the wrong
 path can put a non-finite value (NaN) into the film.
 - It is a fault of the GPU driver or the hardware, not of the scene and not of
   this package: the same compute shader with the same inputs, run outside this
   package, shows the fault on the Linux machine's GPU and never on a software
   Vulkan implementation.
-- It is NOT fixed and NOT worked around, and the package does not detect it.
+- The package now integrates heterogeneous volumes in smaller GPU kernels, and
+  since then the fault has not been observed in repeated testing on that Linux
+  machine (before, a few evaluations in a hundred of the affected kernel). The
+  driver fault itself is not fixed and the package does not detect it, so it
+  may still occur with other Intel drivers or GPUs.
 - It has been observed only in scenes with heterogeneous volumes. Homogeneous
   volumes and scenes without volumes have not shown it.
-- It is rare: in testing, a few evaluations in a hundred of the affected kernel,
-  and none of the package's own reference renders of such scenes.
 - What an application can do on such a machine: check the returned film for
   non-finite values and render again when it finds one; render a frame that
   matters twice and compare; or render heterogeneous volumes on the CPU backend.
@@ -1182,111 +1340,86 @@ Pipeline compilation is still much slower than on the reference device. Expect
 compile-time warnings over the 20 s mobile budget.
 
 
+RENDER-TIME REJECTIONS
+======================
+A scene that uses one of these fails when it renders, with a CyclesException
+whose message names it (NativeStatus.Unsupported from the native host,
+NativeStatus.Failed from the GPU device); nothing is approximated, and a GPU
+render never falls back to the CPU. Remove the cause and render again (see
+DEVICE ERRORS). GetCapabilities().Scope.RenderTimeRejections lists the entries
+of the scene's backend in exactly these words, and
+GetBinaryCapabilities().BackendScopes those of every backend in the library.
+
+Every backend:
+  - Catmull-Clark subdivision surfaces (they need OpenSubdiv, which this library does not include)
+The CPU backends and the WebGPU backend:
+  - a denoiser upscale factor other than 1
+The WebGPU backend:
+  - custom (OSL) cameras
+  - path guiding (the integrator's use_guiding) and its passes
+  - curves and points with a Both displacement shader
+  - a Radial Tiling node with at most two sides and a roundness strictly between 0 and 1
+  - scenes whose device data does not fit the GPU (there is no host-memory fallback)
+  - BVH time steps
+  - volume velocity motion blur
+  - sparse or tiled images
+  - area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, with an axis of infinities, or reached by the light tree at a transmissive surface
+  - background light portals of zero extent
+  - bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)
+  - texture, colour and utility shader nodes on Adreno 650 GPUs
+  - ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs
+  - shadow catchers with transparent shadows on Adreno 650 GPUs
+  - shadow caustics (manifold next-event estimation) on Adreno 650 GPUs
+
+Why. OSL, OpenSubdiv and OpenVDB/NanoVDB (whose sparse images and velocity
+grids the last two WebGPU entries concern) are outside this package. Path
+guiding is not part of Cycles' Metal device either. A Both displacement shader
+on curves or points makes Cycles' own kernels read values they never set, so
+that scene has no defined result. The Radial Tiling case is binary32 rounding
+residue in Cycles' CPU kernels that Cycles' Metal device does not reproduce
+either; when Sides or Roundness is linked, the render fails at run time with an
+unsupported-parameter error instead. BVH time steps and volume velocity cannot
+be set through this API; the entries name what the device would refuse. A
+scene larger than the GPU's storage binding fails (see EXCEEDING THE GPU
+STORAGE-BINDING LIMIT) instead of moving device data to host memory, as on
+Cycles' Metal device. Open Image Denoise on the CPU, which the CPU and WebGPU
+backends use, does not upscale. For the area light, portal and bake entries
+Cycles' own kernels evaluate the light or the texel at a direction that is not
+a number, and the CPU result depends on how each comparison and minimum drops
+that value, which WGSL does not define. The Adreno 650 entries (for example the
+Samsung Galaxy S20) are refused before rendering starts, because the shader
+compiler of that GPU class miscompiles those programs or renders them
+incorrectly; render such scenes on another GPU or on the CPU backend.
+
+The one documented limitation of correct scenes: a driver fault on Intel
+integrated graphics could compute a path wrongly in a WebGPU render of a
+heterogeneous volume (KNOWN DRIVER LIMITATION: HETEROGENEOUS VOLUMES ON INTEL
+GRAPHICS).
+
+
 WHAT THIS PACKAGE DOES NOT DO
 =============================
 - It does not encode or decode image or video files (PNG, JPEG, JPEG XL, TIFF,
   EXR, ...). It accepts and returns raw pixel buffers; use CodeBrix.Imaging.
 - It does not import model formats (glTF and others); convert their data into
   nodes, meshes and attributes yourself (see BRINGING GLTF SCENES).
-- It does not display images or present to a window or swap chain.
+- It does not display images or present to a window or swap chain, and a
+  render returns its film only when it completes (render events carry
+  progress, not pixels).
 - It never renders OSL shaders or OSL cameras, VDB volume files (OpenVDB or
-  NanoVDB grids), subdivision surfaces (OpenSubdiv) or path guiding, and it
-  never imports USD or Alembic files or acts as a Hydra render delegate, on any
-  backend. These are outside the package's scope. Volumes defined by shader
-  nodes and displacement on the base mesh are in scope.
-- The package aims for the same features on every backend: the WebGPU device
-  (Windows, Linux, Android, macOS on Intel) and Cycles' own Metal device
-  (macOS on Apple Silicon). Until a feature reaches the WebGPU device, a scene
-  that needs it fails there with an error naming the feature; it is never
-  approximated.
+  NanoVDB grids) or Catmull-Clark subdivision surfaces (OpenSubdiv), and it never imports
+  USD or Alembic files or acts as a Hydra render delegate, on any backend.
+  These are outside the package's scope. Volumes defined by shader nodes and
+  displacement of the base mesh are in scope (SCENE SETTINGS).
 - It does not fill a margin around baked UV islands, project a bake from other
   meshes (selected to active), or convert baked normals to tangent or object
   space. See BAKING TEXTURES.
-- It does not detect or work around a driver fault on Intel integrated graphics
-  that can compute a path wrongly in a WebGPU render of a heterogeneous volume;
-  see KNOWN DRIVER LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS.
-- Stereo cameras render on the WebGPU device, as on the CPU reference backend
-  and the Metal backend. Orthographic and panoramic cameras (equirectangular,
-  equiangular cubemap face, mirror ball, the three fisheye models, central
-  cylindrical) with depth of field (disk or polygonal apertures, rotation,
-  anamorphic ratio), every sampling pattern (tabulated Sobol, Sobol-Burley,
-  the blue-noise patterns, scrambling distance) and adaptive sampling render
-  there, and so does Christensen-Burley subsurface scattering. The Hair BSDF
-  and the Principled Hair BSDF's Chiang and Huang models (all three colour
-  parametrizations, and the Huang model's elliptical cross-sections) render
-  there, on curves and on triangles, also as shadow-caustic receivers. Point
-  clouds render there, with motion blur and everything else the device has
-  (PointCloudNode.SetPoints, SetMotion, CyclesScene.CreatePointCloud), point
-  attributes, the Point Info node (set the standard attribute point_random for
-  its Random output) and the Particle Info node (on any geometry; see
-  ParticleSystemNode.SetParticles). A shader with displacement method Both on
-  a point cloud or on curves fails with an error naming it, since Cycles' own
-  kernels read uninitialized values there; the Tangent output of the Geometry
-  node fails on points (it renders on triangles and curves). Curves render
-  there: ribbons, thick curves and thick linear curves (HairNode.SetCurves,
-  SetShape, CyclesScene.CreateHair and SetCurveSubdivisions) with the other
-  closures, curve attributes and the Hair Info node (set the standard
-  attributes curve_intercept, curve_length and curve_random for its Intercept,
-  Length and Random outputs), object and deformation motion blur
-  (HairNode.SetMotionKeys), the motion pass and transparent shadows, in scenes
-  with caustics, subsurface scattering, volumes, true displacement, the
-  Ambient Occlusion, Bevel and Raycast nodes and shadow linking. Volumes of
-  constant density and volumes whose density varies through space (with or
-  without biased ray marching) render there with direct light from point,
-  spot, area, mesh, sun and world lights (also through the light tree) and
-  shadows through them, the Henyey-Greenstein, Fournier-Forand, Rayleigh,
-  Draine and Mie phase functions, the Volume Coefficients and Principled
-  Volume nodes, volume emission, the volume light passes, shadow catchers,
-  every sampling pattern, denoising (the volumes' albedo and normal guides)
-  and light linking. A BSDF node in a volume shader is ignored there, as in
-  Cycles. The Light Path node's ray type outputs (Is Camera Ray and the
-  others) work in volume shaders there, uniform and varying; its Backfacing,
-  Ray Length and ray depth outputs in a volume shader fail the render. Volumes
-  render with camera, object and deformation motion blur, the volume objects
-  themselves moving or deforming too. True displacement of the base mesh
-  (DisplacementMethod True and Both) renders there. The Metallic (physical
-  conductor and F82 tint, with or without a thin film), Beckmann glossy, refraction and glass,
-  Ashikhmin-Shirley, velvet and toon BSDFs render there.
-  It bakes textures (see BAKING TEXTURES). It denoises on every backend
-  with Cycles' Open Image Denoise denoiser, off by default: set
-  scene.Integrator.UseDenoise = true (and, if wanted, DenoiserType
-  Openimagedenoise, DenoiserPrefilter, DenoiserQuality, DenoiseStartSample;
-  the albedo and normal guides are on by default); the film is then the
-  denoised image, and so are the ShadowCatcher and ShadowCatcherMatte passes.
-  AddPass(PassType.Combined, "Noisy Image", PassMode.Noisy) (or the same with
-  a shadow catcher type) also returns the undenoised version in the same
-  render; one noisy pass per type. Light group passes are never denoised:
-  with denoising they keep their noisy values. A WebGPU render is denoised on
-  the CPU (Open Image Denoise's CPU device; the render buffers are copied to
-  the host), so it adds CPU time; Metal renders can denoise on the GPU.
-  GetCapabilities().CanDenoise and DenoiseDevices report it. The integrator's
-  light tree (UseLightTree, on by default) and light linking (an object's
-  ReceiverLightSet and an emitter object's LightSetMembership) do render on the
-  WebGPU device, for lamps, mesh emitters and the background light.
-- Background-light portals (also with volumes), scenes with more than one
-  background light and the Ray Portal BSDF render on the WebGPU device.
-  Environment-texture, sky-texture (every sky type, the sun disc and
-  sun guiding) and procedural worlds with importance sampling, mesh emitters with textured or node emission, and point,
-  spot, area and sun lamps with node emission shaders (light falloff, IES
-  texture, textures on the lamp's coordinates) do render there, also as
-  lamps with shadow caustics.
-- Shadow caustics (manifold next-event estimation: objects with
-  is_caustics_caster / is_caustics_receiver and lights with use_caustics)
-  render on the WebGPU device through glass and refraction BSDFs from point,
-  sun, spot, area and background lights, also through rough Beckmann
-  refraction. It renders them in scenes with volumes too. Light trees, light
-  and shadow linking, fast GI, the AO pass and motion blur of the receivers
-  and of moving and deforming casters do render with shadow caustics there. On
-  Adreno 650 GPUs (for example the Samsung Galaxy S20) scenes with shadow
-  caustics are refused with an error message before rendering starts.
-- It does not render texture, colour and utility shader nodes (noise, Voronoi,
-  wave, magic, brick and Gabor textures, ramps, mixing, mapping and similar) on
-  Adreno 650 GPUs (for example the Samsung Galaxy S20); such scenes are refused
-  with an error message before rendering starts.
-- It does not render the AmbientOcclusionNode, fast GI's additive mode
-  (IntegratorNode.AoAdditiveFactor) or the AO pass on Adreno 650 GPUs; such
-  scenes are refused with an error message before rendering starts (fast GI's
-  replace mode renders there).
+- It does not render in tiles (a render is one tile, the whole film or its
+  camera border), bind several images to one texture node (UDIM tiles),
+  or offer Cycles' BVH build and texture-size settings (spatial splits,
+  texture limit): every backend builds its BVH with Cycles' defaults and uses
+  the full images you pass.
+- It never falls back from a GPU backend to the CPU.
 - The Core package does not contain the native host library; that is the
   platform package's job (see INSTALLATION).
 - It does not cache compiled GPU pipelines on macOS on Intel or on Windows: the
@@ -1295,6 +1428,8 @@ WHAT THIS PACKAGE DOES NOT DO
   second time depends only on the platform's driver.
 - It does not cache compiled GPU pipelines on Android unless the app gives it a
   directory (CyclesHost.ConfigurePipelineCache or CyclesHost.ConfigureTiers).
+- Everything else Cycles renders, every backend renders: see SCENE SETTINGS
+  for how to reach it and RENDER-TIME REJECTIONS for the exceptions.
 
 
 WORKING EXAMPLES ON GITHUB
@@ -1335,11 +1470,12 @@ Texture:       using CyclesImage img = scene.CreateImage<byte>(w, h, ImageFormat
                imageTextureNode.Bind(img);
 Render:        FilmBuffer film = await scene.RenderAsync(new RenderSettings(w, h, spp), progress, token);
 Into buffer:   scene.Render(new RenderSettings(w, h, spp), rgbaFloats);
-Capabilities:  ICapabilityReport caps = scene.GetCapabilities();
+Capabilities:  ICapabilityReport caps = scene.GetCapabilities();   // caps.Scope.RenderTimeRejections
+Time limit:    scene.RenderTimeLimit = TimeSpan.FromSeconds(30);
 Version:       CyclesVersion.NativeLibraryVersion, CyclesRevision, IsAbiCompatible
 Progress:      scene.RenderEventReceived += (s, e) => Log(e.Kind, e.SamplesDone);  // no scene calls inside
 Passes:        scene.AddPass(PassType.Depth, "Depth"); scene.Render(s); scene.ReadPass("Depth");
-Bake:          FilmBuffer film = scene.Bake(target, new BakeSettings(w, h, spp, BakeType.Combined));  // CPU backends
+Bake:          FilmBuffer film = scene.Bake(target, new BakeSettings(w, h, spp, BakeType.Combined));
 Remove:        scene.Remove(obj); scene.Remove(mesh);   // referrers first
 Bundle:        OracleSceneBundle b = OracleSceneBundle.Load("scene.json"); b.Apply(scene); scene.Render(b.Render);
 Re-upload:     img.Update<byte>(rgba8);

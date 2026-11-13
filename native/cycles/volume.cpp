@@ -23,6 +23,11 @@ static constexpr char volume_fragment[]=
 // Volume direct light (VOLUME_LIGHT regions): the per-input record shade_volume_segment, shade_volume and
 // shade_volume_light share (wavefront_volume.wgsl, wavefront_volume_light.wgsl), and the shader flags they read.
 static constexpr uint32_t volume_light_record_bytes=192;
+// The split of the heterogeneous integration (native/DEVICE.md 52, wavefront_volume_heterogeneous.wgsl VH_SPLIT_BYTES, which
+// the step entry checks against push word 13): per input the status, context, request, coefficients and the VhState words.
+static constexpr uint32_t volume_split_record_bytes=832;
+// Step and evaluation pairs encoded between two reads of the request count, and the bound on the passes of one dispatch.
+static constexpr unsigned volume_split_batch=8,volume_split_max_passes=8192;
 std::string volume_light_layout(){
   std::ostringstream source;auto constant=[&](const char *name,size_t v){source<<"const "<<name<<":u32="<<uint32_t(v)<<"u;\n";};
   // The record size is shared with the phase stage (VL_RECORD: VOLUME_LIGHT or VOLUME_PHASES).
@@ -198,9 +203,10 @@ void WebGPUDevice::enqueue_volume(int work,const DeviceKernelArguments &args){
     }
   }
   else if(heterogeneous){
-    if(!pipeline_current(volume,"shade_volume")||!pipeline_current(volume_phase,"shade_volume_phase")||!pipeline_current(volume_heterogeneous,"shade_volume_heterogeneous")){
-      auto built=build_pipelines("volume",volume_source(),{"shade_volume","shade_volume_phase","shade_volume_heterogeneous"});
-      volume=std::move(built[0]);volume_phase=std::move(built[1]);volume_heterogeneous=std::move(built[2]);
+    if(!pipeline_current(volume,"shade_volume")||!pipeline_current(volume_phase,"shade_volume_phase")||!pipeline_current(volume_heterogeneous,"shade_volume_heterogeneous")||
+       !pipeline_current(volume_heterogeneous_eval,"shade_volume_heterogeneous_eval")){
+      auto built=build_pipelines("volume",volume_source(),{"shade_volume","shade_volume_phase","shade_volume_heterogeneous","shade_volume_heterogeneous_eval"});
+      volume=std::move(built[0]);volume_phase=std::move(built[1]);volume_heterogeneous=std::move(built[2]);volume_heterogeneous_eval=std::move(built[3]);
     }
   }
   else if(phase_stage){
@@ -246,7 +252,26 @@ void WebGPUDevice::enqueue_volume(int work,const DeviceKernelArguments &args){
   if(ray_marching)dispatch(p,uint32_t(work),volume_ray_marching,workgroup("shade_volume_ray_marching"));
   else{
     dispatch(p,uint32_t(work),volume,workgroup("shade_volume"));
-    if(heterogeneous)dispatch(p,uint32_t(work),volume_heterogeneous,workgroup("shade_volume_heterogeneous"));
+    if(heterogeneous){
+      // native/DEVICE.md 52: the integration of a heterogeneous medium alternates shade_volume_heterogeneous (the steps,
+      // until one asks for its shader at a position) and shade_volume_heterogeneous_eval (that evaluation), each input
+      // through its split record (push words 12 and 13). Word 0 of the records counts the requests of the last step
+      // dispatch; the pairs repeat until a step dispatch makes none.
+      const size_t split_bytes=16+size_t(n)*volume_split_record_bytes;
+      if(volume_split_size<split_bytes){if(volume_split_records){flush();release(volume_split_records);}volume_split_records=allocate(split_bytes);volume_split_size=split_bytes;}
+      std::array<uint32_t,32> q=p;q[12]=volume_split_records;q[13]=volume_split_record_bytes;
+      zero(volume_split_records,split_bytes);
+      for(unsigned pass=0;;pass++){
+        require(pass<volume_split_max_passes,"Heterogeneous volume integration did not finish");
+        for(unsigned k=0;k<volume_split_batch;k++){
+          zero(volume_split_records,4);
+          dispatch(q,uint32_t(work),volume_heterogeneous,workgroup("shade_volume_heterogeneous"));
+          dispatch(q,uint32_t(work),volume_heterogeneous_eval,workgroup("shade_volume_heterogeneous_eval"));
+        }
+        if(fingerprint)break;
+        uint32_t requests=0;download(volume_split_records,&requests,4);if(!requests)break;
+      }
+    }
   }
   if(triangle_light_stage)dispatch(p,uint32_t(work),volume_light_triangle,workgroup("shade_volume_light_triangle"));
   if(light_stage&&volume_light_background.value)dispatch(p,uint32_t(work),volume_light_background,workgroup("shade_volume_light_background"));

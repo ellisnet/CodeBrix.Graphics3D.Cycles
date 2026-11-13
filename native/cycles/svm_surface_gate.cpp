@@ -537,7 +537,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     for(float ss:{1e-4f,.5f,1.f})run({.roughness=.4f,.ior=1.6f,.subsurface=ss,.ss_method=CLOSURE_BSSRDF_BURLEY_ID,.ss_scale=.3f,.ss_anisotropy=.95f});
     run({.subsurface=1,.ss_method=CLOSURE_BSSRDF_BURLEY_ID,.ss_radius=make_float3(1,.5f,0)});
     {Program p(ds);p.weight(.2,.5,.9);principled(p,{.subsurface=.8f,.ss_method=CLOSURE_BSSRDF_BURLEY_ID});p.install(ds);auto states=initial;
-      for(int i:small)states[i].path.flag|=PATH_RAY_DIFFUSE_ANCESTOR;evaluate(d,scene,shader,layout,states,small,"Burley below a diffuse bounce",m);}
+      for(int i:small){states[i].path.flag|=PATH_RAY_DIFFUSE_ANCESTOR;}evaluate(d,scene,shader,layout,states,small,"Burley below a diffuse bounce",m);}
     // Thin-walled subsurface (bsdf_thin_subsurface_setup): diffuse and translucent closures, or with a diffuse roughness
     // Oren-Nayar and rough translucent closures, weighted by the anisotropy (the former rejection cases first), with
     // transmission, a zero reflection or transmission weight, and the closure capacity.

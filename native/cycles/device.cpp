@@ -228,7 +228,8 @@ void WebGPUDevice::sync(){
         std::pair{4u," SVM bytecode outside table"},std::pair{8u," invalid/uninitialized SVM stack"},
         std::pair{16u," unsupported SVM parameter"},std::pair{32u," SVM instruction limit"},std::pair{64u," invalid attribute map/data"},
         std::pair{128u," invalid image descriptor/data"},std::pair{256u," tiled image cache not implemented"},
-        std::pair{65536u," WebGPU bake of a texel on a zero-area triangle not implemented"}})
+        std::pair{65536u," WebGPU bake of a texel on a zero-area triangle not implemented"},
+        std::pair{131072u," WebGPU degenerate area light with the light tree at a transmissive surface not implemented"}})
       if(error&bit)message+=label;
     throw std::runtime_error(message);
   }
@@ -247,12 +248,26 @@ void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);requ
   if(fingerprint){fingerprint->label=mem.log_name();
     // KernelImageTexture is built on the stack and copied whole: the 8 bytes before transform_3d are whatever was on the stack (a pointer on Android).
     if(mem.type==MEM_GLOBAL&&std::strcmp(mem.global_name(),"image_textures")==0){fingerprint->mask_stride=sizeof(KernelImageTexture);fingerprint->mask_begin=offsetof(KernelImageTexture,use_transform_3d)+sizeof(uint);fingerprint->mask_end=offsetof(KernelImageTexture,transform_3d);}}
+  // The Raycast records' padding byte, a stack copy of the scene compiler, cleared before the upload (native/DEVICE.md 55).
+  if(mem.type==MEM_GLOBAL&&std::strcmp(mem.global_name(),"svm_nodes")==0&&mem.memory_size()&&mem.memory_size()%4==0){
+    std::vector<uint32_t> words(mem.memory_size()/4);std::memcpy(words.data(),mem.host_pointer,mem.memory_size());
+    svm_canonical_padding(words);std::memcpy(mem.host_pointer,words.data(),mem.memory_size());}
   if(mem.memory_size())upload(uint32_t(mem.device_pointer),mem.host_pointer,mem.memory_size());
   if(mem.type==MEM_GLOBAL){globals[mem.global_name()]=uint32_t(mem.device_pointer);
     auto copy=[&](auto &records){using T=typename std::remove_reference_t<decltype(records)>::value_type;
       require(mem.memory_size()%sizeof(T)==0,"Invalid native lighting table size");records.resize(mem.memory_size()/sizeof(T));
-      if(mem.memory_size())std::memcpy(records.data(),mem.host_pointer,mem.memory_size());};
-    if(std::strcmp(mem.global_name(),"lights")==0)copy(light_records);
+      if(mem.memory_size())std::memcpy(static_cast<void*>(records.data()),mem.host_pointer,mem.memory_size());};
+    if(std::strcmp(mem.global_name(),"lights")==0){copy(light_records);
+      // An area light whose axis length underflows (normalize_len of a vector whose squared length is zero) holds NaNs and
+      // infinities in that axis, one whose length overflows a zero axis of infinite length. The device's copy holds a zero
+      // axis of zero length in both cases (native/DEVICE.md, item 148; the WGSL regions LIGHT_AREA_DEGENERATE give the CPU's
+      // comparisons with the NaN axis). An axis of infinities without a NaN is left as it is and refused (lighting.cpp).
+      bool degenerate=false;
+      for(KernelLight &light:light_records)if(light.type==LIGHT_AREA)
+        for(auto [axis,len]:{std::pair{&light.area.axis_u,&light.area.len_u},std::pair{&light.area.axis_v,&light.area.len_v}}){
+          const bool nan=std::isnan(axis->x)||std::isnan(axis->y)||std::isnan(axis->z);
+          if((*len==0&&nan)||std::isinf(*len)){*axis=zero_float3();*len=0;degenerate=true;}}
+      if(degenerate)upload(uint32_t(mem.device_pointer),light_records.data(),mem.memory_size());}
     if(std::strcmp(mem.global_name(),"light_distribution")==0)copy(light_distribution_records);
     if(std::strcmp(mem.global_name(),"light_tree_nodes")==0)copy(light_tree_nodes);
     if(std::strcmp(mem.global_name(),"light_tree_emitters")==0)copy(light_tree_emitters);
@@ -315,7 +330,8 @@ void WebGPUDevice::const_copy_to(const char *name,void *host,size_t size){guard(
 // 48 = shade_volume_phase, 49 = shade_volume_heterogeneous, 50 = shade_volume_ray_marching, 51 = shade_volume_tree_select, 52 = shade_volume_light_triangle,
 // 53-56 = intersect_dedicated_light, shade_dedicated_light_lamp, dedicated_light_tree_pdf, shade_dedicated_light, 57 = mnee_select,
 // 58 = intersect_shadow_all, 59-60 = shade_surface_huang_eval, shade_surface_huang_sample, 61 = intersect_subsurface_disk,
-// 62 = shade_volume_light_background, 63 = intersect_subsurface_volume_stack, 64 = intersect_subsurface_motion, 65-66 = mnee_light_sample, mnee_light_update).
+// 62 = shade_volume_light_background, 63 = intersect_subsurface_volume_stack, 64 = intersect_subsurface_motion, 65-66 = mnee_light_sample, mnee_light_update), 67 = shade_volume_heterogeneous_eval,
+// 68 = mnee_project.
 static unsigned mnee_entry_of(const WebGPUDevice &d,WGPUComputePipeline actual){
   for(unsigned i=0;i<WebGPUDevice::mnee_entries;i++)if(d.mnee_pipelines[i].value&&actual==d.mnee_pipelines[i].value)return 27+i;
   return ~0u;}
@@ -327,8 +343,8 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
   if(fingerprint&&!fingerprint->dispatch(pipeline?pipeline:controls.value,params,work,workgroup_size,!pipeline||pipeline==controls.value))return;
   if(observer){
     const WGPUComputePipeline actual=pipeline?pipeline:controls.value;
-    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:actual==surface_light_triangle.value?17:actual==light_nee.value?18:actual==background_eval.value?19:actual==light_nee_prepare.value?20:actual==surface_light_select.value?21:actual==light_tree_forward.value?22:actual==sc_assign.value?23:actual==sc_split.value?24:actual==sc_count.value?25:actual==surface_prepare_raytrace.value?26:actual==mnee_cleanup.value?34:actual==surface_sample.value?35:actual==surface_passes.value?36:actual==film_post.value?37:actual==surface_ao.value?38:actual==film_adaptive_check.value?39:actual==film_adaptive_x.value?40:actual==film_adaptive_y.value?41:actual==surface_light_background.value?42:actual==film_volume_x.value?43:actual==film_volume_y.value?44:actual==volume_segment.value?45:actual==volume_light.value?46:actual==subsurface_walk.value?47:actual==volume_phase.value?48:actual==volume_heterogeneous.value?49:actual==volume_ray_marching.value?50:actual==volume_tree_select.value?51:actual==volume_light_triangle.value?52:actual==dedicated_intersect.value?53:actual==dedicated_lamp.value?54:actual==dedicated_tree.value?55:actual==dedicated_shade.value?56:actual==mnee_select.value?57:actual==shadow_intersect_all.value?58:actual==surface_huang_eval.value?59:actual==surface_huang_sample.value?60:actual==subsurface_disk.value?61:actual==volume_light_background.value?62:actual==subsurface_volume_stack.value?63:actual==subsurface_motion.value?64:actual==mnee_light_sample.value?65:actual==mnee_light_update.value?66:mnee_entry_of(*this,actual);
-    require(entry<67,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
+    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:actual==surface_light_triangle.value?17:actual==light_nee.value?18:actual==background_eval.value?19:actual==light_nee_prepare.value?20:actual==surface_light_select.value?21:actual==light_tree_forward.value?22:actual==sc_assign.value?23:actual==sc_split.value?24:actual==sc_count.value?25:actual==surface_prepare_raytrace.value?26:actual==mnee_cleanup.value?34:actual==surface_sample.value?35:actual==surface_passes.value?36:actual==film_post.value?37:actual==surface_ao.value?38:actual==film_adaptive_check.value?39:actual==film_adaptive_x.value?40:actual==film_adaptive_y.value?41:actual==surface_light_background.value?42:actual==film_volume_x.value?43:actual==film_volume_y.value?44:actual==volume_segment.value?45:actual==volume_light.value?46:actual==subsurface_walk.value?47:actual==volume_phase.value?48:actual==volume_heterogeneous.value?49:actual==volume_ray_marching.value?50:actual==volume_tree_select.value?51:actual==volume_light_triangle.value?52:actual==dedicated_intersect.value?53:actual==dedicated_lamp.value?54:actual==dedicated_tree.value?55:actual==dedicated_shade.value?56:actual==mnee_select.value?57:actual==shadow_intersect_all.value?58:actual==surface_huang_eval.value?59:actual==surface_huang_sample.value?60:actual==subsurface_disk.value?61:actual==volume_light_background.value?62:actual==subsurface_volume_stack.value?63:actual==subsurface_motion.value?64:actual==mnee_light_sample.value?65:actual==mnee_light_update.value?66:actual==volume_heterogeneous_eval.value?67:actual==mnee_project.value?68:mnee_entry_of(*this,actual);
+    require(entry<69,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
   }
   auto uniform=gpu.buffer(sizeof(params),WGPUBufferUsage_Uniform|WGPUBufferUsage_CopyDst,params.data());
   std::array<WGPUBindGroupEntry,2> entries{};entries[0].binding=0;entries[0].buffer=arena;entries[0].size=arena_bytes;

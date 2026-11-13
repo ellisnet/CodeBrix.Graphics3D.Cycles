@@ -169,11 +169,11 @@ const VH_SETUP=12u;const VH_TRANS_START=13u;const VH_FINAL2=14u;
 // volume_reservoir add_sample.
 fn vh_reservoir_add(st:ptr<function,VhState>,weight:f32,emission:vec3<f32>,t:f32,throughput:vec3<f32>,pdf:f32){
     if(!(weight>0.0)){return;}
-    (*st).res_total+=weight;let thresh=weight/(*st).res_total;
-//#if FILM_DENOISING else     if(((*st).res_rand<=thresh)||((*st).res_total==weight)){(*st).cand_emission=emission;(*st).cand_t=t;(*st).cand_throughput=throughput;(*st).cand_pdf=pdf;(*st).res_rand/=thresh;}
-    if(((*st).res_rand<=thresh)||((*st).res_total==weight)){(*st).cand_emission=emission;(*st).cand_t=t;(*st).cand_throughput=throughput;(*st).cand_pdf=pdf;(*st).res_rand/=thresh;(*st).cand_albedo=(*st).albedo;}
+    (*st).res_total+=weight;let thresh=rounded_divide(weight,(*st).res_total);
+//#if FILM_DENOISING else     if(((*st).res_rand<=thresh)||((*st).res_total==weight)){(*st).cand_emission=emission;(*st).cand_t=t;(*st).cand_throughput=throughput;(*st).cand_pdf=pdf;(*st).res_rand=rounded_divide((*st).res_rand,thresh);}
+    if(((*st).res_rand<=thresh)||((*st).res_total==weight)){(*st).cand_emission=emission;(*st).cand_t=t;(*st).cand_throughput=throughput;(*st).cand_pdf=pdf;(*st).res_rand=rounded_divide((*st).res_rand,thresh);(*st).cand_albedo=(*st).albedo;}
 //#endif
-    else{(*st).res_rand=((*st).res_rand-thresh)/(1.0-thresh);}
+    else{(*st).res_rand=rounded_divide((*st).res_rand-thresh,1.0-thresh);}
     (*st).res_rand=clamp((*st).res_rand,0.0,1.0);
 }
 // volume_equiangular_transmittance: starts the transmittance estimator (VH_TRANS) when it applies; returns false
@@ -235,7 +235,7 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                 (*st).residual=((*st).o.t.y-(*st).t)*sigma_max;
                 var advance=true;
                 if(sigma_max!=0.0){
-                    (*st).dt=-log(1.0-(*st).rscatter)/sigma_max;(*st).t+=(*st).dt;
+                    (*st).dt=rounded_divide(-log(1.0-(*st).rscatter),sigma_max);(*st).t+=(*st).dt;
                     let has=equiangular&&((*st).direct_t>=(*st).o.t.x&&(*st).direct_t<=(*st).o.t.y);
                     if(has&&(*st).t>(*st).direct_t&&!(*st).direct_scatter){
                         (*st).direct_scatter=true;(*st).direct=(*st).indirect*(*st).transmittance*(*st).direct_rr_scale;
@@ -267,11 +267,11 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                             if(all((*st).direct==vec3<f32>(0))||((*st).direct_scatter&&(*st).indirect_scatter)){(*st).stage=VH_FINAL;}else{(*st).stage=VH_ADVANCE;}
                             continue;
                         }
-                        (*st).res_rand=clamp((*st).res_rand/thresh,0.0,1.0);(*st).indirect/=thresh;
+                        (*st).res_rand=clamp(rounded_divide((*st).res_rand,thresh),0.0,1.0);(*st).indirect*=rounded_divide(1.0,thresh);
                     }
                     if(equiangular){
-                        if((*st).res_rand>thresh){(*st).direct_scatter=true;(*st).direct=vec3<f32>(0);(*st).res_rand=((*st).res_rand-thresh)/(1.0-thresh);}
-                        else{(*st).res_rand/=thresh;(*st).direct_rr_scale/=thresh;}
+                        if((*st).res_rand>thresh){(*st).direct_scatter=true;(*st).direct=vec3<f32>(0);(*st).res_rand=rounded_divide((*st).res_rand-thresh,1.0-thresh);}
+                        else{(*st).res_rand=rounded_divide((*st).res_rand,thresh);(*st).direct_rr_scale=rounded_divide((*st).direct_rr_scale,thresh);}
                         (*st).res_rand=clamp((*st).res_rand,0.0,1.0);
                     }
                 }
@@ -281,26 +281,26 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                 if(!evaluated){return (*st).t;}evaluated=false;
                 if((c.flag&(SR_EXTINCTION|SR_SCATTER|SR_EMISSION))!=0u){
                     let sigma_max=(*st).step_sigma_max;let majorant=max(vh_max(c.sigma_t),sigma_max);let sigma_n=vec3<f32>(majorant)-c.sigma_t;
-                    if(majorant!=sigma_max){(*st).indirect*=exp((sigma_max-majorant)*(*st).dt)/sigma_max;}else{(*st).indirect/=majorant;}
-                    if((c.flag&SR_EMISSION)!=0u){(*st).emission+=(*st).indirect*c.emission;}
+                    if(majorant!=sigma_max){(*st).indirect*=rounded_divide(exp((sigma_max-majorant)*(*st).dt),sigma_max);}else{(*st).indirect*=rounded_divide(1.0,majorant);}
+                    if((c.flag&SR_EMISSION)!=0u){(*st).emission=rounded_add3((*st).emission,(*st).indirect*c.emission);}
                     if(c.sigma_s.x+c.sigma_s.y+c.sigma_s.z==0.0){(*st).indirect*=sigma_n;}
                     else{
 //#if FILM_DENOISING
-                        if((*st).denoise){(*st).albedo+=(*st).indirect*c.sigma_s;}
+                        if((*st).denoise){(*st).albedo=rounded_add3((*st).albedo,(*st).indirect*c.sigma_s);}
 //#endif
-                        let albedo=select(vec3<f32>(1.0),c.sigma_s/c.sigma_t,c.sigma_t!=vec3<f32>(0));let channel_pdf=vl_channel_pdf(albedo,(*st).indirect);
-                        let prob_s=dot(c.sigma_s/(c.sigma_s+sigma_n),channel_pdf);
-                        let weight=(*st).transmittance*prob_s;let throughput=(*st).indirect*c.sigma_s/prob_s;
+                        let albedo=vh_safe_divide(c.sigma_s,c.sigma_t,1.0);let channel_pdf=vr_channel_pdf(albedo,(*st).indirect);
+                        let prob_s=rounded_dot(vh_divide(c.sigma_s,c.sigma_s+sigma_n),channel_pdf);
+                        let weight=(*st).transmittance*prob_s;let throughput=vr_div3((*st).indirect*c.sigma_s,prob_s);
                         if((*st).vspg){(*st).add=true;(*st).add_weight=weight;(*st).add_t=(*st).t;(*st).add_throughput=throughput;(*st).add_pdf=weight*sigma_max;}
                         else if(!(*st).indirect_scatter){
                             if((*st).res_rand<=prob_s){
-                                (*st).res_rand/=prob_s;(*st).indirect_scatter=true;
+                                (*st).res_rand=rounded_divide((*st).res_rand,prob_s);(*st).indirect_scatter=true;
                                 (*st).copy_indirect=true;(*st).copy_count=c.count;
                                 (*st).add=true;(*st).add_clamp=true;(*st).add_weight=weight;(*st).add_t=(*st).t;(*st).add_throughput=throughput;(*st).add_pdf=weight*sigma_max;
                                 if((*st).method==1u){(*st).direct_scatter=true;(*st).copy_direct=true;}
-                            }else{(*st).res_rand=clamp(((*st).res_rand-prob_s)/(1.0-prob_s),0.0,1.0);}
+                            }else{(*st).res_rand=clamp(rounded_divide((*st).res_rand-prob_s,1.0-prob_s),0.0,1.0);}
                         }
-                        let prob_n=1.0-prob_s;(*st).indirect*=select(vec3<f32>(0),sigma_n/prob_n,vec3<f32>(prob_n)!=vec3<f32>(0));
+                        let prob_n=1.0-prob_s;(*st).indirect*=select(vec3<f32>(0),vr_div3(sigma_n,prob_n),vec3<f32>(prob_n)!=vec3<f32>(0));
                         (*st).transmittance*=prob_n;
                     }
                 }
@@ -321,13 +321,14 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                     continue;
                 }
                 if(sample_distance){(*st).direct=(*st).cand_throughput*(*st).res_total;(*st).distance_pdf=(*st).cand_pdf;}
-                (*st).emission=mix((*st).emission,(*st).cand_emission,vec3<f32>((*st).res_total));
+                // util/math_base.h mix(a, b, t) = a + t * (b - a), each operation rounded once (WGSL's built-in mix is not that form).
+                (*st).emission=rounded_add3((*st).emission,(*st).res_total*rounded_add3((*st).cand_emission,-(*st).emission));
 //#if FILM_DENOISING
-                (*st).albedo=mix((*st).albedo,(*st).cand_albedo,vec3<f32>((*st).res_total));
+                (*st).albedo=rounded_add3((*st).albedo,(*st).res_total*rounded_add3((*st).cand_albedo,-(*st).albedo));
 //#endif
                 let unguided=(*st).res_total;var guided:f32;
                 if(all((*st).indirect==vec3<f32>(0))){guided=1.0;}
-                else{(*st).res_total=mix((*st).res_total,(*st).scatter_prob,0.75);guided=(*st).res_total;
+                else{(*st).res_total=rounded_add((*st).res_total,0.75*rounded_add((*st).scatter_prob,-(*st).res_total));guided=(*st).res_total;
                     (*st).add=true;(*st).add_weight=1.0-guided;(*st).add_t=(*st).cand_t;(*st).add_throughput=(*st).indirect;(*st).add_pdf=0.0;}
                 (*st).add_guided=guided;(*st).add_unguided=unguided;(*st).add_sample_distance=sample_distance;(*st).stage=VH_FINAL2;
             }
@@ -335,7 +336,7 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                 (*st).stage=VH_DIRECT;
                 let guided=(*st).add_guided;let unguided=(*st).add_unguided;let sample_distance=(*st).add_sample_distance;
                 let scatter=(*st).cand_pdf>0.0;
-                let scale=select((1.0-unguided)/(1.0-guided),unguided/guided,scatter);
+                let scale=select(rounded_divide(1.0-unguided,1.0-guided),rounded_divide(unguided,guided),scatter);
                 (*st).indirect=(*st).cand_throughput*scale;
                 if(!scatter&&!sample_distance){continue;}
                 (*st).request=select(0.0,1.0,scatter)+select(0.0,2.0,sample_distance);(*st).stage=VH_FINAL_EVAL;return (*st).cand_t;
@@ -359,10 +360,10 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                     if((*st).use_mis){
                         let majorant=max(vh_max(c.sigma_t),(*st).sigma_max);let sigma_n=vec3<f32>(majorant)-c.sigma_t;
                         if(((*st).sample_dt!=bitcast<f32>(0x7f7fffffu))&&(majorant!=(*st).sigma_max)){(*st).direct*=exp(((*st).sigma_max-majorant)*(*st).sample_dt);}
-                        let albedo=select(vec3<f32>(1.0),c.sigma_s/c.sigma_t,c.sigma_t!=vec3<f32>(0));let channel_pdf=vl_channel_pdf(albedo,(*st).direct);
-                        (*st).distance_pdf*=dot(c.sigma_s/(c.sigma_s+sigma_n),channel_pdf);
+                        let albedo=vh_safe_divide(c.sigma_s,c.sigma_t,1.0);let channel_pdf=vr_channel_pdf(albedo,(*st).direct);
+                        (*st).distance_pdf*=rounded_dot(vh_divide(c.sigma_s,c.sigma_s+sigma_n),channel_pdf);
                     }
-                    (*st).direct*=select(vec3<f32>(0),c.sigma_s/(*st).equiangular_pdf,vec3<f32>((*st).equiangular_pdf)!=vec3<f32>(0));
+                    (*st).direct*=select(vec3<f32>(0),vr_div3(c.sigma_s,(*st).equiangular_pdf),vec3<f32>((*st).equiangular_pdf)!=vec3<f32>(0));
                 }else{(*st).direct_scatter=false;}
             }
             else if(stage==12u){ // VH_SETUP: volume_octree_setup<false> (after the first segment or an octree advance).
@@ -386,11 +387,11 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                 if((*st).vspg){
                     let L_s=volume_rgbe((*st).film+data_word(V_film_pass_volume_scatter_denoised)*4u);let L_t=volume_rgbe((*st).film+data_word(V_film_pass_volume_transmit_denoised)*4u);
                     let scattered=L_s.x+L_s.y+L_s.z;let volume=(L_t.x+L_t.y+L_t.z)+scattered;
-                    (*st).scatter_prob=select(min(scattered/volume,0.9999),0.5,volume==0.0);
+                    (*st).scatter_prob=select(min(rounded_divide(scattered,volume),0.9999),0.5,volume==0.0);
                     let count_pass=heap_float((*st).film+data_word(D_film_pass_volume_majorant_sample_count)*4u);var depth=bitcast<f32>(0x7f7fffffu);
-                    if(count_pass!=0.0){depth=heap_float((*st).film+data_word(D_film_pass_volume_majorant)*4u)/count_pass;}
-                    (*st).majorant_scale=select(-vh_fast_log(1.0-(*st).scatter_prob)/depth,1.0,depth==0.0);
-                    if((*st).majorant_scale<1.0){(*st).majorant_scale=1.0;let d=1.0-vh_fast_exp(-depth);(*st).scatter_prob=select(0.0,(*st).scatter_prob/d,d!=0.0);}
+                    if(count_pass!=0.0){depth=rounded_divide(heap_float((*st).film+data_word(D_film_pass_volume_majorant)*4u),count_pass);}
+                    (*st).majorant_scale=select(rounded_divide(-vh_fast_log(1.0-(*st).scatter_prob),depth),1.0,depth==0.0);
+                    if((*st).majorant_scale<1.0){(*st).majorant_scale=1.0;let d=1.0-vh_fast_exp(-depth);(*st).scatter_prob=select(0.0,rounded_divide((*st).scatter_prob,d),d!=0.0);}
                     else{(*st).scatter_prob=1.0;}
                 }
 //#if VOLUME_SAMPLING_PATTERN else                 (*st).res_rand=native_rng((*st).sample,(*st).pixel,(*st).offset+V_PRNG_VOLUME_RESERVOIR).x;
@@ -460,10 +461,67 @@ fn vh_fast_exp(x_in:f32)->f32{
 // leaves these paths to this entry. Closures: the evaluation scratch is the input's shade_volume slot (push word 23),
 // the direct and indirect phases the input's slots in the second and third thirds of that arena (record words 76 and
 // 80 name them for shade_volume_light and shade_volume_phase).
+// native/DEVICE.md 52: the null-scattering integration is split at the pinned loop's shader evaluation
+// (volume_integrate_heterogeneous calls volume_shader_eval once per step) into two entries that alternate:
+// shade_volume_heterogeneous runs the state machine (vh_step) until it asks for an evaluation, stores the state and the
+// request in the input's split record (push word 12) and counts the request; shade_volume_heterogeneous_eval evaluates
+// the shader there (vh_eval). The host repeats the pair until no input asks (volume.cpp). The integration's operations
+// and their order are those of the single loop; the record holds every VhState field.
+const VH_SPLIT_FRESH=0u;const VH_SPLIT_EVAL=1u;const VH_SPLIT_RESUME=2u;const VH_SPLIT_DONE=3u;
+const VH_SPLIT_STATE=160u;const VH_SPLIT_BYTES=VH_SPLIT_STATE+VH_STATE_WORDS*4u;
+fn vhs_f(a:u32,v:f32){store_word(a,bitcast<u32>(v));}
+fn vhs_3(a:u32,v:vec3<f32>){vhs_f(a,v.x);vhs_f(a+4u,v.y);vhs_f(a+8u,v.z);}
+// VhState at fixed word offsets (168 words): written before an evaluation request, read when the step resumes.
+const VH_STATE_WORDS:u32=168u;
+fn vh_state_save(at:u32,st:ptr<function,VhState>){
+    store_word(at+0u,(*st).o.node);vhs_f(at+4u,(*st).o.t.x);vhs_f(at+8u,(*st).o.t.y);vhs_3(at+12u,(*st).o.ray_P);vhs_3(at+24u,(*st).o.ray_D);store_word(at+36u,(*st).o.current.x);store_word(at+40u,(*st).o.current.y);store_word(at+44u,(*st).o.current.z);store_word(at+48u,(*st).o.object);store_word(at+52u,(*st).o.shader);store_word(at+56u,(*st).o.scale);store_word(at+60u,(*st).o.next_scale);store_word(at+64u,(*st).o.octant_mask);store_word(at+68u,select(0u,1u,(*st).o.no_overlap));vhs_f(at+72u,(*st).o.sigma.x);vhs_f(at+76u,(*st).o.sigma.y);store_word(at+80u,(*st).stage);store_word(at+84u,(*st).resume);vhs_f(at+88u,(*st).t);vhs_f(at+92u,(*st).dt);vhs_f(at+96u,(*st).rscatter);vhs_f(at+100u,(*st).residual);vhs_f(at+104u,(*st).transmittance);vhs_f(at+108u,(*st).optical_depth);store_word(at+112u,(*st).step);vhs_f(at+116u,(*st).sigma_max);vhs_f(at+120u,(*st).step_sigma_max);vhs_f(at+124u,(*st).sample_dt);vhs_f(at+128u,(*st).distance_pdf);vhs_f(at+132u,(*st).equiangular_pdf);vhs_f(at+136u,(*st).majorant_scale);vhs_f(at+140u,(*st).scatter_prob);vhs_f(at+144u,(*st).direct_rr_scale);vhs_3(at+148u,(*st).emission);store_word(at+160u,select(0u,1u,(*st).vspg));store_word(at+164u,(*st).method);store_word(at+168u,select(0u,1u,(*st).use_mis));vhs_f(at+172u,(*st).direct_t);vhs_f(at+176u,(*st).indirect_t);store_word(at+180u,select(0u,1u,(*st).direct_scatter));store_word(at+184u,select(0u,1u,(*st).indirect_scatter));vhs_3(at+188u,(*st).direct);vhs_3(at+200u,(*st).indirect);vhs_f(at+212u,(*st).res_total);vhs_f(at+216u,(*st).res_rand);vhs_3(at+220u,(*st).cand_emission);vhs_f(at+232u,(*st).cand_t);vhs_3(at+236u,(*st).cand_throughput);vhs_f(at+248u,(*st).cand_pdf);store_word(at+252u,(*st).offset);store_word(at+256u,(*st).tr_N);store_word(at+260u,(*st).tr_k);store_word(at+264u,(*st).tr_n);store_word(at+268u,(*st).tr_i);vhs_f(at+272u,(*st).tr_step);vhs_f(at+276u,(*st).tr_shade);vhs_f(at+280u,(*st).tr_t.x);vhs_f(at+284u,(*st).tr_t.y);vhs_f(at+288u,(*st).tr_pmf);vhs_3(at+292u,(*st).tau_k);vhs_3(at+304u,(*st).tau_j0);vhs_3(at+316u,(*st).tau_j1);vhs_3(at+328u,(*st).tau_j_1);vhs_3(at+340u,(*st).T_k);vhs_3(at+352u,(*st).origin);vhs_3(at+364u,(*st).direction);vhs_f(at+376u,(*st).tmax);store_word(at+380u,(*st).index);store_word(at+384u,(*st).sample);store_word(at+388u,(*st).pixel);store_word(at+392u,(*st).scratch);store_word(at+396u,(*st).direct_base);store_word(at+400u,(*st).indirect_base);store_word(at+404u,(*st).direct_count);store_word(at+408u,(*st).indirect_count);store_word(at+412u,select(0u,1u,(*st).terminate));vhs_f(at+416u,(*st).request);store_word(at+420u,(*st).setup_from);store_word(at+424u,(*st).trans_resume);store_word(at+428u,select(0u,1u,(*st).add));vhs_f(at+432u,(*st).add_weight);vhs_f(at+436u,(*st).add_t);vhs_3(at+440u,(*st).add_throughput);vhs_f(at+452u,(*st).add_pdf);store_word(at+456u,select(0u,1u,(*st).copy_direct));store_word(at+460u,select(0u,1u,(*st).copy_indirect));store_word(at+464u,(*st).copy_count);store_word(at+468u,select(0u,1u,(*st).add_clamp));store_word(at+472u,(*st).film);vhs_f(at+476u,(*st).add_guided);vhs_f(at+480u,(*st).add_unguided);store_word(at+484u,select(0u,1u,(*st).add_sample_distance));
+//#if FILM_DENOISING
+    store_word(at+488u,select(0u,1u,(*st).denoise));vhs_3(at+492u,(*st).albedo);vhs_3(at+504u,(*st).cand_albedo);
+//#endif
+//#if VOLUME_LIGHT_PATH
+    store_word(at+516u,(*st).visibility);store_word(at+520u,select(0u,1u,(*st).set_done));store_word(at+524u,select(0u,1u,(*st).set_ok));store_word(at+528u,(*st).set_i);store_word(at+532u,(*st).set_skip_object);store_word(at+536u,(*st).set_skip_shader);store_word(at+540u,(*st).set_local.node);vhs_f(at+544u,(*st).set_local.t.x);vhs_f(at+548u,(*st).set_local.t.y);vhs_3(at+552u,(*st).set_local.ray_P);vhs_3(at+564u,(*st).set_local.ray_D);store_word(at+576u,(*st).set_local.current.x);store_word(at+580u,(*st).set_local.current.y);store_word(at+584u,(*st).set_local.current.z);store_word(at+588u,(*st).set_local.object);store_word(at+592u,(*st).set_local.shader);store_word(at+596u,(*st).set_local.scale);store_word(at+600u,(*st).set_local.next_scale);store_word(at+604u,(*st).set_local.octant_mask);store_word(at+608u,select(0u,1u,(*st).set_local.no_overlap));vhs_f(at+612u,(*st).set_local.sigma.x);vhs_f(at+616u,(*st).set_local.sigma.y);vhs_f(at+620u,(*st).est.t.x);vhs_f(at+624u,(*st).est.t.y);vhs_f(at+628u,(*st).est.ext.x);vhs_f(at+632u,(*st).est.ext.y);store_word(at+636u,(*st).est.k);store_word(at+640u,(*st).est.n);vhs_f(at+644u,(*st).est.shade);vhs_f(at+648u,(*st).est.step);store_word(at+652u,(*st).est.object);store_word(at+656u,(*st).est.shader);store_word(at+660u,select(0u,1u,(*st).est.homogeneous));store_word(at+664u,(*st).est.resume);store_word(at+668u,select(0u,1u,(*st).estimating));
+//#endif
+}
+fn vh_state_load(at:u32,st:ptr<function,VhState>){
+    (*st).o.node=load_word(at+0u);(*st).o.t=vec2<f32>(heap_float(at+4u),heap_float(at+8u));(*st).o.ray_P=heap_vec3(at+12u);(*st).o.ray_D=heap_vec3(at+24u);(*st).o.current=vec3<u32>(load_word(at+36u),load_word(at+40u),load_word(at+44u));(*st).o.object=load_word(at+48u);(*st).o.shader=load_word(at+52u);(*st).o.scale=load_word(at+56u);(*st).o.next_scale=load_word(at+60u);(*st).o.octant_mask=load_word(at+64u);(*st).o.no_overlap=load_word(at+68u)!=0u;(*st).o.sigma=vec2<f32>(heap_float(at+72u),heap_float(at+76u));(*st).stage=load_word(at+80u);(*st).resume=load_word(at+84u);(*st).t=heap_float(at+88u);(*st).dt=heap_float(at+92u);(*st).rscatter=heap_float(at+96u);(*st).residual=heap_float(at+100u);(*st).transmittance=heap_float(at+104u);(*st).optical_depth=heap_float(at+108u);(*st).step=load_word(at+112u);(*st).sigma_max=heap_float(at+116u);(*st).step_sigma_max=heap_float(at+120u);(*st).sample_dt=heap_float(at+124u);(*st).distance_pdf=heap_float(at+128u);(*st).equiangular_pdf=heap_float(at+132u);(*st).majorant_scale=heap_float(at+136u);(*st).scatter_prob=heap_float(at+140u);(*st).direct_rr_scale=heap_float(at+144u);(*st).emission=heap_vec3(at+148u);(*st).vspg=load_word(at+160u)!=0u;(*st).method=load_word(at+164u);(*st).use_mis=load_word(at+168u)!=0u;(*st).direct_t=heap_float(at+172u);(*st).indirect_t=heap_float(at+176u);(*st).direct_scatter=load_word(at+180u)!=0u;(*st).indirect_scatter=load_word(at+184u)!=0u;(*st).direct=heap_vec3(at+188u);(*st).indirect=heap_vec3(at+200u);(*st).res_total=heap_float(at+212u);(*st).res_rand=heap_float(at+216u);(*st).cand_emission=heap_vec3(at+220u);(*st).cand_t=heap_float(at+232u);(*st).cand_throughput=heap_vec3(at+236u);(*st).cand_pdf=heap_float(at+248u);(*st).offset=load_word(at+252u);(*st).tr_N=load_word(at+256u);(*st).tr_k=load_word(at+260u);(*st).tr_n=load_word(at+264u);(*st).tr_i=load_word(at+268u);(*st).tr_step=heap_float(at+272u);(*st).tr_shade=heap_float(at+276u);(*st).tr_t=vec2<f32>(heap_float(at+280u),heap_float(at+284u));(*st).tr_pmf=heap_float(at+288u);(*st).tau_k=heap_vec3(at+292u);(*st).tau_j0=heap_vec3(at+304u);(*st).tau_j1=heap_vec3(at+316u);(*st).tau_j_1=heap_vec3(at+328u);(*st).T_k=heap_vec3(at+340u);(*st).origin=heap_vec3(at+352u);(*st).direction=heap_vec3(at+364u);(*st).tmax=heap_float(at+376u);(*st).index=load_word(at+380u);(*st).sample=load_word(at+384u);(*st).pixel=load_word(at+388u);(*st).scratch=load_word(at+392u);(*st).direct_base=load_word(at+396u);(*st).indirect_base=load_word(at+400u);(*st).direct_count=load_word(at+404u);(*st).indirect_count=load_word(at+408u);(*st).terminate=load_word(at+412u)!=0u;(*st).request=heap_float(at+416u);(*st).setup_from=load_word(at+420u);(*st).trans_resume=load_word(at+424u);(*st).add=load_word(at+428u)!=0u;(*st).add_weight=heap_float(at+432u);(*st).add_t=heap_float(at+436u);(*st).add_throughput=heap_vec3(at+440u);(*st).add_pdf=heap_float(at+452u);(*st).copy_direct=load_word(at+456u)!=0u;(*st).copy_indirect=load_word(at+460u)!=0u;(*st).copy_count=load_word(at+464u);(*st).add_clamp=load_word(at+468u)!=0u;(*st).film=load_word(at+472u);(*st).add_guided=heap_float(at+476u);(*st).add_unguided=heap_float(at+480u);(*st).add_sample_distance=load_word(at+484u)!=0u;
+//#if FILM_DENOISING
+    (*st).denoise=load_word(at+488u)!=0u;(*st).albedo=heap_vec3(at+492u);(*st).cand_albedo=heap_vec3(at+504u);
+//#endif
+//#if VOLUME_LIGHT_PATH
+    (*st).visibility=load_word(at+516u);(*st).set_done=load_word(at+520u)!=0u;(*st).set_ok=load_word(at+524u)!=0u;(*st).set_i=load_word(at+528u);(*st).set_skip_object=load_word(at+532u);(*st).set_skip_shader=load_word(at+536u);(*st).set_local.node=load_word(at+540u);(*st).set_local.t=vec2<f32>(heap_float(at+544u),heap_float(at+548u));(*st).set_local.ray_P=heap_vec3(at+552u);(*st).set_local.ray_D=heap_vec3(at+564u);(*st).set_local.current=vec3<u32>(load_word(at+576u),load_word(at+580u),load_word(at+584u));(*st).set_local.object=load_word(at+588u);(*st).set_local.shader=load_word(at+592u);(*st).set_local.scale=load_word(at+596u);(*st).set_local.next_scale=load_word(at+600u);(*st).set_local.octant_mask=load_word(at+604u);(*st).set_local.no_overlap=load_word(at+608u)!=0u;(*st).set_local.sigma=vec2<f32>(heap_float(at+612u),heap_float(at+616u));(*st).est.t=vec2<f32>(heap_float(at+620u),heap_float(at+624u));(*st).est.ext=vec2<f32>(heap_float(at+628u),heap_float(at+632u));(*st).est.k=load_word(at+636u);(*st).est.n=load_word(at+640u);(*st).est.shade=heap_float(at+644u);(*st).est.step=heap_float(at+648u);(*st).est.object=load_word(at+652u);(*st).est.shader=load_word(at+656u);(*st).est.homogeneous=load_word(at+660u)!=0u;(*st).est.resume=load_word(at+664u);(*st).estimating=load_word(at+668u)!=0u;
+//#endif
+}
+// The split record of input id: status, the entry's context, the evaluation's request and result, the state.
+fn vh_split_record(id:u32)->u32{return p(12u)+16u+id*VH_SPLIT_BYTES;}
+struct VhContext {index:u32, base:u32, flag:u32, bounce:u32, entries:u32, origin:vec3<f32>, direction:vec3<f32>, eq_point:vec3<f32>, segment:vec2<f32>, vl:u32}
+fn vh_context_save(at:u32,x:VhContext){
+    store_word(at+4u,x.index);store_word(at+8u,x.base);store_word(at+12u,x.flag);store_word(at+16u,x.bounce);store_word(at+20u,x.entries);
+    vhs_3(at+24u,x.origin);vhs_3(at+36u,x.direction);vhs_3(at+48u,x.eq_point);vhs_f(at+60u,x.segment.x);vhs_f(at+64u,x.segment.y);store_word(at+68u,x.vl);
+}
+fn vh_context_load(at:u32)->VhContext{
+    var x:VhContext;x.index=load_word(at+4u);x.base=load_word(at+8u);x.flag=load_word(at+12u);x.bounce=load_word(at+16u);x.entries=load_word(at+20u);
+    x.origin=heap_vec3(at+24u);x.direction=heap_vec3(at+36u);x.eq_point=heap_vec3(at+48u);x.segment=vec2<f32>(heap_float(at+60u),heap_float(at+64u));x.vl=load_word(at+68u);return x;
+}
+fn vh_coefficients_save(at:u32,c:VhCoefficients){
+    vhs_3(at+80u,c.sigma_t);vhs_3(at+92u,c.sigma_s);vhs_3(at+104u,c.emission);store_word(at+116u,c.flag);store_word(at+120u,c.count);store_word(at+124u,c.error);
+}
+fn vh_coefficients_load(at:u32)->VhCoefficients{
+    var c:VhCoefficients;c.sigma_t=heap_vec3(at+80u);c.sigma_s=heap_vec3(at+92u);c.emission=heap_vec3(at+104u);c.flag=load_word(at+116u);c.count=load_word(at+120u);c.error=load_word(at+124u);return c;
+}
 @compute @workgroup_size(64) fn shade_volume_heterogeneous(@builtin(global_invocation_id) id:vec3<u32>){
     svm_invocation(id.x);
-    if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
-    if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME||load_word(p(17u))!=0u){return;}
+    if(id.x>=p(1u)||load_word(p(17u))!=0u){return;}
+    if(p(13u)!=VH_SPLIT_BYTES){fail();return;}
+    let record=vh_split_record(id.x);let status=load_word(record);
+    if(status==VH_SPLIT_EVAL||status==VH_SPLIT_DONE){return;}
+    var st:VhState;var x:VhContext;var c:VhCoefficients;var have=false;
+    if(status==VH_SPLIT_RESUME){
+        vh_state_load(record+VH_SPLIT_STATE,&st);x=vh_context_load(record);c=vh_coefficients_load(record);have=true;
+        if(c.error!=0u){store_word(record,VH_SPLIT_DONE);return;}
+    }else{
+    store_word(record,VH_SPLIT_DONE);
+    var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME){return;}
     if(!vh_is_heterogeneous(index)){return;}
     let stride=data_word(D_film_pass_stride);let pixel_index=state_word(S_path_render_pixel_index,index);if(pixel_index>=p(11u)/stride){fail();return;}
     let base=p(4u)+pixel_index*stride*4u;
@@ -479,13 +537,13 @@ fn vh_fast_exp(x_in:f32)->f32{
     let throughput=heap_vec3(state_address(S_path_throughput,index,12u));
     let sample=state_word(S_path_sample,index);let pixel=state_word(S_path_rng_pixel,index);let offset=state_half(S_path_rng_offset,index);
     let slot=SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES;
-    var st:VhState;st.index=index;st.origin=origin;st.direction=direction;st.tmax=tmax;st.sample=sample;st.pixel=pixel;
+    st.index=index;st.origin=origin;st.direction=direction;st.tmax=tmax;st.sample=sample;st.pixel=pixel;
     st.scratch=p(23u)+id.x*slot;st.direct_base=p(23u)+(p(1u)+id.x)*slot;st.indirect_base=p(23u)+(2u*p(1u)+id.x)*slot;
     st.terminate=(flag&PATH_RAY_TERMINATE)!=0u;st.sample_dt=bitcast<f32>(0x7f7fffffu);
     // volume_direct_sample_method from shade_volume_segment (0 none, 1 distance, 2 equiangular, 3 MIS).
-    var method=0u;var eq_point=vec3<f32>(0);var segment=vec2<f32>(0);
+    var method=0u;var eq_point=vec3<f32>(0);var segment=vec2<f32>(0);var vl=0u;
 //#if VOLUME_LIGHT
-    let vl=p(24u)+id.x*VL_RECORD_BYTES;method=load_word(vl);eq_point=heap_vec3(vl+4u);segment=vec2<f32>(heap_float(vl+16u),heap_float(vl+20u));
+    vl=p(24u)+id.x*VL_RECORD_BYTES;method=load_word(vl);eq_point=heap_vec3(vl+4u);segment=vec2<f32>(heap_float(vl+16u),heap_float(vl+20u));
 //#endif
     // volume_integrate_state_init and volume_integrate_result_init.
 //#if VOLUME_SAMPLING_PATTERN else     st.rscatter=native_rng(sample,pixel,offset+V_PRNG_VOLUME_SCATTER_DISTANCE).x;st.use_mis=method==3u;
@@ -504,14 +562,21 @@ fn vh_fast_exp(x_in:f32)->f32{
 //#if FILM_DENOISING
     st.denoise=(flag&DN_PATH_RAY_DENOISING_FEATURES)!=0u;
 //#endif
-    var c:VhCoefficients;var have=false;
-    loop{
-        let t=vh_step(&st,c,have);if(t<0.0){break;}
-//#if VOLUME_LIGHT_PATH else         c=vh_eval(index,origin+direction*t,direction,st.scratch);have=true;
-        c=vh_eval(index,origin+direction*t,direction,st.scratch,select(NONE,st.est.object,st.estimating),select(NONE,st.est.shader,st.estimating));have=true;
-//#endif
-        if(c.error!=0u){return;}
+    x.index=index;x.base=base;x.flag=flag;x.bounce=bounce;x.entries=entries;x.origin=origin;x.direction=direction;x.eq_point=eq_point;x.segment=segment;x.vl=vl;
     }
+    // One step of the null-scattering loop: an evaluation request ends this dispatch.
+    let t=vh_step(&st,c,have);
+    if(t>=0.0){
+        vh_state_save(record+VH_SPLIT_STATE,&st);vh_context_save(record,x);
+        vhs_f(record+128u,t);store_word(record+132u,st.scratch);
+//#if VOLUME_LIGHT_PATH
+        store_word(record+136u,select(NONE,st.est.object,st.estimating));store_word(record+140u,select(NONE,st.est.shader,st.estimating));
+//#endif
+        store_word(record,VH_SPLIT_EVAL);atomicAdd(&heap[p(12u)/4u],1u);return;
+    }
+    store_word(record,VH_SPLIT_DONE);
+    let index=x.index;let base=x.base;var flag=x.flag;let bounce=x.bounce;let entries=x.entries;let origin=x.origin;let direction=x.direction;
+    let eq_point=x.eq_point;let segment=x.segment;
     // volume_direct_scatter_mis.
     if(st.use_mis&&st.direct_scatter){
         var weight:f32;
@@ -529,20 +594,37 @@ fn vh_fast_exp(x_in:f32)->f32{
     let continuation=select(heap_float(state_address(S_path_continuation_probability,index,4u)),0.0,(flag&PATH_RAY_TERMINATE_IN_NEXT_VOLUME)!=0u);
     if(continuation==0.0){volume_finish(index,0u);return;}
 //#if VOLUME_LIGHT
+    let vl=x.vl;
     if(st.direct_scatter){
-        let direct_P=rounded_add3(origin,st.direct_t*direction);let weight=st.direct/continuation;
+        let direct_P=rounded_add3(origin,st.direct_t*direction);let weight=st.direct*rounded_divide(1.0,continuation);
         store_word(vl+36u,bitcast<u32>(direct_P.x));store_word(vl+40u,bitcast<u32>(direct_P.y));store_word(vl+44u,bitcast<u32>(direct_P.z));
         store_word(vl+48u,bitcast<u32>(weight.x));store_word(vl+52u,bitcast<u32>(weight.y));store_word(vl+56u,bitcast<u32>(weight.z));
         store_word(vl+60u,st.direct_count);store_word(vl+76u,st.direct_base);store_word(vl+32u,1u);
     }
 //#endif
-    if(st.indirect_scatter){st.indirect/=continuation;}state_vec3(S_path_throughput,index,st.indirect);
+    if(st.indirect_scatter){st.indirect*=rounded_divide(1.0,continuation);}state_vec3(S_path_throughput,index,st.indirect);
     if(!st.indirect_scatter){volume_after(index);return;}
     // The indirect phase scatter: shade_volume_light (after the direct light) or shade_volume_phase run it from the
     // record; without either, here.
     let rec=p(24u)+id.x*VL_RECORD_BYTES;
     store_word(rec+68u,bitcast<u32>(st.indirect_t));store_word(rec+72u,load_word(volume_stack_address(index,entries-1u,VS_object)));
     store_word(rec+80u,st.indirect_base);store_word(rec+84u,st.indirect_count);store_word(rec+64u,1u);
+}
+@compute @workgroup_size(64) fn shade_volume_heterogeneous_eval(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    if(id.x>=p(1u)||load_word(p(17u))!=0u){return;}
+    let record=vh_split_record(id.x);if(load_word(record)!=VH_SPLIT_EVAL){return;}
+    let index=load_word(record+4u);let origin=heap_vec3(record+24u);let direction=heap_vec3(record+36u);let t=heap_float(record+128u);let scratch=load_word(record+132u);
+//#if VOLUME_LIGHT_PATH else     let c=vh_eval(index,rounded_add3(origin,direction*t),direction,scratch);
+    let c=vh_eval(index,rounded_add3(origin,direction*t),direction,scratch,load_word(record+136u),load_word(record+140u));
+//#endif
+    vh_coefficients_save(record,c);store_word(record,VH_SPLIT_RESUME);
+}
+// float3 / float and volume_sample_channel_pdf per ISA, shared by the null-scattering loop and ray marching (see below).
+fn vr_div3(v:vec3<f32>,f:f32)->vec3<f32>{if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,f);}return vh_divide(v,vec3<f32>(f));}
+fn vr_channel_pdf(albedo:vec3<f32>,throughput:vec3<f32>)->vec3<f32>{
+    let weights=abs(throughput*albedo);let sum=rounded_add(rounded_add(weights.x,weights.y),weights.z);
+    if(rounded_add(1.0,-sum)<1.0){return vr_div3(weights,sum);}return vec3<f32>(1.0/3.0);
 }
 //#if VOLUME_RAY_MARCHING
 // The oracle kernels' arithmetic on this path. volume_sample_channel rescales rchannel by 1/pdf at every step, so a last-bit
@@ -585,11 +667,6 @@ fn vr_log_parts(x:f32)->vec2<f32>{
     let sum=trig_two_sum(le.x,lm.x);return vec2<f32>(sum.x,rounded_add(rounded_add(sum.y,lm.y),tail));
 }
 fn vr_logf(x:f32)->f32{let l=vr_log_parts(x);return rounded_add(l.x,l.y);}
-fn vr_div3(v:vec3<f32>,f:f32)->vec3<f32>{if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,f);}return vh_divide(v,vec3<f32>(f));}
-fn vr_channel_pdf(albedo:vec3<f32>,throughput:vec3<f32>)->vec3<f32>{
-    let weights=abs(throughput*albedo);let sum=rounded_add(rounded_add(weights.x,weights.y),weights.z);
-    if(rounded_add(1.0,-sum)<1.0){return vr_div3(weights,sum);}return vec3<f32>(1.0/3.0);
-}
 fn vr_sample_channel(pdf:vec3<f32>,rand:f32)->vec2<f32>{
     var sum=0.0;
     for(var c=0u;c<3u;c++){if(rand<rounded_add(sum,pdf[c])){return vec2<f32>(f32(c),rounded_divide(rounded_add(rand,-sum),pdf[c]));}sum=rounded_add(sum,pdf[c]);}

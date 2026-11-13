@@ -129,6 +129,9 @@ fn integrate_suns(index:u32,base:u32){
         if(!shadow_link_membership_all(load_word(light+L_object_id))){continue;}
 //#endif
 //#if LIGHT_LAMP_SHADER else         let eval=forward_constant_emission(light)*heap_float(light+L_sun_eval);if(all(eval==vec3<f32>(0))){continue;}
+//#if LIGHT_PATH_STATE
+        svm_emission_path=index;svm_emission_shadow=false;
+//#endif
         let eval=forward_lamp_emission(lamp,light,vec3<f32>(0),direction,3.4028234663852886e38,heap_float(state_address(S_ray_time,index,4u)))*heap_float(light+L_sun_eval);if(all(eval==vec3<f32>(0))){continue;}
 //#endif
         forward_emission(index,base,light,eval,forward_mis_weight(index,heap_float(light+L_sun_pdf)));
@@ -164,6 +167,9 @@ fn integrate_suns(index:u32,base:u32){
         else{pdf=point_forward_pdf(index,light);if(load_word(light+L_type)==LIGHT_SPOT){let delta=origin-heap_vec3(light+L_co);let radius=heap_float(light+L_radius);
             if(load_word(light+L_is_sphere)==0u||dot(delta,delta)>radius*radius){factor*=spot_attenuation(light,-direction);}}}
 //#if LIGHT_LAMP_SHADER else         let eval=forward_constant_emission(light)*factor;
+//#if LIGHT_PATH_STATE
+        svm_emission_path=index;svm_emission_shadow=false;
+//#endif
         let eval=forward_lamp_emission(lamp,light,origin,direction,t,heap_float(state_address(S_ray_time,index,4u)))*factor;
 //#endif
 //#if LIGHT_TREE

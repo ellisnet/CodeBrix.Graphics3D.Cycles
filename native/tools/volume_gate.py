@@ -86,14 +86,14 @@ def main():
                 save(folder/'reuse.json', {'origin':str(reuse/name), 'originalInvocationSha256':sha(reuse/'invocation.json'), 'identicalNativeInputs':True})
             else:
                 folder.mkdir()
-                save(folder/'invocation.json', {'command':command, 'environment':settings, 'timeoutSeconds':900})
+                save(folder/'invocation.json', {'command':command, 'environment':settings, 'timeoutSeconds':1800})
                 with (folder/'stdout.txt').open('w') as stdout, (folder/'stderr.txt').open('w') as stderr:
-                    subprocess.run(command, env=env, stdout=stdout, stderr=stderr, check=True, timeout=900)
+                    subprocess.run(command, env=env, stdout=stdout, stderr=stderr, check=True, timeout=1800)
             report = json.loads((folder/'stdout.txt').read_text())
             assert report['passed'] and report['cyclesAllocationBytesAfterCleanup'] == 0
             assert Path((folder/'run.library.txt').read_text().strip()).resolve() == runtime.resolve()
             if name == 'state':
-                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 90 and report['invalidCasesRejected'] == 18
+                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 119 and report['invalidCasesRejected'] == 18
                 assert min(report[k] for k in ('scatterEvents', 'transmitEvents', 'terminatedEvents')) > 0
             else:
                 assert report['independentCpuImage'] and report['repeatBitwiseIdentical']

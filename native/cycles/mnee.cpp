@@ -27,6 +27,11 @@ static constexpr size_t mnee_select_offset=mnee_stack_offset+mnee_stack_entries*
 static constexpr size_t mnee_record_bytes=mnee_select_offset+32;
 size_t mnee_record_stride(){return mnee_record_bytes;}
 static_assert(surface_data_cache_bytes==240&&mnee_record_bytes%16==0,"wavefront_mnee.wgsl record layout");
+// integrator/mnee.h MNEE_MAX_ITERATIONS (wavefront_mnee.wgsl): the dispatches of the walk with MNEE_WALK_STAGES.
+static constexpr unsigned mnee_max_iterations=64;
+// The walk's state of MNEE_WALK_STAGES (wavefront_mnee.wgsl MR_WALK, 16 words) in the closure slots past CAUSTICS_MAX_CLOSURE:
+// every MNEE shader evaluation stops at CAUSTICS_MAX_CLOSURE closures.
+static_assert(mnee_closure_offset+CAUSTICS_MAX_CLOSURE*sizeof(SurfaceClosureRecord)+64<=mnee_stack_offset,"wavefront_mnee.wgsl MR_WALK");
 // Constants of every MNEE region (closest, surface and background modules). The
 // block is itself one MNEE region, so modules of scenes without caustics are unchanged.
 std::string mnee_layout(){
@@ -133,9 +138,17 @@ void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){
     auto built=build_pipelines("surface",surface_source(),{"mnee_light_sample","mnee_light_update"},SF_MNEE_ENTRIES,unused);
     mnee_light_sample=std::move(built[0]);mnee_light_update=std::move(built[1]);
   }
+  // With MNEE_WALK_STAGES the walk takes two entries: mnee_solve, then mnee_project and mnee_solve in turn once per iteration
+  // of mnee_newton_solver (MNEE_MAX_ITERATIONS); a path whose walk has ended returns at once (compiler pressure: the walk's
+  // traversal and vertex setup stay out of mnee_solve).
+  const bool walk_stages=(shader_features()&SF_MNEE_WALK_STAGES).any();
+  if(walk_stages&&(!pipeline_current(mnee_project,"mnee_project",unused)||!mnee_project.value))
+    mnee_project=std::move(build_pipelines("surface",surface_source(),{"mnee_project"},SF_MNEE_ENTRIES,unused)[0]);
   for(unsigned i=0;i<mnee_entries;i++){
     if(i==5&&light_stages)dispatch(p,uint32_t(work),mnee_light_update,workgroup("mnee_light_update"));
     dispatch(p,uint32_t(work),mnee_pipelines[i],workgroup(entries[i]));
+    if(i==4&&walk_stages)for(unsigned iteration=0;iteration<mnee_max_iterations;iteration++){
+      dispatch(p,uint32_t(work),mnee_project,workgroup("mnee_project"));dispatch(p,uint32_t(work),mnee_pipelines[i],workgroup(entries[i]));}
     if(i==0&&select_stage)dispatch(p,uint32_t(work),mnee_select,workgroup("mnee_select"));
     if(i==0&&light_stages)dispatch(p,uint32_t(work),mnee_light_sample,workgroup("mnee_light_sample"));}
 }

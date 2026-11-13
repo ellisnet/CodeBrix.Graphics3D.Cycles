@@ -161,7 +161,12 @@ def overlay(out=None,translate=True,located=None):
     volume_stack=shader_data+translated+traversal+(ROOT/'shaders/wavefront_volume_stack.wgsl').read_text()
     _write(out/'volume_stack_shader.inc','R"CBWGSL('+volume_stack+')CBWGSL"\n')
     # The panoramic cameras' inverse mappings in the SVM text (CAMERA_PANORAMA_INVERSE) take the scalar sine polynomial.
-    shadow=traversal+film+'//#if CAMERA_PANORAMA_INVERSE\n'+(ROOT/'shaders/wavefront_native_trig.wgsl').read_text()+'//#endif\n'+(ROOT/'shaders/wavefront_shadow_traversal.wgsl').read_text()+(ROOT/'shaders/wavefront_volume_octree.wgsl').read_text()+(ROOT/'shaders/wavefront_shadow.wgsl').read_text()
+    # The shared octree tracer reads the shadow volume stack (vh_stack_shader, wavefront_shadow.wgsl), which exists only with
+    # VOLUME_SHADOW: a superset group can add VOLUME_HETEROGENEOUS without that scene-only region (native/DEVICE.md 66). The
+    # file's notice lines stay outside the region, so every module keeps its text.
+    octree=(ROOT/'shaders/wavefront_volume_octree.wgsl').read_text();head,body=octree.split('//#if VOLUME_HETEROGENEOUS\n',1)
+    octree_shadow=head+'//#if VOLUME_SHADOW\n//#if VOLUME_HETEROGENEOUS\n'+body+'//#endif\n'
+    shadow=traversal+film+'//#if CAMERA_PANORAMA_INVERSE\n'+(ROOT/'shaders/wavefront_native_trig.wgsl').read_text()+'//#endif\n'+(ROOT/'shaders/wavefront_shadow_traversal.wgsl').read_text()+octree_shadow+(ROOT/'shaders/wavefront_shadow.wgsl').read_text()
     _write(out/'shadow_shader.inc','R"CBWGSL('+shadow+')CBWGSL"\n')
     # Compile the untouched upstream scalar prefix/sorted helpers and state-copy
     # function bodies as the oracle. The GPU-specific wrapper uses native pointers

@@ -137,6 +137,24 @@ fn svm_geometry_tangent(s:ptr<function,SvmState>,derivative:bool)->NormalDual{
     return NormalDual(value,cross(sd.N,t.dx),cross(sd.N,t.dy));
 }
 //#endif
+//#if SVM_NODE_TANGENT
+// util/math_dual.h for the Tangent node's form with derivatives (svm_tangent), every sum and quotient rounded on its own.
+// transform_direction_transposed of a dual (to_local: dot(p, X) = reduce_add(p * X), (x + y) + z).
+fn tn_transposed(rows:NativeTransform,v:vec3<f32>)->vec3<f32>{
+    var o=vec3<f32>(0);let n=rounded_steps(3u);
+    for(var k=0u;k<n;k++){o[k]=rounded_dot(vec3<f32>(rows.x[k],rows.y[k],rows.z[k]),v);}
+    return o;
+}
+// The derivative part of dot(a, a): reduce_add(a.val * d + d * a.val).
+fn tn_dual_dot(v:vec3<f32>,d:vec3<f32>)->f32{let t=rounded_add3(v*d,d*v);return rounded_add(rounded_add(t.x,t.y),t.z);}
+// normalize(a) = a * inversesqrt(dot(a, a)); inversesqrt: f = inversesqrtf(u) (0 when u is not positive), df/du = -0.5 * safe_divide(f, u);
+// a * s = {a * s, a * s' + a' * s}.
+fn tn_dual_normalize(a:NormalDual)->NormalDual{
+    let l=rounded_dot(a.value,a.value);let f=select(0.0,rounded_divide(1.0,rounded_sqrt(l)),l>0.0);
+    let dfdu=-0.5*select(0.0,rounded_divide(f,l),l!=0.0);let sdx=dfdu*tn_dual_dot(a.value,a.dx);let sdy=dfdu*tn_dual_dot(a.value,a.dy);
+    return NormalDual(a.value*f,rounded_add3(a.value*sdx,a.dx*f),rounded_add3(a.value*sdy,a.dy*f));
+}
+//#endif
 fn svm_tangent(s:ptr<function,SvmState>,node:u32,derivative:bool){
     let kind=load_word(node+N_Tangent_direction_type);let axis=load_word(node+N_Tangent_axis);
     if(kind>NODE_TANGENT_UVMAP||axis>NODE_TANGENT_AXIS_Z){svm_error(s,16u);return;}
@@ -152,6 +170,38 @@ fn svm_tangent(s:ptr<function,SvmState>,node:u32,derivative:bool){
     }else{tangent=NormalDual(sd.P,sd.dPdu*sd.du.x+sd.dPdv*sd.dv.x,sd.dPdu*sd.du.y+sd.dPdv*sd.dv.y);}
     if(kind==NODE_TANGENT_RADIAL){tangent=NormalDual(normal_radial(tangent.value,axis,0.5),normal_radial(tangent.dx,axis,0.0),normal_radial(tangent.dy,axis,0.0));}
     if((*s).error!=0u){return;}
+//#if SVM_NODE_TANGENT
+    if(!derivative){
+        // svm_node_tangent in the pinned float3 order exactly (as svm_geometry_tangent): object_normal_transform's
+        // normalize(transform_direction_transposed(itfm, t)), the motion inverse for a moving object, then
+        // cross(N, normalize(cross(t, N))). A degenerate frame (t parallel to N, as on a rotated instance's side faces)
+        // is then exactly zero as on the CPU, and normalize's 0/0 follows it (native/DEVICE.md, item 150).
+        var t=tangent.value;
+        if(sd.object_id!=NONE){
+            var rows:NativeTransform;
+            if((sd.object_flag&SD_OBJECT_MOTION)!=0u){rows=sd.motion_itfm;}
+            else{let at=table_at(G_objects,sd.object_id,SIZE_objects)+O_itfm;rows=NativeTransform(heap_vec4(at),heap_vec4(at+16u),heap_vec4(at+32u));}
+            var o=vec3<f32>(0);let n=rounded_steps(3u);
+            for(var k=0u;k<n;k++){o[k]=rounded_dot(vec3<f32>(rows.x[k],rows.y[k],rows.z[k]),t);}
+            t=surface_native_normalize(o);
+        }
+        svm_store3(s,out,rounded_cross(sd.N,surface_native_normalize(rounded_cross(t,sd.N))));return;
+    }
+    // The form with derivatives (dual3, util/math_dual.h) in the oracle's order: to_local's dots for the transposed transform,
+    // normalize(a) = a * inversesqrt(dot(a, a)) with the product rule (tn_dual_normalize), cross with the float3 normal, and
+    // cross(N, b) = -cross(b, N). At a degenerate frame inversesqrtf(0) is 0, so the whole dual is zero, as on the CPU.
+    {
+        var t=tangent;
+        if(sd.object_id!=NONE){
+            var rows:NativeTransform;
+            if((sd.object_flag&SD_OBJECT_MOTION)!=0u){rows=sd.motion_itfm;}
+            else{let at=table_at(G_objects,sd.object_id,SIZE_objects)+O_itfm;rows=NativeTransform(heap_vec4(at),heap_vec4(at+16u),heap_vec4(at+32u));}
+            t=tn_dual_normalize(NormalDual(tn_transposed(rows,t.value),tn_transposed(rows,t.dx),tn_transposed(rows,t.dy)));
+        }
+        let inner=tn_dual_normalize(NormalDual(rounded_cross(t.value,sd.N),rounded_cross(t.dx,sd.N),rounded_cross(t.dy,sd.N)));
+        svm_store3(s,out,rounded_cross(sd.N,inner.value));svm_store3(s,out+3u,rounded_cross(sd.N,inner.dx));svm_store3(s,out+6u,rounded_cross(sd.N,inner.dy));return;
+    }
+//#endif
     if(sd.object_id!=NONE){
         let object=table_at(G_objects,sd.object_id,SIZE_objects);
         tangent=NormalDual(normal_object_transpose(sd,tangent.value,true),normal_object_transpose(sd,tangent.dx,true),normal_object_transpose(sd,tangent.dy,true));

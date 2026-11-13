@@ -276,6 +276,18 @@ struct Loader {
     }
   }
 
+  // Subdivision cage: positions (x, y, z triples), faceCorners (corners per face) and corners (vertex indices in face
+  // order), cbc_host_subd_mesh; optional attributes as for a mesh (their flags add CBC_ATTR_SUBDIVISION themselves).
+  void subdivision(CBCNode target, const Json &cage) {
+    std::vector<float> xyz; std::vector<uint32_t> counts, corners;
+    for (auto &v : cage.at("positions").items) xyz.push_back(v.as_float());
+    for (auto &v : cage.at("faceCorners").items) counts.push_back(uint32_t(v.as_int()));
+    for (auto &v : cage.at("corners").items) corners.push_back(uint32_t(v.as_int()));
+    if (xyz.size() % 3) fail("Subdivision cage positions must be complete triples");
+    check(cbc_host_subd_mesh(host, target, xyz.data(), xyz.size() / 3, counts.data(), counts.size(), corners.data(), corners.size()), "cbc_host_subd_mesh");
+    attributes(target, cage);
+  }
+
   void entry(const Json &entry) {
     const auto &handle = entry.at("handle").string();
     CBCNode target = 0;
@@ -284,6 +296,7 @@ struct Loader {
     if (!nodes.emplace(handle, target).second) fail("Duplicate node handle: " + handle);
     if (auto g = entry.find("graph")) graph(target, *g);
     if (auto m = entry.find("mesh")) mesh(target, *m);
+    if (auto c = entry.find("subdivision")) subdivision(target, *c);
     if (auto h = entry.find("hair")) hair(target, *h);
     if (auto p = entry.find("points")) points(target, *p);
     if (auto p = entry.find("particles")) particles(target, *p);

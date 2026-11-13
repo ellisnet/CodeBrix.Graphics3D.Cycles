@@ -64,6 +64,9 @@ AttributeStandard standard_attribute(Geometry &geometry,const char *name,Attribu
   if(key=="point_random" && points)return ATTR_STD_POINT_RANDOM;
   if(key=="tangent" && mesh)return ATTR_STD_UV_TANGENT;
   if(key=="tangent_sign" && mesh)return ATTR_STD_UV_TANGENT_SIGN;
+  // The Geometry node's Pointiness and Random Per Island outputs: values the caller computes, as Cycles reads them.
+  if(key=="pointiness" && mesh)return ATTR_STD_POINTINESS;
+  if(key=="random_per_island" && mesh)return ATTR_STD_RANDOM_PER_ISLAND;
   throw Failure(CBC_UNSUPPORTED,"Standard attribute is not exposed for this geometry");
 }
 struct AttributeTarget {Geometry &geom;AttributeSet &set;AttributeElement element;TypeDesc type;AttributeStandard standard;uint64_t count;};
@@ -100,6 +103,13 @@ void validate_geometry(Host &host) {
       const auto faces=triangles.size()/3;
       require(mesh->get_shader().empty()||mesh->get_shader().size()>=faces,"Triangle shader array is too short");
       require(mesh->get_smooth().empty()||mesh->get_smooth().size()>=faces,"Triangle smoothing array is too short");
+      // Without OpenSubdiv (outside this library) the pinned Cycles turns Catmull-Clark into linear subdivision with no
+      // message (scene/mesh_subdivision.cpp); the scene is refused instead of being approximated.
+      require(mesh->get_subdivision_type()!=Mesh::SUBDIVISION_CATMULL_CLARK,
+              "Unsupported feature: Catmull-Clark subdivision needs OpenSubdiv, which this library does not include",CBC_UNSUPPORTED);
+      // Subdivision faces (cbc_host_subd_mesh) render only through a subdivision type; without one Cycles would skip them.
+      require(!mesh->get_num_subd_faces()||mesh->get_subdivision_type()!=Mesh::SUBDIVISION_NONE,
+              "Subdivision faces need subdivision_type linear");
     } else if(auto hair=dynamic_cast<Hair *>(geom)) {
       const auto &first=hair->get_curve_first_key();require(hair->get_curve_shader().size()>=first.size(),"Curve shader array is too short");
       if(!first.empty())require(first[0]==0,"First curve must start at key zero");
@@ -111,6 +121,51 @@ void validate_geometry(Host &host) {
       require(size_t(attr.size)==Attribute::element_size(geom,attr.element,geom->attributes.prim),"Attribute no longer matches geometry topology");
     }
   }
+}
+// A world with a volume needs a background light object that uses the world shader. Pinned Cycles
+// builds the world's volume octree only from such a light (scene/volume.cpp,
+// VolumeManager::initialize_octree), and the world's volume stack entry names
+// background.object_index, the background light's object (scene/object.cpp; 0 when there is none).
+// Without one, the octree root search (kernel/integrator/shade_volume.h, volume_find_octree_root)
+// finds no root for the world shader and reads outside the root array once a path meets the world
+// volume together with a heterogeneous one: the CPU kernel faults and the WebGPU device is lost.
+// Cycles' own hosts give the background light the world shader (hydra/session.cpp,
+// app/cycles_xml.cpp). When the caller created no background light, the host adds one for the
+// render, without MIS (LightManager::test_enabled_lights leaves it unsampled unless the scene has a
+// portal), and removes it afterwards. A caller's background light that does not list the world
+// shader gets it appended for the render (its own shader, the first listed or the default light
+// shader when it lists none, is unchanged), and its list back afterwards.
+struct WorldVolumeLight {
+  Scene &scene; Object *object=nullptr; Light *light=nullptr;
+  std::vector<std::pair<Light *,array<Node *>>> listed;
+  ~WorldVolumeLight(){
+    for(auto &[caller,shaders]:listed){caller->set_used_shaders(shaders);caller->tag_update(&scene);}
+    if(object){scene.delete_node(object);}
+    if(light){scene.delete_node(light);}
+  }
+};
+void world_volume_light(Host &host,WorldVolumeLight &added) {
+  auto &scene=*host.session->scene; Shader *world=scene.background->get_shader(&scene);
+  auto graph=host.graphs.find(world); if(graph==host.graphs.end())return;
+  ShaderInput *volume=graph->second->authoring->output()->input("Volume"); if(!volume||!volume->link)return;
+  bool background_light=false;std::vector<Light *> unlisted;
+  for(auto object:scene.objects) {
+    auto geom=object->get_geometry();
+    if(!geom||!geom->is_light()||!static_cast<Light *>(geom)->is_background_light())continue;
+    background_light=true;
+    const auto &shaders=geom->get_used_shaders();
+    if(std::find(shaders.begin(),shaders.end(),static_cast<Node *>(world))==shaders.end())unlisted.push_back(static_cast<Light *>(geom));
+  }
+  for(Light *caller:unlisted){
+    const array<Node *> &original=caller->get_used_shaders();array<Node *> shaders;
+    if(original.empty())shaders.push_back_slow(scene.default_light);
+    for(auto shader:original)shaders.push_back_slow(shader);
+    shaders.push_back_slow(world);added.listed.emplace_back(caller,original);caller->set_used_shaders(shaders);caller->tag_update(&scene);
+  }
+  if(background_light)return;
+  auto light=scene.create_node<BackgroundLight>(); light->set_use_mis(false);
+  array<Node *> shaders; shaders.push_back_slow(world); light->set_used_shaders(shaders); added.light=light;
+  auto object=scene.create_node<Object>(); object->set_geometry(light); added.object=object;
 }
 }
 extern "C" int cbc_host_attribute_floats(CBCHost handle,CBCNode id,const char *name,const CBCAttributeConfig *config,const float *values,uint64_t count) {

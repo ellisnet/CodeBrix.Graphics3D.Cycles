@@ -110,13 +110,15 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
   // Background light portals (LightManager::device_update_lights, device_update_background): the records after the
   // lamps, portal_offset = num_lights, the portal strategy's weight 1 exactly when there is one. The kernel reads
   // their position, area axes and lengths, the sign and size of the inverse area and the direction
-  // (light/background.h); a portal of zero or non-finite extent is the degenerate area light below.
+  // (light/background.h); a portal of zero or non-finite extent is refused below.
   require((data.integrator.num_portals==0||data.integrator.portal_offset==data.integrator.num_lights)&&
     data.background.portal_weight==(data.integrator.num_portals>0?1.0f:0.0f),"Invalid native background light portals");
   // With volume direct light the background light's sample runs in its own entry, shade_volume_light_background
   // (volume.cpp; native/DEVICE.md, item 106).
   for(size_t i=size_t(data.integrator.num_lights);i<light_records.size();i++){const KernelLight &portal=light_records[i];
-    require(std::isfinite(portal.area.len_u)&&portal.area.len_u>0&&std::isfinite(portal.area.len_v)&&portal.area.len_v>0,"WebGPU degenerate area light not implemented");
+    // A portal of zero or underflowing extent: the pinned portal sampler then returns NaN directions, which the CPU's world
+    // shader and closures evaluate (native/DEVICE.md, item 148).
+    require(std::isfinite(portal.area.len_u)&&portal.area.len_u>0&&std::isfinite(portal.area.len_v)&&portal.area.len_v>0,"WebGPU degenerate background light portal not implemented");
     require(std::isfinite(portal.area.invarea)&&portal.area.invarea!=0,"Invalid native background light portals");
     for(const float3 value:{portal.co,portal.area.axis_u,portal.area.axis_v,portal.area.dir})
       require(std::isfinite(value.x)&&std::isfinite(value.y)&&std::isfinite(value.z),"Invalid native background light portals");
@@ -143,7 +145,21 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
     if(light.type==LIGHT_POINT||light.type==LIGHT_SPOT){require(std::isfinite(light.spot.radius)&&light.spot.radius>=0&&
       std::isfinite(light.spot.eval_fac)&&light.spot.eval_fac>=0,"Invalid native point light");}
     else if(light.type==LIGHT_AREA){
-      require(std::isfinite(light.area.len_u)&&light.area.len_u>0&&std::isfinite(light.area.len_v)&&light.area.len_v>0,"WebGPU degenerate area light not implemented");
+      // An axis of zero length (device.cpp holds it as a zero axis; native/DEVICE.md, item 148). Its samples are rejected and a
+      // camera ray sees a strip or a plane (LIGHT_AREA_DEGENERATE). Refused: an axis of infinities without a NaN (its CPU
+      // comparisons depend on the signs of each ray's components) and a spread of zero (the CPU's next-event direction is NaN
+      // and its closures evaluate it).
+      if(light.area.len_u==0||light.area.len_v==0){
+        for(const auto &[axis,len]:{std::pair{light.area.axis_u,light.area.len_u},std::pair{light.area.axis_v,light.area.len_v}})if(len==0){
+          require(std::isfinite(axis.x)&&std::isfinite(axis.y)&&std::isfinite(axis.z),"WebGPU degenerate area light with an infinite axis not implemented");
+          require(axis.x==0&&axis.y==0&&axis.z==0,"Invalid native area basis");}
+        require(light.area.tan_half_spread!=0,"WebGPU degenerate area light with a spread of zero not implemented");
+        // A spread above zero but below 1e-5: volume_valid_direct_ray_segment then maps the ray into the light's frame with the
+        // NaN axis (area_light_valid_ray_segment's angle_almost_zero branch), whose segment depends on how each min and max
+        // drops a NaN lane.
+        require(!(light.area.tan_half_spread<1e-5f),"WebGPU degenerate area light with a spread below 1e-5 not implemented");
+      }
+      require(std::isfinite(light.area.len_u)&&light.area.len_u>=0&&std::isfinite(light.area.len_v)&&light.area.len_v>=0,"Invalid native area light");
       require(std::isfinite(light.area.invarea)&&std::isfinite(light.area.tan_half_spread)&&light.area.tan_half_spread>=0&&
         std::isfinite(light.area.normalize_spread)&&light.area.normalize_spread>=0,"Invalid native area light");
       for(const float3 value:{light.area.axis_u,light.area.axis_v,light.area.dir})require(std::isfinite(value.x)&&std::isfinite(value.y)&&std::isfinite(value.z),"Invalid native area basis");

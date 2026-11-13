@@ -214,11 +214,13 @@ fn bk_split_mark(index:u32,base:u32,object:u32,shader:u32,next:u32){
     // Fast path for position and normal passes not affected by shaders.
     if(data_word(BK_D_pass_position)!=PASS_NONE){bk_film_add3(film+data_word(BK_D_pass_position)*4u,P);return;}
     // A texel on a zero-area triangle: the CPU kernel's geometric normal is not a number (normalize of a zero cross
-    // product). Its normal pass gets that value where N is Ng (flat, or a zero interpolated normal), and its path ends
-    // wherever it reaches. Refused by name (error bit 65536), never given another value; a smooth normal pass is unaffected.
+    // product). Its normal pass gets that value where N is Ng (flat, or a zero interpolated normal): the same quiet NaN
+    // is stored in each component (film_write_pass_float3 adds NaN, so every sample leaves NaN), and the host fails the
+    // bake ("Nonfinite bake output") as it does on the CPU. A smooth normal pass is unaffected. Other passes read the
+    // shading of that NaN normal by the closures: refused by name (error bit 65536; native/DEVICE.md, item 149).
     let zero_area=rounded_dot(cross_normal,cross_normal)==0.0;
     if(data_word(BK_D_pass_normal)!=PASS_NONE&&(shader_flags&BK_SD_HAS_BUMP)==0u){
-        if(zero_area&&n_is_ng){atomicOr(&heap[p(17u)/4u],65536u);return;}
+        if(zero_area&&n_is_ng){let at=film+data_word(BK_D_pass_normal)*4u;for(var k=0u;k<3u;k++){atomicStore(&heap[(at+k*4u)/4u],0x7fc00000u);}return;}
         bk_film_add3(film+data_word(BK_D_pass_normal)*4u,N);return;
     }
     if(zero_area){atomicOr(&heap[p(17u)/4u],65536u);return;}

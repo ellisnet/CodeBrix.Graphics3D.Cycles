@@ -287,8 +287,9 @@ public enum FilmDisplayPass
 
 /// <summary>
 /// The items of the <c>cryptomatte_passes</c> enumeration socket of the native <c>film</c> node type.
-/// The values are the native enumeration values.
+/// The values are the native enumeration values; the socket holds a bit set of them: combine items with <c>|</c>.
 /// </summary>
+[Flags]
 public enum FilmCryptomattePasses
 {
     /// <summary>The native <c>accurate</c> item.</summary>

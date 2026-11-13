@@ -171,7 +171,11 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   // shade_surface_sample, whose 64-byte record per input (push word 0) shade_surface reads.
   const bool sample_stage=(shader_features()&SF_BSDF_FAMILIES).any();
   const size_t sample_at=ao_stack_at+(raytrace?size_t(n)*BVH_STACK_SIZE*sizeof(uint32_t):0);
-  const size_t needed=sample_at+(sample_stage?size_t(n)*64:0);
+  size_t needed=sample_at+(sample_stage?size_t(n)*64:0);
+  // A replay capture: the records of a dispatch of the whole path capacity (device.h capture_sizing).
+  if(capture_sizing){const size_t c=p[10];
+    const size_t full=c*MAX_CLOSURE*sizeof(SurfaceClosureRecord)+c*surface_stage_bytes+(reserve_shadow?sizeof(uint32_t):0)+(raytrace?c*BVH_STACK_SIZE*sizeof(uint32_t):0)+(sample_stage?c*64:0);
+    if(full>needed)needed=full;}
   if(needed>surface_closure_bytes){
     if(surface_closures){flush();release(surface_closures);surface_closures=0;surface_closure_bytes=0;}
     surface_closures=allocate(needed);surface_closure_bytes=needed;
@@ -193,8 +197,9 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   // With sun guiding (BACKGROUND_SUN) the background light's sample is one more entry,
   // shade_surface_light_background, after shade_surface_light (SF_BACKGROUND_SAMPLE_ENTRY,
   // pipelines.h): the light entries come from the module variant with that bit. So does a scene with background light
-  // portals (BACKGROUND_PORTAL), whose portal strategy kept shade_surface_light at 70,635 Intel instructions.
-  const bool background_stage=(shader_features()&(SF_BACKGROUND_SUN|SF_BACKGROUND_PORTAL)).any();
+  // portals (BACKGROUND_PORTAL), whose portal strategy kept shade_surface_light at 70,635 Intel instructions, and a scene
+  // with a background light and area lights (device.h surface_background_stage).
+  const bool background_stage=surface_background_stage();
   const ShaderFeatures light_variant=background_stage?SF_BACKGROUND_SAMPLE_ENTRY:SF_NONE;
   if(sample_stage&&(!pipeline_current(surface_sample,"shade_surface_sample")||!surface_sample.value))
     surface_sample=std::move(build_pipelines("surface",surface_source(),{"shade_surface_sample"})[0]);

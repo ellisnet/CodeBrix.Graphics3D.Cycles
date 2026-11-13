@@ -56,6 +56,8 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     private FilmNode film;
     private IntegratorNode integrator;
     private BackgroundNode background;
+    private SceneAttributesNode sceneAttributes;
+    private TimeSpan renderTimeLimit;
     private Task activeRender = Task.CompletedTask;
     private int disposed;
     private volatile bool faulted;
@@ -167,6 +169,12 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     public BackgroundNode Background => ThrowIfDisposed(background ??= Wrap<BackgroundNode>(Host.SceneNode("background")));
 
     /// <summary>
+    /// Gets the scene's time and frame (<see cref="SceneAttributesNode.Time"/> in seconds, <see cref="SceneAttributesNode.Frame"/>),
+    /// which a <see cref="SceneTimeNode"/> in a shader graph reads; 0 seconds and frame 1 until set.
+    /// </summary>
+    public SceneAttributesNode SceneAttributes => ThrowIfDisposed(sceneAttributes ??= Wrap<SceneAttributesNode>(Host.SceneNode("scene_attributes")));
+
+    /// <summary>
     /// Creates a scene node of a generated type that the native host creates directly
     /// (<see cref="NodeCreation.Scene"/>: objects, geometry, lights, shader graphs, particle systems, passes).
     /// </summary>
@@ -264,6 +272,24 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// </summary>
     /// <param name="subdivisions">0 to 4; the default is 3.</param>
     public void SetCurveSubdivisions(uint subdivisions) => Host.SetCurveSubdivisions(subdivisions);
+
+    /// <summary>
+    /// Gets or sets the wall-clock time limit of this scene's later renders and bakes (Cycles' render time limit).
+    /// <see cref="TimeSpan.Zero"/>, the default, renders every sample of <see cref="RenderSettings.Samples"/>; otherwise
+    /// a render stops once the limit has passed, after its first batch of samples, and returns the samples done by
+    /// then, so its film is not reproducible.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    public TimeSpan RenderTimeLimit
+    {
+        get => ThrowIfDisposed(renderTimeLimit);
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, TimeSpan.Zero);
+            Host.SetRenderTimeLimit(value.TotalSeconds);
+            renderTimeLimit = value;
+        }
+    }
 
     /// <summary>
     /// Creates an object that places a geometry (a mesh, other geometry or a light) in the scene.
@@ -649,7 +675,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// <returns>The film.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="target"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="target"/> belongs to another scene.</exception>
-    /// <exception cref="NativeFailure">The bake was rejected (status 1: no such UV attribute, a geometry that is not a mesh, a bad size), was refused (status 2: a scene the bake does not support, such as an approximate shadow catcher with an opaque background), failed (status 3, also when the device does not implement a combination, named in the message) or was cancelled (status 4).</exception>
+    /// <exception cref="NativeFailure">The bake was rejected (status 1: no such UV attribute, a geometry that is not a mesh, a bad size), was refused (status 2: a scene the bake does not support, such as a subdivision surface), failed (status 3, also when the device does not implement a combination, named in the message) or was cancelled (status 4).</exception>
     public FilmBuffer Bake(ObjectNode target, BakeSettings settings) => BakeCore(target, settings, new RenderListener(this, null, CancellationToken.None, settings.Samples, Stopwatch.StartNew()));
 
     /// <summary>

@@ -50,6 +50,21 @@ static void render_at(float *pixels, int line) {
 }
 #define render(pixels) render_at((pixels), __LINE__)
 static int same(const float *a, const float *b) { return memcmp(a, b, sizeof(float) * FLOATS) == 0; }
+/* A film that should equal an earlier one after an edit is undone: bit for bit on the CPU; on the WebGPU device, whose films
+ * differ between repeats of one scene in the last bits (per-word atomic film adds in an undefined order), by the practical
+ * criterion abs(a - e) <= 5e-5 + 2e-4 * abs(e) for every value (NaN and infinity fail). */
+static int practical(const float *a, const float *e) {
+  for (unsigned i = 0; i < FLOATS; ++i) if (!isfinite(a[i]) || !isfinite(e[i]) || !(fabsf(a[i] - e[i]) <= 5e-5f + 2e-4f * fabsf(e[i]))) return 0;
+  return 1;
+}
+/* Per restore check: values that differ bit for bit from the earlier film, and the largest absolute difference. */
+static unsigned restore_count = 0, restore_differing[8]; static float restore_max[8];
+static int restored(int gpu, const float *a, const float *e) {
+  unsigned n = 0; float worst = 0;
+  for (unsigned i = 0; i < FLOATS; ++i) if (memcmp(&a[i], &e[i], sizeof(float))) { n++; if (fabsf(a[i] - e[i]) > worst) worst = fabsf(a[i] - e[i]); }
+  if (restore_count < 8) { restore_differing[restore_count] = n; restore_max[restore_count] = worst; restore_count++; }
+  return gpu ? practical(a, e) : same(a, e);
+}
 static void save(const char *prefix, const char *name, const void *data, size_t bytes) {
   char path[4096]; REQUIRE(snprintf(path, sizeof(path), "%s.%s", prefix, name) > 0);
   FILE *file = fopen(path, "wb"); REQUIRE(file); REQUIRE(fwrite(data, 1, bytes, file) == bytes); REQUIRE(fclose(file) == 0);
@@ -156,12 +171,91 @@ int main(int argc, char **argv) {
   REQUIRE(cbc_host_pass_floats(host, "Combined", pass, FLOATS - 1, &required, &components) == CBC_SMALL_BUFFER && required == FLOATS);
   REQUIRE(cbc_host_pass_floats(host, "Missing", pass, FLOATS, &required, &components) == CBC_INVALID);
   REQUIRE(cbc_host_pass_floats(host, "Combined", pass, FLOATS, &required, NULL) == CBC_INVALID);
+  /* A repeat of the base render: bit for bit on the CPU, reported on the WebGPU device (and within the practical criterion). */
+  render(film_b); const int base_repeat_bit_identical = same(film_b, base); if (!gpu) REQUIRE(base_repeat_bit_identical); REQUIRE(practical(film_b, base));
 
   /* Film exposure (generic socket) scales the scene-linear result by 2^1. */
   scalar(film, "exposure", 2); render(film_b); scalar(film, "exposure", 1);
   unsigned exposure_ok = 0;
   for (unsigned i = 0; i < FLOATS; ++i) if (i % 4 == 3 || fabsf(film_b[i] - 2 * base[i]) <= 5e-5f + 2e-4f * fabsf(2 * base[i])) exposure_ok++;
   REQUIRE(exposure_ok == FLOATS);
+
+  /* Settings each render owns refuse a change (and accept their current value); an explicit camera viewplane (lens
+   * shift) is kept and all four sides zero restore the automatic one; the integrator's sample subset renders; the
+   * scene_attributes singleton holds the Scene Time node's frame; a colour links into a float input (Cycles inserts
+   * the conversion) while a closure cannot link into a value; Catmull-Clark subdivision is refused by name; a camera
+   * border renders its region of the film (zero outside), the host gate comparing the WebGPU region with the CPU's. */
+  unsigned api_reach = 0;
+  {
+    int64_t value = 2 * W; REQUIRE(cbc_host_set_ints(host, camera, "full_width", &value, 1) == CBC_INVALID);
+    value = H + 1; REQUIRE(cbc_host_set_ints(host, camera, "full_height", &value, 1) == CBC_INVALID);
+    value = 3; REQUIRE(cbc_host_set_ints(host, integrator, "aa_samples", &value, 1) == CBC_INVALID);
+    integer(camera, "full_width", W); integer(integrator, "aa_samples", 8); api_reach++;
+    float side[4]; const char *sides[] = {"viewplane.left", "viewplane.right", "viewplane.bottom", "viewplane.top"};
+    for (unsigned i = 0; i < 4; ++i) { CHECK(cbc_host_get_floats(host, camera, sides[i], &side[i], 1, &required)); }
+    REQUIRE(fabsf(side[0] + (float)W / H) < 1e-6f && fabsf(side[1] - (float)W / H) < 1e-6f && side[2] == -1 && side[3] == 1);
+    scalar(camera, sides[0], side[0] + .3f); scalar(camera, sides[1], side[1] + .3f);
+    render(film_b); REQUIRE(!same(film_b, base)); api_reach++;
+    scalar(camera, sides[1], side[0]);
+    CBCRenderConfig settings = {sizeof(settings), W, H, 8, {0}};
+    REQUIRE(cbc_host_render(host, &settings, film_b, FLOATS) == CBC_INVALID);
+    for (unsigned i = 0; i < 4; ++i) scalar(camera, sides[i], 0);
+    render(film_b); if (!gpu) REQUIRE(same(film_b, base));
+    CHECK(cbc_host_get_floats(host, camera, sides[0], &side[0], 1, &required)); REQUIRE(fabsf(side[0] + (float)W / H) < 1e-6f); api_reach++;
+    integer(integrator, "use_sample_subset", 1); integer(integrator, "sample_subset_offset", 4); integer(integrator, "sample_subset_length", 4);
+    render(film_b); REQUIRE(!same(film_b, base));
+    integer(integrator, "use_sample_subset", 0); render(film_b); if (!gpu) REQUIRE(same(film_b, base)); api_reach++;
+    CBCNode attributes = singleton("scene_attributes"); scalar(attributes, "frame", 2.5f);
+    float frame = 0; CHECK(cbc_host_get_floats(host, attributes, "frame", &frame, 1, &required)); REQUIRE(frame == 2.5f);
+    scalar(attributes, "frame", 1); REQUIRE(cbc_host_delete_node(host, attributes) == CBC_UNSUPPORTED); api_reach++;
+    CBCNode converted = create("shader"), colour = graph_node(converted, "color"), glow = graph_node(converted, "emission");
+    CHECK(cbc_host_connect(host, colour, "Color", glow, "Strength"));
+    REQUIRE(cbc_host_connect(host, glow, "Emission", glow, "Strength") == CBC_UNSUPPORTED);
+    CHECK(cbc_host_delete_node(host, converted)); api_reach++;
+    text(mesh, "subdivision_type", "catmull_clark");
+    REQUIRE(cbc_host_render(host, &settings, film_b, FLOATS) == CBC_UNSUPPORTED);
+    char message[512]; CHECK(cbc_host_error(message, sizeof(message), &required)); REQUIRE(strstr(message, "Catmull-Clark") != NULL);
+    text(mesh, "subdivision_type", "none"); api_reach++;
+    /* A linear subdivision cage (a quad) beside the triangle: invalid cages are refused, faces without a subdivision
+     * type fail the render, linear subdivision renders it; removing it restores the base film. */
+    {
+      CBCNode cage = create("mesh"), holder = create("object"); nodes(cage, "used_shaders", material); nodes(holder, "geometry", cage);
+      const float quad[12] = {-1.5f,-1.4f,-0.5f, 1.5f,-1.4f,-0.5f, 1.5f,-0.9f,-0.5f, -1.5f,-0.9f,-0.5f};
+      const uint32_t four = 4, two = 2, order[4] = {0, 1, 2, 3}, outside[4] = {0, 1, 2, 9};
+      REQUIRE(cbc_host_subd_mesh(host, cage, quad, 4, &two, 1, order, 2) == CBC_INVALID);
+      REQUIRE(cbc_host_subd_mesh(host, cage, quad, 4, &four, 1, order, 3) == CBC_INVALID);
+      REQUIRE(cbc_host_subd_mesh(host, cage, quad, 4, &four, 1, outside, 4) == CBC_INVALID);
+      CHECK(cbc_host_subd_mesh(host, cage, quad, 4, &four, 1, order, 4));
+      REQUIRE(cbc_host_render(host, &settings, film_b, FLOATS) == CBC_INVALID);
+      text(cage, "subdivision_type", "linear"); render(film_b); REQUIRE(!same(film_b, base));
+      CHECK(cbc_host_delete_node(host, holder)); CHECK(cbc_host_delete_node(host, cage));
+      render(film_b); if (!gpu) REQUIRE(same(film_b, base)); api_reach++;
+    }
+    scalar(camera, "border.right", 1); scalar(camera, "border.top", 1); render(film_b); if (!gpu) REQUIRE(same(film_b, base));
+    scalar(camera, "border.left", .25f); scalar(camera, "border.bottom", .5f);
+    render(film_b); save(prefix, "border.rgba.bin", film_b, sizeof(film_b));
+    unsigned inside = 0, outside_zero = 0, inside_same = 0;
+    for (unsigned y = 0; y < H; ++y) for (unsigned x = 0; x < W; ++x) for (unsigned c = 0; c < 4; ++c) {
+      const unsigned i = (y * W + x) * 4 + c;
+      if (x >= W / 4 && y >= H / 2) { inside++; if (film_b[i] == base[i]) inside_same++; }
+      else if (film_b[i] == 0) outside_zero++;
+    }
+    REQUIRE(outside_zero + inside == FLOATS && (gpu || inside_same == inside));
+    scalar(camera, "border.right", .1f); REQUIRE(cbc_host_render(host, &settings, film_b, FLOATS) == CBC_INVALID);
+    scalar(camera, "border.left", 0); scalar(camera, "border.bottom", 0); scalar(camera, "border.right", 0); scalar(camera, "border.top", 0); api_reach++;
+    REQUIRE(cbc_host_render_time_limit(host, -1) == CBC_INVALID && cbc_host_render_time_limit(host, NAN) == CBC_INVALID);
+    REQUIRE(cbc_host_render_time_limit(12345, 1) == CBC_INVALID);
+    CHECK(cbc_host_render_time_limit(host, .25)); CBCRenderConfig long_render = {sizeof(long_render), W, H, 1000000, {0}};
+    CHECK(cbc_host_render(host, &long_render, film_b, FLOATS)); render_count++;
+    for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(isfinite(film_b[i]));
+    CHECK(cbc_host_render_time_limit(host, 0)); render(film_b); if (!gpu) REQUIRE(same(film_b, base)); api_reach++;
+    REQUIRE(cbc_host_set_string(host, film, "display_pass", "normal") == CBC_INVALID); text(film, "display_pass", "combined");
+    value = 1; REQUIRE(cbc_host_set_ints(host, film, "show_active_pixels", &value, 1) == CBC_INVALID);
+    REQUIRE(cbc_host_set_ints(host, film, "use_sample_count", &value, 1) == CBC_INVALID); integer(film, "use_sample_count", 0);
+    scalar(integrator, "denoiser_upscale_factor", 2); integer(integrator, "use_denoise", 1);
+    REQUIRE(cbc_host_render(host, &settings, film_b, FLOATS) == CBC_UNSUPPORTED);
+    integer(integrator, "use_denoise", 0); scalar(integrator, "denoiser_upscale_factor", 1); api_reach++;
+  }
 
   /* Lights: every light node type the registry exposes. */
   const char *kinds[] = {"pointlight", "spotlight", "arealight", "sunlight", "backgroundlight"};
@@ -195,8 +289,8 @@ int main(int argc, char **argv) {
     REQUIRE(cbc_host_delete_node(host, light) == CBC_INVALID);
     REQUIRE(cbc_host_set_floats(host, light, "strength", m, 3) == CBC_INVALID);
   }
-  render(film_c); const int light_deletion_restores = same(film_c, base);
-  if (!gpu) REQUIRE(light_deletion_restores);
+  render(film_c); const int light_deletion_restores = restored(gpu, film_c, base);
+  REQUIRE(light_deletion_restores);
 
   /* Deletion rules. */
   REQUIRE(cbc_host_delete_node(host, camera) == CBC_INVALID && cbc_host_delete_node(host, integrator) == CBC_INVALID);
@@ -208,8 +302,8 @@ int main(int argc, char **argv) {
   render(film_c); REQUIRE(!same(film_c, base));
   value = graph_node(material, "color"); triple(value, "value", .7f, .2f, .1f);
   CHECK(cbc_host_connect(host, value, "Color", diffuse, "Color"));
-  render(film_c); const int graph_rebuild_restores = same(film_c, base);
-  if (!gpu) REQUIRE(graph_rebuild_restores);
+  render(film_c); const int graph_rebuild_restores = restored(gpu, film_c, base);
+  REQUIRE(graph_rebuild_restores);
 
   /* Point clouds: the topology and motion exports and their validation, point attributes, and the particle export. */
   {
@@ -319,8 +413,8 @@ int main(int argc, char **argv) {
       render(film_c);
     }
   }
-  const int motion_removal_restores = same(film_c, base);
-  if (!gpu) REQUIRE(motion_removal_restores);
+  const int motion_removal_restores = restored(gpu, film_c, base);
+  REQUIRE(motion_removal_restores);
 
   /* Cameras: projection types through the generic layer. */
   unsigned projections = 0, error_events = 0; int after_failure = -1;
@@ -330,7 +424,7 @@ int main(int argc, char **argv) {
   render(film_b); REQUIRE(!same(film_b, base)); projections++;
   text(camera, "camera_type", "panorama"); text(camera, "panorama_type", "equirectangular"); render(film_b); REQUIRE(!same(film_b, base)); projections++;
   text(camera, "camera_type", "perspective");
-  render(film_c); if (!gpu) REQUIRE(same(film_c, base));
+  render(film_c); REQUIRE(restored(gpu, film_c, base));
 
   /* Image updates: re-upload caller-decoded pixels to a bound handle. */
   uint8_t red[4 * 4 * 4], green[4 * 4 * 4];
@@ -353,11 +447,11 @@ int main(int argc, char **argv) {
   CBCImageConfig gray_config = {sizeof(gray_config), 2, 2, CBC_IMAGE_FLOAT, {0}};
   CHECK(cbc_host_image_update(host, image, &gray_config, gray, sizeof(gray))); render(third); REQUIRE(!same(third, second));
   CHECK(cbc_host_image_update(host, image, &image_config, red, sizeof(red))); render(third);
-  const int image_update_restores = same(first, third); if (!gpu) REQUIRE(image_update_restores);
+  const int image_update_restores = restored(gpu, third, first); REQUIRE(image_update_restores);
   /* Released handles cannot be updated; the binding keeps its pixels. */
   CHECK(cbc_host_image_release(host, image));
   REQUIRE(cbc_host_image_update(host, image, &image_config, green, sizeof(green)) == CBC_INVALID);
-  render(third); if (!gpu) REQUIRE(same(first, third));
+  render(third); REQUIRE(restored(gpu, third, first));
   CHECK(cbc_host_delete_node(host, texture)); CHECK(cbc_host_delete_node(host, coords));
   CHECK(cbc_host_connect(host, value, "Color", diffuse, "Color"));
 
@@ -467,15 +561,65 @@ int main(int argc, char **argv) {
   CHECK(cbc_host_destroy(host));
   REQUIRE(cbc_host_delete_node(host, world) == CBC_INVALID && cbc_host_backend(host, &backend) == CBC_INVALID);
   REQUIRE(cbc_host_set_event_callback(host, on_event, &events) == CBC_INVALID);
-  printf("{\"passed\":true,\"backend\":\"%s\",\"libraryVersion\":\"%s\",\"cyclesRevision\":\"%s\",\"renders\":%.0f,"
+  /* A heterogeneous medium inside a world volume with no background light object (the scene of
+     native/oracle/scenes/volumes/heterogeneous-in-world-volume.json, smaller): the host adds the background
+     light Cycles builds the world volume's octree from, for each render; a caller's background light
+     without the world shader renders too (the host lists the world shader on it for the render); with the
+     world shader listed by the caller the CPU film equals the first. */
+  int world_volume_repeat = 0, world_volume_light_status = -1, world_volume_explicit = 0;
+  {
+    CHECK(cbc_host_create(&config, &host)); CHECK(cbc_host_pipeline_cache_config(&cache, NULL));
+    CBCNode vi = singleton("integrator"), vc = singleton("camera");
+    integer(vi, "use_guiding", 0); integer(vi, "use_light_tree", 0); integer(vi, "use_adaptive_sampling", 0); integer(vi, "use_denoise", 0);
+    integer(vi, "min_bounce", 2); integer(vi, "max_bounce", 4); integer(vi, "max_volume_bounce", 4); integer(vi, "seed", 0);
+    text(vi, "sampling_pattern", "tabulated_sobol"); scalar(vc, "fov", 0.9f);
+    float vm[12]; translate(vm, 0, 0, -4); CHECK(cbc_host_set_floats(host, vc, "matrix", vm, 12));
+    CBCNode vw = create("shader"), vb = graph_node(vw, "background_shader"), vv = graph_node(vw, "scatter_volume");
+    triple(vb, "color", .3f, .35f, .42f); scalar(vv, "density", .03f); triple(vv, "color", .8f, .8f, .8f); scalar(vv, "anisotropy", .2f);
+    CHECK(cbc_host_connect(host, vb, "Background", output_of(vw), "Surface")); CHECK(cbc_host_connect(host, vv, "Volume", output_of(vw), "Volume"));
+    text(vw, "emission_sampling_method", "none"); nodes(singleton("background"), "shader", vw);
+    CBCNode medium = create("shader"), noise = graph_node(medium, "noise_texture"), times = graph_node(medium, "math");
+    CBCNode absorb = graph_node(medium, "absorption_volume"), scatter = graph_node(medium, "scatter_volume"), sum = graph_node(medium, "add_closure");
+    scalar(noise, "scale", 1.6f); scalar(noise, "detail", 2); text(times, "math_type", "multiply"); scalar(times, "value2", .8f);
+    scalar(absorb, "density", .05f); triple(absorb, "color", .8f, .65f, .4f); triple(scatter, "color", .75f, .8f, .9f); scalar(scatter, "anisotropy", .3f);
+    CHECK(cbc_host_connect(host, noise, "Fac", times, "Value1")); CHECK(cbc_host_connect(host, times, "Value", scatter, "Density"));
+    CHECK(cbc_host_connect(host, absorb, "Volume", sum, "Closure1")); CHECK(cbc_host_connect(host, scatter, "Volume", sum, "Closure2"));
+    CHECK(cbc_host_connect(host, sum, "Closure", output_of(medium), "Volume"));
+    text(medium, "emission_sampling_method", "none"); text(medium, "volume_sampling_method", "multiple_importance");
+    float box[24]; uint32_t faces[36] = {0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4, 3,7,6, 3,6,2, 0,4,7, 0,7,3, 1,2,6, 1,6,5};
+    for (unsigned i = 0; i < 8; ++i) { box[3*i] = (i == 1 || i == 2 || i == 5 || i == 6) ? 1.f : -1.f; box[3*i+1] = (i == 2 || i == 3 || i == 6 || i == 7) ? 1.f : -1.f; box[3*i+2] = i >= 4 ? 1.f : -1.f; }
+    CBCNode cube = create("mesh"); nodes(cube, "used_shaders", medium); CHECK(cbc_host_mesh(host, cube, box, 8, faces, 12));
+    CBCNode cube_object = create("object"); nodes(cube_object, "geometry", cube);
+    CBCNode lamp = create("pointlight"), lamp_object = create("object");
+    nodes(lamp, "used_shaders", emission_shader(1)); integer(lamp, "use_mis", 1); scalar(lamp, "radius", .2f); integer(lamp, "is_sphere", 1); triple(lamp, "strength", 60, 60, 60);
+    float lm[12]; translate(lm, 1.5f, 1.5f, -1.5f); CHECK(cbc_host_set_floats(host, lamp_object, "tfm", lm, 12)); nodes(lamp_object, "geometry", lamp);
+    float first[FLOATS], again[FLOATS];
+    render(first); save(prefix, "world-volume.rgba.bin", first, sizeof(first));
+    render(again); world_volume_repeat = same(first, again);
+    CBCNode world_light = create("backgroundlight"), world_light_object = create("object");
+    integer(world_light, "use_mis", 0); nodes(world_light_object, "geometry", world_light);
+    CBCRenderConfig volume_config = {sizeof(volume_config), W, H, 8, {0}};
+    world_volume_light_status = cbc_host_render(host, &volume_config, again, FLOATS);
+    for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(world_volume_light_status != CBC_OK || isfinite(again[i]));
+    nodes(world_light, "used_shaders", vw); render(again); world_volume_explicit = same(first, again);
+    CHECK(cbc_host_destroy(host));
+  }
+  char restores[512]; size_t used = (size_t)snprintf(restores, sizeof(restores), "\"restoreDifferingValues\":[");
+  for (unsigned i = 0; i < restore_count; ++i) used += (size_t)snprintf(restores + used, sizeof(restores) - used, "%s%u", i ? "," : "", restore_differing[i]);
+  used += (size_t)snprintf(restores + used, sizeof(restores) - used, "],\"restoreMaxAbsDifference\":[");
+  for (unsigned i = 0; i < restore_count; ++i) used += (size_t)snprintf(restores + used, sizeof(restores) - used, "%s%.9g", i ? "," : "", (double)restore_max[i]);
+  snprintf(restores + used, sizeof(restores) - used, "],");
+  printf("{\"passed\":true,%s\"backend\":\"%s\",\"libraryVersion\":\"%s\",\"cyclesRevision\":\"%s\",\"renders\":%.0f,"
          "\"lightTypes\":%u,\"litRenders\":%u,\"projections\":%u,\"lightDeletionRestores\":%s,\"graphRebuildRestores\":%s,"
-         "\"motionRemovalRestores\":%s,\"imageUpdateRestores\":%s,\"depthStatus\":%d,\"normalStatus\":%d,\"aovStatus\":%d,"
+         "\"motionRemovalRestores\":%s,\"imageUpdateRestores\":%s,\"baseRepeatBitIdentical\":%s,\"depthStatus\":%d,\"normalStatus\":%d,\"aovStatus\":%d,"
          "\"progressEvents\":%u,\"statusEvents\":%u,\"refusedReentry\":%u,\"cancelledByCallback\":true,\"errorEvents\":%u,"
-         "\"dataPassRender\":%d,\"lightPassRender\":%d,\"diffuseDirectStatus\":%d,\"backgroundStatus\":%d,\"renderAfterDeviceFailure\":%d}\n",
-         gpu ? "gpu" : "cpu", version.library_version, version.cycles_revision, render_count, light_types, lit_renders, projections,
+         "\"dataPassRender\":%d,\"lightPassRender\":%d,\"diffuseDirectStatus\":%d,\"backgroundStatus\":%d,\"renderAfterDeviceFailure\":%d,\"apiReach\":%u,"
+         "\"worldVolumeRepeat\":%s,\"worldVolumeLightStatus\":%d,\"worldVolumeExplicit\":%s}\n",
+         restores, gpu ? "gpu" : "cpu", version.library_version, version.cycles_revision, render_count, light_types, lit_renders, projections,
          light_deletion_restores ? "true" : "false", graph_rebuild_restores ? "true" : "false",
-         motion_removal_restores ? "true" : "false", image_update_restores ? "true" : "false",
+         motion_removal_restores ? "true" : "false", image_update_restores ? "true" : "false", base_repeat_bit_identical ? "true" : "false",
          depth_status, normal_status, mask_status, events.progress, events.status, events.refused, error_events,
-         data_pass_render, light_pass_render, direct_status, sky_status, after_failure);
+         data_pass_render, light_pass_render, direct_status, sky_status, after_failure, api_reach,
+         world_volume_repeat ? "true" : "false", world_volume_light_status, world_volume_explicit ? "true" : "false");
   return 0;
 }

@@ -159,7 +159,10 @@ class WebGPUQueue final:public DeviceQueue {
           case DEVICE_KERNEL_INTEGRATOR_COMPACT_PATHS_ARRAY:mode=3;break;
           case DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_PATHS_ARRAY:mode=3;shadow=true;break;
           case DEVICE_KERNEL_INTEGRATOR_SORTED_PATHS_ARRAY:mode=4;break;
-          default:throw std::runtime_error("WebGPU kernel not implemented: "+std::string(device_kernel_as_string(kernel)));
+          // The pinned scheduler never enqueues the other kernels for this device (not ported to this device): the megakernel, the sort
+          // passes (supports_local_atomic_sort is false), film convert (no display driver) and the denoise filter kernels (the
+          // device reports no GPU denoiser, so Open Image Denoise runs on the CPU). Anything else is invalid scheduler input.
+          default:throw std::runtime_error("Invalid WebGPU scheduler input: kernel outside this device: "+std::string(device_kernel_as_string(kernel)));
         }
         p[0]=mode==4?3:2;p[1]=scalar(0);p[19]=mode;require(uint32_t(work)>=p[1],"Incomplete scheduler dispatch");
         p[2]=state_pointer(shadow?d.state.shadow_path.queued_kernel:d.state.path.queued_kernel,size_t(p[1])*2);

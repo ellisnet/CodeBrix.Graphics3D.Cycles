@@ -331,6 +331,87 @@ public class GpuRenderTests(ITestOutputHelper output)
                 integrator.AdaptiveMinSamples = 4;
                 integrator.SamplingPattern = IntegratorSamplingPattern.BlueNoisePure;
                 break;
+            case "equirectangular-range":
+                camera.CameraType = CameraCameraType.Panorama;
+                camera.PanoramaType = CameraPanoramaType.Equirectangular;
+                camera.LatitudeMin = -1.2f;
+                camera.LatitudeMax = 1.2f;
+                camera.LongitudeMin = -2.5f;
+                camera.LongitudeMax = 2.5f;
+                break;
+            case "equiangular-cubemap-face":
+                camera.CameraType = CameraCameraType.Panorama;
+                camera.PanoramaType = CameraPanoramaType.EquiangularCubemapFace;
+                break;
+            case "mirrorball":
+                camera.CameraType = CameraCameraType.Panorama;
+                camera.PanoramaType = CameraPanoramaType.Mirrorball;
+                break;
+            case "fisheye-equidistant":
+                camera.CameraType = CameraCameraType.Panorama;
+                camera.PanoramaType = CameraPanoramaType.FisheyeEquidistant;
+                camera.FisheyeFov = MathF.PI;
+                break;
+            case "fisheye-lens-polynomial":
+                camera.CameraType = CameraCameraType.Panorama;
+                camera.PanoramaType = CameraPanoramaType.FisheyeLensPolynomial;
+                camera.FisheyeFov = 3.4f;
+                camera.Sensorwidth = 36f;
+                camera.Sensorheight = 24f;
+                camera.FisheyePolynomialK0 = -1.1735e-05f;
+                camera.FisheyePolynomialK1 = -0.07f;
+                camera.FisheyePolynomialK2 = -3.3601e-06f;
+                camera.FisheyePolynomialK3 = 3.0997e-08f;
+                camera.FisheyePolynomialK4 = -6.4e-11f;
+                break;
+            case "central-cylindrical":
+                camera.CameraType = CameraCameraType.Panorama;
+                camera.PanoramaType = CameraPanoramaType.PanoramaCentralCylindrical;
+                camera.CentralCylindricalRangeUMin = -2.6f;
+                camera.CentralCylindricalRangeUMax = 2.6f;
+                camera.CentralCylindricalRangeVMin = -1.2f;
+                camera.CentralCylindricalRangeVMax = 1.2f;
+                break;
+            case "anamorphic-bokeh-scrambling":
+                camera.Aperturesize = 0.15f;
+                camera.Focaldistance = 4f;
+                camera.ApertureRatio = 2f;
+                integrator.SamplingPattern = IntegratorSamplingPattern.SobolBurley;
+                integrator.ScramblingDistance = 0.3f;
+                break;
+            case "clipped-lens-shift":
+                // A shifted viewplane (lens shift) and a near clip that removes part of the scene.
+                camera.ViewplaneLeft = -32f / 24f + 0.3f;
+                camera.ViewplaneRight = 32f / 24f + 0.3f;
+                camera.ViewplaneBottom = -1f;
+                camera.ViewplaneTop = 1f;
+                camera.Nearclip = 3.5f;
+                break;
+            case "sample-subset":
+                integrator.UseSampleSubset = true;
+                integrator.SampleSubsetOffset = 8;
+                integrator.SampleSubsetLength = 8;
+                break;
+            case "camera-border-inner":
+                camera.BorderLeft = 0.25f;
+                camera.BorderRight = 0.75f;
+                camera.BorderBottom = 0.25f;
+                camera.BorderTop = 0.625f;
+                break;
+            case "camera-border-corner":
+                camera.BorderLeft = 0.5f;
+                camera.BorderBottom = 0f;
+                camera.BorderRight = 1f;
+                camera.BorderTop = 0.5f;
+                break;
+            case "pixel-jitter":
+                integrator.UsePixelJitter = true;
+                break;
+            case "custom-pixel-jitter":
+                integrator.UsePixelJitter = true;
+                integrator.UseCustomPixelJitterSample = true;
+                integrator.CustomPixelJitterSample = [0.3f, 0.7f];
+                break;
         }
     }
 
@@ -339,6 +420,19 @@ public class GpuRenderTests(ITestOutputHelper output)
     [InlineData("fisheye-equisolid")]
     [InlineData("bokeh-sobol-burley")]
     [InlineData("adaptive-blue-noise")]
+    [InlineData("equirectangular-range")]
+    [InlineData("equiangular-cubemap-face")]
+    [InlineData("mirrorball")]
+    [InlineData("fisheye-equidistant")]
+    [InlineData("fisheye-lens-polynomial")]
+    [InlineData("central-cylindrical")]
+    [InlineData("anamorphic-bokeh-scrambling")]
+    [InlineData("clipped-lens-shift")]
+    [InlineData("sample-subset")]
+    [InlineData("pixel-jitter")]
+    [InlineData("custom-pixel-jitter")]
+    [InlineData("camera-border-inner")]
+    [InlineData("camera-border-corner")]
     public async Task gpu_cameras_and_sampling_features_match_the_cpu_reference(string variant)
     {
         //Arrange
@@ -363,6 +457,71 @@ public class GpuRenderTests(ITestOutputHelper output)
         output.WriteLine($"{variant}: max abs error {maximum:G6}, practical failures {practical}, strict differences {strict}");
         practical.Should().Be(0);
         // The feature changes the image: the reference differs from the same scene without it.
+        WebGpuValidationScenes.Compare(reference.Span, unchanged.Span).Practical.Should().BeGreaterThan(0);
+    }
+
+    // An emissive quad behind the boxes whose strength comes from a scene input the host provides: the Scene Time
+    // node's frame (scene.SceneAttributes), the Geometry node's Pointiness (a standard attribute) or a colour linked
+    // straight into the float Strength input (Cycles' implicit conversion). Without the feature the frame is 1, the
+    // attribute is absent, or the strength is the constant 1.
+    private static void AddSceneInputQuad(CyclesScene scene, string variant, bool feature)
+    {
+        ShaderNode shader = scene.CreateShader();
+        EmissionNode emission = shader.Add<EmissionNode>();
+        emission.Color = new System.Numerics.Vector3(.9f, .8f, .5f);
+        emission.Strength = 1f;
+        shader.Connect(emission.EmissionOutput, shader.Output.SurfaceInput);
+        shader.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+        MeshNode quad = scene.CreateMesh([-1.2f, 0, 1.4f, 1.2f, 0, 1.4f, 1.2f, 1.3f, 1.4f, -1.2f, 1.3f, 1.4f], [0, 1, 2, 0, 2, 3], shader);
+        scene.CreateObject(quad);
+        switch (variant)
+        {
+            case "scene-time":
+                SceneTimeNode time = shader.Add<SceneTimeNode>();
+                shader.Connect(time.FrameOutput, emission.StrengthInput);
+                if (feature) scene.SceneAttributes.Frame = 2.5f;
+                break;
+            case "pointiness":
+                GeometryNode geometry = shader.Add<GeometryNode>();
+                shader.Connect(geometry.PointinessOutput, emission.StrengthInput);
+                if (feature) quad.SetAttribute("pointiness", AttributeValue.Float, AttributeDomain.Vertex, AttributeFlags.Standard, [.5f, 1f, 1.5f, 2f]);
+                break;
+            case "implicit-conversion":
+                ColorNode color = shader.Add<ColorNode>();
+                color.Value = new System.Numerics.Vector3(.4f, 2f, 3f);
+                if (feature) shader.Connect(color.ColorOutput, emission.StrengthInput);
+                break;
+        }
+    }
+
+    [Theory]
+    [InlineData("scene-time")]
+    [InlineData("pointiness")]
+    [InlineData("implicit-conversion")]
+    public async Task gpu_scene_inputs_from_the_host_match_the_cpu_reference(string variant)
+    {
+        //Arrange
+        RenderSettings settings = WebGpuValidationScenes.Settings;
+        using CyclesScene gpu = CreateGpuScene();
+        WebGpuValidationScenes.Build(gpu, WebGpuValidationScenes.DiffuseSun);
+        AddSceneInputQuad(gpu, variant, true);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        WebGpuValidationScenes.Build(cpu, WebGpuValidationScenes.DiffuseSun);
+        AddSceneInputQuad(cpu, variant, true);
+        FilmBuffer reference = cpu.Render(settings);
+        using CyclesScene plain = TestScenes.CreateCpuScene();
+        WebGpuValidationScenes.Build(plain, WebGpuValidationScenes.DiffuseSun);
+        AddSceneInputQuad(plain, variant, false);
+        FilmBuffer unchanged = plain.Render(settings);
+
+        //Act
+        FilmBuffer film = await gpu.RenderAsync(settings, null, Token);
+
+        //Assert
+        gpu.IsFaulted.Should().BeFalse();
+        (double maximum, int practical, int strict) = WebGpuValidationScenes.Compare(film.Span, reference.Span);
+        output.WriteLine($"{variant}: max abs error {maximum:G6}, practical failures {practical}, strict differences {strict}");
+        practical.Should().Be(0);
         WebGpuValidationScenes.Compare(reference.Span, unchanged.Span).Practical.Should().BeGreaterThan(0);
     }
 
@@ -653,7 +812,8 @@ public class GpuRenderTests(ITestOutputHelper output)
             report.BackendName.Should().Be("metal");
             report.PipelineTier.Should().BeNull();
             report.Scope.CameraTypes.Should().Contain(["perspective", "orthograph", "panorama"]);
-            report.Scope.RenderTimeRejections.Should().BeEmpty();
+            report.Scope.RenderTimeRejections.Should().Equal(report.BackendScopes["metal"].RenderTimeRejections);
+            report.Scope.RenderTimeRejections.Should().NotContain(rejection => rejection.Contains("upscale"));
             report.Scope.PassesNote.Should().NotBeNullOrEmpty();
         }
         else

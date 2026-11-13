@@ -47,13 +47,22 @@ class EnvironmentImageLoader final:public ccl::ImageLoader {
   ccl::string name()const override{return "Environment fixture "+std::to_string(variant);}
   bool equals(const ccl::ImageLoader &other)const override{auto p=dynamic_cast<const EnvironmentImageLoader*>(&other);return p&&p->width==width&&p->height==height&&p->variant==variant;}
 };
-enum class EnvironmentWorld {Constant,Procedural,Hdri};
+// LightPath: the procedural world with its strength 0.6 + 0.2 * Ray Depth + 0.1 * Diffuse + 0.05 * Glossy + 0.03 * Transparent
+// + 0.04 * Transmission Depth (the Light Path node in world evaluations: the importance map, the background hits, light sampling).
+enum class EnvironmentWorld {Constant,Procedural,Hdri,LightPath};
 inline ccl::Shader *environment_world(ccl::Scene &scene,EnvironmentWorld kind,unsigned variant=0){
   using namespace ccl;auto g=make_unique<ShaderGraph>();auto bg=g->create_node<BackgroundNode>();
   if(kind==EnvironmentWorld::Constant){bg->set_color(make_float3(.35f,.45f,.6f));bg->set_strength(1.2f);}
-  else if(kind==EnvironmentWorld::Procedural){
+  else if(kind==EnvironmentWorld::Procedural||kind==EnvironmentWorld::LightPath){
     auto coords=g->create_node<TextureCoordinateNode>();auto noise=g->create_node<NoiseTextureNode>();noise->set_scale(2.5f);noise->set_detail(2.f);
     g->connect(coords->output("Generated"),noise->input("Vector"));g->connect(noise->output("Color"),bg->input("Color"));bg->set_strength(1.6f);
+    if(kind==EnvironmentWorld::LightPath){auto path=g->create_node<LightPathNode>();ShaderOutput *sum=nullptr;
+      const std::pair<const char*,float> terms[]={{"Ray Depth",.2f},{"Diffuse Depth",.1f},{"Glossy Depth",.05f},{"Transparent Depth",.03f},{"Transmission Depth",.04f}};
+      for(auto [name,weight]:terms){auto term=g->create_node<MathNode>();term->set_math_type(NODE_MATH_MULTIPLY_ADD);term->set_value2(weight);term->set_value3(sum?0.f:.6f);
+        g->connect(path->output(name),term->input("Value1"));
+        if(sum){auto add=g->create_node<MathNode>();add->set_math_type(NODE_MATH_ADD);g->connect(sum,add->input("Value1"));g->connect(term->output("Value"),add->input("Value2"));sum=add->output("Value");}
+        else sum=term->output("Value");}
+      g->connect(sum,bg->input("Strength"));}
   }else{
     ImageParams p;p.interpolation=INTERPOLATION_LINEAR;p.extension=EXTENSION_REPEAT;p.alpha_type=IMAGE_ALPHA_ASSOCIATED;
     const unsigned w=variant==3?512:64,h=variant==3?256:32;

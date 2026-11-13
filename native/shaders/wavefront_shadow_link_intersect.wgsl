@@ -45,10 +45,19 @@ fn dedicated_lamp_distance(light:u32,kind:u32,origin:vec3<f32>,direction:vec3<f3
         t=rounded_divide(-rounded_add(rounded_dot(origin,N),-rounded_dot(position,N)),facing);if(!(t>tmin&&t<tmax)){return -1.0;}
         let plane=rounded_add3(origin,t*direction)-position;
         let axis_u=heap_vec3(light+L_area_axis_u);let len_u=heap_float(light+L_area_len_u);let axis_v=heap_vec3(light+L_area_axis_v);let len_v=heap_float(light+L_area_len_v);
+//#if LIGHT_AREA_DEGENERATE
+        // A zero-length axis: its NaN coordinate passes its test and the ellipse test (intersect_point_lights).
+        var u=0.0;var v=0.0;
+        if(len_u!=0.0){u=rounded_dot(plane,closest_native_div3(axis_u,len_u));if(u< -0.5||u>0.5){return -1.0;}}
+        if(len_v!=0.0){v=rounded_dot(plane,closest_native_div3(axis_v,len_v));if(v< -0.5||v>0.5){return -1.0;}}
+        if(len_u!=0.0&&len_v!=0.0&&heap_float(light+L_area_invarea)<0.0&&rounded_add(u*u,v*v)>0.25){return -1.0;}
+//#endif
+//#if !LIGHT_AREA_DEGENERATE
         let u=rounded_dot(plane,closest_native_div3(axis_u,len_u));
         if(u< -0.5||u>0.5){return -1.0;}
         let v=rounded_dot(plane,closest_native_div3(axis_v,len_v));
         if(v< -0.5||v>0.5){return -1.0;}if(heap_float(light+L_area_invarea)<0.0&&rounded_add(u*u,v*v)>0.25){return -1.0;}
+//#endif
         return t;
     }
     if(kind==LIGHT_SPOT&&rounded_dot(direction,origin-position)>=0.0){return -1.0;}

@@ -1247,7 +1247,7 @@ public static class NodeType
             new SocketInfo("phase", "Phase", "enum", ValueKind.Enum, 1u, (PropertyFlags)24, null, [new EnumEntry("Draine", 42), new EnumEntry("Fournier-Forand", 40), new EnumEntry("Henyey-Greenstein", 38), new EnumEntry("Mie", 39), new EnumEntry("Rayleigh", 41)]),
             new SocketInfo("volume_mix_weight", "VolumeMixWeight", "float", ValueKind.Float, 1u, (PropertyFlags)30, null, [])],
             [new SocketInfo("volume", "Volume", "closure", ValueKind.Closure, 0u, (PropertyFlags)0, null, [])]),
-        new NodeTypeInfo("scene_attributes", NodeCategory.Scene, NodeCreation.Unavailable, null, true, typeof(SceneAttributesNode), static (scene, handle, graph) => new SceneAttributesNode(scene, handle),
+        new NodeTypeInfo("scene_attributes", NodeCategory.Scene, NodeCreation.Singleton, null, true, typeof(SceneAttributesNode), static (scene, handle, graph) => new SceneAttributesNode(scene, handle),
             [new SocketInfo("time", "Time", "float", ValueKind.Float, 1u, (PropertyFlags)24, null, []),
             new SocketInfo("frame", "Frame", "float", ValueKind.Float, 1u, (PropertyFlags)24, null, [])],
             []),

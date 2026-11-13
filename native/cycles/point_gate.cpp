@@ -155,7 +155,7 @@ static void run_case(const DeviceInfo &info,const Case &spec,std::vector<Row> &r
             for(size_t k=0;k<size;k+=4){uint a,e;std::memcpy(&a,reinterpret_cast<const char*>(&got)+offset+k,4);std::memcpy(&e,reinterpret_cast<const char*>(&want)+offset+k,4);
               if(!floating){if(a!=e){row.sd_int++;if(mismatch_log)mismatch_log<<"sd-int "<<name<<" "<<field<<" i="<<selected[i]<<" gpu="<<a<<" cpu="<<e<<" type="<<want.type<<"\n";}continue;}
               const float av=std::bit_cast<float>(a),ev=std::bit_cast<float>(e);const double error=std::abs(double(av)-ev);row.sd_float++;row.sd_bits+=a!=e;
-              if(std::isfinite(ev)&&std::isfinite(av))row.sd_maximum=std::max(row.sd_maximum,error);row.sd_strict+=error>1e-7+1e-7*std::abs(double(ev));
+              if(std::isfinite(ev)&&std::isfinite(av)){row.sd_maximum=std::max(row.sd_maximum,error);}row.sd_strict+=error>1e-7+1e-7*std::abs(double(ev));
               const bool ok=a==e||(std::isfinite(av)&&std::isfinite(ev)&&error<=5e-5+2e-4*std::abs(double(ev)));row.sd_practical+=!ok;
               if((!ok||a!=e)&&mismatch_log)mismatch_log<<(ok?"sd-bits ":"sd-float ")<<name<<" "<<field<<"["<<k/4<<"] i="<<selected[i]<<" type="<<want.type<<" gpu="<<std::setprecision(9)<<av<<" cpu="<<ev<<"\n";}
           };
@@ -221,7 +221,7 @@ static unsigned refusals(const DeviceInfo &info){
       g->connect(noise->output("Fac"),displace->input("Height"));g->connect(displace->output("Displacement"),g->output()->input("Displacement"));g->connect(bsdf->output("BSDF"),g->output()->input("Surface"));second->set_graph(std::move(g));second->tag_update(&scene);}
     point_fixture(scene,scene.default_surface,second,scene.default_surface,64,POINT_STATIC);Progress progress;scene.device_update(&d,progress);healthy(d);
     auto &data=scene.dscene.data;data.integrator.use_light_mis=0;data.integrator.use_caustics=0;data.integrator.transparent_shadows=0;
-    if(test==0)data.bvh.use_bvh_steps=1;const std::string reason=test==0?"BVH time steps":"Both displacement shader";
+    if(test==0){data.bvh.use_bvh_steps=1;}const std::string reason=test==0?"BVH time steps":"Both displacement shader";
     d.const_copy_to("data",&data,sizeof(data));healthy(d);
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Point refusal setup failed");
     device_vector<float> film(&d,"refused_film",MEM_READ_WRITE);film.alloc(16);film.zero_to_device();

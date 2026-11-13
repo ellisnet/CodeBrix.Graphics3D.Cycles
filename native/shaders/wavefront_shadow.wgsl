@@ -229,6 +229,9 @@ fn shadow_write_film(index:u32){
     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag&~SC_FLAGS)||count>4095u){fail();return;}
 //#endif
     let recorded=min(count,SHADOW_HIT_CAPACITY);
+//#if LIGHT_PATH_STATE
+    svm_shadow_path=index;
+//#endif
 //#if VOLUME_SHADOW
     // integrate_transparent_shadow with volumes: the medium before each recorded hit, the hit's surface (a
     // volume-only boundary counts a volume bounds bounce and is fully transparent), the stack enter or exit;

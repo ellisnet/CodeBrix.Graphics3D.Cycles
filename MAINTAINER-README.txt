@@ -98,8 +98,16 @@ osx-arm64 profile uses the native Metal device. The GPU backend is fixed per RID
 
 The goal is full Cycles parity on all nine RIDs: through the WGSL device on the
 eight WebGPU RIDs, and through Cycles' unchanged Metal device on osx-arm64. The
-work is in progress, and neither the native host nor the package is a
-production release yet.
+target is stock Cycles-with-Metal as in Blender, minus OSL, OpenVDB/NanoVDB,
+OpenSubdiv and USD/Alembic/Hydra (docs/PARITY.md). How far the WGSL device has
+come: docs/PARITY.md "Parity estimate" (implementation coverage of the target,
+by family); what the device and the host still refuse, each by name:
+AGENT-README.txt "RENDER-TIME REJECTIONS", which the capability report states
+in the same words (CapabilityReportTests compares them), and native/DEVICE.md
+"Open device items" for every refusal that is not permanent. Linux x64 is the
+platform validated in full (native/evidence); the other RIDs are built from the
+same source and are not being validated at present.
+Neither the native host nor the package is a production release yet.
 
 The library handles raw pixel buffers only. All image file encoding and
 decoding belongs to CodeBrix.Imaging; never add image codecs here.
@@ -604,11 +612,15 @@ The native validation is separate from `dotnet test`. The maintained Linux host
 gate rebuilds the native targets, generates 786 independent CPU reference films,
 and runs the C and managed lifecycle, color-reload, concurrency and GPU
 lifecycle checks, plus the ABI test (abi_consumer.c, CPU and WebGPU) and the
-ABI.md example (example.c), and checks the 58 exports:
+ABI.md example (example.c), and checks that the library exports exactly the
+functions cycles_host.h declares (the gates hard-code their number too: a new
+export updates every platform's export list, native/host/exports.*, and every
+*host_gate.py):
 
     python3 native/tools/host_gate.py --output native/work/<new-folder>
 
-Use a new output folder for each run (allow about 20 minutes). Texture baking has
+Use a new output folder for each run (allow about 10 minutes on a quiet
+machine). Texture baking has
 its own gate, CPU bakes of small scenes against values derived by hand or computed
 independently of the library, seconds to run:
 
@@ -620,8 +632,10 @@ probe gates compile scene-specialized modules, like the renderer. The
 specialization on/off film check uses the superset mode
 (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset:G, size-bounded groups):
 glass_gate.py, principled_gate.py and nodes_gate.py (nodes_world and
-nodes_render) run every group by default and require bit-identical films
-(--off-mode unspecialized selects the whole unspecialized module, a diagnostic
+nodes_render) run every group by default: CPU films and other files must be
+bit-identical, every WebGPU film within the practical criterion of the CPU film
+of its run, and the WebGPU films' bit identity is reported (WebGPU films differ
+between repeats in the last bits) (--off-mode unspecialized selects the whole unspecialized module, a diagnostic
 that exceeds the Intel Mesa 25.0.7 16-bit instruction/register range;
 --off-mode none skips the check). native/tools/unspecialized_compile_smoke.py
 records the unspecialized module size and cold compile time as warnings only.
@@ -668,7 +682,10 @@ report's "warnings" (so ICapabilityReport.Warnings) with a "sizeGuard" object
 It never changes the variant, the tier or the "degraded" flag.
 CODEBRIX_CYCLES_PIPELINE_SIZE_WARN_BYTES overrides the threshold (0 disables).
 native/tools/pipeline_size_guard_check.py is its Linux gate check (a render gate
-run at the default and at a lowered threshold; films must be bit-identical).
+run at the default and at a lowered threshold; both runs must build the same
+pipelines from byte-identical modules, CPU films stay bit-identical and every
+WebGPU film is within the practical criterion of its CPU film; the WebGPU films'
+bit identity is reported).
 The specialization feature mask (pipelines.h ShaderFeatures) is a fixed array of
 64-bit words (256 bits); bit numbers keep their meaning once assigned (0-61 and
 63 are in use, 62 and 64 onwards are free); reports and logs carry feature
@@ -818,7 +835,13 @@ call uses) for shader graph nodes; NodeType.cs carries every type and socket
 with its factory. The few hand-maintained members (shader graph Output, Add and
 Connect, geometry attributes, mesh triangles and deformation motion, texture
 Bind and Unbind) are the
-EXTRAS table in the script and delegate to CyclesScene. Generated files carry
+EXTRAS table in the script and delegate to CyclesScene. SINGLETONS in the script
+names the cbc_host_scene_node types (they get NodeCreation.Singleton), and
+FLAG_ENUMS the enum sockets that hold a bit set (generated with [Flags]). Typed
+flag views of integer sockets (ObjectNode.RayVisibility, BackgroundNode
+.RayVisibility, IntegratorNode.DenoiserGuides) are hand-written partial classes
+under src/CodeBrix.Graphics3D.Cycles/Nodes/; NodeTypeTests' TypedViews table
+names them for the round trip. Generated files carry
 the two-line copyright/SPDX header and an <auto-generated> banner; every
 public member has an XML doc comment generated from the registry (native
 name, UI name, socket type), so CS1591 stays satisfied without suppression.
@@ -1120,8 +1143,20 @@ Driver caches below this one (measured, not configured by this repository):
 
 NOTES
 =====
-- The CPU reference backend is the oracle for the WebGPU backend; GPU feature
-  coverage is still partial (see native/DEVICE.md and docs/PARITY.md).
+- The CPU reference backend is the oracle for the WebGPU backend. Feature
+  coverage against the target: docs/PARITY.md; refusals: AGENT-README.txt
+  "RENDER-TIME REJECTIONS" and native/DEVICE.md.
+- A socket a consumer can set must have an effect or be refused, never be
+  silently lost: the host refuses a changing set of sockets each render owns
+  or that never reach the film (fixed_socket in cycles_host.cpp; committed
+  scene documents set only their default values), keeps a
+  caller's camera viewplane, takes the integrator's sample subset into the
+  session, renders a camera border's region (BufferParams full_x/full_y,
+  HostOutput placing the region in the film), keeps the dicing camera equal
+  to the render camera when subdivision faces exist, and refuses Catmull-Clark
+  subdivision at render.
+  When a new socket turns out to be inert, extend that rule and its tests
+  (SceneSettingsTests, abi_consumer.c "apiReach").
 - Color configuration and pipeline-tier configuration are process-wide in the
   native layer; keep tests that touch them out of the parallel xUnit suite. The
   pipeline cache's configuration is process-wide too, but it cannot change a film:
@@ -1141,7 +1176,10 @@ NOTES
   refused edit of a baked volume, becomes InvalidOperationException);
   cbc_host_set_event_callback -> CyclesScene.RenderEventReceived and
   RenderAsync progress/cancellation; cbc_host_pass_floats and
-  cbc_host_render_passes_json -> AddPass, GetRenderedPasses, ReadPass.
+  cbc_host_render_passes_json -> AddPass, GetRenderedPasses, ReadPass;
+  cbc_host_render_time_limit -> CyclesScene.RenderTimeLimit;
+  cbc_host_subd_mesh -> MeshNode.SetSubdivisionCage (CyclesHost.SubdivisionMesh); the
+  scene_attributes singleton -> CyclesScene.SceneAttributes.
 - Render event callback design: every render (sync and async) takes a
   per-scene render lock, registers one [UnmanagedCallersOnly] static callback
   with a GCHandle to a per-render listener, renders, clears the callback and

@@ -43,7 +43,9 @@ class WebGPUDevice final:public Device {
   bool fingerprint_readback(uint32_t,void*,size_t);
   // Tables the pinned scene code leaves partly unset (union members of another light type, padding) hold whatever the
   // allocator returned. The kernels cannot read those bytes; fingerprint mode zeroes the block so that they cannot change the hash.
-  void *host_alloc(const MemoryType type,const size_t size) override{void *p=Device::host_alloc(type,size);if(p&&fingerprint)std::memset(p,0,size);return p;}
+  // Table memory starts cleared, so that padding and the union members of another light type upload the same bytes in every
+  // run (native/DEVICE.md 55; the fingerprint hashed them cleared already).
+  void *host_alloc(const MemoryType type,const size_t size) override{void *p=Device::host_alloc(type,size);if(p)std::memset(p,0,size);return p;}
   bool fingerprint_module(const char*,const char*,ShaderFeatures,const std::string&,std::vector<cbc::Pipeline>&);
   cbc::Buffer arena;
   cbc::Handle<WGPUCommandEncoder,wgpuCommandEncoderRelease> encoder;
@@ -198,8 +200,10 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline volume_light_background;
   // The indirect phase scatter with phase functions beyond Henyey-Greenstein (volume module, VOLUME_PHASES).
   cbc::Pipeline volume_phase;
-  // Paths through heterogeneous volumes (volume module, VOLUME_HETEROGENEOUS).
+  // Paths through heterogeneous volumes (volume module, VOLUME_HETEROGENEOUS): the integration's steps and its shader
+  // evaluations alternate between two entries through the per-input split records (volume.cpp).
   cbc::Pipeline volume_heterogeneous;
+  cbc::Pipeline volume_heterogeneous_eval;uint32_t volume_split_records=0;size_t volume_split_size=0;
   cbc::Pipeline volume_ray_marching;
   // INTERSECT_SUBSURFACE (subsurface.cpp): the walk entry and its traversal stacks.
   cbc::Pipeline subsurface_walk;uint32_t subsurface_stack=0;size_t subsurface_stack_bytes=0;
@@ -220,6 +224,11 @@ class WebGPUDevice final:public Device {
   // shade_surface_light_background: the background light's sample after shade_surface_light (sun guiding;
   // SF_BACKGROUND_SAMPLE_ENTRY, wavefront_surface.wgsl).
   cbc::Pipeline surface_light_background;
+  // Whether the surface light entries come from the module variant with shade_surface_light_background (SF_BACKGROUND_SAMPLE_ENTRY):
+  // sun guiding, background light portals, and a background light beside area lights, whose two samplers inlined into
+  // shade_surface_light passed the pipeline size guard (native/DEVICE.md 127). The capture records the same variant.
+  bool surface_background_stage(){const ShaderFeatures f=shader_features();
+    return (f&(SF_BACKGROUND_SUN|SF_BACKGROUND_PORTAL)).any()||((f&SF_LIGHT_BACKGROUND).any()&&(f&SF_LIGHT_AREA).any());}
   cbc::Pipeline surface_light_select;
   // BSDF sample stage of scenes with the remaining SVM BSDF families (surface.cpp).
   cbc::Pipeline surface_sample;
@@ -232,6 +241,9 @@ class WebGPUDevice final:public Device {
   // with SVM_NODE_RAYTRACE (AO node traversal); its other stages are shared.
   cbc::Pipeline surface_prepare_raytrace;
   uint32_t surface_closures=0;size_t surface_closure_bytes=0;
+  // A replay capture (scene_capture.h) records a fixed arena: the surface stage's records are then sized for the path
+  // capacity, not for the largest dispatch so far, which can grow after the capture starts as the scheduler refills paths.
+  bool capture_sizing=false;
   // Shadow catcher split (shadow_catcher.cpp): per-path marks and the split module.
   cbc::Pipeline sc_assign,sc_split,sc_count;
   uint32_t sc_marks=0;size_t sc_mark_bytes=0;
@@ -269,6 +281,8 @@ class WebGPUDevice final:public Device {
   std::array<cbc::Pipeline,mnee_entries> mnee_pipelines;cbc::Pipeline mnee_cleanup,mnee_select;
   // The spot and area lights' sample and light update (MNEE_LIGHT_STAGES).
   cbc::Pipeline mnee_light_sample,mnee_light_update;
+  // The walk's projection entry (MNEE_WALK_STAGES).
+  cbc::Pipeline mnee_project;
   uint32_t mnee_records=0;size_t mnee_record_bytes_allocated=0;
   std::map<uint32_t,device_image*> images;
   bool image_info_dirty=false;

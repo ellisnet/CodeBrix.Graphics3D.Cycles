@@ -70,6 +70,9 @@ fn light_nee_path(id:vec3<u32>)->u32{
     let index=light_nee_path(id);if(index==NONE){return;}
     let sd=surface_cached(id.x);if(sd.error!=0u||load_word(p(17u))!=0u){return;}
     // No path flag beyond emission: evaluated for all closures (shade_light.h).
+//#if LIGHT_PATH_STATE
+    svm_emission_path=index;svm_emission_shadow=true;
+//#endif
     let r=svm_evaluate_context(NONE,sd,0u,0u,PATH_RAY_EMISSION,0u,0u,false);if(r.error!=0u){return;}
     // light_sample_terminate with the stored average BSDF evaluation.
     var light=r.emission;var next=K_SHADOW_INTERSECT;

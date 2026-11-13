@@ -70,7 +70,7 @@ int cbc_host_create(const CBCHostConfig *config, CBCHost *out);
 int cbc_host_destroy(CBCHost host);
 int cbc_host_cancel(CBCHost host);
 int cbc_host_is_rendering(CBCHost host, uint32_t *rendering);
-/* Existing singleton nodes: camera, background, film, integrator. */
+/* Existing singleton nodes: camera, background, film, integrator, scene_attributes (the Scene Time node's time and frame). */
 int cbc_host_scene_node(CBCHost host, const char *name, CBCNode *out);
 int cbc_host_create_node(CBCHost host, const char *type, CBCNode *out);
 int cbc_host_shader_output(CBCHost host, CBCNode shader, CBCNode *out);
@@ -324,6 +324,21 @@ int cbc_host_bake(CBCHost host, const CBCBakeConfig *config, float *values, uint
  * Where UV triangles overlap, the lowest triangle index wins. capacity and required
  * count pixels; NULL triangles with capacity 0 is a size query (CBC_SMALL_BUFFER). */
 int cbc_host_bake_map(CBCHost host, const CBCBakeConfig *config, int32_t *triangles, float *coordinates, uint64_t capacity, uint64_t *required);
+
+/* Subdivision geometry for a mesh whose subdivision_type is linear: the control cage's vertex_count positions (xyz, 3
+ * floats each) and face_count polygon faces, face_corners[f] (at least 3) corners each, listed in order in corners
+ * (corner_count indices into the positions). Replaces the mesh's geometry and its subdivision attributes; every face
+ * starts on material 0 (subd_shader) and flat (subd_smooth). Each render tessellates it with Cycles' adaptive dicing
+ * (subd_dicing_rate, subd_max_level, subd_adaptive_space; pixel space measures in the render camera). */
+int cbc_host_subd_mesh(CBCHost host, CBCNode mesh, const float *xyz, uint64_t vertex_count, const uint32_t *face_corners,
+                       uint64_t face_count, const uint32_t *corners, uint64_t corner_count);
+
+/* ---- Render time limit (addition to ABI 1). ---- */
+
+/* Wall-clock time limit of this host's later renders and bakes, in seconds (Cycles' render time limit). 0, the
+ * default, renders every sample; otherwise a render stops once the limit has passed, after its first batch of
+ * samples, and returns the samples done by then, so its film is not reproducible. Serializes with rendering. */
+int cbc_host_render_time_limit(CBCHost host, double seconds);
 #ifdef __cplusplus
 }
 #endif

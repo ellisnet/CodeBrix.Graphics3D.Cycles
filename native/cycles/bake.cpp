@@ -60,9 +60,9 @@ void WebGPUDevice::enqueue_bake(int work,const DeviceKernelArguments &args){
   if(data.film.light_pass_flag&PASSMASK(COMBINED))require(data.film.pass_combined!=PASS_UNUSED&&data.film.pass_combined>=0&&data.film.pass_combined<=data.film.pass_stride-4,"Missing combined film pass");
   require(data.bake.object_index>=0&&size_t(data.bake.object_index)<object_records.size()&&size_t(data.bake.object_index)<object_flag_records.size(),"Invalid bake object");
   require(data.cam.type==CAMERA_PERSPECTIVE||data.cam.type==CAMERA_ORTHOGRAPHIC||data.cam.type==CAMERA_PANORAMA,"WebGPU custom camera (OSL) not implemented");
-  // The kernel places the surface by the mesh's static positions (triangle_point_normal) and the shading stages
-  // read the triangle as a plain one: a deforming mesh's motion triangles are not read that way here.
-  require(!(object_flag_records[size_t(data.bake.object_index)]&SD_OBJECT_HAS_VERTEX_MOTION),"WebGPU bake of a mesh with deformation motion not implemented");
+  // The kernel places the surface by the mesh's static positions (triangle_point_normal) and the shading stages read the
+  // triangle as a plain one: for a deforming mesh BAKE_DEFORM (pipelines.cpp) reads its plain triangles at the static
+  // positions (native/DEVICE.md, item 115); secondary hits on it are motion triangles at the ray's time, as in a render.
   validate_volume();
   require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU bake optional path features not implemented");
   // The Ray Portal BSDF (RAY_PORTAL): path_state_init_integrator clears the portal bounce, as the camera does.

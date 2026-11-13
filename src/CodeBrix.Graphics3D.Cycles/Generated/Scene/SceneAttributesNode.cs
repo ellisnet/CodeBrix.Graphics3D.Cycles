@@ -14,7 +14,7 @@ using CodeBrix.Graphics3D.Cycles.Nodes;
 namespace CodeBrix.Graphics3D.Cycles.Generated.Scene;
 
 /// <summary>
-/// The native <c>scene_attributes</c> node type (scene category). The current native host ABI does not create this type directly; it is described for completeness and as a base type.
+/// The native <c>scene_attributes</c> node type (scene category). Get the scene's instance from <see cref="CyclesScene"/>.
 /// </summary>
 public sealed partial class SceneAttributesNode : CyclesNode
 {

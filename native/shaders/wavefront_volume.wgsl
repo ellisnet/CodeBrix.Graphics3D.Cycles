@@ -20,7 +20,11 @@ fn volume_scatter_probability(index:u32,base:u32,sigma:vec3<f32>,transmittance:v
         let scale=max(attenuation.x,max(attenuation.y,attenuation.z))/(1.0-exp(-optical_depth));
         guided=clamp(svm_divide(scattered,total)*scale,vec3<f32>(0),vec3<f32>(1));
     }
-    return attenuation*0.25+guided*0.75;
+    // mix(attenuation, guided, 0.75) in util/math_base.h's order, a + t * (b - a), as vl_scatter_probability (called
+    // only without VOLUME_LIGHT; with it the function is unreachable and keeps its earlier text).
+//#if !VOLUME_LIGHT else     return attenuation*0.25+guided*0.75;
+    return rounded_add3(attenuation,0.75*rounded_add3(guided,-attenuation));
+//#endif
 }
 //#if VOLUME_PHASES
 // volume_phase_get_g (the lobe's anisotropy for the ray differential widening): Fournier-Forand 1, Rayleigh 0.

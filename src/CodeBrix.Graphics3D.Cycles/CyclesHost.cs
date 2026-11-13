@@ -429,6 +429,24 @@ public sealed unsafe class CyclesHost : IDisposable
     }
 
     /// <summary>
+    /// Replaces a mesh's geometry with a subdivision cage: polygon faces that each render tessellates with Cycles'
+    /// adaptive dicing when the mesh's <c>subdivision_type</c> is linear. Every face starts on material 0, flat.
+    /// </summary>
+    /// <param name="node">A node created with type <c>mesh</c>.</param>
+    /// <param name="positions">Cage positions as x, y, z triples.</param>
+    /// <param name="faceCorners">The corner count of each face (at least three).</param>
+    /// <param name="corners">Every face's vertex indices in order; as many as the face corner counts add up to.</param>
+    /// <exception cref="ArgumentException">The positions are not triples.</exception>
+    public void SubdivisionMesh(Node node, ReadOnlySpan<float> positions, ReadOnlySpan<uint> faceCorners, ReadOnlySpan<uint> corners)
+    {
+        if (positions.Length % 3 != 0) throw new ArgumentException("Complete vertices are required.");
+        fixed (float* xyz = positions)
+        fixed (uint* counts = faceCorners)
+        fixed (uint* indices = corners)
+            Finish(Native.SubdMesh(Handle, node.Value, xyz, (ulong)(positions.Length / 3), counts, (ulong)faceCorners.Length, indices, (ulong)corners.Length));
+    }
+
+    /// <summary>
     /// Replaces a hair geometry's curves. Every curve starts on material 0. Further curve attributes
     /// follow this call, because their element counts derive from the curves.
     /// </summary>
@@ -529,6 +547,14 @@ public sealed unsafe class CyclesHost : IDisposable
     /// </summary>
     /// <param name="subdivisions">0 to 4; the default is 3.</param>
     public void SetCurveSubdivisions(uint subdivisions) => Finish(Native.CurveSubdivisions(Handle, subdivisions));
+
+    /// <summary>
+    /// Sets the wall-clock time limit of this host's later renders and bakes (Cycles' render time limit). A render
+    /// with a limit stops once the limit has passed, after its first batch of samples, and returns the samples done
+    /// by then, so its film is not reproducible.
+    /// </summary>
+    /// <param name="seconds">The limit in seconds; 0 (the default) renders every sample.</param>
+    public void SetRenderTimeLimit(double seconds) => Finish(Native.RenderTimeLimit(Handle, seconds));
 
     /// <summary>
     /// Creates or replaces a float-based geometry attribute. The element count derives from the

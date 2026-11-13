@@ -23,6 +23,22 @@ fn emitter_sphere_hit(origin:vec3<f32>,direction:vec3<f32>,position:vec3<f32>,ra
     if(s2>r2){return -1.0;}let root=sqrt(max(r2-s2,0.0));let t=cosine-select(-root,root,d2-r2>=0.0);
     return select(-1.0,t,t>0.0&&t<bitcast<f32>(0x7f7fffffu));
 }
+//#if LIGHT_SPOT
+// spot_light_to_local and spot_light_attenuation (light/spot.h) in the oracle's float3 order: transform_direction(itfm, ray)
+// as the host computes it (SSE: x*c0 + (y*c1 + z*c2); scalar float4 dots: (x*c0 + y*c1) + z*c2), safe_normalize (the
+// reciprocal of the length), and smoothstepf, every sum and product rounded on its own. A steep blend (spot_smooth near 1e4)
+// turns one last bit of the local direction into about 1e-3 of attenuation (native/DEVICE.md, item 151).
+fn spot_attenuation(light:u32,direction:vec3<f32>)->f32{
+    let object=table_at(G_objects,load_word(light+L_object_id),SIZE_objects);let a=object+O_itfm;
+    let x=heap_vec4(a);let y=heap_vec4(a+16u);let z=heap_vec4(a+32u);
+    let c0=vec3<f32>(x.x,y.x,z.x)*direction.x;let c1=vec3<f32>(x.y,y.y,z.y)*direction.y;let c2=vec3<f32>(x.z,y.z,z.z)*direction.z;
+    var d=rounded_add3(rounded_add3(c0,c1),c2);if(CAMERA_NATIVE_VECTOR_DIVIDE!=0u){d=rounded_add3(c0,rounded_add3(c1,c2));}
+    let transformed=rounded_safe_normalize(d);
+    let f=rounded_add(-transformed.z,-heap_float(light+L_spot_cos))*heap_float(light+L_spot_smooth);
+    if(f<=0.0){return 0.0;}if(f>=1.0){return 1.0;}let ff=f*f;return rounded_add(3.0*ff,-((2.0*ff)*f));
+}
+//#endif
+//#if !LIGHT_SPOT
 fn spot_attenuation(light:u32,direction:vec3<f32>)->f32{
     let object=table_at(G_objects,load_word(light+L_object_id),SIZE_objects);let a=object+O_itfm;
     let x=heap_vec4(a);let y=heap_vec4(a+16u);let z=heap_vec4(a+32u);
@@ -30,6 +46,7 @@ fn spot_attenuation(light:u32,direction:vec3<f32>)->f32{
     let f=(-transformed.z-heap_float(light+L_spot_cos))*heap_float(light+L_spot_smooth);
     if(f<=0.0){return 0.0;}if(f>=1.0){return 1.0;}let ff=f*f;return 3.0*ff-2.0*ff*f;
 }
+//#endif
 fn emitter_disk(random:vec2<f32>)->vec2<f32>{
     let a=rounded_add(2.0*random.x,-1.0);let b=rounded_add(2.0*random.y,-1.0);if(a==0.0&&b==0.0){return vec2<f32>(0);}
     var radius:f32;var phi:f32;if(a*a>b*b){radius=a;phi=(EMITTER_PI*0.25)*rounded_divide(b,a);}
@@ -137,6 +154,23 @@ fn area_rectangle(P:vec3<f32>,r:AreaRegion,random:vec2<f32>,sample_coord:bool)->
 struct AreaEval {P:vec3<f32>,D:vec3<f32>,t:f32,pdf:f32,eval_fac:f32,valid:bool}
 fn area_evaluate(light:u32,origin:vec3<f32>,direction:vec3<f32>,distance:f32,random:vec2<f32>,sample_coord:bool)->AreaEval{
     var out:AreaEval;let N=heap_vec3(light+L_area_dir);let center=heap_vec3(light+L_co);
+//#if LIGHT_AREA_DEGENERATE
+    // An axis whose length underflows to zero (native/DEVICE.md, item 148; the host refuses a spread of zero). The CPU's
+    // axis holds infinities and NaNs (normalize_len of a zero vector), the device's copy a zero axis. area_light_spread_clamp_light
+    // then rejects every point off the light's plane (min_u = max(NaN, -0) = -0 >= max_u = min(NaN, 0) = 0), except for a
+    // disk with both axes zero, whose NaN distance takes neither branch; a next-event sample there has a NaN direction and a
+    // zero spread attenuation (max(NaN, 0) = 0), so no sample is valid. A hit from a camera ray keeps eval_fac with the ray's
+    // direction (area_light_eval with sample_coord false, invarea 1 since the area is zero).
+    if(heap_float(light+L_area_len_u)==0.0||heap_float(light+L_area_len_v)==0.0){
+        if(sample_coord){return out;}
+        let invarea=heap_float(light+L_area_invarea);let spread=heap_float(light+L_area_tan_half_spread);
+        let round=invarea<0.0&&heap_float(light+L_area_len_u)==0.0&&heap_float(light+L_area_len_v)==0.0;
+        if(!round&&rounded_dot(N,origin-center)*spread!=0.0){return out;}
+        out.P=center;out.D=direction;out.t=distance;out.eval_fac=EMITTER_INV_PI*abs(invarea);let normalization=heap_float(light+L_area_normalize_spread);
+        if(normalization>0.0){let tangent=length(cross(-out.D,N))/dot(-out.D,N);out.eval_fac*=max((spread-tangent)*normalization,0.0);}
+        out.valid=out.eval_fac>0.0;return out;
+    }
+//#endif
     if(sample_coord&&dot(center-origin,N)>0.0){return out;}
     let region=area_region(light,origin);if(!region.valid){return out;}
     out.P=region.P;let spread=heap_float(light+L_area_tan_half_spread);let normalization=heap_float(light+L_area_normalize_spread);
@@ -196,7 +230,14 @@ fn lamp_normal_uv(light:u32,P:vec3<f32>,D:vec3<f32>)->LampNormalUV{
         let inv_u=lamp_div3(heap_vec3(light+L_area_axis_u),heap_float(light+L_area_len_u));
         let inv_v=lamp_div3(heap_vec3(light+L_area_axis_v),heap_float(light+L_area_len_v));
         let inplane=rounded_add3(P,-heap_vec3(light+L_co));
+//#if LIGHT_AREA_DEGENERATE
+        // A zero-length axis (item 148): the CPU's clamp(NaN, -0.5, 0.5) is min(max(NaN, -0.5), 0.5) = -0.5.
+        var u=-0.5;if(heap_float(light+L_area_len_u)!=0.0){u=clamp(rounded_dot(inplane,inv_u),-0.5,0.5);}
+        var v=-0.5;if(heap_float(light+L_area_len_v)!=0.0){v=clamp(rounded_dot(inplane,inv_v),-0.5,0.5);}
+//#endif
+//#if !LIGHT_AREA_DEGENERATE
         let u=clamp(rounded_dot(inplane,inv_u),-0.5,0.5);let v=clamp(rounded_dot(inplane,inv_v),-0.5,0.5);
+//#endif
         out.uv=vec2<f32>(rounded_add(v,0.5),rounded_add(-u,-v));
     }else{
         out.Ng=-D;let delta=rounded_add3(D,-heap_vec3(light+L_co));

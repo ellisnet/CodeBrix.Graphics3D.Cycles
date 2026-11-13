@@ -482,6 +482,18 @@ public static unsafe class Native
     /// <returns>The native status code.</returns>
     [DllImport(Library, EntryPoint="cbc_host_mesh", CallingConvention=CallingConvention.Cdecl)] public static extern int Mesh(ulong host, ulong mesh, float* xyz, ulong vertices, uint* indices, ulong triangles);
 
+    /// <summary><c>cbc_host_subd_mesh</c>: replaces a mesh's geometry with a subdivision cage of polygon faces.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="mesh">The mesh node handle.</param>
+    /// <param name="xyz">The cage positions as x, y, z triples.</param>
+    /// <param name="vertices">The vertex count.</param>
+    /// <param name="faceCorners">The corner count of each face (at least three).</param>
+    /// <param name="faces">The face count.</param>
+    /// <param name="corners">Every face's vertex indices in order.</param>
+    /// <param name="cornerCount">The corner count.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_subd_mesh", CallingConvention=CallingConvention.Cdecl)] public static extern int SubdMesh(ulong host, ulong mesh, float* xyz, ulong vertices, uint* faceCorners, ulong faces, uint* corners, ulong cornerCount);
+
     /// <summary><c>cbc_host_render</c>: renders synchronously into scene-linear RGBA floats, lower-left origin.</summary>
     /// <param name="host">The host handle.</param>
     /// <param name="config">The render configuration.</param>
@@ -713,4 +725,10 @@ public static unsafe class Native
     /// <param name="required">Receives the pixel count needed.</param>
     /// <returns>The native status code.</returns>
     [DllImport(Library, EntryPoint="cbc_host_bake_map", CallingConvention=CallingConvention.Cdecl)] public static extern int BakeMap(ulong host, ref BakeConfig config, int* triangles, float* coordinates, ulong capacity, out ulong required);
+
+    /// <summary><c>cbc_host_render_time_limit</c>: the wall-clock time limit of the host's later renders and bakes.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="seconds">The limit in seconds; 0 renders every sample.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_render_time_limit", CallingConvention=CallingConvention.Cdecl)] public static extern int RenderTimeLimit(ulong host, double seconds);
 }

@@ -2,6 +2,16 @@
 // Set by the curve shadow transparency kernel (wavefront_shadow.wgsl).
 var<private> svm_curve_shadow_eval:bool;
 //#endif
+//#if LIGHT_PATH_STATE
+// The shadow path a shadow evaluation belongs to (shade_shadow sets it; NONE elsewhere): the Light Path node's depths.
+var<private> svm_shadow_path:u32=0xffffffffu;
+// The path a lamp's or emissive triangle's emission evaluation is made for (no path index of its own): the shadow path in
+// shade_light_nee (svm_emission_shadow), the main path at a lamp hit or a sun; NONE elsewhere.
+var<private> svm_emission_path:u32=0xffffffffu;
+var<private> svm_emission_shadow:bool=false;
+// An evaluation without path state whose node mask leaves LIGHT_PATH out (the importance map's kernel_background_evaluate).
+var<private> svm_lp_masked:bool=false;
+//#endif
 //#if SVM_NODES_ANY
 // SPDX-FileCopyrightText: 2011-2022 Blender Foundation
 // Copyright (c) 2026 Jeremy Ellis and contributors
@@ -922,6 +932,10 @@ fn svm_light_falloff(s:ptr<function,SvmState>,node:u32){
 // (prepare_surface) and background stage, where the host adds PATH_RAY_EMISSION
 // (one bounce further). Depths in a shadow evaluation (shadow_path counters)
 // and volume evaluations are unsupported (error 2).
+//#if LIGHT_PATH_STATE
+// One bounce counter of the main path (field) or of the shadow path (shadow_field) at path.
+fn svm_lp_depth(path:u32,shadow:bool,field:u32,shadow_field:u32)->f32{if(shadow){return f32(state_half(shadow_field,path));}return f32(state_half(field,path));}
+//#endif
 fn svm_light_path(s:ptr<function,SvmState>,node:u32,index:u32,flag:u32,visibility:u32){
     let kind=load_word(node+N_LightPath_path_type);let sd=(*s).geometry;var info=0.0;
 //#if CURVE_SHADOW
@@ -933,10 +947,29 @@ fn svm_light_path(s:ptr<function,SvmState>,node:u32,index:u32,flag:u32,visibilit
     // state, visibility or flag, so every bounce depth reads zero.
     if(svm_displace_program&&kind>=NODE_LP_ray_depth){svm_store(s,svm_byte(node+N_LightPath_out_offset),0.0);return;}
 //#endif
+//#if !LIGHT_PATH_STATE
 //#if VOLUME_LIGHT_PATH else     if((*s).volume||(kind>=NODE_LP_ray_depth&&(index==NONE||(visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u))){svm_error(s,2u);return;}
     // In a volume shader (VOLUME_LIGHT_PATH) the ray type outputs read the evaluation's visibility and flag as in a surface;
     // backfacing, ray length and the bounce depths stay unsupported there (error 2).
     if(((*s).volume&&(kind==NODE_LP_backfacing||kind==NODE_LP_ray_length||kind>=NODE_LP_ray_depth))||(kind>=NODE_LP_ray_depth&&(index==NONE||(visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u))){svm_error(s,2u);return;}
+//#endif
+//#endif
+//#if LIGHT_PATH_STATE
+    // The depths in every path-state evaluation (LIGHT_PATH_STATE), as integrator_state_bounce and its siblings read them:
+    // a shadow evaluation (the SHADOW visibility) reads the shadow path's counters at the shadow stage's path
+    // (svm_shadow_path, the surface and medium evaluations of shade_shadow), any other evaluation the main path's at
+    // index. In a volume evaluation Backfacing and Ray Length read the shading point's zero runtime flag and ray length
+    // (shader_setup_from_volume). The volume density prepass (kernel_volume_density_evaluate, index NONE) runs without the
+    // LIGHT_PATH node feature, so every depth reads zero there. An emission evaluation of a lamp or an emissive triangle
+    // reads the counters of the path it is made for (svm_emission_path): the shadow path's in shade_light_nee
+    // (integrate_light_nee evaluates with the shadow state), the main path's at a lamp hit or a sun
+    // (light_sample_shader_eval_forward); Ray Depth is one further there (PATH_RAY_EMISSION). The importance map's world
+    // evaluation (svm_lp_masked: kernel_background_evaluate masks LIGHT_PATH out) reads every depth as zero, Ray Depth one
+    // for its emission flag. Other evaluations without path state keep error 2.
+    var lp_shadow=(visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u;var lp_path=select(index,svm_shadow_path,lp_shadow);
+    if(lp_path==NONE&&(flag&PATH_RAY_EMISSION)!=0u&&svm_emission_path!=NONE){lp_path=svm_emission_path;lp_shadow=svm_emission_shadow;}
+    if(kind>=NODE_LP_ray_depth&&lp_path==NONE&&svm_lp_masked){svm_store(s,svm_byte(node+N_LightPath_out_offset),select(0.0,1.0,kind==NODE_LP_ray_depth&&(lp_shadow||(flag&PATH_RAY_EMISSION)!=0u)));return;}
+    if(kind>=NODE_LP_ray_depth&&lp_path==NONE){if((*s).volume&&!lp_shadow){svm_store(s,svm_byte(node+N_LightPath_out_offset),0.0);return;}svm_error(s,2u);return;}
 //#endif
     switch(kind){
         case NODE_LP_camera:{info=select(0.0,1.0,(visibility&SVMN_PATH_RAY_VISIBILITY_CAMERA)!=0u);}
@@ -949,6 +982,7 @@ fn svm_light_path(s:ptr<function,SvmState>,node:u32,index:u32,flag:u32,visibilit
         case NODE_LP_volume_scatter:{info=select(0.0,1.0,(visibility&SVMN_PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u);}
         case NODE_LP_backfacing:{info=select(0.0,1.0,(sd.runtime_flag&SR_BACKFACING)!=0u);}
         case NODE_LP_ray_length:{info=sd.ray_length;}
+//#if !LIGHT_PATH_STATE
         case NODE_LP_ray_depth:{info=f32(state_half(S_path_bounce,index));if(!SVM_SURFACE||(flag&PATH_RAY_EMISSION)!=0u){info+=1.0;}}
         case NODE_LP_ray_diffuse:{info=f32(state_half(S_path_diffuse_bounce,index));}
         case NODE_LP_ray_glossy:{info=f32(state_half(S_path_glossy_bounce,index));}
@@ -957,6 +991,16 @@ fn svm_light_path(s:ptr<function,SvmState>,node:u32,index:u32,flag:u32,visibilit
 //#if RAY_PORTAL else         case NODE_LP_ray_portal:{if((data_word(D_kernel_features)&SVMN_KERNEL_FEATURE_NODE_PORTAL)!=0u){svm_error(s,2u);return;}info=0.0;}
         // integrator_state_portal_bounce: the portal bounces with KERNEL_FEATURE_NODE_PORTAL.
         case NODE_LP_ray_portal:{info=0.0;if((data_word(D_kernel_features)&SVMN_KERNEL_FEATURE_NODE_PORTAL)!=0u){info=f32(state_half(S_path_portal_bounce,index));}}
+//#endif
+//#endif
+//#if LIGHT_PATH_STATE
+        // Ray Depth: one bounce further for the shadow visibility or an emission evaluation (the background stage's flag).
+        case NODE_LP_ray_depth:{info=svm_lp_depth(lp_path,lp_shadow,S_path_bounce,LP_shadow_bounce);if(!SVM_SURFACE||lp_shadow||(flag&PATH_RAY_EMISSION)!=0u){info+=1.0;}}
+        case NODE_LP_ray_diffuse:{info=svm_lp_depth(lp_path,lp_shadow,S_path_diffuse_bounce,LP_shadow_diffuse_bounce);}
+        case NODE_LP_ray_glossy:{info=svm_lp_depth(lp_path,lp_shadow,S_path_glossy_bounce,LP_shadow_glossy_bounce);}
+        case NODE_LP_ray_transparent:{info=svm_lp_depth(lp_path,lp_shadow,S_path_transparent_bounce,LP_shadow_transparent_bounce);}
+        case NODE_LP_ray_transmission:{info=svm_lp_depth(lp_path,lp_shadow,S_path_transmission_bounce,LP_shadow_transmission_bounce);}
+        case NODE_LP_ray_portal:{info=0.0;if((data_word(D_kernel_features)&SVMN_KERNEL_FEATURE_NODE_PORTAL)!=0u){info=svm_lp_depth(lp_path,lp_shadow,S_path_portal_bounce,LP_shadow_portal_bounce);}}
 //#endif
         default:{svm_error(s,16u);return;}
     }

@@ -128,7 +128,7 @@ static std::map<std::string,SvmExchangeRecord> svm_exchange_read(const std::stri
 template<class V>static void svm_exchange_apply(V &table,const std::map<std::string,SvmExchangeRecord> &records,const std::string &name){
   auto it=records.find(name);if(it==records.end())throw std::runtime_error("SVM exchange table missing: "+name);
   const size_t element=sizeof(*table.data());if(it->second.element!=element)throw std::runtime_error("SVM exchange element size differs: "+name);
-  const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+  const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(static_cast<void*>(table.data()),it->second.data.data(),count*element);
 }
 static std::string svm_exchange_tables(DeviceScene &s){
   std::string out="CBCSCENE1";
@@ -159,7 +159,7 @@ static std::vector<SurfaceSvmRecord> svm_reference_records(Scene &scene,const st
 #undef CBC_SVM_TABLE
       loaded_base=base;}
     svm_exchange_apply(ds.svm_nodes,records,"svm_nodes");
-    const auto &kernel=records.at("KernelData");if(kernel.element!=sizeof(ds.data)||kernel.data.size()!=sizeof(ds.data))throw std::runtime_error("SVM exchange KernelData size differs");std::memcpy(&ds.data,kernel.data.data(),sizeof(ds.data));
+    const auto &kernel=records.at("KernelData");if(kernel.element!=sizeof(ds.data)||kernel.data.size()!=sizeof(ds.data))throw std::runtime_error("SVM exchange KernelData size differs");std::memcpy(static_cast<void*>(&ds.data),kernel.data.data(),sizeof(ds.data));
     const auto &indices=records.at("ids");const auto &blob=records.at("states");
     if(indices.data.size()!=ids.size()*sizeof(int)||(!ids.empty()&&std::memcmp(indices.data.data(),ids.data(),indices.data.size()))||blob.data.size()!=ids.size()*sizeof(SvmExchangeState))
       throw std::runtime_error("SVM exchange path selection differs: "+key);

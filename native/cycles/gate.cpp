@@ -245,7 +245,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int result=0;try{
     }
     auto restore=saved;d.const_copy_to("data",&restore,sizeof(restore));}
     require(!queue->enqueue(DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL,1,DeviceKernelArguments()),"Unimplemented kernel was accepted");
-    require(d.error_message().find("kernel not implemented")!=std::string::npos,"Unsupported kernel did not report the reason");
+    require(d.error_message().find("kernel outside this device")!=std::string::npos,"Unsupported kernel did not report the reason");
   }
   require(stats.mem_used==0,"Control tests leaked Cycles allocations");
   std::ofstream(output+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(output+".library.txt")<<d.gpu.library_path;

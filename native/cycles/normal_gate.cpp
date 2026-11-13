@@ -87,10 +87,16 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){a
     std::array<uint32_t,32> p{};p[1]=1;p[4]=output.device_pointer;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=d.remaining(uintptr_t(d.state.path.render_pixel_index))/4;p[14]=d.scene_tables();p[17]=d.error_word;p[21]=ds.svm_nodes.device_pointer;p[22]=ds.svm_nodes.size();p[23]=scratch.device_pointer;
     refresh_probe(d,shader);PreparedSurfaceCache cache(d,p);
     d.dispatch(p,1,shader);uint error=0;d.download(d.error_word,&error,4);output.copy_from_device();healthy(d);
+    if(test==9){
+      // A zero UV tangent is not rejected: svm_node_tangent's object_normal_transform normalizes a zero vector, which the pinned
+      // float3 normalize gives as 0/0, a NaN in every component, and the device follows it (native/DEVICE.md, item 150).
+      require(error==0,"Normal zero tangent error="+std::to_string(error));SurfaceSvmRecord got{};std::memcpy(&got,output.data(),sizeof(got));
+      require(std::isnan(got.emission.x)&&std::isnan(got.emission.y)&&std::isnan(got.emission.z),"Normal zero tangent: expected the pinned NaN of normalize(0)");
+      cache.verify();d.zero(d.error_word,4);std::copy(saved_uv.begin(),saved_uv.end(),ds.attributes_float2.data());ds.attributes_float2.copy_to_device();continue;}
     require(error==((test==3||test==8)?8u:16u),"Normal rejection "+std::to_string(test)+" error="+std::to_string(error));
     require(std::all_of(output.data(),output.data()+output.size(),[](uint v){return v==0xa5a5a5a5u;}),"Invalid normal wrote output");cache.verify();d.zero(d.error_word,4);
     std::copy(saved_uv.begin(),saved_uv.end(),ds.attributes_float2.data());ds.attributes_float2.copy_to_device();
-  }return 10;
+  }return 9;
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: normal_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");

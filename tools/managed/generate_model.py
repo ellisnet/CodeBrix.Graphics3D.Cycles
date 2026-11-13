@@ -42,7 +42,9 @@ CLASS_NAMES = {
     'pointcloud': 'PointCloudNode',
 }
 # cbc_host_scene_node singletons and cbc_host_create_node types (native/host/cycles_host.cpp).
-SINGLETONS = ['camera', 'background', 'film', 'integrator']
+SINGLETONS = ['camera', 'background', 'film', 'integrator', 'scene_attributes']
+# Enumeration sockets whose native value is a bit set of the items (the kernel reads the bits): generated with [Flags].
+FLAG_ENUMS = {('film', 'cryptomatte_passes')}
 SCENE_CREATABLE = ['mesh', 'hair', 'pointcloud', 'volume', 'object', 'particle_system', 'pass',
                    'pointlight', 'spotlight', 'arealight', 'sunlight', 'backgroundlight', 'shader']
 OUTPUT_TYPES = ['buffer_params', 'buffer_pass', 'pass', 'denoise_params']
@@ -349,8 +351,10 @@ def property_code(model, member, socket, enum_name):
 
 
 def enum_code(enum_name, node_name, socket):
-    lines = [f"/// <summary>\n/// The items of the <c>{xml(socket['name'])}</c> enumeration socket of the native <c>{xml(node_name)}</c> node type.\n/// The values are the native enumeration values.\n/// </summary>\n",
-             f'public enum {enum_name}\n{{\n']
+    flags = (node_name, socket['name']) in FLAG_ENUMS
+    lines = [f"/// <summary>\n/// The items of the <c>{xml(socket['name'])}</c> enumeration socket of the native <c>{xml(node_name)}</c> node type.\n/// The values are the native enumeration values"
+             + ('; the socket holds a bit set of them: combine items with <c>|</c>' if flags else '') + '.\n/// </summary>\n',
+             '[Flags]\n' if flags else '', f'public enum {enum_name}\n{{\n']
     used = set()
     entries = []
     for entry in socket['enumValues']:

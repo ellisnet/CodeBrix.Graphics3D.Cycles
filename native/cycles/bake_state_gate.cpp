@@ -10,12 +10,13 @@
 // orthographic camera; tabulated Sobol, Sobol-Burley and both blue-noise patterns, scrambling distance below 0.9;
 // the position and normal fast paths, the normal through shading (bump), environment baking, the seed pass,
 // adaptive sampling with the sample count pass, the shadow catcher split, the raytrace queue (AO node) and a
-// world volume (volume stack). Every integer, flag, sort key, queue counter, seed and untouched guard byte is
+// world volume (volume stack), and a single-user target with deformation motion under motion blur. Every integer, flag, sort key, queue counter, seed and untouched guard byte is
 // exact; the ray, its differentials and the barycentrics are judged by the practical criterion
 // (abs(a-e) <= 5e-5 + 2e-4*abs(e)) with the strict one (1e-7 + 1e-7*abs(e)) reported; film floats are exact.
 // Usage: codebrix_cycles_bake_state_gate OUTPUT_DIRECTORY   (writes OUTPUT_DIRECTORY/status.json)
 #include "wavefront_test.h"
 #include "bake_reference.h"
+#include "deforming_motion_fixture.h"
 // scene/shader.h first: background.h only declares Shader, and its inline set_shader would otherwise take the bool overload of Node::set.
 #include "scene/shader.h"
 #include "scene/background.h"
@@ -46,7 +47,7 @@ using namespace ccl;
 using namespace wavefront_test;
 constexpr unsigned W=16,H=12;
 struct Case {const char *name;int target;PassType pass;bool use_camera;CameraType camera;SamplingPattern pattern;unsigned samples;
-  bool seed,adaptive,catcher;int shader;bool volume;float scrambling;};
+  bool seed,adaptive,catcher;int shader;bool volume;float scrambling;bool deform=false;};
 // shader: 0 diffuse, 1 Ambient Occlusion node (SD_HAS_RAYTRACE), 2 bump (SD_HAS_BUMP), 3 diffuse mixed with a Ray Portal BSDF.
 static const Case cases[]={
   {"instanced combined along the normal",0,PASS_COMBINED,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,4,false,false,false,0,false,1},
@@ -61,7 +62,9 @@ static const Case cases[]={
   {"shadow catcher split",0,PASS_COMBINED,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,2,false,false,true,0,false,1},
   {"raytrace queue (Ambient Occlusion node)",1,PASS_COMBINED,true,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,2,false,false,false,1,false,1},
   {"world volume, diffuse direct pass, blue noise first",0,PASS_DIFFUSE_DIRECT,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_BLUE_NOISE_FIRST,2,false,false,false,0,true,1},
-  {"Ray Portal BSDF on the baked object (KERNEL_FEATURE_NODE_PORTAL: the portal bounce)",0,PASS_COMBINED,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,2,false,false,false,3,false,1}};
+  {"Ray Portal BSDF on the baked object (KERNEL_FEATURE_NODE_PORTAL: the portal bounce)",0,PASS_COMBINED,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,2,false,false,false,3,false,1},
+  // Deformation motion under motion blur (deforming_motion_fixture.h): the texel on the static positions (BAKE_DEFORM).
+  {"deforming target under motion blur (the texel on the static positions)",1,PASS_COMBINED,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,2,false,false,false,0,false,1,true}};
 struct Metrics {uint64_t paths=0,queued=0,empty=0,splits=0,integers=0,floats=0,strict=0,bit_differences=0,film_floats=0,vertex_texels=0,jitter_given_up=0;double maximum=0;std::string maximum_field;
   std::map<std::string,uint64_t> strict_by_field;std::map<std::string,uint64_t> kernels;std::vector<std::string> layouts;};
 static Shader *graph_shader(Scene &scene,std::unique_ptr<ShaderGraph> g){auto s=scene.create_node<Shader>();s->set_graph(std::move(g));s->tag_update(&scene);return s;}
@@ -129,6 +132,7 @@ static void run_case(WebGPUDevice &d,unsigned c,Metrics &m){
   Object *b=object(scene,tent(scene,material(scene,k.target==1?k.shader:0,make_float3(.2,.6,.4)),.6f),
                    transform_translate(make_float3(-.3f,.2f,.1f))*transform_rotate(-.3f,make_float3(1,0,0))*transform_scale(make_float3(-1.2f,1.f,.9f)));
   Object *target=k.target?b:a;target->set_is_bake_target(true);target->set_is_shadow_catcher(k.catcher);
+  if(k.deform)deforming_motion_fixture(scene,*target,0);
   for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
   {auto pass=scene.create_node<Pass>();pass->set_type(k.pass);pass->set_name(ustring(k.pass==PASS_COMBINED?"Combined":"Bake"));pass->set_mode(PassMode::NOISY);}
   scene.bake_manager->set_use_seed(k.seed);scene.bake_manager->set_use_camera(k.use_camera);scene.bake_manager->set_baking(&scene,true);scene.bake_manager->tag_update();
@@ -222,5 +226,5 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;Metrics m;std
   out<<"},\"queuedKernels\":{";{bool first=true;for(auto &[name,count]:m.kernels){out<<(first?"":",")<<'"'<<name<<"\":"<<count;first=false;}}
   out<<"},\"filmLayouts\":[";for(size_t i=0;i<m.layouts.size();i++)out<<(i?",":"")<<m.layouts[i];
   out<<"],\"absoluteTolerance\":0.00005,\"relativeTolerance\":0.0002,\"strictAbsoluteTolerance\":0.0000001,\"strictRelativeTolerance\":0.0000001}\n";
-  if(argc==2)std::ofstream(std::string(argv[1])+"/status.json")<<out.str();std::cout<<out.str();
+  if(argc==2){std::ofstream(std::string(argv[1])+"/status.json")<<out.str();}std::cout<<out.str();
   TaskScheduler::exit();return status;}

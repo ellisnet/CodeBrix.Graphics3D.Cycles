@@ -7,7 +7,8 @@
 // displaced the grids through the same kernel before the BVH build (the gate also checks that the
 // vertices moved). Cases: Displacement node height in object space (rotated, scaled object) and in
 // world space (flat grid), Vector Displacement in object, world and tangent space (without a UV map:
-// dPdu; with a UV map: its tangent and sign attributes), and displacement method Both. The stateful nodes in the
+// dPdu; with a UV map: its tangent and sign attributes), displacement method Both, and a deforming grid (three motion steps:
+// displaced from its static positions, the offset added to every step). The stateful nodes in the
 // displacement program (node 2): Ambient Occlusion, Light Path (ray type, length and depths), Wireframe, Bevel and Raycast,
 // which the displacement node mask (KERNEL_FEATURE_NODE_MASK_DISPLACEMENT) evaluates without path state or ray tracing.
 #include "wavefront_test.h"
@@ -29,7 +30,7 @@
 #include <sstream>
 using namespace ccl;
 using namespace wavefront_test;
-struct Case {const char *name;int node;NodeNormalMapSpace space;DisplacementMethod method;bool smooth,uv,transform;};
+struct Case {const char *name;int node;NodeNormalMapSpace space;DisplacementMethod method;bool smooth,uv,transform,deforming=false;};
 // node: 0 Displacement (noise height), 1 Vector Displacement (wave colour), 2 Displacement of a sum of stateful node outputs.
 static const Case cases[]={
   {"height-object-transformed",0,NODE_NORMAL_MAP_OBJECT,DISPLACE_TRUE,true,false,true},
@@ -41,6 +42,8 @@ static const Case cases[]={
   {"height-object-both",0,NODE_NORMAL_MAP_OBJECT,DISPLACE_BOTH,true,false,true},
   {"stateful-nodes-object",2,NODE_NORMAL_MAP_OBJECT,DISPLACE_TRUE,true,false,true},
   {"stateful-nodes-world-both",2,NODE_NORMAL_MAP_WORLD,DISPLACE_BOTH,false,false,false},
+  // Deformation motion (three steps, DISPLACE_VERTEX_MOTION): displaced from the static positions; every step gets the offset.
+  {"height-object-deforming",0,NODE_NORMAL_MAP_OBJECT,DISPLACE_TRUE,true,false,true,true},
 };
 constexpr unsigned case_count=sizeof(cases)/sizeof(cases[0]);
 constexpr int grid_n=12;
@@ -81,6 +84,11 @@ static Object *grid(Scene &scene,Shader *shader,const Case &c,std::vector<float3
   std::ranges::fill(mesh->get_smooth(),c.smooth);std::ranges::fill(mesh->get_shader(),0);
   if(c.uv){auto uv=mesh->attributes.add(ATTR_STD_UV,ustring("UVMap"))->data_for_write<float2>();
     for(int k=0;k<n*n*6;k++){const float3 p=authored[tris[k]];uv[k]=make_float2(p.x/2.6f+.5f,p.z/2.6f+.5f);}}
+  if(c.deforming){
+    // Motion steps as cbc_host_motion_positions stores them: the centre step is the mesh, the others shifted and swelled.
+    mesh->set_motion_steps(3);mesh->set_use_motion_blur(true);auto position=mesh->attributes.find(ATTR_STD_POSITION);position->add_motion(mesh);
+    for(int step:{0,2}){auto out=position->data_for_write<packed_float3>(position->time_step_to_attr_step(step,3));const float s=step==0?-1.f:1.f;
+      for(size_t v=0;v<authored.size();v++)out[v]=make_float3(authored[v].x*(1.f+.05f*s)+.1f*s,authored[v].y+.08f*s,authored[v].z);}}
   mesh->tag_triangles_modified();auto object=scene.create_node<Object>();object->set_geometry(mesh);
   if(c.transform)object->set_tfm(transform_translate(make_float3(.2f,-1.4f,.4f))*transform_rotate(.5f,make_float3(0,1,0))*transform_scale(make_float3(1.1f,.8f,.9f)));
   return object;
@@ -102,6 +110,13 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     for(size_t i=0;i<authored.size();i++)moved+=len(make_float3(mesh->get_position()[i])-authored[i])>1e-4f;
     require(moved>authored.size()/2,"Displacement did not move the grid vertices");
     require(c.method!=DISPLACE_BOTH||mesh->attributes.find(ATTR_STD_POSITION_UNDISPLACED)!=nullptr,"Missing the undisplaced position attribute");
+    if(c.deforming){
+      // GeometryManager::displace adds each vertex's offset to every motion step (mesh_displace.cpp).
+      auto position=mesh->attributes.find(ATTR_STD_POSITION);require(position&&position->has_motion(),"Missing the deforming grid's motion steps");
+      require(object->get_device_index()<scene.dscene.object_flag.size()&&(scene.dscene.object_flag[object->get_device_index()]&SD_OBJECT_HAS_VERTEX_MOTION),"Deforming grid without vertex motion");
+      const packed_float3 *before=position->data<packed_float3>(position->time_step_to_attr_step(0,3));uint64_t moved_step=0;
+      for(size_t v=0;v<authored.size();v++){const float3 a=make_float3(authored[v].x*.95f-.1f,authored[v].y-.08f,authored[v].z);moved_step+=len(make_float3(before[v])-a)>1e-4f;}
+      require(moved_step>authored.size()/2,"Displacement did not move the first motion step");}
     std::vector<KernelShaderEvalInput> inputs;const float corners[4][2]={{0,0},{1,0},{0,1},{1.f/3,1.f/3}};
     for(size_t t=0;t<mesh->num_triangles();t++)for(auto &uv:corners){KernelShaderEvalInput in;in.object=object->get_device_index();in.prim=int(mesh->prim_offset+t);in.u=uv[0];in.v=uv[1];inputs.push_back(in);}
     const auto expected=original_displace_evaluate(scene.dscene,inputs);std::vector<float> actual;

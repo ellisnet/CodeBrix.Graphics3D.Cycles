@@ -117,7 +117,25 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     // The Geometry node's Tangent output on triangles (wavefront_normals.wgsl svm_geometry_tangent).
     {"SVM_GEOMETRY_TANGENT",SF_GEOMETRY_TANGENT},
     // Smooth-normal derivatives on motion triangles (wavefront_svm_derivatives.wgsl svmd_smooth_normal).
-    {"SVM_MOTION_NORMAL_DERIVATIVE",SF_MOTION_NORMAL_DERIVATIVE}};
+    {"SVM_MOTION_NORMAL_DERIVATIVE",SF_MOTION_NORMAL_DERIVATIVE},
+    // An area light with a zero axis length (wavefront_emitters.wgsl area_evaluate, wavefront_closest.wgsl intersect_point_lights).
+    {"LIGHT_AREA_DEGENERATE",SF_LIGHT_AREA_DEGENERATE},
+    // The bake of a deforming mesh (BAKE_DEFORM); a deforming mesh's plain triangles at the static positions, for the motion
+    // pass without motion blur and for that bake (wavefront_motion_triangle.wgsl native_triangle_vertices).
+    {"BAKE_DEFORM",SF_BAKE_DEFORM},{"DEFORMING_PLAIN_TRIANGLES",SF_FILM_MOTION_DEFORM|SF_BAKE_DEFORM},
+    // A spot light: its attenuation in the oracle's float3 order (wavefront_emitters.wgsl spot_attenuation).
+    {"LIGHT_SPOT",SF_LIGHT_SPOT},
+    // Lamp samples in the oracle's float3 order: with volume direct light or a point, spot or angled sun light (native/DEVICE.md,
+    // item 152).
+    {"LAMP_SAMPLE_EXACT",SF_VOLUME_LIGHT|SF_LIGHT_LAMP_SAMPLE},
+    // The MNEE walk in two entries, mnee_solve and mnee_project (wavefront_mnee.wgsl).
+    {"MNEE_WALK_STAGES",SF_MNEE_WALK_STAGES},
+    // True displacement of a deforming mesh (wavefront_surface.wgsl shader_eval_displace).
+    {"DISPLACE_VERTEX_MOTION",SF_DISPLACE_VERTEX_MOTION},
+    // The Light Path node's path-state outputs in shadow and volume evaluations (wavefront_svm_nodes.wgsl svm_light_path).
+    {"LIGHT_PATH_STATE",SF_LIGHT_PATH_STATE},
+    // A Principled Volume attribute with a non-standard name (wavefront_svm_closures.wgsl vp_attribute).
+    {"PRINCIPLED_VOLUME_ATTRIBUTE",SF_PRINCIPLED_VOLUME_ATTRIBUTE}};
   return names;
 }
 std::string shader_feature_list(ShaderFeatures features){
@@ -135,7 +153,7 @@ static_assert(SF_CURVE_RIBBON.test(186)&&SF_CURVE_THICK.test(187)&&SF_CURVE_THIC
 static_assert(SF_CURVE_MOTION.test(194)&&SF_CURVE_SHADOW.test(195)&&SF_CURVE_RAYTRACE.test(196)&&SF_CURVE_SHADOW_CATCHER.test(197)&&SF_CURVE_RAYCAST.test(198)&&(SF_SUPERSET_SCENE_ONLY&(SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST))==(SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST));
 static_assert(SF_POINTS.test(206)&&SF_POINTS_MOTION.test(207)&&SF_NODE_POINT_INFO.test(208)&&SF_NODE_PARTICLE_INFO.test(209)&&(SF_SUPERSET_SCENE_ONLY&SF_POINTS_ALL)==SF_POINTS_ALL);
 static_assert(SF_BSDF_HAIR.test(200)&&SF_BSDF_HAIR_CHIANG.test(201)&&(SF_SUPERSET_SCENE_ONLY&(SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG))==(SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG));
-static_assert(SF_ALL.count()==161&&!(SF_ALL&~(SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_LINKING|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
+static_assert(SF_ALL.count()==168&&!(SF_ALL&~(SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_LINKING|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE|SF_LIGHT_AREA_DEGENERATE|SF_BAKE_DEFORM|SF_LIGHT_SPOT|SF_LIGHT_LAMP_SAMPLE|SF_DISPLACE_VERTEX_MOTION|SF_LIGHT_PATH_STATE|SF_PRINCIPLED_VOLUME_ATTRIBUTE)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
   SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96)&&SF_SHADOW_CATCHER.test(102)&&SF_MNEE.test(110));
 static_assert(SF_NODE_AO.test(106)&&SF_NODE_RAYTRACE.test(107)&&SF_AO_SHADOW.test(108)&&!(SF_ALL&SF_NODE_RAYTRACE).any());
 static_assert(SF_MNEE_ENTRIES.test(111)&&!(SF_ALL&SF_MNEE_ENTRIES).any());
@@ -152,6 +170,10 @@ static_assert(SF_CAMERA_PANORAMA_INVERSE.test(249)&&(SF_SUPERSET_SCENE_ONLY&SF_C
 static_assert(SF_LIGHT_MOTION.test(250)&&(SF_SUPERSET_SCENE_ONLY&SF_LIGHT_MOTION).any());
 static_assert(SF_GEOMETRY_TANGENT.test(251)&&(SF_SUPERSET_SCENE_ONLY&SF_GEOMETRY_TANGENT).any());
 static_assert(SF_MOTION_NORMAL_DERIVATIVE.test(252)&&(SF_SUPERSET_SCENE_ONLY&SF_MOTION_NORMAL_DERIVATIVE).any());
+static_assert(SF_LIGHT_AREA_DEGENERATE.test(244)&&(SF_SUPERSET_SCENE_ONLY&SF_LIGHT_AREA_DEGENERATE).any());
+static_assert(SF_BAKE_DEFORM.test(245)&&(SF_SUPERSET_SCENE_ONLY&SF_BAKE_DEFORM).any());
+static_assert(SF_LIGHT_SPOT.test(246)&&(SF_SUPERSET_SCENE_ONLY&SF_LIGHT_SPOT).any());
+static_assert(SF_LIGHT_LAMP_SAMPLE.test(253)&&(SF_SUPERSET_SCENE_ONLY&SF_LIGHT_LAMP_SAMPLE).any());
 static_assert(SF_PHASE_FOURNIER_FORAND.test(171)&&SF_PHASE_RAYLEIGH.test(172)&&SF_PHASE_DRAINE.test(173)&&SF_PHASE_MIE.test(174)&&SF_VOLUME_HETEROGENEOUS.test(175)&&SF_VOLUME_RAY_MARCHING.test(176)&&SF_VOLUME_LIGHT_SHAPES.test(177)&&SF_VOLUME_LIGHT_TREE.test(178)&&SF_VOLUME_LIGHT_PASSES.test(179)&&SF_VOLUME_SHADOW_CATCHER.test(180));
 static_assert(ShaderFeatures::bit(64).words[1]==1&&ShaderFeatures::bit(shader_feature_bits-1).test(shader_feature_bits-1));
 static_assert(SF_DEBUG_OUTPUT.test(116)&&!(SF_ALL&SF_DEBUG_OUTPUT).any());
@@ -355,8 +377,15 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
           out.unsupported="Unsupported feature: Radial Tiling node with two sides (r_gon_sides at most 2) and a roundness strictly between 0 and 1 is not implemented by the WebGPU device "
                           "(the Cycles CPU outputs there are binary32 rounding residue); the scene is rejected, not approximated";
       }
+      // A Light Path output that reads path state or the shading point (Backfacing, Ray Length, the depths): LIGHT_PATH_STATE,
+      // kept by shader_features only in scenes with transparent shadows or volumes.
+      if(op==NODE_LIGHT_PATH&&w[node+offsetof(SVMNodeLightPath,path_type)/4]>=uint32_t(NODE_LP_backfacing))out.features|=SF_LIGHT_PATH_STATE;
+      // A Principled Volume attribute name that is not a standard attribute's (PRINCIPLED_VOLUME_ATTRIBUTE).
+      if(op==NODE_PRINCIPLED_VOLUME)for(size_t field:{offsetof(SVMNodePrincipledVolume,attr_density),offsetof(SVMNodePrincipledVolume,attr_color),offsetof(SVMNodePrincipledVolume,attr_temperature)})
+        if(w[node+field/4]>=uint32_t(ATTR_STD_NUM)&&w[node+field/4]!=uint32_t(ATTR_STD_NOT_FOUND))out.features|=SF_PRINCIPLED_VOLUME_ATTRIBUTE;
       // The Raycast node's attribute records (NODE_ATTR opcode + SVMNodeAttr each) follow its record.
       if(op==NODE_RAYCAST){
+        out.raycast_records.push_back(uint32_t(node));
         const uint64_t count=(w[node+offsetof(SVMNodeRaycast,num_attributes)/4]>>(8*(offsetof(SVMNodeRaycast,num_attributes)%4)))&0xffffu;
         bool ok=true;for(uint64_t i=0;i<count&&ok;i++){const uint64_t at=pc;ok=take(pc,4)&&w[at]==NODE_ATTR&&take(pc,sizeof(SVMNodeAttr));}
         if(!ok){out.stopped_paths++;break;}
@@ -413,6 +442,21 @@ std::string specialize_wgsl(const std::string &source,ShaderFeatures enabled){
   return out.str();
 }
 
+void svm_canonical_padding(std::vector<uint32_t> &w){
+  // The shader headers come first (scene/svm.cpp): NODE_SHADER_JUMP records whose program offsets all lie past the last header.
+  constexpr uint32_t header=1+sizeof(SVMNodeShaderJump)/4;size_t shaders=0;uint64_t first_program=w.size();
+  while((shaders+1)*header<=w.size()&&shaders*header<first_program&&w[shaders*header]==NODE_SHADER_JUMP){
+    for(const size_t field:{offsetof(SVMNodeShaderJump,offset_surface),offsetof(SVMNodeShaderJump,offset_volume),offsetof(SVMNodeShaderJump,offset_displacement)})
+      first_program=std::min<uint64_t>(first_program,w[shaders*header+1+field/4]);
+    shaders++;}
+  // The padding: one byte after only_local and the tail after the last stack offset (the record is a whole number of words).
+  static_assert(offsetof(SVMNodeRaycast,num_attributes)==offsetof(SVMNodeRaycast,only_local)+2,"SVMNodeRaycast: one padding byte after only_local");
+  constexpr size_t tail=offsetof(SVMNodeRaycast,hit_normal_offset)+sizeof(SVMStackOffset);
+  static_assert(tail<=sizeof(SVMNodeRaycast)&&sizeof(SVMNodeRaycast)%4==0,"SVMNodeRaycast layout");
+  auto clear=[&](uint32_t node,size_t byte){if(node+byte/4<w.size())w[node+byte/4]&=~(0xffu<<(8*(byte%4)));};
+  for(const bool displacement:{false,true})for(const uint32_t node:svm_census(w,shaders,nullptr,displacement).raycast_records){
+    clear(node,offsetof(SVMNodeRaycast,only_local)+1);for(size_t byte=tail;byte<sizeof(SVMNodeRaycast);byte++)clear(node,byte);}
+}
 const char *specialization_mode_name(SpecializationMode mode){
   return mode==SpecializationMode::Scene?"scene":mode==SpecializationMode::Superset?"superset":"off";
 }
@@ -464,9 +508,48 @@ std::vector<size_t> wgsl_inlined_bytes(const std::string &source,const std::vect
   return out;
 }
 size_t wgsl_inlined_bytes(const std::string &source,const std::string &entry){return wgsl_inlined_bytes(source,std::vector<std::string>{entry})[0];}
+std::vector<size_t> wgsl_inlined_copies(const std::string &source,const std::vector<std::string> &entries,const std::string &callee){
+  // As wgsl_inlined_bytes: function bodies without line comments; a call to a defined function inlines its copies.
+  std::string text;text.reserve(source.size());
+  for(size_t i=0;i<source.size();){
+    if(source.compare(i,2,"//")==0){while(i<source.size()&&source[i]!='\n')i++;continue;}
+    text+=source[i++];
+  }
+  auto ident=[](char c){return std::isalnum(static_cast<unsigned char>(c))||c=='_';};
+  std::unordered_map<std::string,std::pair<size_t,size_t>> bodies;
+  for(size_t at=text.find("fn ");at!=std::string::npos;at=text.find("fn ",at+3)){
+    if(at>0&&ident(text[at-1]))continue;
+    size_t n=at+3;while(n<text.size()&&text[n]==' ')n++;size_t e=n;while(e<text.size()&&ident(text[e]))e++;
+    if(e==n||e>=text.size()||text[e]!='(')continue;
+    const size_t open=text.find('{',e);if(open==std::string::npos)break;
+    int depth=0;size_t j=open;for(;j<text.size();j++){if(text[j]=='{')depth++;else if(text[j]=='}'&&--depth==0)break;}
+    bodies[text.substr(n,e-n)]={at,j+1};
+  }
+  std::unordered_map<std::string,size_t> memo;
+  std::function<size_t(const std::string&,unsigned)> copies=[&](const std::string &name,unsigned depth)->size_t{
+    if(name==callee)return 1;
+    if(auto m=memo.find(name);m!=memo.end())return m->second;
+    const auto [start,stop]=bodies.at(name);size_t total=0;
+    if(depth<64){const size_t open=text.find('{',start);
+      for(size_t i=open;i<stop;){
+        if(!ident(text[i])||(i>open&&ident(text[i-1]))){i++;continue;}
+        size_t e=i;while(e<stop&&ident(text[e]))e++;size_t k=e;while(k<stop&&text[k]==' ')k++;
+        if(k<stop&&text[k]=='('){const std::string call=text.substr(i,e-i);if(call!=name&&bodies.count(call))total+=copies(call,depth+1);}
+        i=e;
+      }}
+    memo[name]=total;return total;
+  };
+  std::vector<size_t> out;out.reserve(entries.size());
+  for(const std::string &entry:entries)out.push_back(bodies.count(entry)?copies(entry,0):0);
+  return out;
+}
 size_t pipeline_size_warning_bytes(){
   if(const char *value=std::getenv("CODEBRIX_CYCLES_PIPELINE_SIZE_WARN_BYTES");value&&*value)return size_t(std::strtoull(value,nullptr,10));
   return pipeline_size_warning_default_bytes;
+}
+std::string portal_sampler_copies_error(const char *module,const char *entry,size_t copies){
+  return std::string("WebGPU entry ")+entry+" of module "+module+" inlines the portal light sampler "+std::to_string(copies)+
+    " times; at most one copy per entry is allowed (two copies compute wrong light samples on Intel graphics)";
 }
 std::string pipeline_size_warning(const char *module,const char *entry,size_t inlined_bytes,size_t threshold){
   char text[512];
@@ -552,6 +635,7 @@ ShaderFeatures WebGPUDevice::shader_features(){
      if(!displaced.empty()){const SvmCensus program=svm_census(svm_node_words,shader_records.size(),&displaced,true);
        displacement_features=program.features|SF_EVAL_DISPLACE;displacement_program_features=program.features;
        for(uint32_t s:displaced)if(shader_records[s].flags&SD_HAS_BUMP_FROM_DISPLACEMENT)displacement_features|=SF_BUMP_UNDISPLACED;
+       for(const uint flags:object_flag_records)if(flags&SD_OBJECT_HAS_VERTEX_MOTION)displacement_features|=SF_DISPLACE_VERTEX_MOTION;
        if(unsupported_feature.empty())unsupported_feature=program.unsupported;
        // Every opcode the SVM compiler emits has a record size (op_info), so a stopped path is a malformed program.
        if(unsupported_feature.empty()&&program.stopped_paths)unsupported_feature="Invalid displacement shader program";
@@ -561,7 +645,7 @@ ShaderFeatures WebGPUDevice::shader_features(){
        // A closure (Principled BSDF) cannot feed the displacement output, so it never reaches the program.
        const ShaderFeatures stateful=program.features&SF_PRINCIPLED_ALL;
        if(unsupported_feature.empty()&&stateful.any())
-         unsupported_feature="Unsupported feature: "+shader_feature_list(stateful)+" in a displacement shader (true displacement) is not implemented by the WebGPU device; the scene is rejected, not approximated";}}
+         unsupported_feature="Invalid displacement shader program: closure features ("+shader_feature_list(stateful)+") in a displacement program";}}
     // Adapter-class refusal from the known-adapter table (device_tier.cpp), for
     // example texture, colour and utility nodes on the Adreno 650.
     const KnownAdapter *known=tier_policy.known_adapter();
@@ -605,6 +689,16 @@ ShaderFeatures WebGPUDevice::shader_features(){
       for(auto &shader:shader_records)if((shader.flags&SD_HAS_VOLUME)&&(shader.flags&SD_HAS_LIGHT_PATH_NODE)){enabled_features|=SF_VOLUME_LIGHT_PATH;break;}
       if(data.integrator.volume_ray_marching)enabled_features|=SF_VOLUME_RAY_MARCHING|SF_VOLUME_HETEROGENEOUS;}
     else enabled_features&=~SF_VOLUME_EMISSION;
+    // The Light Path node's path-state outputs matter only where shadow, volume or emitter evaluations run them: an emitter
+    // evaluation is the shader of a lamp, a background light or an emissive triangle that is not constant (shade_light_nee,
+    // the lamp hits, the importance map).
+    if((enabled_features&SF_LIGHT_PATH_STATE).any()&&!(data.kernel_features&KERNEL_FEATURE_VOLUME)&&!data.integrator.transparent_shadows){
+      std::vector<uint32_t> emitters;auto add=[&](uint32_t id){if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))emitters.push_back(id);};
+      for(const KernelLight &light:lamp_records())add(uint32_t(light.shader_id)&SHADER_MASK);
+      for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0&&size_t(light_distribution_records[i].prim)<tri_shader_words.size())
+        add(tri_shader_words[light_distribution_records[i].prim]&SHADER_MASK);
+      std::sort(emitters.begin(),emitters.end());emitters.erase(std::unique(emitters.begin(),emitters.end()),emitters.end());
+      if(emitters.empty()||!(svm_census(svm_node_words,shader_records.size(),&emitters).features&SF_LIGHT_PATH_STATE).any())enabled_features&=~SF_LIGHT_PATH_STATE;}
     // The last distribution entry is the CDF end marker (prim 0), not an emitter.
     for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0)enabled_features|=SF_LIGHT_TRIANGLE;
     for(const KernelShader &shader:shader_records)if(shader.flags&(SD_MIS_FRONT|SD_MIS_BACK))enabled_features|=SF_LIGHT_TRIANGLE;
@@ -614,6 +708,13 @@ ShaderFeatures WebGPUDevice::shader_features(){
     if(data.background.use_mis)enabled_features|=SF_LIGHT_BACKGROUND;
     // Background light portals (the portal records follow the lamps in the light table).
     if(data.integrator.num_portals>0)enabled_features|=SF_BACKGROUND_PORTAL;
+    // Area lights with a zero axis length (native/DEVICE.md, item 148).
+    for(const KernelLight &light:lamp_records())if(light.type==LIGHT_AREA&&(light.area.len_u==0||light.area.len_v==0))enabled_features|=SF_LIGHT_AREA_DEGENERATE;
+    // Spot lights (spot_attenuation in the oracle's float3 order; native/DEVICE.md, item 151).
+    for(const KernelLight &light:lamp_records())if(light.type==LIGHT_SPOT)enabled_features|=SF_LIGHT_SPOT;
+    // Point and spot lights, and sun lights with an angle (light_cone): lamp samples in the oracle's order (native/DEVICE.md,
+    // item 152).
+    for(const KernelLight &light:lamp_records())if(light.type==LIGHT_POINT||light.type==LIGHT_SPOT||(light.type==LIGHT_SUN&&light.sun.one_minus_cosangle!=0.0f))enabled_features|=SF_LIGHT_LAMP_SAMPLE;
     // Point, spot, area and sun lights whose emission shader is not constant (shade_light_nee and the hit evaluations).
     for(const KernelLight &light:lamp_records())if(light.type!=LIGHT_BACKGROUND){const auto id=uint(light.shader_id)&SHADER_MASK;
       if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE|SF_LIGHT_LAMP_SHADER;}
@@ -657,9 +758,15 @@ ShaderFeatures WebGPUDevice::shader_features(){
     if(data.kernel_features&KERNEL_FEATURE_DENOISING)enabled_features|=SF_FILM_DENOISING;
     if(film_motion_vectors())enabled_features|=SF_FILM_MOTION;
     if(film_motion_vectors())for(const uint flags:object_flag_records)if(flags&SD_OBJECT_HAS_VERTEX_MOTION)enabled_features|=SF_FILM_MOTION_DEFORM;
+    // A bake of a deforming mesh: its plain triangles at the static positions (init_from_bake.h; native/DEVICE.md, item 115).
+    if(data.bake.use&&(data.kernel_features&KERNEL_FEATURE_BAKING)&&data.bake.object_index>=0&&size_t(data.bake.object_index)<object_flag_records.size()&&
+       (object_flag_records[size_t(data.bake.object_index)]&SD_OBJECT_HAS_VERTEX_MOTION))enabled_features|=SF_BAKE_DEFORM;
     if(data.bvh.have_motion||data.cam.num_motion_steps!=0)enabled_features|=SF_FILM_MOTION_EXACT;
     if(data.integrator.transparent_shadows&&data.bvh.have_motion)enabled_features|=SF_SHADOW_MOTION;
     if(data.integrator.use_caustics&&data.bvh.have_motion)enabled_features|=SF_MNEE_MOTION;
+    // The MNEE walk's traversal with motion and curve or point leaves (pipelines.h SF_MNEE_WALK_STAGES), from the module's own
+    // features: a device that renders several scenes keeps the features of the earlier ones (the MNEE image gate).
+    if((enabled_features&SF_MNEE_MOTION).any()&&((enabled_features&(SF_CURVES|SF_POINTS_ALL)).any()||!curve_records.empty()||!point_shader_words.empty()))enabled_features|=SF_MNEE_WALK_STAGES;
     for(const KernelObject &object:object_records){
       if(object.shadow_terminator_shading_offset>1.0f)enabled_features|=SF_TERMINATOR_SHADING;
       // The kernel multiplier 1/(1-offset/2) above 2 (offsets in (1, 2], infinite at 2) needs the wide cosine;
@@ -922,6 +1029,11 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
   // Size guard (pipelines.h): estimated from the WGSL before the driver sees it,
   // so the warning is on stderr even if the compile then crashes the process.
   const std::vector<size_t> inlined=wgsl_inlined_bytes(specialized,std::vector<std::string>(entries.begin(),entries.end()));
+  // native/DEVICE.md 107: an entry with two inlined copies of the background light's portal sampler computes wrong light
+  // samples on Mesa's Intel driver. Every entry is built with at most one; checked here, before any driver sees the text.
+  {const std::vector<size_t> copies=wgsl_inlined_copies(specialized,std::vector<std::string>(entries.begin(),entries.end()),portal_sampler_function);
+   size_t index=0;for(const char *entry:entries){const size_t n=copies[index++];
+     if(n>1)throw std::runtime_error(portal_sampler_copies_error(module,entry,n));}}
   {size_t index=0;
    for(const char *entry:entries){
      const size_t bytes=inlined[index++];
@@ -973,7 +1085,8 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
       // trips the kernels' validity check ("invalid state/data") with more than one
       // invocation per workgroup; one invocation is exact (volumes/heterogeneous-point
       // within 1.3e-7 of the CPU; docs/TESTING-MACOS-X64.md, M4).
-      if(override_code.empty()&&std::strcmp(entry,"shade_volume_heterogeneous")==0&&intel_metal_surface_workgroup(gpu))
+      // The integration's shader evaluations run in shade_volume_heterogeneous_eval (native/DEVICE.md 52), so it is built so too.
+      if(override_code.empty()&&(std::strcmp(entry,"shade_volume_heterogeneous")==0||std::strcmp(entry,"shade_volume_heterogeneous_eval")==0)&&intel_metal_surface_workgroup(gpu))
         single_invocation_entry(code,entry);
       if(fingerprint&&!fingerprint_module(module,entry,features,code,out))break;
       const auto t0=clock::now();

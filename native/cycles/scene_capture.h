@@ -20,6 +20,7 @@ class SceneCapture {
   explicit SceneCapture(WebGPUDevice &device):d(device),dir(std::getenv("CODEBRIX_CYCLES_RENDER_CAPTURE")){
     const char *size=std::getenv("CODEBRIX_CYCLES_RENDER_CAPTURE_SIZE");
     if(!size||std::sscanf(size,"%ux%ux%ux%u",&w,&h,&n,&start)<3||!w||!h||!n)throw std::runtime_error("CODEBRIX_CYCLES_RENDER_CAPTURE_SIZE must be WxHxN[xS]");
+    d.capture_sizing=true;
   }
   void enqueue(DeviceKernel kernel,int work,const DeviceKernelArguments &args){
     if(done())return;

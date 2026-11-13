@@ -56,6 +56,17 @@ def inlined_bytes(text, entry):
         return total
     return size(entry) if entry in fns else None
 
+def probe_result(stdout, stderr):
+    """The probe's report: the last stdout line that is a JSON object. The driver and the runtime may print after it, and a
+    probe that crashed (a signal, an abort in the compiler) prints none; then the tails of both streams are the error."""
+    for line in reversed(stdout.strip().splitlines()):
+        line = line.strip()
+        if line.startswith('{'):
+            try: value = json.loads(line)
+            except ValueError: continue
+            if isinstance(value, dict): return value
+    return dict(passed=False, error=('stdout: '+stdout.strip()[-400:]+' | stderr: '+stderr.strip()[-400:]).strip())
+
 def build_probe(out):
     exe = out/'compile_probe'
     command = ['clang++', '-std=c++20', '-O2', '-I', str(ROOT/'src'), '-I', str(ROOT/'include'), '-I', str(PACKAGE/'include'),
@@ -78,7 +89,7 @@ def main():
             env = dict(os.environ, MESA_SHADER_CACHE_DIR=cache); started = time.time()
             try:
                 r = subprocess.run([str(exe), str(a.wgsl.resolve()), entry], capture_output=True, text=True, timeout=a.timeout, env=env)
-                lines = r.stdout.strip().splitlines(); row.update(json.loads(lines[-1]) if lines else dict(passed=False, error=r.stderr[-800:]))
+                row.update(probe_result(r.stdout, r.stderr))
                 row['returncode'] = r.returncode
             except subprocess.TimeoutExpired:
                 row.update(passed=False, timeout=True)

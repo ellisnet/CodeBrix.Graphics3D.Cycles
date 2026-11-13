@@ -29,7 +29,7 @@
 #include <numeric>
 using namespace ccl;
 using namespace wavefront_test;
-struct Metrics {uint64_t cases=0,guards=0,paths=0,lamp_hits=0,continued=0,terminated=0,exact=0,numeric=0,film=0,strict=0;double maximum=0;};
+struct Metrics {uint64_t highlights=0,cases=0,guards=0,paths=0,lamp_hits=0,continued=0,terminated=0,exact=0,numeric=0,film=0,strict=0;double maximum=0;};
 static void numeric(float actual,float expected,Metrics &m,const std::string &where){
   const double error=std::abs(double(actual)-expected);m.numeric++;m.maximum=std::max(m.maximum,error);m.strict+=error>1e-7+1e-7*std::abs(double(expected));
   require(std::isfinite(actual)&&std::isfinite(expected)&&error<=5e-5+2e-4*std::abs(double(expected)),where+" got="+std::to_string(actual)+" expected="+std::to_string(expected));
@@ -67,6 +67,19 @@ static void fixture(Scene &scene){
     light->set_use_mis(true);light->set_strength(make_float3(2,3,4));array<Node*> slots;slots.push_back_slow(shader);light->set_used_shaders(slots);
     auto object=scene.create_node<Object>();object->set_geometry(light);object->set_tfm(transform_translate(make_float3(i*3.f,0,4)));
   }
+#ifdef CODEBRIX_BROAD_LIGHT_GATE
+  // An area light whose u axis length underflows to zero (size 1e-23; native/DEVICE.md, item 148): enabled by the host, every
+  // sample of it rejected by the pinned spread clamp; the probe compares that validity exactly.
+  {auto area=scene.create_node<AreaLight>();area->set_sizeu(1e-23f);area->set_sizev(1.2f);area->set_spread(1.1f);
+    area->set_use_mis(true);area->set_strength(make_float3(2,3,4));array<Node*> slots;slots.push_back_slow(shader);area->set_used_shaders(slots);
+    auto object=scene.create_node<Object>();object->set_geometry(area);object->set_tfm(transform_translate(make_float3(4.5f,1.5f,4)));}
+  // A spot light with a steep blend (smooth 0.001: spot_smooth about 1e4), and probe states in its blend band (probe_states):
+  // there a last bit of the light direction moves the attenuation by about 1e-3, so the probe fails with the other
+  // platform's arithmetic (CODEBRIX_CYCLES_WGSL_ARITHMETIC=arm64-scalar against the x64 reference), as a negative control must.
+  {auto spot=scene.create_node<SpotLight>();spot->set_radius(1e-4f);spot->set_is_sphere(false);spot->set_angle(.9f);spot->set_smooth(.001f);
+    spot->set_use_mis(true);spot->set_strength(make_float3(2,3,4));array<Node*> slots;slots.push_back_slow(shader);spot->set_used_shaders(slots);
+    auto object=scene.create_node<Object>();object->set_geometry(spot);object->set_tfm(transform_translate(make_float3(-3.f,0,4)));}
+#endif
   for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
 #endif
 }
@@ -77,7 +90,14 @@ static std::vector<IntegratorStateCPU> probe_states(){
   for(unsigned i=0;i<count;i++){auto &s=states[i];s.path.sample=i%64;s.path.rng_pixel=i*2654435761u;s.path.rng_offset=32*(i%4);s.path.bounce=i%3;
     s.path.flag=(i%2)?PATH_RAY_MIS_HAD_TRANSMISSION:0;s.ray.time=float(i%17)/16.f;
     s.ray.P=make_float3(float(i%23)-5.f,float((i/23)%17)*.5f-4.f,4.f-(.1f+float(i%31)*.2f));
-    s.ray.D=normalize(make_float3(.3f*(int(i%5)-2),.2f*(int(i%7)-3),i%11?1.f:-1.f));}
+    s.ray.D=normalize(make_float3(.3f*(int(i%5)-2),.2f*(int(i%7)-3),i%11?1.f:-1.f));
+#ifdef CODEBRIX_BROAD_LIGHT_GATE
+    // Every eighth state in the steep spot's blend band (fixture): cos(theta) to the spot's axis 5e-6 to 9.5e-5 above
+    // cos(0.45), at distances 1 to 4, facing the light.
+    if(i%8==7){const unsigned k=i/8;const float c=cosf(.45f)+5e-6f+9e-5f*float(k%64)/64.f,sn=sqrtf(1-c*c),phi=.37f*float(k),d=1.f+.05f*float(k%61);
+      const float3 S=make_float3(-3.f,0,4);s.ray.P=S+d*make_float3(sn*cosf(phi),sn*sinf(phi),-c);s.ray.D=normalize(S-s.ray.P);}
+#endif
+  }
   return states;
 }
 // Scene exchange and the CPU reference; AFTER_EXCHANGE uploads the states when the gate goes on to GPU work.
@@ -166,6 +186,28 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     unsigned valid=0;for(unsigned i=0;i<count;i++){const auto at=i*12;require(output[at+8]==expected[at],"Emitter validity differs index="+std::to_string(i));metrics.exact++;if(!expected[at])continue;valid++;
       for(unsigned j=1;j<12;j++)numeric(output[at+j+8],expected[at+j],metrics,"Emitter sample="+std::to_string(i)+" field="+std::to_string(j));}
     for(unsigned i=0;i<8;i++)require(output[i]==-1234.f&&output[output.size()-1-i]==-1234.f,"Emitter sample output guard overwritten");
+#ifdef CODEBRIX_BROAD_LIGHT_GATE
+    // A near-peak GGX highlight (alpha^2 1e-4, the normal 0.0131 rad from the sampled direction, 1 - cos^2 about 1.7e-4) of
+    // each sphere light direction sampled from outside the sphere, in bsdf_D's float order on this host for both sides: one last bit of the direction moves
+    // it by about 9e-4 relative, beyond the practical criterion, as a rough glass highlight does in a render
+    // (native/DEVICE.md, item 152). Directions that are equal bit for bit give equal values.
+    auto highlight=[](const float3 normal,const float3 direction){
+      const float c=(normal.x*direction.x+normal.y*direction.y)+normal.z*direction.z;const float alpha2=1e-4f;
+      const float z=std::min(c*c,1.0f);const float v=(1.0f-z)+alpha2*z;return alpha2/(M_PI_F*(v*v));};
+    for(unsigned i=0;i<count;i++){const auto at=i*12;if(!expected[at])continue;
+      const unsigned prim=unsigned(expected[at+10]);if(prim>=d.light_records.size())continue;const auto &light=d.light_records[prim];
+      if(!((light.type==LIGHT_POINT||light.type==LIGHT_SPOT)&&light.spot.is_sphere))continue;
+      // The cone strategy only (a shading point outside the sphere): inside, the direction comes from the hemisphere or sphere
+      // samplers, whose trigonometry is the device's (not the subject of this check; native/DEVICE.md, item 152).
+      {const float3 delta=states[i].ray.P-make_float3(light.co.x,light.co.y,light.co.z);if(!(dot(delta,delta)>sqr(light.spot.radius)))continue;}
+      const double e[3]={expected[at+4],expected[at+5],expected[at+6]};double q[3]={e[2],0.0,-e[0]};
+      const double ql=std::sqrt(q[0]*q[0]+q[2]*q[2]);if(ql<1e-3)continue;
+      const double a=std::cos(0.0131),b=std::sin(0.0131);
+      const float3 normal=make_float3(float(a*e[0]+b*q[0]/ql),float(a*e[1]),float(a*e[2]+b*q[2]/ql));
+      numeric(highlight(normal,make_float3(output[at+12],output[at+13],output[at+14])),highlight(normal,make_float3(e[0],e[1],e[2])),metrics,
+              "Emitter sphere highlight sample="+std::to_string(i));metrics.highlights++;}
+    require(metrics.highlights>=10,"Insufficient sphere light highlight checks");
+#endif
     require(valid>100,"Insufficient valid emitter samples");metrics.paths=count;metrics.lamp_hits=valid;
 #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
     const auto saved=d.light_distribution_records;const auto data=d.data;
@@ -186,16 +228,22 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #else
     const auto saved=d.light_records;const auto saved_data=d.data;
     for(unsigned bad=0;bad<8;bad++){d.light_records=saved;d.data=saved_data;std::string reason;
-      if(bad==0){d.light_records[2].area.len_u=0;reason="degenerate area";}
-      if(bad==1){d.light_records[2].area.len_v=0;reason="degenerate area";}
+      // An area light axis of zero length (native/DEVICE.md, item 148): the device holds it as a zero axis and renders it; an
+      // axis of infinities (no NaN) and a spread of zero are refused by name.
+      if(bad==0){d.light_records[2].area.len_u=0;d.light_records[2].area.axis_u=zero_float3();
+        bool accepted=true;try{d.validate_lighting(true);}catch(const std::exception &){accepted=false;}
+        require(accepted,"Renderer rejected a degenerate area light");metrics.guards++;
+        d.light_records[2].area.axis_u=make_float3(std::numeric_limits<float>::infinity(),-std::numeric_limits<float>::infinity(),std::numeric_limits<float>::infinity());
+        reason="degenerate area light with an infinite axis";}
+      if(bad==1){d.light_records[2].area.len_v=0;d.light_records[2].area.axis_v=zero_float3();d.light_records[2].area.tan_half_spread=0;reason="degenerate area light with a spread of zero";}
       if(bad==2){d.light_records[2].area.tan_half_spread=-1;reason="Invalid native area";}
       if(bad==3){d.light_records[2].area.invarea=std::numeric_limits<float>::quiet_NaN();reason="Invalid native area";}
       if(bad==4){d.light_records[0].spot.cos_half_larger_spread=2;reason="Invalid native spot";}
       // LIGHT_BACKGROUND is a supported lamp type (environment gate); LIGHT_TRIANGLE never is one (a guard).
       if(bad==5){d.light_records[0].type=LIGHT_TRIANGLE;reason="Invalid native light type";}
-      // A background light portal (a record after the lamps, num_portals) of zero extent is a degenerate area light.
+      // A background light portal (a record after the lamps, num_portals) of zero extent (item 148).
       if(bad==6){KernelLight portal=saved[2];portal.area.len_u=0;d.light_records.push_back(portal);d.data.integrator.num_portals=1;
-        d.data.integrator.portal_offset=d.data.integrator.num_lights;d.data.background.portal_weight=1;reason="degenerate area";}
+        d.data.integrator.portal_offset=d.data.integrator.num_lights;d.data.background.portal_weight=1;reason="degenerate background light portal";}
       // A valid portal with volume direct light is accepted (native/DEVICE.md, item 106).
       if(bad==7){d.light_records.push_back(saved[2]);d.data.integrator.num_portals=1;d.data.integrator.portal_offset=d.data.integrator.num_lights;
         d.data.background.portal_weight=1;d.data.kernel_features|=KERNEL_FEATURE_VOLUME;d.data.integrator.use_direct_light=1;
@@ -209,5 +257,5 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   }
   require(stats.mem_used==0,"Emitter test leaked allocations");std::ofstream(std::string(argv[1])+".library.txt")<<d.gpu.library_path;
   if(exchange_only)std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
-  else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"samples\":"<<metrics.paths<<",\"guardCases\":"<<metrics.guards<<",\"valid\":"<<metrics.lamp_hits<<",\"numericChecks\":"<<metrics.numeric<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+  else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"samples\":"<<metrics.paths<<",\"guardCases\":"<<metrics.guards<<",\"valid\":"<<metrics.lamp_hits<<",\"sphereHighlightChecks\":"<<metrics.highlights<<",\"numericChecks\":"<<metrics.numeric<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
 }catch(const std::exception &error){std::cerr<<error.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

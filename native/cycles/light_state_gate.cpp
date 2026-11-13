@@ -27,12 +27,22 @@ static void numeric(float actual,float expected,Metrics &m,const std::string &wh
   const double error=std::abs(double(actual)-expected);m.numeric++;m.maximum=std::max(m.maximum,error);m.strict+=error>1e-7+1e-7*std::abs(double(expected));
   require(std::isfinite(actual)&&std::isfinite(expected)&&error<=5e-5+2e-4*std::abs(double(expected)),where+" got="+std::to_string(actual)+" expected="+std::to_string(expected));
 }
-static void fixture(Scene &scene){
+static void fixture(Scene &scene,bool light_path=false){
   scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);scene.film->set_use_sample_count(false);
   scene.camera->set_full_width(64);scene.camera->set_full_height(1);scene.camera->set_screen_size(64,1);scene.camera->compute_auto_viewplane();
   auto world_graph=make_unique<ShaderGraph>();auto bg=world_graph->create_node<BackgroundNode>();bg->set_color(zero_float3());world_graph->connect(bg->output("Background"),world_graph->output()->input("Surface"));
   auto world=scene.create_node<Shader>();world->set_graph(std::move(world_graph));world->tag_update(&scene);scene.background->set_shader(world);
   auto graph=make_unique<ShaderGraph>();auto emission=graph->create_node<EmissionNode>();emission->set_color(make_float3(.8,.5,.25));emission->set_strength(1);
+  if(light_path){
+    // The Light Path node's depths in a lamp's emission evaluation (LIGHT_PATH_STATE; the lamp hits and suns read the main
+    // path's counters): strength 0.4 + 0.1 * Ray Depth + 0.07 * Transparent + 0.03 * Diffuse + 0.05 * Glossy + 0.02 * Transmission Depth.
+    auto path=graph->create_node<LightPathNode>();ShaderOutput *sum=nullptr;
+    const std::pair<const char*,float> terms[]={{"Ray Depth",.1f},{"Transparent Depth",.07f},{"Diffuse Depth",.03f},{"Glossy Depth",.05f},{"Transmission Depth",.02f}};
+    for(auto [name,weight]:terms){auto term=graph->create_node<MathNode>();term->set_math_type(NODE_MATH_MULTIPLY_ADD);term->set_value2(weight);term->set_value3(sum?0.f:.4f);
+      graph->connect(path->output(name),term->input("Value1"));
+      if(sum){auto add=graph->create_node<MathNode>();add->set_math_type(NODE_MATH_ADD);graph->connect(sum,add->input("Value1"));graph->connect(term->output("Value"),add->input("Value2"));sum=add->output("Value");}
+      else sum=term->output("Value");}
+    graph->connect(sum,emission->input("Strength"));}
   graph->connect(emission->output("Emission"),graph->output()->input("Surface"));auto shader=scene.create_node<Shader>();shader->set_graph(std::move(graph));shader->tag_update(&scene);
   for(int i=0;i<4;i++){
 #ifdef CODEBRIX_BROAD_LIGHT_GATE
@@ -85,8 +95,10 @@ static void run_stage(WebGPUDevice &d,Scheduler &scheduler,DeviceScene &scene,co
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2,"Usage: light_state_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"light_state_gate device creation");Metrics metrics;
-  {
-    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Light state scene preparation failed");
+  // The second pass: the lamps' emission depends on Light Path depths (modes 0 and 9 only, the path counters varied).
+  for(const bool light_path:{false,true}){
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene,light_path);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Light state scene preparation failed");
+    if(light_path)require((d.shader_features()&SF_LIGHT_PATH_STATE).any(),"Light Path lamp pass without LIGHT_PATH_STATE");
     auto &data=scene.dscene.data;film_layout(data);require(scene.dscene.lights.size()==4,"Expected two points and two suns");
     for(size_t i=0;i<scene.dscene.lights.size();i++)scene.dscene.objects[scene.dscene.lights[i].object_id].lightgroup=i%3;
     scene.dscene.objects.copy_to_device();d.const_copy_to("data",&data,sizeof(data));const auto original=data;
@@ -94,6 +106,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
     device_vector<float> film(&d,"mis_state_film",MEM_READ_WRITE);film.alloc(64*48);
     for(int mode=0;mode<20;mode++){
+      if(light_path&&mode!=0&&mode!=9)continue;
       data=original;std::copy(lights.begin(),lights.end(),scene.dscene.lights.data());
       if(mode==1){for(size_t lamp=0;lamp<scene.dscene.lights.size();lamp++)scene.dscene.lights[lamp].shader_id|=SHADER_EXCLUDE_CAMERA;}
       if(mode==2){for(size_t lamp=0;lamp<scene.dscene.lights.size();lamp++)scene.dscene.lights[lamp].shader_id|=SHADER_EXCLUDE_DIFFUSE;}
@@ -124,7 +137,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 const auto &light=lights[lamp];
         s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;s.path.render_pixel_index=j%64;s.path.sample=j/16;s.path.bounce=1+j%3;
         if(mode==5)s.path.bounce=1;
-        s.path.transparent_bounce=j%4;s.path.throughput=make_float3(.4,.6,.2);s.path.continuation_probability=1;s.path.mis_ray_pdf=.03f+.15f*(j%5);
+        s.path.transparent_bounce=j%4;if(light_path){s.path.diffuse_bounce=j%3;s.path.glossy_bounce=(j/3)%2;s.path.transmission_bounce=j%5;}s.path.throughput=make_float3(.4,.6,.2);s.path.continuation_probability=1;s.path.mis_ray_pdf=.03f+.15f*(j%5);
         s.path.flag=j%4==0?PATH_RAY_MIS_SKIP:PATH_RAY_SURFACE_PASS;s.path.flag|=PATH_RAY_REFLECT;
         if(j%5==0)s.path.flag|=PATH_RAY_MIS_HAD_TRANSMISSION;
         s.path.visibility=std::array{PATH_RAY_VISIBILITY_CAMERA,PATH_RAY_VISIBILITY_DIFFUSE,PATH_RAY_VISIBILITY_GLOSSY,PATH_RAY_VISIBILITY_TRANSMIT}[j%4];
@@ -142,6 +155,7 @@ const auto &light=lights[lamp];
       std::fill(initial.begin(),initial.end(),IntegratorStateCPU{});
       for(int j=0;j<count;j++){
         const int i=ids[j];auto &s=initial[i];s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND;s.path.render_pixel_index=j%64;s.path.sample=j/16;s.path.bounce=1+j%3;
+        if(light_path){s.path.transparent_bounce=(j/2)%4;s.path.diffuse_bounce=j%3;s.path.glossy_bounce=(j/3)%2;s.path.transmission_bounce=j%5;}
         s.path.throughput=make_float3(.4,.6,.2);s.path.mis_ray_pdf=.02f+.13f*(j%5);s.path.flag=j%4==0?PATH_RAY_MIS_SKIP:PATH_RAY_SURFACE_PASS;
         s.path.flag|=PATH_RAY_REFLECT;s.path.visibility=std::array{PATH_RAY_VISIBILITY_CAMERA,PATH_RAY_VISIBILITY_DIFFUSE,PATH_RAY_VISIBILITY_GLOSSY,PATH_RAY_VISIBILITY_TRANSMIT}[j%4];
         s.path.pass_diffuse_weight=make_float3(.3,.2,.1);s.path.pass_glossy_weight=make_float3(.1,.2,.3);

@@ -974,17 +974,30 @@ def repeatable_across_threads():
 
 
 @case
-def approximate_shadow_catcher_refused():
-    """With an approximate shadow catcher and an opaque background the film gains a background pass, which the kernel reads as a request to bake the world: refused by name."""
+def approximate_shadow_catcher_bakes_the_world():
+    """With an approximate shadow catcher and an opaque background the film gains a background pass, which the pinned kernel
+    (integrator_init_from_bake) takes as a request to bake the world: the Combined bake of the catcher target is the world along
+    the direction from the origin to each surface point, as Cycles writes it on every device (a world whose colour is its
+    direction reads normalize(P); the film's alpha is 1 in every texel), twice the same on the CPU; with the accurate catcher the target
+    bakes as itself."""
     with Scene() as s:
-        _, o = quad_scene(s, s.diffuse((.5, .5, .5)))
+        world = s.create('shader'); coordinate = s.node(world, 'texture_coordinate'); bg = s.node(world, 'background_shader')
+        s.set(bg, 'strength', 1.0)
+        s.link(coordinate, 'Generated', bg, 'Color'); s.link(bg, 'Background', s.output(world), 'Surface')
+        s.string(world, 'emission_sampling_method', 'none')
+        s.nodes(s.background, 'shader', world)
+        _, o = quad_scene(s, s.diffuse((.5, .5, .5)), TFM)
         s.ints(o, 'is_shadow_catcher', 1); s.ints(s.film, 'use_approximate_shadow_catcher', 1)
-        config = s.config(o, 'combined', W, H)
-        values = (C.c_float * (W * H * 4))(); required, components = C.c_uint64(), C.c_uint32()
-        got = L.cbc_host_bake(s.h, C.byref(config), values, W * H * 4, C.byref(required), C.byref(components))
-        require(got == UNSUPPORTED and 'shadow catcher' in last_error(), f'status {got}: {last_error()}')
+        points = points_for(TFM)[0]
+        first = s.bake(o, 'combined', W, H, 1); second = s.bake(o, 'combined', W, H, 1)
+        if BACKEND != WEBGPU: require(bits(first) == bits(second), 'the world bake is not repeatable')
+        # The film converts Combined of a scene with the approximate catcher and an opaque world with alpha 1 everywhere, the empty texels too.
+        expected = [v for p in points for v in ((*normalize(p), 1.0) if p is not None else (0.0, 0.0, 0.0, 1.0))]
+        world_row = compare(first, expected, 'approximate catcher: the world')
         s.ints(s.film, 'use_approximate_shadow_catcher', 0)
-        return compare(s.bake(o, 'normal', W, H, 2), per_pixel(points_for()[0], lambda p: (0.0, 0.0, 1.0), 3), 'accurate shadow catcher bakes')
+        accurate = s.bake(o, 'combined', W, H, 1)
+        require(all(math.isfinite(v) for v in accurate) and accurate != first, 'the accurate catcher must bake the object, not the world')
+        return world_row
 
 
 @case
@@ -1083,21 +1096,13 @@ def webgpu_matches_cpu_every_type():
 
 @case
 def deformation_motion():
-    """A mesh with deformation motion under motion blur: the CPU kernel places the texel on the static positions; the WebGPU device refuses the bake by name and writes nothing."""
+    """A mesh with deformation motion under motion blur: the kernel places the texel on the static positions (init_from_bake.h), on every backend; the WebGPU device's diffuse bake of it is judged in the oracle scene bake/deformation-motion."""
     with Scene() as s:
         s.ints(s.integrator, 'motion_blur', 1); s.set(s.camera, 'shuttertime', .5)
         m, o = quad_scene(s, s.diffuse((.5, .5, .5)))
         steps = [c + d for d in (-.2, 0.0, .2) for c in QUAD]
         check(L.cbc_host_motion_positions(s.h, m, 3, floats(steps), len(steps)))
-        if BACKEND != WEBGPU:
-            return compare(s.bake(o, 'position', W, H), per_pixel(points_for()[0], lambda p: p, 3), 'position under deformation motion')
-        config = s.config(o, 'position', W, H)
-        values = (C.c_float * (W * H * 3))(*([-7.0] * (W * H * 3))); required, components = C.c_uint64(), C.c_uint32()
-        got = L.cbc_host_bake(s.h, C.byref(config), values, W * H * 3, C.byref(required), C.byref(components))
-        message = last_error()
-        require(got == FAILED and 'deformation motion not implemented' in message, f'status {got}: {message}')
-        require(all(v == -7.0 for v in values), 'a refused bake wrote the output')
-        return message
+        return compare(s.bake(o, 'position', W, H), per_pixel(points_for()[0], lambda p: p, 3), 'position under deformation motion')
 
 
 @case
@@ -1127,7 +1132,7 @@ def zero_area_triangle():
 
 @case
 def zero_area_triangle_normal():
-    """The Normal bake of a zero-area triangle: flat, the CPU kernel writes its not-a-number normal and the host fails the bake ("Nonfinite bake output"), while the WebGPU device refuses it by name before writing; smooth, the interpolated normal is defined and both devices bake it."""
+    """The Normal bake of a zero-area triangle: flat, the kernel writes its not-a-number normal (the WebGPU device stores the same quiet NaN) and the host fails the bake ("Nonfinite bake output") on every backend; smooth, the interpolated normal is defined and both devices bake it."""
     xyz = QUAD + (0.5, 0.5, 0.5)
     tris = QUAD_TRIANGLES + (4, 4, 4)
     uv = QUAD_UV + (0.9, 0.9, 0.97, 0.9, 0.97, 0.97)
@@ -1142,7 +1147,7 @@ def zero_area_triangle_normal():
             got = L.cbc_host_bake(s.h, C.byref(config), values, W * H * 3, C.byref(required), C.byref(components))
             message = last_error() if got != OK else ''
             if not smooth:
-                expected = 'Nonfinite bake output' if BACKEND != WEBGPU else 'zero-area triangle not implemented'
+                expected = 'Nonfinite bake output'
                 require(got == FAILED and expected in message and all(v == -7.0 for v in values), f'flat: status {got}: {message}')
                 rows.append(message)
                 continue

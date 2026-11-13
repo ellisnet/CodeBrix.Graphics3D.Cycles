@@ -129,7 +129,8 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   const bool transparent_shading=shading&&data.integrator.transparent_shadows;
   if(transparent_shading){
     // GPU-private ShaderData for every recorded hit of each dispatched path.
-    const size_t needed=size_t(n)*INTEGRATOR_SHADOW_ISECT_SIZE_GPU*surface_data_cache_bytes;
+    // A replay capture sizes it for the shadow path capacity (device.h capture_sizing).
+    const size_t needed=size_t(capture_sizing&&p[10]>uint32_t(n)?p[10]:uint32_t(n))*INTEGRATOR_SHADOW_ISECT_SIZE_GPU*surface_data_cache_bytes;
     if(needed>shadow_shader_cache_bytes){
       if(shadow_shader_cache){flush();release(shadow_shader_cache);shadow_shader_cache=0;shadow_shader_cache_bytes=0;}
       shadow_shader_cache=allocate(needed);shadow_shader_cache_bytes=needed;

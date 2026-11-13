@@ -78,7 +78,8 @@ def scene(scene_id, description, materials, objects, pass_list, film=None, world
                  'use_adaptive_sampling': False, 'use_denoise': False, 'min_bounce': 2, 'max_bounce': 4, 'max_diffuse_bounce': 3,
                  'max_glossy_bounce': 3, 'max_transmission_bounce': 4, 'transparent_max_bounce': 4, 'sample_clamp_direct': 0.0,
                  'sample_clamp_indirect': 0.0, 'caustics_reflective': True, 'caustics_refractive': True, 'filter_glossy': 0.0, **(integrator or {})}},
-             {'handle': 'film', 'scene': 'film', 'set': {'use_sample_count': False, 'exposure': 1.0, 'filter_type': 'box', 'filter_width': 1.0, **(film or {})}},
+             # A film value None leaves the socket out (film use_sample_count is Cycles' session state; the host refuses a changing set).
+             {'handle': 'film', 'scene': 'film', 'set': {k: v for k, v in {'use_sample_count': False, 'exposure': 1.0, 'filter_type': 'box', 'filter_width': 1.0, **(film or {})}.items() if v is not None}},
              {'handle': 'camera', 'scene': 'camera', 'set': {'camera_type': 'perspective', 'fov': 0.9, 'nearclip': 0.1, 'farclip': 100.0,
                                                                'matrix': [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, -7.0]}},
              *materials, *objects,
@@ -233,11 +234,11 @@ def scenes():
     denoise_motion_deform['description'] = ('denoising motion features (backward and specular motion) without motion blur with deforming '
                                             'geometry, moving objects and a moving camera')
     denoise_motion_deform['nodes'] = deforming(denoise_motion_deform['nodes'])
-    # The sample count pass (film use_sample_count): the camera stage's atomic sample counter.
+    # The sample count pass: the camera stage's atomic sample counter.
     count = scene('passes/sample-count', 'the sample count pass (film_write_sample in the camera stage) with the light and data passes',
                   room, room_objects, [('sample_count', 'Sample Count', {}), ('diffuse_direct', 'DiffDir', {}), ('depth', 'Depth', {}),
                                        ('normal', 'Normal', {}), ('mist', 'Mist', {})],
-                  film={'use_sample_count': True, 'mist_start': 2.0, 'mist_depth': 9.0, 'mist_falloff': 2.0})
+                  film={'use_sample_count': None, 'mist_start': 2.0, 'mist_depth': 9.0, 'mist_falloff': 2.0})
     # Holdouts and a transparent film: a holdout object (is_holdout), a holdout/diffuse mix, a semi-transparent veil,
     # the world transparent; mist with falloff 0.5 and a zero pass alpha threshold.
     holdout_materials = room+[semi_transparent('veil', {'pass_id': 11}),

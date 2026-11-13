@@ -42,8 +42,8 @@ int main(int argc, char **argv) {
   const float matrix[12] = {1,0,0,0, 0,1,0,0, 0,0,1,-4};
   TRY(cbc_host_set_floats(host, camera, "matrix", matrix, 12));
   TRY(cbc_host_set_string(host, integrator, "sampling_pattern", "tabulated_sobol"));
-  /* Integrator features the WebGPU backend does not implement (light trees,
-   * denoising, adaptive sampling and path guiding all add passes or kernels). */
+  /* A plain, deterministic film for the example: no light tree, denoising,
+   * adaptive sampling or path guiding (each adds passes or kernels). */
   const int64_t off = 0;
   TRY(cbc_host_set_ints(host, integrator, "use_light_tree", &off, 1));
   TRY(cbc_host_set_ints(host, integrator, "use_denoise", &off, 1));

@@ -14,6 +14,9 @@
 #include <iostream>
 #include <iterator>
 #include <string>
+// A JSON string value: the error text of a failed compile can hold quotes, backslashes and line breaks.
+static std::string json_text(const std::string &text){std::string out;
+  for(const char c:text){if(c=='"'||c=='\\'){out+='\\';out+=c;}else if(c=='\n')out+="\\n";else if(static_cast<unsigned char>(c)<0x20)out+=' ';else out+=c;}return out;}
 static long status_kb(const char *key){std::ifstream in("/proc/self/status");std::string line;
   while(std::getline(in,line))if(line.rfind(key,0)==0)return std::atol(line.c_str()+std::strlen(key));return -1;}
 int main(int argc,char **argv){
@@ -39,7 +42,7 @@ int main(int argc,char **argv){
     auto ms=[](auto a,auto b){return std::chrono::duration<double,std::milli>(b-a).count();};
     std::cout<<"{\"entry\":\""<<argv[2]<<"\",\"mode\":\""<<mode<<"\",\"wgslBytes\":"<<source.size()<<",\"moduleMs\":"<<ms(t0,t1)<<",\"pipelineMs\":"<<ms(t1,t2)
       <<",\"baseVmHWMkB\":"<<base_hwm<<",\"baseVmRSSkB\":"<<base_rss<<",\"moduleVmHWMkB\":"<<module_hwm<<",\"peakVmHWMkB\":"<<status_kb("VmHWM:")
-      <<",\"adapter\":\""<<d.adapter_name<<"\",\"passed\":true}"<<std::endl;
+      <<",\"adapter\":\""<<json_text(d.adapter_name)<<"\",\"passed\":true}"<<std::endl;
     return 0;
-  }catch(const std::exception &e){std::cout<<"{\"entry\":\""<<argv[2]<<"\",\"passed\":false,\"error\":\""<<e.what()<<"\",\"peakVmHWMkB\":"<<status_kb("VmHWM:")<<"}"<<std::endl;return 1;}
+  }catch(const std::exception &e){std::cout<<"{\"entry\":\""<<argv[2]<<"\",\"passed\":false,\"error\":\""<<json_text(e.what())<<"\",\"peakVmHWMkB\":"<<status_kb("VmHWM:")<<"}"<<std::endl;return 1;}
 }
