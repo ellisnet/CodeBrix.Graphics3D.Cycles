@@ -7,7 +7,7 @@ The Light Falloff node on a mesh emitter's emission strength (quadratic, linear
 and constant falloff with a smooth term) and in a surface shader's colour (the
 camera ray length), and point, spot, area and sun lights whose emission shader
 is not constant (Light Falloff, checker textures on the lamp's parametric
-coordinates and normal), visible to the camera and sampled with MIS, in the
+coordinates, UV and normal), visible to the camera and sampled with MIS, in the
 sampling family's room, through the public C API.
 Usage: python3 native/oracle/scenes/author_lamps.py [--check]."""
 import argparse
@@ -120,6 +120,16 @@ def lamp_scenes():
                                                  'sunlight', [{'handle': 'g', 'type': 'geometry'}, {'handle': 'e', 'type': 'emission', 'set': {'strength': 1.0}}],
                                                  [['g', 'Parametric', 'e', 'Color'], ['e', 'Emission', 'output', 'Surface']], [1, 0, 0, 0, 0, -0.8, 0.6, 0, 0, -0.6, -0.8, 0],
                                                  {'strength': [3, 3, 3], 'angle': 0.3})
+    # The UV of a lamp (the Texture Coordinate node's UV output, an Attribute node asking for the standard UV map): the
+    # pinned kernel answers it with the lamp's parametric coordinates, (1 - u - v, u, 0).
+    out['lamp-area-uv.json'] = lamp_scene('lamps/lamp-area-uv', 'Rectangular area light whose emission colour is a checker texture on the '
+                                          "Texture Coordinate node's UV output (the lamp's parametric coordinates through the attribute lookup)",
+                                          'arealight', [{'handle': 't', 'type': 'texture_coordinate'},
+                                                        {'handle': 'c', 'type': 'checker_texture', 'set': {'scale': 3.0, 'color1': [1.0, 0.7, 0.3], 'color2': [0.2, 0.5, 1.0]}},
+                                                        {'handle': 'e', 'type': 'emission', 'set': {'strength': 1.0}}],
+                                          [['t', 'UV', 'c', 'Vector'], ['c', 'Color', 'e', 'Color'], ['e', 'Emission', 'output', 'Surface']],
+                                          [1, 0, 0, 0.0, 0, 0, 1, 2.8, 0, -1, 0, 0.5],
+                                          {'strength': [80, 80, 80], 'sizeu': 2.4, 'sizev': 1.6, 'ellipse': False, 'spread': 3.14159265})
     # An area light of zero size: Light::has_contribution disables it on the host (no contribution), next to the
     # room's sphere lamp.
     document = room.scene('lamps/area-zero-size', 'An area light of size zero (disabled by the host) beside the sphere lamp', {}, samples=16)

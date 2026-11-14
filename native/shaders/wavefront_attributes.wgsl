@@ -279,7 +279,15 @@ fn svm_attribute(s:ptr<function,SvmState>,node:u32,derivative:bool){
         else{svm_store(s,offset,svm_input(s,node+N_Attr_missing_alpha));}
         return;
     }
-    if(id==ATTR_STD_GENERATED&&!desc.found){
+//#if LIGHT_LAMP_SHADER else     if(id==ATTR_STD_GENERATED&&!desc.found){
+    // svm_node_attr_surface_eval: the UV of a lamp (sd->type == PRIMITIVE_LAMP) is its parametric coordinates,
+    // (1 - u - v, u, 0) with the derivatives of u and v, whatever the lookup found and whatever the output type.
+    // A lamp's shader is evaluated only in modules with the LIGHT_LAMP_SHADER region (lamp_shader_data).
+    if((*s).geometry.primitive_type==PRIMITIVE_LAMP&&id==ATTR_STD_UV){
+        let sd=(*s).geometry;value=vec3<f32>(1.0-sd.u-sd.v,sd.u,0.0);
+        dx=vec3<f32>(-sd.du.x-sd.dv.x,sd.du.x,0.0);dy=vec3<f32>(-sd.du.y-sd.dv.y,sd.du.y,0.0);
+    }else if(id==ATTR_STD_GENERATED&&!desc.found){
+//#endif
         let sd=(*s).geometry;value=sd.P;dx=sd.dPdu*sd.du.x+sd.dPdv*sd.dv.x;dy=sd.dPdu*sd.du.y+sd.dPdv*sd.dv.y;
         if(sd.object_id!=NONE){let object=table_at(G_objects,sd.object_id,SIZE_objects);
             value=surface_object_point(sd,value,true);dx=surface_object_direction(sd,dx,true);dy=surface_object_direction(sd,dy,true);}
@@ -294,8 +302,11 @@ fn svm_attribute(s:ptr<function,SvmState>,node:u32,derivative:bool){
         dx=attribute_convert(data.dx,desc.kind,output,true);dy=attribute_convert(data.dy,desc.kind,output,true);
     }
     if((*s).error!=0u){return;}
-    if(derivative){let width=heap_float(node+N_Attr_bump_filter_width);
-        if(bump==NODE_BUMP_OFFSET_DX){value+=dx*width;}else if(bump==NODE_BUMP_OFFSET_DY){value+=dy*width;}}
+    // svm_node_attr_derivative `data.val += data.dx * node.bump_filter_width`: the product rounded before the sum
+    // (attribute_order), as a Bump height can be a difference of texture values a differential apart.
+    if(derivative){let width=heap_float(node+N_Attr_bump_filter_width);let order=load_word(p(17u)+12u);
+        if(bump==NODE_BUMP_OFFSET_DX){value=attribute_order(vec4<f32>(value+attribute_order(vec4<f32>(dx*width,0.0),order).xyz,0.0),order).xyz;}
+        else if(bump==NODE_BUMP_OFFSET_DY){value=attribute_order(vec4<f32>(value+attribute_order(vec4<f32>(dy*width,0.0),order).xyz,0.0),order).xyz;}}
     let offset=svm_byte(node+N_Attr_out_offset);attribute_store(s,offset,output,value);
     if(derivative&&store!=0u){let stride=select(1u,3u,output==NODE_ATTR_OUTPUT_FLOAT3);attribute_store(s,offset+stride,output,dx);attribute_store(s,offset+2u*stride,output,dy);}
 }

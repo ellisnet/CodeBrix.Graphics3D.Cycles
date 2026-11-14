@@ -183,7 +183,7 @@ def scenes():
                              'with albedo roughness weighting', denoise_materials, denoise_objects, denoise_passes,
                              film={'denoising_pass_follow_reflections': False, 'denoising_pass_use_albedo_roughness_weighting': True})
     # Motion pass without motion blur (Scene::MOTION_PASS): moving and rotating objects, a moving camera with a
-    # changing field of view, and the world behind them (background motion vectors).
+    # changing field of view; the world behind them writes no motion vector (pinned film_write_data_passes_background).
     motion_objects = (quad('back', 'wall', BACK)+quad('floor', 'floor-material', FLOOR)+
                       quad('center', 'glass-material', CENTER, {'motion': [[0.92, 1.98e-05, -9.12e-05, -0.34, -1.56e-05, 0.945, 2.46e-05, -0.11, 0.0001039, -3.56e-05, 1.164, -0.07],
                                                                            [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
@@ -193,7 +193,7 @@ def scenes():
                                                              [0.9950042, 0.0, -0.0998334, 0.25, 0.0, 1.0, 0.0, -0.05, 0.0998334, 0.0, 0.9950042, -0.1]]})+
                       quad('right', 'wall', RIGHT)+quad('panel', 'panel-emission', PANEL))
     motion = scene('passes/motion', 'motion and motion weight passes without motion blur: moving and rotating objects, '
-                   'a moving camera with a changing field of view, and background motion vectors', room, motion_objects,
+                   'a moving camera with a changing field of view; the background writes no motion vector', room, motion_objects,
                    [('motion', 'Vector', {}), ('motion_weight', 'Vector Weight', {}), ('depth', 'Depth', {})],
                    integrator={'motion_blur': False})
     for node in motion['nodes']:

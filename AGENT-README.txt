@@ -1368,12 +1368,12 @@ GetBinaryCapabilities().BackendScopes those of every backend in the library.
 
 Every backend:
   - Catmull-Clark subdivision surfaces (they need OpenSubdiv, which this library does not include)
-  - dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0; this library renders without spectral sampling)
   - the dlss denoiser
   - point clouds rendered as Gaussian splats
 The CPU backends and the WebGPU backend:
   - a denoiser upscale factor other than 1
 The WebGPU backend:
+  - dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0)
   - custom (OSL) cameras
   - path guiding (the integrator's use_guiding) and its passes
   - curves and points with a Both displacement shader
@@ -1392,11 +1392,13 @@ The WebGPU backend:
   - shadow caustics (manifold next-event estimation) on Adreno 650 GPUs
 
 Why. OSL, OpenSubdiv and OpenVDB/NanoVDB (whose sparse images and velocity
-grids two of the WebGPU entries concern) are outside this package. The
-library's kernels are built without spectral sampling, so Cycles would render a
-dispersive Principled BSDF without its dispersion; leave
-TransmissionDispersionScale at 0 and unlinked (with TransmissionWeight at 0
-and unlinked nothing disperses, and the scale is not refused). The dlss denoiser is not part of
+grids two of the WebGPU entries concern) are outside this package. Dispersion
+(a Principled BSDF with TransmissionDispersionScale and TransmissionWeight
+each linked or not 0) renders on the CPU and Metal backends and is not
+implemented by the WebGPU device, whose message is "WebGPU dispersion not
+implemented"; there, leave TransmissionDispersionScale at 0 and unlinked (with
+TransmissionWeight at 0 and unlinked nothing disperses, and the scale is not
+refused). The dlss denoiser is not part of
 the library (use Openimagedenoise). A Gaussian splat needs radiance, scale and
 rotation attributes of value kinds this API cannot create, and Cycles would
 render the cloud as plain points. BooleanMathNode, IntegerMathNode and

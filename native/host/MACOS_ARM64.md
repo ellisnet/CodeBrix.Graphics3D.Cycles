@@ -125,11 +125,10 @@ Adaptations, all recorded by the recipes:
   kernels run on every M-series chip.
 - Overlay files in the Metal kernel closure (NOT BUILT on a Mac at the current
   pin). The shared overlay (`native/tools/cycles_overlay.py`) comes first on the
-  include path of every host translation unit, and at the current pin two of its
-  files are also headers of the Metal kernel closure:
+  include path of every host translation unit, and at the current pin one of its
+  files is also a header of the Metal kernel closure:
   `util/types_gpu_compressed.h` (the WebGPU device's full-precision integrator
-  state, entirely inside `#ifdef WITH_WEBGPU`) and `kernel/integrator/mnee.h`
-  (one `[[maybe_unused]]` attribute). This profile never defines `WITH_WEBGPU`
+  state, entirely inside `#ifdef WITH_WEBGPU`). This profile never defines `WITH_WEBGPU`
   (the recipe refuses a compile database that names it), so the host is compiled
   with Cycles' own half-precision state layout, the layout its Metal kernels
   use. The Metal kernels are compiled at run time from the pinned files, never

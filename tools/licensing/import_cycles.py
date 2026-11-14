@@ -23,7 +23,7 @@ EXCLUDED = {
     'src/cmake/make_update.py':'No established file license; unnecessary maintenance helper.',
     'src/cmake/make_utils.py':'No established file license; unnecessary maintenance helper.',
     'src/cmake/make_format.py':'No established file license; unnecessary maintenance helper.',
-    'src/app/cie_d65_luminance_fit.py':'Embeds the CIE standard illuminant D65 data table (CC BY-SA 4.0); unnecessary fitting helper.',
+    'src/app/cie_d65_luminance_fit.py':'Unnecessary helper script.',
 }
 PREFIXES = ('src/', 'third_party/sky/', 'third_party/libc_compat/', 'third_party/mikktspace/')
 ROOT_FILES = {'CMakeLists.txt','LICENSE','AUTHORS','README.md'}
@@ -32,6 +32,7 @@ INHERITED = {'CMakeLists.txt','AUTHORS','README.md','third_party/mikktspace/READ
              'src/hydra/resources/cycles.json.in','src/hydra/resources/linux_symbols.map',
              'src/hydra/resources/plugInfo.json'}
 ALLOWED = {'Apache-2.0','BSD-3-Clause','MIT','Zlib'}
+ADDITION_BASIS = {'src/kernel/tables_d65_codebrix.h':'CodeBrix data file; see THIRD-PARTY-NOTICES.txt.'}
 # Files whose comments say code was taken from another project without carrying that project's notice. The notice is
 # supplied in third_party/licenses and named in third_party/dependencies.json. (file: license, marker text, basis)
 PORTED_NOTICES = {
@@ -78,14 +79,15 @@ def transform(name, text):
         text=text.replace('assert(mem_used >= size);','assert(atomic_load_z(&mem_used) >= size);')
         return modified(text,'use atomic return/load for concurrent memory accounting.')
     if name == 'src/kernel/tables.h':
-        # The CIE standard illuminant D65 table is published by the CIE under CC BY-SA 4.0
-        # (https://doi.org/10.25039/CIE.DS.hjfjmt59) and is never copied: the text between the two anchors is dropped
-        # unread. The normalisation constant is derived from that table and goes with it.
+        # The illuminant table and its normalisation constant are supplied by the CodeBrix addition
+        # kernel/tables_d65_codebrix.h (written by tools/licensing/d65_numbers.py). The text between the two anchors
+        # is dropped unread and an include of that file takes its place.
         begin='/* Normalization factor so that the D65 spectrum integrates to a luminance of 1.0 under\n'
         end='/*\n * The direction vectors for the first four dimensions of the Sobol\n'
         assert text.count(begin)==1 and text.count(end)==1 and text.index(begin)<text.index(end)
         text=text[:text.index(begin)]+text[text.index(end):]
-        assert 'cie_d65_spd' not in text and 'CIE_D65_NORMALIZATION' not in text and 'CIE.DS.hjfjmt59' not in text
+        assert 'cie_d65_spd' not in text and 'CIE_D65_NORMALIZATION' not in text
+        text=text.replace(end,'#include "kernel/tables_d65_codebrix.h"\n\n'+end)
         # The colour-matching table below this comment is unchanged since it entered Cycles in 2013 and equals, value
         # for value, the table of the public-domain program it was taken from. The dataset citation added upstream
         # later names a CC BY-SA 4.0 publication of the same standard values, which is not this table's origin.
@@ -94,23 +96,8 @@ def transform(name, text):
         assert text.count(cite)==1
         text=text.replace(cite,' * x, y, and z for wavelengths from 380 to 780 nm, 5 nm wavelength steps.\n'
               ' * Values as in "Colour Rendering of Spectra" (specrend.c) by John Walker, a public-domain program.\n */')
-        return modified(text,'the CIE standard illuminant D65 table and its normalisation constant are not included '
-                        '(CC BY-SA 4.0 data); the colour-matching table comment records the table\'s public-domain origin.')
-    if name == 'src/kernel/util/colorspace.h':
-        # The dispersion block (inactive without __SPECTRAL__) reads the D65 table and holds four sampling constants
-        # fitted from that table. It is dropped unread together with the table it depends on.
-        begin='#ifdef __SPECTRAL__\n/* Given a wavelength, convert it to rgb in the working color space, assuming D65 illuminant.\n'
-        end='#endif\n\nCCL_NAMESPACE_END'
-        assert text.count(begin)==1 and text.count(end)==1 and text.index(begin)<text.index(end)
-        text=(text[:text.index(begin)]
-              +'/* The dispersion functions (wavelength_to_rgb_d65, sample_wavelength) are not included: see kernel/tables.h. */\n'
-              +text[text.index(end)+len('#endif\n'):])
-        assert 'cie_d65' not in text and 'sample_wavelength' not in text.replace('(wavelength_to_rgb_d65, sample_wavelength)','')
-        return modified(text,'the dispersion functions, which read the D65 table and hold constants fitted from it, are not included.')
-    if name == 'src/kernel/features.h':
-        assert text.count('#define __SPECTRAL__\n')==1
-        text=text.replace('#define __SPECTRAL__\n','/* __SPECTRAL__ (dispersion) is not defined: its D65 data table is not included. */\n')
-        return modified(text,'dispersion (__SPECTRAL__) is switched off because its D65 data table is not included.')
+        return modified(text,'the illuminant table and its normalisation constant are included from '
+                        'kernel/tables_d65_codebrix.h; the colour-matching table comment records the table\'s public-domain origin.')
     return text
 
 
@@ -156,11 +143,12 @@ def run(upstream):
         records.append({'path':name,'sourceSha256':digest(data),'sha256':digest(result),
                         'licenses':licenses,'licenseBasis':basis,'modified':result!=data})
     additions={'src/util/atomic_ops_codebrix.h':'atomic_ops_codebrix.h',
-               'src/cmake/codebrix_dependencies.cmake':'codebrix_dependencies.cmake'}
+               'src/cmake/codebrix_dependencies.cmake':'codebrix_dependencies.cmake',
+               'src/kernel/tables_d65_codebrix.h':'tables_d65_codebrix.h'}
     for name,replacement in additions.items():
         data=(REPLACEMENTS/replacement).read_bytes();prepared[name]=data
         records.append({'path':name,'sha256':digest(data),'licenses':['Apache-2.0'],
-                        'licenseBasis':'Original CodeBrix implementation; excluded implementation not used.',
+                        'licenseBasis':ADDITION_BASIS.get(name,'Original CodeBrix implementation; excluded implementation not used.'),
                         'replacementSource':str((REPLACEMENTS/replacement).relative_to(ROOT)),'modified':False})
     name='third_party/CMakeLists.txt'
     data=b'# Copyright (c) 2026 Jeremy Ellis and contributors\n# SPDX-License-Identifier: Apache-2.0\nadd_subdirectory(sky)\nif(UNIX AND NOT APPLE)\n  add_subdirectory(libc_compat)\nendif()\n'
@@ -170,7 +158,7 @@ def run(upstream):
         dest=DEST/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(data)
     MANIFEST.write_text(json.dumps({'schemaVersion':1,'upstream':'https://github.com/blender/cycles',
         'revision':REVISION,'tag':tag,'importerSha256':digest(Path(__file__).read_bytes()),
-        'policy':'Filtered import; no upstream atomic implementation, GPL dependency setup, maintenance helpers, submodules, examples, cuew or hipew; no CIE standard illuminant D65 data (CC BY-SA 4.0).',
+        'policy':'Filtered import; no upstream atomic implementation, GPL dependency setup, maintenance helpers, submodules, examples, cuew or hipew.',
         'files':records,'excluded':excluded},indent=2)+'\n')
     print(DEST, len(records),'files;',len(excluded),'excluded paths')
 

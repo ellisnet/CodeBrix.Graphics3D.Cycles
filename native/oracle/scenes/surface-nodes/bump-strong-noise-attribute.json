@@ -1,0 +1,629 @@
+{
+ "cbcOracleScene": 1,
+ "id": "surface-nodes/bump-strong-noise-attribute",
+ "description": "Bump node with a strong high-frequency noise height of a vertex attribute read by an Attribute node (scale 9, detail 2, distance 0.6) on the back wall, the floor and two tilted panels, seen directly and after diffuse bounces with Filter Glossy 0",
+ "sourceFixture": "native/cycles/raytrace_nodes_fixture.h and bsdf_fixture.h (the same nodes)",
+ "render": {
+  "width": 48,
+  "height": 36,
+  "samples": 16,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "filter_glossy": 0.0,
+    "caustics_reflective": true,
+    "caustics_refractive": true
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 0.9,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "handle": "wall",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a",
+      "type": "attribute",
+      "set": {
+       "attribute": "coords"
+      }
+     },
+     {
+      "handle": "n",
+      "type": "noise_texture",
+      "set": {
+       "dimensions": "3D",
+       "scale": 9.0,
+       "detail": 2.0
+      }
+     },
+     {
+      "handle": "bump",
+      "type": "bump",
+      "set": {
+       "strength": 1.0,
+       "distance": 0.6
+      }
+     },
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.62,
+        0.65
+       ],
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a",
+      "Vector",
+      "n",
+      "Vector"
+     ],
+     [
+      "n",
+      "Fac",
+      "bump",
+      "Height"
+     ],
+     [
+      "bump",
+      "Normal",
+      "d",
+      "Normal"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "floor-material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a",
+      "type": "attribute",
+      "set": {
+       "attribute": "coords"
+      }
+     },
+     {
+      "handle": "n",
+      "type": "noise_texture",
+      "set": {
+       "dimensions": "3D",
+       "scale": 9.0,
+       "detail": 2.0
+      }
+     },
+     {
+      "handle": "bump",
+      "type": "bump",
+      "set": {
+       "strength": 1.0,
+       "distance": 0.6
+      }
+     },
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.5,
+        0.45,
+        0.35
+       ],
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a",
+      "Vector",
+      "n",
+      "Vector"
+     ],
+     [
+      "n",
+      "Fac",
+      "bump",
+      "Height"
+     ],
+     [
+      "bump",
+      "Normal",
+      "d",
+      "Normal"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bumped-a",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a",
+      "type": "attribute",
+      "set": {
+       "attribute": "coords"
+      }
+     },
+     {
+      "handle": "n",
+      "type": "noise_texture",
+      "set": {
+       "dimensions": "3D",
+       "scale": 9.0,
+       "detail": 2.0
+      }
+     },
+     {
+      "handle": "bump",
+      "type": "bump",
+      "set": {
+       "strength": 1.0,
+       "distance": 0.6
+      }
+     },
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.6,
+        0.6
+       ],
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a",
+      "Vector",
+      "n",
+      "Vector"
+     ],
+     [
+      "n",
+      "Fac",
+      "bump",
+      "Height"
+     ],
+     [
+      "bump",
+      "Normal",
+      "d",
+      "Normal"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "back",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -3,
+     3,
+     4,
+     -3,
+     3,
+     4,
+     3,
+     3,
+     -4,
+     3,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ],
+    "attributes": [
+     {
+      "name": "coords",
+      "value": "point",
+      "domain": "vertex",
+      "data": [
+       -4.5570002,
+       -0.901,
+       2.5650001,
+       1.291,
+       -2.4289999,
+       4.829,
+       2.569,
+       2.8329999,
+       2.8069999,
+       -3.279,
+       4.3610001,
+       0.543
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "wall"
+    ]
+   }
+  },
+  {
+   "handle": "back-object",
+   "create": "object",
+   "set": {
+    "geometry": "back"
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -2,
+     -2,
+     4,
+     -2,
+     -2,
+     4,
+     -2,
+     3,
+     -4,
+     -2,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ],
+    "attributes": [
+     {
+      "name": "coords",
+      "value": "point",
+      "domain": "vertex",
+      "data": [
+       -2.4590001,
+       -2.119,
+       -1.227,
+       3.3889999,
+       -3.6470001,
+       1.0369999,
+       1.5039999,
+       -1.552,
+       4.4920001,
+       -4.3439999,
+       -0.024,
+       2.2279999
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "floor-material"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor"
+   }
+  },
+  {
+   "handle": "panel-a",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -3.6,
+     -2,
+     1,
+     -0.2,
+     -2,
+     0.2,
+     -0.2,
+     1.5,
+     0.2,
+     -3.6,
+     1.5,
+     1
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ],
+    "attributes": [
+     {
+      "name": "coords",
+      "value": "point",
+      "domain": "vertex",
+      "data": [
+       -3.2976,
+       -0.9384,
+       0.9592,
+       -0.5106,
+       -1.923,
+       1.3686,
+       0.2349,
+       1.1465,
+       0.1891,
+       -2.5520999,
+       2.1310999,
+       -0.2203
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "bumped-a"
+    ]
+   }
+  },
+  {
+   "handle": "panel-a-object",
+   "create": "object",
+   "set": {
+    "geometry": "panel-a"
+   }
+  },
+  {
+   "handle": "panel-b",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     0.3,
+     -1.9,
+     0.4,
+     3.4,
+     -2,
+     1.3,
+     3.1,
+     1.4,
+     0.9,
+     0.2,
+     1.5,
+     0.1
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ],
+    "attributes": [
+     {
+      "name": "coords",
+      "value": "point",
+      "domain": "vertex",
+      "data": [
+       -0.1992,
+       -1.847,
+       1.6145999,
+       1.7063,
+       -2.1496999,
+       3.1475,
+       2.362,
+       0.7218,
+       1.6404001,
+       0.565,
+       1.0282,
+       0.2332
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "bumped-a"
+    ]
+   }
+  },
+  {
+   "handle": "panel-b-object",
+   "create": "object",
+   "set": {
+    "geometry": "panel-b"
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.3,
+        0.35,
+        0.42
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "emitter",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "lamp",
+   "create": "pointlight",
+   "set": {
+    "radius": 0.45,
+    "is_sphere": true,
+    "use_mis": true,
+    "strength": [
+     110,
+     90,
+     70
+    ],
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "lamp-object",
+   "create": "object",
+   "set": {
+    "geometry": "lamp",
+    "tfm": [
+     1.0,
+     0.0,
+     0.0,
+     2.2,
+     0.0,
+     1.0,
+     0.0,
+     2.0,
+     0.0,
+     0.0,
+     1.0,
+     -2.0
+    ]
+   }
+  }
+ ],
+ "images": []
+}

@@ -254,6 +254,8 @@ Each is written by its family's script, whose `--check` still reproduces every c
   tangent, Beckmann with negative anisotropy, a tinted GGX), `bsdf/principled-anisotropic-transmission` (the Principled
   BSDF's Anisotropic input on its transmission lobe) and `bsdf/principled-layers` (a tinted fractional coat, an emissive
   base under sheen and a tinted coat, rough thin-wall transmission).
+- `author_bsdf.py`: `bsdf/principled-dispersion` (the Principled BSDF's Transmission Dispersion Scale and Abbe Number).
+  It renders on the CPU backends; the WebGPU device refuses it ("WebGPU dispersion not implemented").
 - `author_shadow_linking.py`, `author_curves_b.py`, `author_points.py`: `shadow-linking/emissive-textured`,
   `curves-b/linking-emissive-textured` and `points/shadow-linking-emissive-textured` (shadow-linked emitters whose
   emission is not constant: a panel, a point lamp, curves and points).

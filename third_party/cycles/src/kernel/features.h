@@ -1,5 +1,3 @@
-// Modified by CodeBrix: dispersion (__SPECTRAL__) is switched off because its D65 data table is not included.
-// Copyright (c) 2026 Jeremy Ellis and contributors
 /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
  * SPDX-License-Identifier: Apache-2.0 */
@@ -151,7 +149,7 @@ CCL_NAMESPACE_BEGIN
 #define __RAY_DIFFERENTIALS__
 #define __VISIBILITY_FLAG__
 #define __SVM__
-/* __SPECTRAL__ (dispersion) is not defined: its D65 data table is not included. */
+#define __SPECTRAL__
 
 /* Device specific features */
 

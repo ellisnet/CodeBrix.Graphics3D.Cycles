@@ -9,6 +9,16 @@ const VH_OCTREE_MAX_DEPTH:u32=7u;const VH_MANTISSA_BITS:u32=23u;const VH_OVERLAP
 const VH_THROUGHPUT_EPSILON:f32=1e-6;const VH_PRNG_EXPANSION_ORDER:u32=6u;const VH_PRNG_SHADE_OFFSET:u32=7u;const VH_PRNG_BOUNCE_NUM:u32=16u;
 // A run-time value (push word 31, which no dispatch sets) so 1 - r rounds in binary32 as on the CPU.
 fn vh_geometric_r()->f32{return bitcast<f32>(bitcast<u32>(0.9)|p(31u));}
+// volume_transmittance `clamp(int(roundf(expected_steps)), 1, VOLUME_MAX_STEPS)` for expected_steps >= 0 (roundf: halves
+// away from zero). The conversion of a value that is not below 2^31 (an unbounded segment: the tail of a ray without an
+// end, sigma_c * (FLT_MAX - t)) or of NaN is undefined in C++: the x86-64 oracle's cvttss2si returns INT_MIN, which the
+// clamp turns into ONE step. WGSL saturates such a conversion (1024 steps), as a scalar oracle's (ARM64,
+// NATIVE_FLOAT3_RECIPROCAL_NORMALIZE) conversion instruction does.
+fn vh_expected_steps(expected:f32)->u32{
+    let whole=floor(expected);let rounded=select(whole,whole+1.0,expected-whole>=0.5);
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE==0u&&!(rounded<2147483648.0)){return 1u;}
+    return u32(clamp(i32(rounded),1,VH_MAX_STEPS));
+}
 struct VhOctree {
     node:u32, t:vec2<f32>, ray_P:vec3<f32>, ray_D:vec3<f32>, current:vec3<u32>, object:u32, shader:u32,
     scale:u32, next_scale:u32, octant_mask:u32, no_overlap:bool, sigma:vec2<f32>,

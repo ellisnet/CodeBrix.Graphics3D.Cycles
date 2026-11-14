@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2011-2013 Intel Corporation
 // Copyright (c) 2026 Jeremy Ellis and contributors
 // SPDX-License-Identifier: Apache-2.0
-// Adapted from pinned Cycles kernel/device/cpu/image.h, kernel/util/image_2d.h,
+// Adapted from pinned Cycles kernel/util/image.h, kernel/util/image_2d.h,
 // kernel/svm/image.h, kernel/camera/projection.h and util/math_float3.h.
 // Resident native images use checked virtual addresses and software sampling.
 struct ImageInfo {data:u32, kind:u32, width:i32, height:i32, interpolation:u32, extension:u32,}

@@ -5,8 +5,8 @@
 
 Smooth spheres with the Metallic, Beckmann (glossy, anisotropic, refraction,
 glass, metallic), Ashikhmin-Shirley, Ashikhmin velvet and Toon BSDFs, the
-anisotropic Glass BSDF, and the Principled BSDF's anisotropic transmission and
-its coat, sheen, emission and thin-wall layers, on a diffuse floor and wall, lit by a sphere lamp with MIS (BSDF evaluation through
+anisotropic Glass BSDF, and the Principled BSDF's anisotropic transmission, its
+dispersion and its coat, sheen, emission and thin-wall layers, on a diffuse floor and wall, lit by a sphere lamp with MIS (BSDF evaluation through
 next-event estimation) and a constant world, through the public C API.
 Usage: python3 native/oracle/scenes/author_bsdf.py [--check]."""
 import argparse
@@ -154,6 +154,13 @@ def scenes():
                                                  'emission_color': [1.0, 0.6, 0.3], 'emission_strength': 2.0}),
         single('l-thin', 'principled_bsdf', {'distribution': 'multi_ggx', 'base_color': [0.7, 0.9, 0.85], 'roughness': 0.45, 'ior': 1.5, 'transmission_weight': 0.9,
                                              'thin_wall': 1, 'specular_tint': [0.9, 0.85, 0.8]})])
+    out['principled-dispersion.json'] = scene('bsdf/principled-dispersion', 'Principled BSDF with Transmission Dispersion Scale and Transmission Weight (dispersion): a smooth glass with a low Abbe number, a rough one with a half scale, and a partial transmission', [
+        single('d-smooth', 'principled_bsdf', {'distribution': 'ggx', 'base_color': [0.95, 0.97, 1.0], 'roughness': 0.0, 'ior': 1.5, 'transmission_weight': 1.0,
+                                               'transmission_dispersion_scale': 1.0, 'transmission_dispersion_abbe_number': 20.0}),
+        single('d-rough', 'principled_bsdf', {'distribution': 'multi_ggx', 'base_color': [0.9, 0.9, 0.9], 'roughness': 0.2, 'ior': 1.6, 'transmission_weight': 1.0,
+                                              'transmission_dispersion_scale': 0.5, 'transmission_dispersion_abbe_number': 30.0}),
+        single('d-partial', 'principled_bsdf', {'distribution': 'ggx', 'base_color': [0.8, 0.7, 0.5], 'roughness': 0.1, 'ior': 1.45, 'transmission_weight': 0.6,
+                                                'transmission_dispersion_scale': 0.8, 'transmission_dispersion_abbe_number': 45.0})])
     return out
 
 

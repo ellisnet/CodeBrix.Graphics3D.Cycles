@@ -13,7 +13,7 @@ from cycles_source import SOURCE as UPSTREAM
 def registration_overlay(out):
     out=Path(out)
     (out/'device').mkdir(parents=True,exist_ok=True)
-    before={name:(UPSTREAM/'src'/name).read_text() for name in ['device/device.h','device/device.cpp','integrator/path_trace.cpp','util/colorspace.cpp','util/types_gpu_compressed.h','kernel/integrator/mnee.h']};after=dict(before)
+    before={name:(UPSTREAM/'src'/name).read_text() for name in ['device/device.h','device/device.cpp','integrator/path_trace.cpp','util/colorspace.cpp','util/types_gpu_compressed.h']};after=dict(before)
     def replace(name,old,new):
         if after[name].count(old)!=1:raise RuntimeError('Upstream overlay anchor changed: '+old)
         after[name]=after[name].replace(old,new)
@@ -81,9 +81,6 @@ def registration_overlay(out):
             'template<> struct gpu_state_storage<FloatCompressedOnGPU, void> {\n  using gpu_type = float;\n};\n'
             'template<> struct gpu_state_storage<SpectrumCompressedOnGPU, void> {\n  using gpu_type = PackedSpectrum;\n};\n'
             '#endif\n')
-    # MNEE: the import compiles spectral sampling out, which leaves this flag written and never read
-    # (-Wunused-but-set-variable in every translation unit with the CPU kernel). No behaviour changes.
-    replace('kernel/integrator/mnee.h','  bool has_dispersion = false;\n','  [[maybe_unused]] bool has_dispersion = false;\n')
     # util/colorspace.cpp is handed over UNCHANGED. The pinned source invalidates its caches when the OpenColorIO
     # configuration object changes (it keeps the configuration it cached for), which covers a configuration whose
     # transforms change while its scene-linear name stays the same, so the earlier correction is gone. The file stays
@@ -95,6 +92,9 @@ def registration_overlay(out):
                      fromfile='a/src/'+name,tofile='b/src/'+name)) for name in before)
     if not (out.parent/'cycles-registration.patch').exists() or (out.parent/'cycles-registration.patch').read_text()!=patch:
         (out.parent/'cycles-registration.patch').write_text(patch)
+    # A file an earlier overlay held and this one does not: a copy left in OUT would still shadow the pinned file.
+    for retired in ['kernel/integrator/mnee.h']:
+        (out/retired).unlink(missing_ok=True)
     for name,source in after.items():
         path=out/name;path.parent.mkdir(parents=True,exist_ok=True)
         if not path.exists() or path.read_text()!=source:path.write_text(source)

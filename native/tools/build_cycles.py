@@ -35,6 +35,27 @@ CONTAINER_BUILD=REPO/'native/manylinux/build.sh'
 STALE_TRANSLATION=('The WGSL translation in the overlay is missing or stale, and it needs Clang: regenerate the overlay on '
     'the build host first (python3 native/tools/build_cycles.py --overlay-only)')
 
+def _wgsl_code(text):
+    """WGSL text without its comments, for the scan that derives the SVM enum list: block comments (nested, as WGSL
+    allows) and line comments are dropped, so a word in a comment never becomes an ENUM(). A preprocessing directive
+    line (//#if NAME, //#if NAME else <code>, //#endif) is kept: the region scan needs it and its else part is code."""
+    out=[];i=0;depth=0;n=len(text)
+    while i<n:
+        if text.startswith('/*',i):depth+=1;i+=2;continue
+        if depth:
+            if text.startswith('*/',i):depth-=1;i+=2
+            else:
+                if text[i]=='\n':out.append('\n')
+                i+=1
+            continue
+        if text.startswith('//',i):
+            end=text.find('\n',i);end=n if end<0 else end
+            if text.startswith('//#',i) and (i==0 or text[i-1]=='\n'):
+                rest=text[i+2:end];comment=rest.find('//');out.append('//'+(rest if comment<0 else rest[:comment]))
+            i=end;continue
+        out.append(text[i]);i+=1
+    return ''.join(out)
+
 def overlay(out=None,translate=True,located=None):
     """Generate the overlay into OUT. TRANSLATE=False refuses instead of running the Clang AST
     translation when its cached output is not current. LOCATED is the directory the overlay is
@@ -115,9 +136,10 @@ def overlay(out=None,translate=True,located=None):
             if line.startswith('//#endif'):stack.pop();continue
             if not any(stack):kept.append(line)
         return '\n'.join(kept)
-    base_names=set(re.findall(enum_pattern,without_node_regions(svm.replace(nodes_text,''))+closures))
+    # The scan reads code only (_wgsl_code): an upper-case word in a comment is not an enum the shaders use.
+    base_names=set(re.findall(enum_pattern,without_node_regions(_wgsl_code(svm.replace(nodes_text,'')))+_wgsl_code(closures)))
     enum_names=sorted(base_names)
-    node_enum_names=sorted(set(re.findall(enum_pattern,svm+closures))-base_names)
+    node_enum_names=sorted(set(re.findall(enum_pattern,_wgsl_code(svm+closures)))-base_names)
     _write(out/'svm_enums.inc',''.join('  ENUM('+name+');\n' for name in enum_names))
     _write(out/'svm_nodes_enums.inc',''.join('  ENUM('+name+');\n' for name in node_enum_names))
     _write(out/'svm_shader.inc','R"CBWGSL('+translated+closures+svm+')CBWGSL"\n')

@@ -5,7 +5,8 @@
 
 The heterogeneous box inside a world volume, with no background light object: the host supplies the background light
 that pinned Cycles builds the world volume's octree from (scene/volume.cpp, VolumeManager::initialize_octree); a
-heterogeneous world volume alone and with the heterogeneous box inside it. Two Henyey-Greenstein lobes of different
+heterogeneous world volume alone and with the heterogeneous box inside it; a heterogeneous world volume under a sun light,
+whose shadow rays end in an octree segment without an end. Two Henyey-Greenstein lobes of different
 anisotropy in one medium lit by the world (the phase-sampled path stores the pdf of all the phase closures).
 Usage: python3 native/oracle/scenes/author_volumes_c.py [--check]."""
 import argparse
@@ -24,6 +25,24 @@ def heterogeneous_world(document):
     world['nodes'] += [{'handle': 'wn', 'type': 'noise_texture', 'set': {'scale': 0.5, 'detail': 1.0}},
                        {'handle': 'wm', 'type': 'math', 'set': {'math_type': 'multiply', 'value2': 0.03}}]
     world['connect'] += [['wn', 'Fac', 'wm', 'Value1'], ['wm', 'Value', 'wv', 'Density']]
+    return document
+
+
+def stepped_world(document):
+    """The room's world volume with a piecewise constant density, 0.03 * (1 + (x > 0)) * (y < 1e36): heterogeneous inside the
+    scene (two values) and still dense far outside it, up to a height no real scene has. A shadow ray to the sun leaves the
+    octree and ends in a segment without an end, whose step count the pinned kernel takes from a float-to-int conversion
+    of an out-of-range value: only comparisons and products, so the far samples are exact on every device."""
+    world = next(n for n in document['nodes'] if n['handle'] == 'world')['graph']
+    world['nodes'] += [{'handle': 'geo', 'type': 'geometry', 'set': {}}, {'handle': 'sep', 'type': 'separate_xyz', 'set': {}},
+                       {'handle': 'below', 'type': 'math', 'set': {'math_type': 'less_than', 'value2': 1e36}},
+                       {'handle': 'right', 'type': 'math', 'set': {'math_type': 'greater_than', 'value2': 0.0}},
+                       {'handle': 'levels', 'type': 'math', 'set': {'math_type': 'add', 'value2': 1.0}},
+                       {'handle': 'mask', 'type': 'math', 'set': {'math_type': 'multiply'}},
+                       {'handle': 'wm', 'type': 'math', 'set': {'math_type': 'multiply', 'value2': 0.03}}]
+    world['connect'] += [['geo', 'Position', 'sep', 'Vector'], ['sep', 'Y', 'below', 'Value1'], ['sep', 'X', 'right', 'Value1'],
+                         ['right', 'Value', 'levels', 'Value1'], ['levels', 'Value', 'mask', 'Value1'], ['below', 'Value', 'mask', 'Value2'],
+                         ['mask', 'Value', 'wm', 'Value1'], ['wm', 'Value', 'wv', 'Density']]
     return document
 
 
@@ -60,6 +79,12 @@ def scenes():
             'with MIS, no background light object: the world entry integrated by null scattering through the octree rooted '
             'at the background light the host supplies',
             world_volume=True)),
+        'heterogeneous-world-sun-tail.json': stepped_world(volumes.scene(
+            'volumes/heterogeneous-world-sun-tail',
+            'A heterogeneous world volume with a piecewise constant density that stays dense far outside the scene, sun light: '
+            'the shadow rays to the sun end in an octree segment without an end, where the step count of volume_transmittance '
+            'is the oracle host\'s conversion of an out-of-range value (one step on x86-64)',
+            lamp='sun', world_volume=True)),
         'heterogeneous-in-heterogeneous-world.json': heterogeneous_world(volumes.scene(
             'volumes/heterogeneous-in-heterogeneous-world',
             'The heterogeneous box (noise density) inside the heterogeneous world volume, point light with MIS: two '

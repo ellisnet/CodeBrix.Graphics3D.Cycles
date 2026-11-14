@@ -118,17 +118,21 @@ fn surface_decode_normal(value:u32)->vec3<f32>{
     }
     return surface_normalize(vec3<f32>(x,y,z));
 }
+// differential_dudv_compact with the products of Cramer's rule rounded before their differences (an ordering barrier
+// through the order word, 0 in every dispatch): a Bump height is a difference of texture values a differential apart,
+// which amplifies a last-bit difference of du and dv.
+fn surface_fence(x:f32,o:u32)->f32{return bitcast<f32>(bitcast<u32>(x)^o);}
 fn surface_differentials(sd:ptr<function,SurfaceData>){
-    let n=(*sd).Ng;let tangent=surface_orthogonal(n);
+    let n=(*sd).Ng;let tangent=surface_orthogonal(n);let o=load_word(p(17u)+12u);
     var dx=tangent*(*sd).dP;var dy=rounded_cross(n,tangent)*(*sd).dP;
     var a=(*sd).dPdu;var b=(*sd).dPdv;let axis=abs(n);
     if(axis.z<axis.x||axis.z<axis.y){
         if(axis.y<axis.x||axis.y<axis.z){a.x=a.y;b.x=b.y;dx.x=dx.y;dy.x=dy.y;}
         a.y=a.z;b.y=b.z;dx.y=dx.z;dy.y=dy.z;
     }
-    var det=a.x*b.y-b.x*a.y;if(det!=0.0){det=1.0/det;}
-    (*sd).du=vec2<f32>((dx.x*b.y-dx.y*b.x)*det,(dy.x*b.y-dy.y*b.x)*det);
-    (*sd).dv=vec2<f32>((dx.y*a.x-dx.x*a.y)*det,(dy.y*a.x-dy.x*a.y)*det);
+    var det=surface_fence(surface_fence(a.x*b.y,o)-surface_fence(b.x*a.y,o),o);if(det!=0.0){det=rounded_divide(1.0,det);}
+    (*sd).du=vec2<f32>(surface_fence(surface_fence(dx.x*b.y,o)-surface_fence(dx.y*b.x,o),o)*det,surface_fence(surface_fence(dy.x*b.y,o)-surface_fence(dy.y*b.x,o),o)*det);
+    (*sd).dv=vec2<f32>(surface_fence(surface_fence(dx.y*a.x,o)-surface_fence(dx.x*a.y,o),o)*det,surface_fence(surface_fence(dy.y*a.x,o)-surface_fence(dy.x*a.y,o),o)*det);
 }
 fn surface_setup_hit(primitive_type:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32,time:f32,ray_direction:vec3<f32>,ray_dP:f32,ray_dD:f32)->SurfaceData{
     var sd:SurfaceData;

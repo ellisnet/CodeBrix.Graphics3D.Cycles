@@ -33,6 +33,13 @@ def main():
             for kind in kinds: command += ['--target', 'codebrix_cycles_'+kind+'_gate']
             with (out/'build.log').open('w') as log: subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True)
             render_replay.build('linux-x64')
+        else:
+            # --skip-build builds nothing, so every program the gate runs must already exist: name each missing one
+            # and the command that builds it instead of failing on its hash.
+            needed = {WORK/'cycles-build/bin'/('codebrix_cycles_'+kind+'_gate'): 'python3 native/tools/build_cycles.py --jobs 6 --target codebrix_cycles_'+kind+'_gate' for kind in kinds}
+            needed[render_replay.BASE/'linux-x64/render_replay'] = 'python3 native/tools/render_replay.py build --rid linux-x64'
+            missing = ['%s (build it with: %s)' % (path, command) for path, command in needed.items() if not path.is_file()]
+            if missing: raise RuntimeError('--skip-build needs programs that were never built in this checkout: '+'; '.join(missing)+'; or run the gate without --skip-build')
         for kind in kinds:
             path = WORK/'cycles-build/bin'/('codebrix_cycles_'+kind+'_gate'); pins[str(path)] = sha(path)
         path = render_replay.BASE/'linux-x64/render_replay'; pins[str(path)] = sha(path)

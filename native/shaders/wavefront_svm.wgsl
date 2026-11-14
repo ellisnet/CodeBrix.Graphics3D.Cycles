@@ -686,7 +686,14 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
             case NODE_CLOSURE_BACKGROUND,NODE_CLOSURE_EMISSION:{
                 let offset=select(N_ClosureBackground_mix_weight_offset,N_ClosureEmission_mix_weight_offset,opcode==NODE_CLOSURE_EMISSION);
                 let mix_index=svm_byte(node+offset);let mix_weight=svm_optional(&s,mix_index,1.0);
-                if(mix_index==SVM_STACK_INVALID||mix_weight!=0.0){let weight=s.weight*mix_weight;if((s.output.runtime_flag&SR_EMISSION)!=0u){s.output.emission+=weight;}else{s.output.emission=weight;s.output.runtime_flag|=SR_EMISSION;}}
+//#if VOLUME_EMISSION else                 if(mix_index==SVM_STACK_INVALID||mix_weight!=0.0){let weight=s.weight*mix_weight;if((s.output.runtime_flag&SR_EMISSION)!=0u){s.output.emission+=weight;}else{s.output.emission=weight;s.output.runtime_flag|=SR_EMISSION;}}
+                // svm_node_closure_emission: in a volume shader evaluation the weight is scaled by object_volume_density
+                // (1 for OBJECT_NONE, the world volume) after the mix weight. A volume program can emit only in a module
+                // with the VOLUME_EMISSION region (the others refuse an emitting volume evaluation).
+                if(mix_index==SVM_STACK_INVALID||mix_weight!=0.0){var weight=s.weight*mix_weight;
+                    if(volume&&opcode==NODE_CLOSURE_EMISSION&&s.geometry.object_id!=NONE){weight*=object_volume_density(s.geometry.object_id);}
+                    if((s.output.runtime_flag&SR_EMISSION)!=0u){s.output.emission+=weight;}else{s.output.emission=weight;s.output.runtime_flag|=SR_EMISSION;}}
+//#endif
             }
             case NODE_MIX_CLOSURE:{
                 let f=clamp(svm_input(&s,node+N_MixClosure_fac),0.0,1.0);let weight=svm_optional(&s,svm_byte(node+N_MixClosure_in_weight_offset),1.0);

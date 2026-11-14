@@ -658,8 +658,8 @@ ShaderFeatures WebGPUDevice::shader_features(){
     std::sort(roots.begin(),roots.end());roots.erase(std::unique(roots.begin(),roots.end()),roots.end());
     const SvmCensus referenced=svm_census(svm_node_words,shader_records.size(),&roots);
     unsupported_feature=referenced.unsupported;principled_features=referenced.features&SF_PRINCIPLED_ALL;unsupported_generation=svm_generation;
-    // Dispersion (a referenced shader that needs a wavelength): the kernels and this device have no spectral sampling. The
-    // host refuses the request on every backend; this is the device's own refusal.
+    // Dispersion (a referenced shader that needs a wavelength) is not implemented by this device. The host refuses a
+    // dispersive Principled BSDF on this backend with the same words; this is the device's own refusal.
     if(unsupported_feature.empty())for(uint32_t s:roots)if(s<shader_records.size()&&(shader_records[s].flags&SD_REQUIRES_WAVELENGTH)){unsupported_feature="WebGPU dispersion not implemented";break;}
     // Anisotropic transmission (wavefront_microfacet.wgsl): as a caustic caster it takes the anisotropic branch of
     // mnee_sample_bsdf_dh (integrator/mnee.h; pipelines.h SF_MNEE_ANISOTROPIC, set below with caustics).

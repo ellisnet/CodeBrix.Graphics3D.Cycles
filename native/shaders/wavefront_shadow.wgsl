@@ -598,7 +598,7 @@ fn vh_shadow_next(hs:ptr<function,VhShadow>,index:u32,origin:vec3<f32>,direction
     }
     // volume_transmittance<true> over the segment.
     let t=(*hs).o.t;let sigma_c=(*hs).o.sigma.y-(*hs).o.sigma.x;let length=t.y-t.x;
-    let expected=sigma_c*length;let whole=floor(expected);let k=u32(clamp(i32(select(whole,whole+1.0,expected-whole>=0.5)),1,VH_MAX_STEPS));
+    let k=vh_expected_steps(sigma_c*length);
 //#if VOLUME_SAMPLING_PATTERN else     let rand=native_rng((*hs).sample,0u,(*hs).offset+VH_PRNG_EXPANSION_ORDER).x;
     let rand=native_rng_pattern((*hs).sample,0u,(*hs).offset+VH_PRNG_EXPANSION_ORDER,1u).x;
 //#endif
@@ -698,7 +698,7 @@ fn vh_shadow_next(hs:ptr<function,VhShadow>,index:u32,origin:vec3<f32>,direction
         else if(stage==8u){
             // volume_transmittance<true> over the segment.
             let t=(*hs).o.t;let sigma_c=(*hs).o.sigma.y-(*hs).o.sigma.x;let length=t.y-t.x;
-            let expected=sigma_c*length;let whole=floor(expected);let k=u32(clamp(i32(select(whole,whole+1.0,expected-whole>=0.5)),1,VH_MAX_STEPS));
+            let k=vh_expected_steps(sigma_c*length);
 //#if VOLUME_SAMPLING_PATTERN else     let rand=native_rng((*hs).sample,0u,(*hs).offset+VH_PRNG_EXPANSION_ORDER).x;
             let rand=native_rng_pattern((*hs).sample,0u,(*hs).offset+VH_PRNG_EXPANSION_ORDER,1u).x;
 //#endif

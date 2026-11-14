@@ -57,11 +57,10 @@ host, and for the Linux ARM64 and Android builds, before the next build:
      oracle films under native/evidence/ and the device-gate exchange records
      are recorded again as part of the first run. The CPU oracle's films
      changed with the pin, so old and new films must never be compared.
-  7. osx-arm64 only: the overlay now holds two headers that are also in the
-     Metal kernel include closure (util/types_gpu_compressed.h,
-     kernel/integrator/mnee.h). The recipe accepts them only after proving that
-     each is the pinned text plus one recorded addition that is inert in this
-     profile (native/host/MACOS_ARM64.md, "Overlay files in the Metal kernel
+  7. osx-arm64 only: the overlay now holds one header that is also in the
+     Metal kernel include closure (util/types_gpu_compressed.h). The recipe
+     accepts it only after proving that it is the pinned text plus one
+     recorded addition that is inert in this profile (native/host/MACOS_ARM64.md, "Overlay files in the Metal kernel
      closure"); the Metal kernels are still compiled from the pinned files.
      UNTESTED on a Mac.
 ********************************************************************************
@@ -1152,7 +1151,7 @@ What the importer does to the upstream tree (tools/licensing/import_cycles.py):
   Every copied file must carry an allowed SPDX identifier (Apache-2.0,
   BSD-3-Clause, MIT, Zlib) or be on the reviewed inherited-license list;
   anything else stops the import.
-- Seven files are modified, each recorded as modified in the manifest with a
+- Five files are modified, each recorded as modified in the manifest with a
   modification notice in the file:
     CMakeLists.txt                        the build goes through the reviewed
                                           dependency adapter
@@ -1166,26 +1165,30 @@ What the importer does to the upstream tree (tools/licensing/import_cycles.py):
                                           ATOMIC-CONTRACT.md)
     src/util/stats.h                      atomic return and load for the
                                           concurrent memory accounting
-    src/kernel/tables.h                   the CIE standard illuminant D65 table
-                                          and its normalisation constant are
-                                          not copied; the comment of the colour
-                                          matching table records that table's
+    src/kernel/tables.h                   the illuminant table and its
+                                          normalisation constant are included
+                                          from kernel/tables_d65_codebrix.h;
+                                          the comment of the colour matching
+                                          table records that table's
                                           public-domain origin
-    src/kernel/util/colorspace.h          the dispersion functions, which read
-                                          the D65 table and hold constants
-                                          fitted from it, are not copied
-    src/kernel/features.h                 __SPECTRAL__ is not defined
-- The D65 data and dispersion. The CIE publishes the D65 table under
-  CC BY-SA 4.0, which is not compatible with this repository's Apache-2.0
-  license, so it is never copied: the importer drops the text between two
-  anchors unread, with everything derived from it (the normalisation constant,
-  the dispersion functions and their fitted constants, and
-  src/app/cie_d65_luminance_fit.py, which embeds the table and is excluded).
-  Without __SPECTRAL__ the kernels of every device, Metal included, are built
-  without spectral sampling, so DISPERSION IS NOT AVAILABLE on any backend;
-  the host refuses a Principled BSDF that would disperse, by name
-  (native/DEVICE.md, open item 187). This is a ruling of the maintainer: it
-  changes only if the data becomes available under a compatible license.
+- The illuminant table and dispersion. The importer drops the illuminant
+  table and its normalisation constant from src/kernel/tables.h, unread,
+  between two anchors, and puts an include of the CodeBrix addition
+  src/kernel/tables_d65_codebrix.h in their place. That file is written by
+  tools/licensing/d65_numbers.py into tools/licensing/replacements/ and placed
+  by the importer like the other additions; never edit it by hand:
+      python3 tools/licensing/d65_numbers.py            write the file
+      python3 tools/licensing/d65_numbers.py --check    fail if the file and
+                                                        its input disagree
+  Every other kernel file of the dispersion code is the pinned file, and
+  src/app/cie_d65_luminance_fit.py is excluded as an unnecessary helper
+  script. Dispersion renders on the CPU device and on Cycles' Metal device;
+  the WebGPU device does not implement it and refuses it by name
+  (native/DEVICE.md, open item 187).
+- third_party/pbrt-v4/ is an unchanged documentation copy (its record is in
+  THIRD-PARTY-NOTICES.txt). Nothing compiles or includes it, and it is never
+  edited: tools/licensing/notices.py and the audit compare it with its
+  recorded hash.
 - The Ceres notice. src/util/math_float3x3.h marks two quaternion functions
   "Adopted from Ceres-solver" (BSD-3-Clause) and carries only its Apache-2.0
   header. The importer records both licenses for that file (PORTED_NOTICES)
@@ -1217,9 +1220,6 @@ Beside the import:
                                           oracle (the maintainer's ruling).
                                           Without WITH_WEBGPU (osx-arm64) the
                                           text is the pinned text.
-    kernel/integrator/mnee.h              one [[maybe_unused]] attribute: with
-                                          spectral sampling compiled out a flag
-                                          is written and never read
     util/colorspace.cpp                   handed through UNCHANGED. The earlier
                                           colour-cache correction is gone (the
                                           pinned source now invalidates its

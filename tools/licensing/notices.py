@@ -35,6 +35,13 @@ def generate(check=False):
         if c.get('embeddedLicenseForms'):
             block += 'Retained file/license forms: ' + '; '.join(c['embeddedLicenseForms']) + '\n'
         notice += block + '\n'
+        # Files a component pins by hash (an unchanged copy), and the lines of its origin record, which are written
+        # to THIRD-PARTY-NOTICES.txt only.
+        for name, expected in c.get('pinnedFiles', {}).items():
+            if hashlib.sha256((ROOT/name).read_bytes()).hexdigest() != expected:
+                raise RuntimeError('Pinned unchanged copy differs from its recorded hash: ' + name)
+        if c.get('originRecord'):
+            block += 'Origin record:\n' + ''.join('  ' + line + '\n' for line in c['originRecord'])
         full += block + ('Notices: ' + ', '.join(c['notices'])).rstrip() + '\n\n'
         files += c['notices']
     full += 'FULL LICENSE AND ATTRIBUTION TEXTS\n' + '=' * 70 + '\n'

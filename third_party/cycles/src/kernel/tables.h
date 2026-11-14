@@ -1,4 +1,4 @@
-// Modified by CodeBrix: the CIE standard illuminant D65 table and its normalisation constant are not included (CC BY-SA 4.0 data); the colour-matching table comment records the table's public-domain origin.
+// Modified by CodeBrix: the illuminant table and its normalisation constant are included from kernel/tables_d65_codebrix.h; the colour-matching table comment records the table's public-domain origin.
 // Copyright (c) 2026 Jeremy Ellis and contributors
 /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
@@ -81,6 +81,8 @@ ccl_inline_constant float cie_color_match[][3] = {
   {0.0002f, 0.0001f, 0.0000f}, {0.0002f, 0.0001f, 0.0000f}, {0.0001f, 0.0000f, 0.0000f},
   {0.0001f, 0.0000f, 0.0000f}, {0.0001f, 0.0000f, 0.0000f}, {0.0000f, 0.0000f, 0.0000f}
 };
+
+#include "kernel/tables_d65_codebrix.h"
 
 /*
  * The direction vectors for the first four dimensions of the Sobol

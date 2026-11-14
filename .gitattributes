@@ -71,7 +71,9 @@
 # third_party/ holds the pinned, license-reviewed snapshots; their manifests
 # record a SHA-256 per file, and a few upstream files are committed with CRLF
 # (OpenColorIO sources, zstd/TBB Windows scripts, the Gltf2 and WgpuNative
-# licence texts). native/binaries/<rid>/ is approved by the hashes in its
+# licence texts). third_party/pbrt-v4/ is an unchanged documentation copy that
+# must stay byte for byte as fetched; it has its own line so the rule survives
+# any later narrowing of the third_party/ line. native/binaries/<rid>/ is approved by the hashes in its
 # provenance.json. The evidence/ folders are immutable gate records, some of
 # which contain CRLF device logs and copies of those licence texts. -text
 # switches every conversion off - stronger than the text=auto eol=lf above,
@@ -79,6 +81,7 @@
 # stay BELOW the "*" rule, or that rule overrides them.
 # ------------------------------------------------------------------------------
 third_party/**            -text
+third_party/pbrt-v4/**    -text
 native/binaries/**        -text
 native/evidence/**        -text
 parity/evidence/**        -text

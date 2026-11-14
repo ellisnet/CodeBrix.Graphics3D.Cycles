@@ -93,15 +93,17 @@ Attribute &find_attribute(Host &host,CBCNode id,const char *name,uint32_t flags)
   auto value=set.find(ustring(name));require(value,"Unknown attribute");
   require(!(flags&CBC_ATTR_STANDARD)||value->std!=ATTR_STD_NONE,"Attribute is not standard");return *value;
 }
-// Requests the pinned Cycles accepts but this library cannot honour: refused by name on every backend, never ignored.
+// Requests the pinned Cycles accepts but this library cannot honour: refused by name, never ignored (on every backend
+// unless the test names one).
 void validate_unavailable(Host &host) {
-  // Dispersion: the kernels are built without spectral sampling, so they would render a dispersive Principled BSDF
-  // as a non-dispersive one with no message. The test is the pinned node's own (PrincipledBsdfNode::has_dispersion):
-  // the dispersion scale and the transmission weight are each linked or not zero; with a constant zero transmission
-  // weight nothing disperses and the scene renders, as in Cycles.
-  for(auto &[shader,stored]:host.graphs)for(auto node:stored->authoring->nodes)if(auto principled=dynamic_cast<PrincipledBsdfNode *>(node))
-    require(!principled->has_dispersion(),
-            "Dispersion is not available: of the Principled BSDF inputs Transmission Dispersion Scale and Transmission Weight one must be 0 and unlinked (this library renders without spectral sampling)",CBC_UNSUPPORTED);
+  // Dispersion renders on the CPU device and on Cycles' Metal device. The WebGPU device does not implement it and is
+  // refused here by the device's own words (pipelines.cpp refuses a referenced shader flagged SD_REQUIRES_WAVELENGTH with
+  // the same text). The test is the pinned node's own (PrincipledBsdfNode::has_dispersion): the dispersion scale and
+  // the transmission weight are each linked or not zero; with a constant zero transmission weight nothing disperses
+  // and the scene renders, as in Cycles.
+  if(host.backend==CBC_HOST_WEBGPU)
+    for(auto &[shader,stored]:host.graphs)for(auto node:stored->authoring->nodes)if(auto principled=dynamic_cast<PrincipledBsdfNode *>(node))
+      require(!principled->has_dispersion(),"WebGPU dispersion not implemented",CBC_UNSUPPORTED);
   // Gaussian splats: a point cloud asked to render as splats needs the radiance, scale and rotation attributes, which this
   // host cannot author; the pinned Cycles would render it as plain points with no message (PointCloud::primitive_type).
   for(auto geom:host.session->scene->geometry)if(auto points=dynamic_cast<PointCloud *>(geom))

@@ -184,7 +184,7 @@ fn vh_equiangular_transmittance(st:ptr<function,VhState>,interval:vec2<f32>,sigm
     var t=interval;if((*st).direct_t>=interval.x&&(*st).direct_t<=interval.y){t=vec2<f32>(interval.x,(*st).direct_t);(*st).direct_scatter=true;}
     let sigma_c=sigma.y-sigma.x;let length=t.y-t.x;
     // roundf (halves away from zero).
-    let expected=sigma_c*length;let whole=floor(expected);let k=u32(clamp(i32(select(whole,whole+1.0,expected-whole>=0.5)),1,VH_MAX_STEPS));
+    let k=vh_expected_steps(sigma_c*length);
 //#if VOLUME_SAMPLING_PATTERN else     let rand=native_rng((*st).sample,0u,(*st).offset+VH_PRNG_EXPANSION_ORDER).x;
     let rand=native_rng_pattern((*st).sample,0u,(*st).offset+VH_PRNG_EXPANSION_ORDER,1u).x;
 //#endif

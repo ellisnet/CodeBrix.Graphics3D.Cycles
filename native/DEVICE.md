@@ -3955,15 +3955,19 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     cause (tried, by film): the conversion of an unbounded step count to an integer in `volume_transmittance` (item 188).
     No committed scene has an open volume mesh, so no committed scene fails for it. Nothing is refused: such a scene
     renders, and differs.
-184. **A strong noise Bump seen after a diffuse bounce: one scratch scene still differs from the CPU: OPEN, cause not
-    established.** FACT (2026-11-13, a re-pin lane's scratch scenes, not committed): Lambert surfaces with a Noise
-    texture (scale 9, detail 2) driving a Bump node, seen after a diffuse bounce. Before the fix below: 31 practical
-    failures with Filter Glossy 0 (worst 22 times the tolerance) and 6 with Filter Glossy 2 (worst 8.3 times); the scene
-    with Filter Glossy 0.5 and the same scenes with a gentle Bump passed. Fixed since: the Bump node's non-curve branch
-    follows the pinned operation order with ordering barriers ("Re-pin to Cycles v5.3.0", "Surface integrator"), and the
-    Filter Glossy 2 scene is perfect (0 practical failures, 171 strict differences). What remains: the Filter Glossy 0
-    scene ("widen-0") still fails 9 components, worst 21.9 times the tolerance, at pixel (31,14); its cause is not
-    established.
+184. **A strong noise Bump seen after a diffuse bounce differed from the CPU: FIXED.** FACT (2026-11-13): Lambert
+    surfaces with a Noise texture (scale 9, detail 2) driving a Bump node, seen after a diffuse bounce, failed with
+    Filter Glossy 0 (31 practical failures, worst 22 times the tolerance) and with Filter Glossy 2 (6, worst 8.3 times);
+    the Filter Glossy 2 scene failed with the same 6 on the build of the previous pin, so the defect is older than the
+    re-pin. Cause: sums of products written as plain WGSL, which the driver may contract, where the CPU kernel is built
+    without contraction. Four sites now follow the pinned operation order with ordering barriers: the Bump node's
+    non-curve branch (`svm_set_bump`), the first-order bump offset of a derivative output (`svmd_output`), the Attribute
+    node's bump offset (`svm_attribute`) and the Wireframe node's bump offset; and the triangle surface differentials
+    (`surface_differentials`), whose reciprocal of the determinant is one correctly rounded division as in the kernel.
+    Both scratch scenes are perfect; `surface-nodes/bump-strong-noise` and `surface-nodes/bump-strong-noise-attribute`
+    cover the first three sites (no film distinguishes the Wireframe reordering). Not yet run on the whole corpus or the
+    gates. Still plain, reached by no scene: the Wireframe node's pixel size and the Attribute node's Generated
+    derivatives.
 185. **Boolean Math, Integer Math and Get Vector Component nodes: refused by name on the WebGPU device, OPEN (new in
     Cycles v5.3.0, not ported).** "WebGPU Boolean Math node not implemented", "WebGPU Integer Math node not
     implemented", "WebGPU Get Vector Component node not implemented" (`svm_census`, referenced shaders only, before any
@@ -3979,21 +3983,26 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     it is tested in C++, not in WGSL), "WebGPU quaternion attributes not implemented" and "WebGPU spherical harmonics
     attributes not implemented" (non-empty `attributes_quaternion` / `attributes_spherical_harmonics_rest`). In the
     target; a gap to close.
-187. **Dispersion and the dlss denoiser: not available on any backend (by ruling, not open work).** Dispersion: the
-    kernel's spectral sampling reads the CIE standard illuminant D65 table, which the CIE publishes under CC BY-SA 4.0;
-    the import leaves out that table, its normalisation constant, the dispersion functions of
-    `kernel/util/colorspace.h` (which also hold constants fitted from the table) and the `__SPECTRAL__` define
-    (MAINTAINER-README.txt, "PROVENANCE AND VENDORED SOURCES"). The Principled BSDF's two dispersion inputs exist and do
-    nothing in the kernels of any device, Metal included, so the host refuses a Principled BSDF that would disperse
-    (the pinned `PrincipledBsdfNode::has_dispersion()`: Transmission Dispersion Scale and Transmission Weight each
-    linked or not 0) with "Dispersion is not available: of the Principled BSDF inputs Transmission Dispersion Scale and
-    Transmission Weight one must be 0 and unlinked (this library renders without spectral sampling)". The device also
-    refuses a referenced shader flagged `SD_REQUIRES_WAVELENGTH` ("WebGPU dispersion not implemented"); the host refuses
-    first, so that text is never seen. The dlss denoiser: its code is compiled out (`WITH_DLSS` is never defined; it
-    needs a vendor SDK that is not part of this repository), and the host refuses `denoiser_type` dlss at a denoising
-    render ("Unsupported feature: the dlss denoiser is not available in this library (use openimagedenoise)"). Both are
-    on the render-time rejection list of AGENT-README.txt.
-188. **Recorded while re-porting to Cycles v5.3.0; each is older than the re-pin; none is fixed.** FACT unless marked.
+187. **Dispersion: not implemented by the device. The dlss denoiser: not available on any backend (by ruling).**
+    Dispersion renders on the CPU device and on Cycles' Metal device: `__SPECTRAL__` is defined and the pinned dispersion
+    code is compiled as the release wrote it; the illuminant table and its normalisation constant come from the CodeBrix
+    addition `kernel/tables_d65_codebrix.h` (MAINTAINER-README.txt, "PROVENANCE AND VENDORED SOURCES"). The WebGPU device
+    has no wavelength sampling (`shader_setup_wavelength`, `bsdf_glass_ior`, `update_path_throughput_for_dispersion` and
+    the MNEE weight are not ported) and refuses, never approximates: the host refuses a Principled BSDF that would
+    disperse (the pinned `PrincipledBsdfNode::has_dispersion()`: Transmission Dispersion Scale and Transmission Weight
+    each linked or not 0) when the backend is the WebGPU device, and the device refuses a referenced shader flagged
+    `SD_REQUIRES_WAVELENGTH`, both with "WebGPU dispersion not implemented"; the host refuses first. The oracle scene is
+    `bsdf/principled-dispersion`. In the target; a gap to close. When it is ported the device's copy of the illuminant
+    table must be generated by the build from `kernel/tables_d65_codebrix.h`, never typed by hand. The dlss denoiser:
+    its code is compiled out (`WITH_DLSS` is never defined; it needs a vendor SDK that is not part of this repository),
+    and the host refuses `denoiser_type` dlss at a denoising render ("Unsupported feature: the dlss denoiser is not
+    available in this library (use openimagedenoise)"). Both are on the render-time rejection list of AGENT-README.txt.
+188. **Recorded while re-porting to Cycles v5.3.0; each is older than the re-pin. (a), (g) and the density factor of (d)
+    are FIXED (2026-11-13, not yet run on the whole corpus or the gates); (b), (c), (e), (f) and the rest of (d) are open.**
+    FACT unless marked. Fixed: the Attribute node gives a lamp's uv in a lamp's shader (`lamps/lamp-area-uv`); an Emission
+    closure of a volume shader is multiplied by the object's volume density (proven only with a temporary density on both
+    devices, since no scene can set one); an unbounded expected step count gives one sample on x86-64 as in the kernel
+    (`volumes/heterogeneous-world-sun-tail`; the scalar path keeps saturation, unverified). As recorded:
     (a) An Attribute node reading UV in a lamp's shader: the pinned `svm_node_attr` gives the lamp's uv
     (`sd->type == PRIMITIVE_LAMP && attr == ATTR_STD_UV`); `svm_attribute` has no such branch and gives the node's
     Missing value (zero before the re-pin). (b) A tiled image whose tile is not loaded: the pinned sampler returns the
@@ -8378,5 +8387,5 @@ denoiser. Each is refused by name; none is approximated.
 **The other platforms.** The recipes for Linux ARM64, Android, Windows and both macOS profiles read the same pinned
 source and the same overlay and have not been built or run on it. Cycles' Metal device (osx-arm64) comes with the release
 unchanged: half-precision integrator state, the generic `CYCLES_CONCURRENT_STATES_*` controls in place of the Metal-only
-ones, a minimum of macOS 13.0, and dispersion compiled out with the same imported headers
+ones, a minimum of macOS 13.0, and dispersion compiled in from the same imported headers
 ([host/MACOS_ARM64.md](host/MACOS_ARM64.md)).

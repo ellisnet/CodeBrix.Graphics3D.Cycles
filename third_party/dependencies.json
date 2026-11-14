@@ -24,7 +24,7 @@
         "third_party/cycles/AUTHORS"
       ],
       "revision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981 (tag v5.3.0)",
-      "conditions": "Filtered manifest in cycles-import.json; independent Apache-2.0 atomics and build adapter. Historical notice inventory describes excluded upstream files; those implementation files are not imported. Dispersion is switched off and the CIE standard illuminant D65 table (published under CC BY-SA 4.0) is not imported; kernel/tables.h and kernel/features.h are recorded as modified for that."
+      "conditions": "Filtered manifest in cycles-import.json; independent Apache-2.0 atomics and build adapter. Historical notice inventory describes excluded upstream files; those implementation files are not imported. The illuminant table of the dispersion code is supplied by the CodeBrix addition kernel/tables_d65_codebrix.h, which kernel/tables.h (recorded as modified) includes."
     },
     {
       "id": "oiio",
@@ -814,6 +814,44 @@
         "third_party/arm-optimized-routines/LICENSE",
         "native/THIRD-PARTY-NOTICES.txt"
       ]
+    },
+    {
+      "id": "pbrt-v4",
+      "name": "pbrt-v4 (one source file, unchanged documentation copy)",
+      "version": "commit b0bdf461ba5dd6504b70ebf0932acc0fe7aa744f",
+      "license": "Apache-2.0",
+      "source": "https://github.com/mmp/pbrt-v4",
+      "revision": "b0bdf461ba5dd6504b70ebf0932acc0fe7aa744f",
+      "use": "Unchanged copy of one source file, src/pbrt/util/spectrum.cpp, kept in third_party/pbrt-v4/ for documentation only. It is not compiled, included or used by any build. The complete record is in THIRD-PARTY-NOTICES.txt.",
+      "attribution": "pbrt is Copyright (c) 1998-2020 Matt Pharr, Wenzel Jakob, and Greg Humphreys. PhysLight code contributed by Anders Langlands and Luca Fascione, Copyright (c) 2020, Weta Digital, Ltd. The file's own notices are retained unchanged in the copy.",
+      "conditions": "The copy is never edited; its SHA-256 and that of the license text are pinned here and verified by tools/licensing/notices.py and tools/licensing/audit.py.",
+      "pinnedFiles": {
+        "third_party/pbrt-v4/src/pbrt/util/spectrum.cpp": "4c907c7655ad5431bd2797692b963ac34bc6a533c7a053a16e6988aea03c750b",
+        "third_party/pbrt-v4/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      "originRecord": [
+        "Repository: https://github.com/mmp/pbrt-v4",
+        "Commit: b0bdf461ba5dd6504b70ebf0932acc0fe7aa744f",
+        "File in that repository: src/pbrt/util/spectrum.cpp",
+        "Raw URL of the file at that commit: https://raw.githubusercontent.com/mmp/pbrt-v4/b0bdf461ba5dd6504b70ebf0932acc0fe7aa744f/src/pbrt/util/spectrum.cpp",
+        "Last commit that changed the file: b3428aad1b28a41a81f79167385c08d81a79230a (2026-06-07)",
+        "Our copy: third_party/pbrt-v4/src/pbrt/util/spectrum.cpp, 178,992 bytes (2,848 lines), SHA-256 4c907c7655ad5431bd2797692b963ac34bc6a533c7a053a16e6988aea03c750b",
+        "Our copy is unchanged, character for character: it is the file at the raw URL above, byte for byte. It is kept for documentation only; it is not compiled, not included and not used by any build or tool, except that tools/licensing/d65_numbers.py reads the numbers named below from it.",
+        "What was taken: only the numbers of the array CIE_Illum_D6500 for the wavelengths 380 to 780 nm in 5 nm steps (81 values; the array interleaves wavelength and value from 300 to 830 nm and is lines 766 to 798 of the file, the 81 values taken being on lines 771 to 794). Each value is written in the numbers file with exactly the digit string it has in the file, followed by the C float suffix f. No comment, name, layout or code was taken from the file.",
+        "Where the numbers are used in this repository:",
+        "  tools/licensing/replacements/tables_d65_codebrix.h: the numbers file (array cie_d65_spd). The constant CIE_D65_NORMALIZATION in the same file is computed by this project from those numbers and the colour-matching table of third_party/cycles/src/kernel/tables.h.",
+        "  third_party/cycles/src/kernel/tables_d65_codebrix.h: the same file, placed in the vendored Cycles tree by tools/licensing/import_cycles.py (recorded in third_party/cycles-import.json).",
+        "  tools/licensing/d65_numbers.py: writes the numbers file from our copy; with --check it fails when the numbers file and our copy disagree.",
+        "  third_party/cycles/src/kernel/tables.h: includes the numbers file.",
+        "  third_party/cycles/src/kernel/util/colorspace.h: wavelength_to_rgb_d65 reads cie_d65_spd and CIE_D65_NORMALIZATION.",
+        "  third_party/cycles/src/kernel/integrator/path_state.h: dispersion_throughput_weight and update_path_throughput_for_dispersion call wavelength_to_rgb_d65; they are used by third_party/cycles/src/kernel/integrator/shade_surface.h and third_party/cycles/src/kernel/integrator/mnee.h (the Cycles CPU device, and Cycles' Metal device on macOS arm64).",
+        "  The WebGPU device (native/cycles, native/shaders) holds no copy of the numbers: it does not implement dispersion.",
+        "License: Apache-2.0. The license file of that repository's root at the same commit, LICENSE.txt (raw URL: https://raw.githubusercontent.com/mmp/pbrt-v4/b0bdf461ba5dd6504b70ebf0932acc0fe7aa744f/LICENSE.txt), is our third_party/pbrt-v4/LICENSE.txt, 11,358 bytes, SHA-256 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30, unchanged and included in full among the texts below.",
+        "To verify: download the two raw URLs and compare their SHA-256 with the values above (or byte for byte with our copies); then run python3 tools/licensing/d65_numbers.py --check."
+      ],
+      "notices": [
+        "third_party/pbrt-v4/LICENSE.txt"
+      ]
     }
   ],
   "sourcePins": [
@@ -937,7 +975,7 @@
     "third_party/licenses/Cycles-BSD-3-Clause.txt": "78176499683c1e601241d901486dfdebcd0d511826e67905dd54881f5dc1d7e3",
     "third_party/licenses/Cycles-MIT.txt": "7a91b4754c06385f87b319313871b064d4d9e0dc1570ca94928b09fe74ed03ee",
     "third_party/licenses/Cycles-Zlib.txt": "52a1da7db7828498bb11719974c41f875e310ea241c97c8e27af7cda21887c19",
-    "native/THIRD-PARTY-NOTICES.txt": "7685a51fbbefc08dac6479f1e849e40fabc02a33fd39a5bdd6e4c196d9429789",
+    "native/THIRD-PARTY-NOTICES.txt": "7b5f340937492d0bd69d18986c100729e6dcf0555b815211f9793436490dc0a5",
     "parity/THIRD-PARTY-NOTICES.txt": "6d0d3b721f32aea3ed0f54569f5e9cee7c5e3ebaaf0229e77e9f4079bd9a2b4f",
     "research/THIRD-PARTY-NOTICES.txt": "f773ade844c3e433707edc6642f82cb2c71bbc9b22704899bc9909f3614621d1",
     "third_party/Cycles-file-notices.txt": "c0c37aba1c4c04b8f3524027c446838fe5cf52ed2ee8fa23f687dca0c36b4986",
@@ -1007,7 +1045,7 @@
     "third_party/licenses/Linux-UAPI-exception.txt": "8e378ab93586eb55135d3bc119cce787f7324f48394777d00c34fa3d0be3303f",
     "third_party/licenses/GitHub-gitignore-LICENSE.txt": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
     "third_party/licenses/Godot-MIT.txt": "b0435e3b3e4e55238f05f4b306f30524a1b2e20147810d436eaa554fa6855c80",
-    "third_party/licenses/source-notices-cycles.txt": "21419f3d2852d38ff5fb932fabdcde481964c1e69bbd8f402287467b82a9faa0",
+    "third_party/licenses/source-notices-cycles.txt": "c211ce4cc48d633d50a0ea9fa14528b448d4c47352dc9ebd9f5fb5c62da76e32",
     "third_party/cycles/AUTHORS": "a604f34abb9021668f91219c96b0f0cd9359f5aecb1faa838bee85537c4a7b80",
     "third_party/arm-optimized-routines/LICENSE": "d75af3c6aeaac9021a266599d65d8555658022175c7aae8ccaa7212ca5b0df13",
     "native/oracle/scenes/assets/ForestVillage/PROVENANCE.txt": "a3128422b8e56f64189ca7bdcfc9aadefa4228c9dbdadccc84c9d90940c7c11b",
@@ -1017,7 +1055,8 @@
     "third_party/licenses/source-notices-oidn.txt": "ac38aa72ff6dacdb697d230f49322b7e625d6c7d22a8a3bc933f261977284fa7",
     "third_party/deps/embree/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "third_party/licenses/source-notices-embree.txt": "971312384b33415bfc8aa19319b1fcd52fce7f2f8020f1d89d7d48afe0a78a41",
-    "third_party/licenses/CeresSolver-BSD-3-Clause.txt": "9835983061082dba9c68729717a1edb4c450bc10fc9431dc771a1705abd20d83"
+    "third_party/licenses/CeresSolver-BSD-3-Clause.txt": "9835983061082dba9c68729717a1edb4c450bc10fc9431dc771a1705abd20d83",
+    "third_party/pbrt-v4/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
   },
   "historicalLinuxSystemPackages": [
     {

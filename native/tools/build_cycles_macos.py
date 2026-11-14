@@ -53,15 +53,13 @@ def kernel_closure(src):
 #   device, entirely inside #ifdef WITH_WEBGPU, which this profile never defines (main
 #   checks the compile commands), so the preprocessed text is the pinned text and the
 #   state layout the host allocates is the one the Metal kernels use.
-# - kernel/integrator/mnee.h: one [[maybe_unused]] attribute on a host-side local.
 OVERLAY_HEADER='// Copyright (c) 2026 Jeremy Ellis and contributors\n// CodeBrix WebGPU registration additions; upstream notices follow.\n'
 STOCK_EQUIVALENT={
  'util/types_gpu_compressed.h':('#ifdef WITH_WEBGPU\n'
   '/* CodeBrix WebGPU: compressed-on-GPU state fields are stored in full precision. */\n'
   'template<> struct gpu_state_storage<FloatCompressedOnGPU, void> {\n  using gpu_type = float;\n};\n'
   'template<> struct gpu_state_storage<SpectrumCompressedOnGPU, void> {\n  using gpu_type = PackedSpectrum;\n};\n'
-  '#endif\n'),
- 'kernel/integrator/mnee.h':'[[maybe_unused]] '}
+  '#endif\n')}
 
 
 def stock_equivalent(name,pinned,overlaid):

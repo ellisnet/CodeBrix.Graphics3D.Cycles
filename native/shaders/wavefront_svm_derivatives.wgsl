@@ -179,7 +179,15 @@ fn svmd_input1(s:ptr<function,SvmState>,address:u32)->vec3<f32>{
     return vec3<f32>(bitcast<f32>(bits),0,0);
 }
 // util/svm/util.h dPdx/dPdy and shading_position/shading_incoming.
-//#if CURVES else fn svmd_position(sd:SurfaceData)->NormalDual{return NormalDual(sd.P,sd.dPdu*sd.du.x+sd.dPdv*sd.dv.x,sd.dPdu*sd.du.y+sd.dPdv*sd.dv.y);}
+//#if !CURVES
+// Outside curve modules the same barriers (the order word is 0 in every dispatch): the pinned dPdx, dPdy and first-order
+// bump offset round every product before its sum, and a strong Bump amplifies a last-bit difference of the offset position.
+fn svmd_order()->u32{return load_word(p(17u)+12u);}
+fn svmd_fence3(x:vec3<f32>,o:u32)->vec3<f32>{return bitcast<vec3<f32>>(bitcast<vec3<u32>>(x)^vec3<u32>(o));}
+fn svmd_position(sd:SurfaceData)->NormalDual{let o=svmd_order();
+    return NormalDual(sd.P,svmd_fence3(svmd_fence3(sd.dPdu*sd.du.x,o)+svmd_fence3(sd.dPdv*sd.dv.x,o),o),svmd_fence3(svmd_fence3(sd.dPdu*sd.du.y,o)+svmd_fence3(sd.dPdv*sd.dv.y,o),o));}
+//#endif
+//#if CURVES
 // With curves in the scene every product and sum through the order word: a bump height is a difference of noise values
 // a differential apart, which amplifies a last-bit difference of the offset position.
 fn svmd_position(sd:SurfaceData)->NormalDual{let o=cv_order();
@@ -190,7 +198,7 @@ fn svmd_const(v:vec3<f32>)->NormalDual{return NormalDual(v,vec3<f32>(0),vec3<f32
 // First-order bump offset, then the full dual or only its value.
 fn svmd_output(s:ptr<function,SvmState>,data_in:NormalDual,bump:u32,width:f32,store:u32,out:u32,normalize:bool){
     var data=data_in;
-//#if CURVES else     if(bump==NODE_BUMP_OFFSET_DX){data.value+=data.dx*width;}else if(bump==NODE_BUMP_OFFSET_DY){data.value+=data.dy*width;}
+//#if CURVES else     {let o=svmd_order();if(bump==NODE_BUMP_OFFSET_DX){data.value=svmd_fence3(data.value+svmd_fence3(data.dx*width,o),o);}else if(bump==NODE_BUMP_OFFSET_DY){data.value=svmd_fence3(data.value+svmd_fence3(data.dy*width,o),o);}}
     {let o=cv_order();if(bump==NODE_BUMP_OFFSET_DX){data.value=cvb3(data.value+cvb3(data.dx*width,o),o);}else if(bump==NODE_BUMP_OFFSET_DY){data.value=cvb3(data.value+cvb3(data.dy*width,o),o);}}
 //#endif
     if(normalize){data=svmd_safe_normalize(data);}

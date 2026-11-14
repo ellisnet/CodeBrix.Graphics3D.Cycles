@@ -1398,7 +1398,10 @@ fn svm_wireframe(s:ptr<function,SvmState>,node:u32){
         // differential_from_compact(Ng, dP): make_orthonormals frame scaled by dP.
         let tangent=surface_orthogonal(g.Ng);let dx=tangent*g.dP;let dy=rounded_cross(g.Ng,tangent)*g.dP;
         var position=g.P;let bump=svm_byte(node+N_Wireframe_bump_offset);let width=bitcast<f32>(load_word(node+N_Wireframe_bump_filter_width));
-        if(bump==NODE_BUMP_OFFSET_DX){position+=dx*width;}else if(bump==NODE_BUMP_OFFSET_DY){position+=dy*width;}
+        // `P += dP.dx * node.bump_filter_width`: the product rounded before the sum (the order word, as svmn_order).
+        let order=vec3<u32>(load_word(p(17u)+12u));
+        if(bump==NODE_BUMP_OFFSET_DX){position=bitcast<vec3<f32>>(bitcast<vec3<u32>>(position+bitcast<vec3<f32>>(bitcast<vec3<u32>>(dx*width)^order))^order);}
+        else if(bump==NODE_BUMP_OFFSET_DY){position=bitcast<vec3<f32>>(bitcast<vec3<u32>>(position+bitcast<vec3<f32>>(bitcast<vec3<u32>>(dy*width)^order))^order);}
         let vertices=native_triangle_vertices(g.object_id,g.prim,g.primitive_type,g.time);
         if(vertices.error!=0u){svm_error(s,16u);return;}
         var corners=array<vec3<f32>,3>(vertices.a,vertices.b,vertices.c);

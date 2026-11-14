@@ -1132,12 +1132,6 @@ third_party/cycles/src/kernel/device/oneapi/context_intersect_end.h
  * SPDX-License-Identifier: Apache-2.0 */
 
 Sources:
-third_party/cycles/src/kernel/features.h
-
-// Modified by CodeBrix: dispersion (__SPECTRAL__) is switched off because its D65 data table is not included.
-// Copyright (c) 2026 Jeremy Ellis and contributors
-
-Sources:
 third_party/cycles/src/kernel/film/adaptive_sampling.h
 third_party/cycles/src/scene/tabulated_sobol.cpp
 third_party/cycles/src/scene/tabulated_sobol.h
@@ -1274,13 +1268,7 @@ third_party/cycles/src/kernel/svm/voronoi.h
 Sources:
 third_party/cycles/src/kernel/tables.h
 
-// Modified by CodeBrix: the CIE standard illuminant D65 table and its normalisation constant are not included (CC BY-SA 4.0 data); the colour-matching table comment records the table's public-domain origin.
-// Copyright (c) 2026 Jeremy Ellis and contributors
-
-Sources:
-third_party/cycles/src/kernel/util/colorspace.h
-
-// Modified by CodeBrix: the dispersion functions, which read the D65 table and hold constants fitted from it, are not included.
+// Modified by CodeBrix: the illuminant table and its normalisation constant are included from kernel/tables_d65_codebrix.h; the colour-matching table comment records the table's public-domain origin.
 // Copyright (c) 2026 Jeremy Ellis and contributors
 
 Sources:
@@ -1601,6 +1589,12 @@ third_party/cycles/src/cmake/codebrix_dependencies.cmake
 # Original target adapters from the requirements of Apache-licensed Cycles
 # CMake call sites and the variables produced by its external_libs.cmake.
 # The excluded dependency_targets.cmake implementation was not used.
+
+Sources:
+third_party/cycles/src/kernel/tables_d65_codebrix.h
+
+// Copyright (c) 2026 Jeremy Ellis and contributors
+// SPDX-License-Identifier: Apache-2.0
 
 Sources:
 third_party/cycles/third_party/CMakeLists.txt

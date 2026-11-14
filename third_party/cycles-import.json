@@ -3,8 +3,8 @@
   "upstream": "https://github.com/blender/cycles",
   "revision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981",
   "tag": "v5.3.0",
-  "importerSha256": "48f9329525221cae8cb0bcb7d7480317086256d95cf6700efb81472826e62008",
-  "policy": "Filtered import; no upstream atomic implementation, GPL dependency setup, maintenance helpers, submodules, examples, cuew or hipew; no CIE standard illuminant D65 data (CC BY-SA 4.0).",
+  "importerSha256": "2abad8dd6105197361e1eef665e1261dbc97e70ffccb41ac7381c062d928643a",
+  "policy": "Filtered import; no upstream atomic implementation, GPL dependency setup, maintenance helpers, submodules, examples, cuew or hipew.",
   "files": [
     {
       "path": "AUTHORS",
@@ -3850,12 +3850,12 @@
     {
       "path": "src/kernel/features.h",
       "sourceSha256": "14fd7a7fd2d76310ffb1c654d98245828ffceeba7bd609cab1b7c13ed19981bc",
-      "sha256": "833ff9acff868eb42df89ad6eebec62cbe2ebf1e2271834228d975a664416d42",
+      "sha256": "14fd7a7fd2d76310ffb1c654d98245828ffceeba7bd609cab1b7c13ed19981bc",
       "licenses": [
         "Apache-2.0"
       ],
       "licenseBasis": "Explicit per-file SPDX; preserved unchanged.",
-      "modified": true
+      "modified": false
     },
     {
       "path": "src/kernel/film/adaptive_sampling.h",
@@ -6642,7 +6642,7 @@
     {
       "path": "src/kernel/tables.h",
       "sourceSha256": "51f162aacd295ef5943217f14284f8a778ce5857401482054f7767d276f3e3a8",
-      "sha256": "0bbb586e9d9415fe34813c1a9b7a2511e604d1606df4b79dc024e0c10e39ad54",
+      "sha256": "8ce424db0ab991875310bbd13591ec396834941ad4460e1547bf3fcf4926773a",
       "licenses": [
         "Apache-2.0"
       ],
@@ -6662,12 +6662,12 @@
     {
       "path": "src/kernel/util/colorspace.h",
       "sourceSha256": "08ebfc5c741b9e98a0967a057cd0611236ab0603d067de339873ed8efc0405ca",
-      "sha256": "a334548a3933031343ae7296338bdd201a8d2cf5dde18da142777a5d3f4e7249",
+      "sha256": "08ebfc5c741b9e98a0967a057cd0611236ab0603d067de339873ed8efc0405ca",
       "licenses": [
         "Apache-2.0"
       ],
       "licenseBasis": "Explicit per-file SPDX; preserved unchanged.",
-      "modified": true
+      "modified": false
     },
     {
       "path": "src/kernel/util/differential.h",
@@ -9662,6 +9662,16 @@
       "modified": false
     },
     {
+      "path": "src/kernel/tables_d65_codebrix.h",
+      "sha256": "b36bec9e4d39b5250d2364c9d43d1fc784b4c5f630bf497964c2a3fec48863f4",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "licenseBasis": "CodeBrix data file; see THIRD-PARTY-NOTICES.txt.",
+      "replacementSource": "tools/licensing/replacements/tables_d65_codebrix.h",
+      "modified": false
+    },
+    {
       "path": "third_party/CMakeLists.txt",
       "sha256": "d0337e3bf6655c631d5084dc66e36eeaf7488bd9b72090ed543884d78797b799",
       "licenses": [
@@ -9794,7 +9804,7 @@
     },
     {
       "path": "src/app/cie_d65_luminance_fit.py",
-      "reason": "Embeds the CIE standard illuminant D65 data table (CC BY-SA 4.0); unnecessary fitting helper."
+      "reason": "Unnecessary helper script."
     },
     {
       "path": "src/cmake/dependency_targets.cmake",

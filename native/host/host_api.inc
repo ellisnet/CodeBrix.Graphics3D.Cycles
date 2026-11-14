@@ -96,7 +96,6 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
     // "RENDER-TIME REJECTIONS" (a managed test compares the two): the host's own first (every backend; the denoiser
     // upscale factor not on Metal), then the device's.
 #define CBC_HOST_REJECTIONS "\"Catmull-Clark subdivision surfaces (they need OpenSubdiv, which this library does not include)\"," \
-  "\"dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0; this library renders without spectral sampling)\"," \
   "\"the dlss denoiser\",\"point clouds rendered as Gaussian splats\""
 #define CBC_HOST_CPU_DENOISE_REJECTIONS "\"a denoiser upscale factor other than 1\""
     out << ",\"backendScope\":{\"cpu\":{\"device\":\"Cycles CPU device (reference)\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\""
@@ -119,7 +118,7 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
            "\"cryptomatte\",\"aov_color\",\"aov_value\",\"mist\",\"render_time\",\"sample_count\",\"shadow_catcher\",\"shadow_catcher_sample_count\",\"shadow_catcher_matte\",\"denoising_albedo\",\"denoising_normal\","
            "\"denoising_specular_albedo\",\"denoising_roughness\",\"denoising_depth\",\"denoising_backward_motion\",\"denoising_specular_motion\",\"volume_majorant\",\"volume_majorant_sample_count\",\"volume_direct\",\"volume_indirect\"],\"lightGroups\":true,"
            "\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "," CBC_HOST_CPU_DENOISE_REJECTIONS ","
-           "\"custom (OSL) cameras\",\"path guiding (the integrator's use_guiding) and its passes\",\"curves and points with a Both displacement shader\","
+           "\"dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0)\",\"custom (OSL) cameras\",\"path guiding (the integrator's use_guiding) and its passes\",\"curves and points with a Both displacement shader\","
            "\"a Radial Tiling node with at most two sides and a roundness strictly between 0 and 1\",\"scenes whose device data does not fit the GPU (there is no host-memory fallback)\","
            "\"BVH time steps\",\"volume velocity motion blur\",\"sparse or tiled images\","
            "\"area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, with an axis of infinities, or reached by the light tree at a transmissive surface\",\"background light portals of zero extent\",\"bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)\","

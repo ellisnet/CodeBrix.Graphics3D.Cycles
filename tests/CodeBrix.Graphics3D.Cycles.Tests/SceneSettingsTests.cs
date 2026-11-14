@@ -163,13 +163,14 @@ public class SceneSettingsTests
     }
 
     [Fact]
-    public void Dispersion_is_refused_by_name_exactly_when_the_scale_and_the_transmission_weight_are_both_set_or_linked()
+    public void Dispersion_renders_on_the_cpu_backend_exactly_when_the_scale_and_the_transmission_weight_are_both_set_or_linked()
     {
         //Arrange
         using CyclesScene scene = TestScenes.CreateCpuScene();
         (ShaderNode material, _, _) = TestScenes.BuildTyped(scene);
         PrincipledBsdfNode principled = material.Add<PrincipledBsdfNode>();
         ValueNode value = material.Add<ValueNode>();
+        value.Value = .5f;
         material.Connect(principled.BsdfOutput, material.Output.SurfaceInput);
         float scaleByDefault = principled.TransmissionDispersionScale;
         FilmBuffer withoutDispersion = scene.Render(Small);
@@ -178,25 +179,54 @@ public class SceneSettingsTests
         principled.TransmissionDispersionScale = .5f;
         FilmBuffer withoutTransmission = scene.Render(Small);
         principled.TransmissionWeight = 1f;
-        Action constant = () => scene.Render(Small);
-        Action linked = () =>
-        {
-            principled.TransmissionDispersionScale = 0f;
-            material.Connect(value.ValueOutput, principled.TransmissionDispersionScaleInput);
-            scene.Render(Small);
-        };
+        FilmBuffer dispersive = scene.Render(Small);
+        principled.TransmissionDispersionScale = 0f;
+        FilmBuffer transmissive = scene.Render(Small);
+        material.Connect(value.ValueOutput, principled.TransmissionDispersionScaleInput);
+        FilmBuffer linked = scene.Render(Small);
+        principled.TransmissionWeight = 0f;
+        FilmBuffer linkedScaleWithoutTransmission = scene.Render(Small);
 
         //Assert
         scaleByDefault.Should().Be(0f);
         withoutDispersion.Span.ToArray().All(float.IsFinite).Should().BeTrue();
         withoutTransmission.Span.SequenceEqual(withoutDispersion.Span).Should().BeTrue();
-        CyclesException error = constant.Should().Throw<CyclesException>().Which;
-        error.NativeStatus.Should().Be(NativeStatus.Unsupported);
-        error.Message.Should().Contain("Dispersion").And.Contain("Transmission Dispersion Scale");
-        linked.Should().Throw<CyclesException>().Which.Message.Should().Contain("Dispersion");
-        principled.TransmissionWeight = 0f;
-        FilmBuffer linkedScaleWithoutTransmission = scene.Render(Small);
+        dispersive.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        dispersive.Span.SequenceEqual(transmissive.Span).Should().BeFalse();
+        linked.Span.SequenceEqual(transmissive.Span).Should().BeFalse();
         linkedScaleWithoutTransmission.Span.SequenceEqual(withoutDispersion.Span).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Dispersion_is_refused_by_name_on_the_webgpu_backend()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        if (CyclesScene.ResolveBackend(CyclesBackend.Gpu) != Backend.WebGpu) Assert.Skip("This binary's GPU backend is not WebGPU.");
+        CyclesScene created;
+        try
+        {
+            created = new CyclesScene(CyclesBackend.Gpu);
+        }
+        catch (CyclesException unavailable)
+        {
+            Assert.Skip("No GPU device is available to the native host: " + unavailable.Message);
+            return;
+        }
+        using CyclesScene scene = created;
+        (ShaderNode material, _, _) = TestScenes.BuildTyped(scene);
+        PrincipledBsdfNode principled = material.Add<PrincipledBsdfNode>();
+        material.Connect(principled.BsdfOutput, material.Output.SurfaceInput);
+        principled.TransmissionDispersionScale = .5f;
+        principled.TransmissionWeight = 1f;
+
+        //Act
+        Action render = () => scene.Render(Small);
+
+        //Assert
+        CyclesException error = render.Should().Throw<CyclesException>().Which;
+        error.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        error.Message.Should().Contain("WebGPU dispersion not implemented");
     }
 
     [Fact]

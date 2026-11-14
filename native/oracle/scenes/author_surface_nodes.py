@@ -5,9 +5,9 @@
 
 The Bevel node (rounded box edges and a smooth sphere), the Raycast node (hit
 distance and hit normal along the shading normal, and an only_local ray into a
-box), the Radial Tiling node (regular and irregular, rounded polygons) and plain
-attributes named like standard attributes, through the public C API, lit by a
-sphere lamp with MIS and a constant world.
+box), the Radial Tiling node (regular and irregular, rounded polygons), plain
+attributes named like standard attributes and a Bump node with a strong noise
+height (of the position and of an attribute), through the public C API, lit by a sphere lamp with MIS and a constant world.
 Usage: python3 native/oracle/scenes/author_surface_nodes.py [--check]."""
 import argparse
 import json
@@ -100,6 +100,35 @@ def uv_material(handle):
                   [['t', 'UV', 'k', 'Vector'], ['k', 'Color', 'd', 'Color'], ['d', 'BSDF', 'output', 'Surface']])
 
 
+def strong_bump_material(handle, color):
+    """A Bump node whose height is a high-frequency noise of the position: the height differences are differences of
+    noise values a pixel footprint apart, so the normal follows the last bits of the offset positions."""
+    return shader(handle, [{'handle': 'geo', 'type': 'geometry', 'set': {}},
+                           {'handle': 'n', 'type': 'noise_texture', 'set': {'dimensions': '3D', 'scale': 9.0, 'detail': 2.0}},
+                           {'handle': 'bump', 'type': 'bump', 'set': {'strength': 1.0, 'distance': 0.6}},
+                           {'handle': 'd', 'type': 'diffuse_bsdf', 'set': {'color': color, 'roughness': 0.0}}],
+                  [['geo', 'Position', 'n', 'Vector'], ['n', 'Fac', 'bump', 'Height'], ['bump', 'Normal', 'd', 'Normal'], ['d', 'BSDF', 'output', 'Surface']])
+
+
+def strong_bump_attribute_material(handle, color):
+    """The strong noise Bump with the noise coordinates read from the vertex attribute "coords" by an Attribute node: the
+    offset positions of the Bump are the attribute's value plus its derivative times the filter width."""
+    return shader(handle, [{'handle': 'a', 'type': 'attribute', 'set': {'attribute': 'coords'}},
+                           {'handle': 'n', 'type': 'noise_texture', 'set': {'dimensions': '3D', 'scale': 9.0, 'detail': 2.0}},
+                           {'handle': 'bump', 'type': 'bump', 'set': {'strength': 1.0, 'distance': 0.6}},
+                           {'handle': 'd', 'type': 'diffuse_bsdf', 'set': {'color': color, 'roughness': 0.0}}],
+                  [['a', 'Vector', 'n', 'Vector'], ['n', 'Fac', 'bump', 'Height'], ['bump', 'Normal', 'd', 'Normal'], ['d', 'BSDF', 'output', 'Surface']])
+
+
+def coords_attribute(positions):
+    """A vertex attribute "coords": an affine map of the vertex positions with no axis-aligned row."""
+    data = []
+    for k in range(0, len(positions), 3):
+        x, y, z = positions[k:k+3]
+        data += [f32(0.731*x+0.213*y-0.377*z+0.137), f32(-0.191*x+0.877*y+0.419*z-0.291), f32(0.283*x-0.337*y+0.691*z+0.613)]
+    return [{'name': 'coords', 'value': 'point', 'domain': 'vertex', 'data': data}]
+
+
 def with_attributes(nodes, attributes):
     nodes[0]['mesh']['attributes'] = attributes
     return nodes
@@ -130,6 +159,32 @@ def scenes():
                                       [radial_material('rt-regular', 5.0, 0.3, True), radial_material('rt-irregular', 3.5, 0.6, False)],
                                       quad('panel-a', 'rt-regular', [(-3.6, -2, 1), (-0.2, -2, 1), (-0.2, 1.5, 1), (-3.6, 1.5, 1)])+
                                       quad('panel-b', 'rt-irregular', [(0.2, -2, 1), (3.6, -2, 1), (3.6, 1.5, 1), (0.2, 1.5, 1)]))
+    # Every surface carries the Bump: the back wall and the floor (axis-aligned) and a panel tilted about Y, whose dPdu has
+    # two non-zero projected components, so the Cramer products of du and dv do not vanish.
+    document = scene('surface-nodes/bump-strong-noise', 'Bump node with a strong high-frequency noise height of the position (scale 9, detail 2, '
+                     'distance 0.6) on the back wall, the floor and a tilted panel, seen directly and after diffuse bounces with Filter Glossy 0',
+                     [strong_bump_material('bumped-a', [0.6, 0.6, 0.6])],
+                     quad('panel-a', 'bumped-a', [(-3.6, -2, 1), (-0.2, -2, 0.2), (-0.2, 1.5, 0.2), (-3.6, 1.5, 1)]))
+    replaced = {'wall': strong_bump_material('wall', [0.6, 0.62, 0.65]), 'floor-material': strong_bump_material('floor-material', [0.5, 0.45, 0.35])}
+    document['nodes'] = [replaced.get(node['handle'], node) for node in document['nodes']]
+    document['render'].update(width=48, height=36, samples=16)
+    out['bump-strong-noise.json'] = document
+    # The same height with its coordinates from an Attribute node (two tilted panels, the wall and the floor): the
+    # Attribute node's own first-order bump offset.
+    document = scene('surface-nodes/bump-strong-noise-attribute', 'Bump node with a strong high-frequency noise height of a vertex '
+                     'attribute read by an Attribute node (scale 9, detail 2, distance 0.6) on the back wall, the floor and two tilted '
+                     'panels, seen directly and after diffuse bounces with Filter Glossy 0',
+                     [strong_bump_attribute_material('bumped-a', [0.6, 0.6, 0.6])],
+                     quad('panel-a', 'bumped-a', [(-3.6, -2, 1), (-0.2, -2, 0.2), (-0.2, 1.5, 0.2), (-3.6, 1.5, 1)]) +
+                     quad('panel-b', 'bumped-a', [(0.3, -1.9, 0.4), (3.4, -2, 1.3), (3.1, 1.4, 0.9), (0.2, 1.5, 0.1)]))
+    replaced = {'wall': strong_bump_attribute_material('wall', [0.6, 0.62, 0.65]),
+                'floor-material': strong_bump_attribute_material('floor-material', [0.5, 0.45, 0.35])}
+    document['nodes'] = [replaced.get(node['handle'], node) for node in document['nodes']]
+    for node in document['nodes']:
+        if node.get('create') == 'mesh':
+            node['mesh']['attributes'] = coords_attribute(node['mesh']['positions'])
+    document['render'].update(width=48, height=36, samples=16)
+    out['bump-strong-noise-attribute.json'] = document
     return out
 
 
