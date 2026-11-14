@@ -1,0 +1,72 @@
+{
+ "baseCommit": "0b19d87507ac24f1e55ba6a50d1ac6b05c8d417c",
+ "copiedFrom": "git archive --format=tar HEAD (0b19d875) -- . :(exclude)native/evidence :(exclude)native/binaries",
+ "copy": "<repo>/native/work/macos-arm64-survey-20261113/tree",
+ "dependencyPrefix": "cp -cRp (APFS clone) of <repo>/native/work/macos/osx-arm64/dependencies/install",
+ "buildCommand": "python3 tools/build_macos.py --jobs 8 --skip-dependencies (in the copy)",
+ "patchCommand": "patch -p1 -d <copy> < patches/<name>.patch (row08-subdivision-bake, row09-cpu-upscale, row11-bvh-time-steps)",
+ "control": {
+  "result": "whole-file hashes of all 8 artifacts differ; every Mach-O section and the symbol table without N_OSO entries identical",
+  "detail": "debug map only: all 132 N_OSO object mtimes differ; 2 N_OSO object paths embed the checkout path (cycles_host.cpp.o, metal_recovery.mm.o)",
+  "kernelSourcesJson": "byte-identical",
+  "dependencyClosure": "identical",
+  "mainArtifacts": {
+   "bin/codebrix_host_concurrency_test": "67cc4f452f87019d51c8635c9af09b6b05bf1efe6bb1a2f25b6e6fb6a5f6aeca",
+   "bin/codebrix_host_cpu_test": "61af87fe16bd14fa48b36ffe05591c7083efb15b33a7d1f3a50316524527ce53",
+   "bin/codebrix_host_gpu_test": "fdb2cc1e65cfa0fe61aae737c562618c4e8e6416fe2f16f10dcbe4c4bde56277",
+   "bin/codebrix_host_image_reference": "1a5a4c0564be5a8c7637091f7e454419f449599093dae08466491003765d432c",
+   "bin/codebrix_host_reload_test": "07cf1438d8df1dab7c1c9f309f14ab76b40dba66f3ccf8283b40d2c556793ab8",
+   "bin/codebrix_host_session64_reference": "91eccffb6dbed495052758b5d27aeb703f0e5afce9a83727fdccf45135ff59a8",
+   "bin/codebrix_host_session_reference": "7bf468f0f628037e3fed37e4bb870c77ed9c466564554e8a882c89601e8ed265",
+   "lib/libcodebrix_cycles_host.dylib": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340"
+  },
+  "controlArtifacts": {
+   "bin/codebrix_host_concurrency_test": "4d911f39a009555109926441ed2998fbdca10cdc116039fe1f1b192c2d3e6e79",
+   "bin/codebrix_host_cpu_test": "7b0f49d56f229845ef25f1b89db877d5f4d8baeefaf510f564d966c85470f162",
+   "bin/codebrix_host_gpu_test": "2f4fefbe940b88c861311f17708731a91ba6ad44128e988fbe965d657c837cc1",
+   "bin/codebrix_host_image_reference": "95cd017397cb8306eb5e0e38d851a5802c8c67f30a05fe0037e67c7efe5dfa56",
+   "bin/codebrix_host_reload_test": "5ea29fdaaa2622f064664e08af63a238565d8a12d4dfa5bc55780a089a8bf064",
+   "bin/codebrix_host_session64_reference": "1d59571b52ee1367d27237ffe166e5588acfe0a006952de4374cc2153aa25124",
+   "bin/codebrix_host_session_reference": "09a85b4ae5aed19bb02a8e5bf6e753b46502b65b6c877f06542991fd2bf32042",
+   "lib/libcodebrix_cycles_host.dylib": "052bde6b974a6f6b273b553d88d0ab0592fb506675aef561459084e1f3b821b6"
+  },
+  "mainRunnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d"
+ },
+ "surveyBuild": {
+  "hostSha256": "247a736b4714c3487ed37aa557693dcf4bae040d9a6eea2aae555eb7db5aa6db",
+  "runnerSha256": "7b11eca3a1e48e1ba2ac5434cbc843f9a655347b27bdd0e2f39e553c8dbf0ecc",
+  "artifacts": {
+   "bin/codebrix_host_concurrency_test": "4d911f39a009555109926441ed2998fbdca10cdc116039fe1f1b192c2d3e6e79",
+   "bin/codebrix_host_cpu_test": "7b0f49d56f229845ef25f1b89db877d5f4d8baeefaf510f564d966c85470f162",
+   "bin/codebrix_host_gpu_test": "2f4fefbe940b88c861311f17708731a91ba6ad44128e988fbe965d657c837cc1",
+   "bin/codebrix_host_image_reference": "95cd017397cb8306eb5e0e38d851a5802c8c67f30a05fe0037e67c7efe5dfa56",
+   "bin/codebrix_host_reload_test": "5ea29fdaaa2622f064664e08af63a238565d8a12d4dfa5bc55780a089a8bf064",
+   "bin/codebrix_host_session64_reference": "1d59571b52ee1367d27237ffe166e5588acfe0a006952de4374cc2153aa25124",
+   "bin/codebrix_host_session_reference": "09a85b4ae5aed19bb02a8e5bf6e753b46502b65b6c877f06542991fd2bf32042",
+   "lib/libcodebrix_cycles_host.dylib": "247a736b4714c3487ed37aa557693dcf4bae040d9a6eea2aae555eb7db5aa6db"
+  },
+  "patches": [
+   "row08-subdivision-bake",
+   "row09-cpu-upscale",
+   "row11-bvh-time-steps"
+  ]
+ },
+ "diagnosticBuild": {
+  "copy": "<repo>/native/work/macos-arm64-survey-20261113/tree-diag",
+  "hostSha256": "5350f820421dbf81c451971a7246314f3cca272c88c11aba00d96838189a6971",
+  "runnerSha256": "f7139e6e568850975b7fdf03a157949f07f057b58602dbbc5cb7d56f08a21712",
+  "patches": [
+   "row08-subdivision-bake",
+   "row09-cpu-upscale",
+   "row11-bvh-time-steps",
+   "row11-diagnostic-log"
+  ]
+ },
+ "probeBinariesSha256": {
+  "metal_velvet_probe": "6227f01076be6e9a749f6ef4dbd0dba1808bccbd31c5a6dc223f92f2ecb7cb51",
+  "velvet_chain_cpu_arm64": "3186c2ca362d552a7ffcd3d4afc119b84642ebbdd73cfa15d9143db0b8dc0278",
+  "velvet_chain_cpu_arm64_default": "889940ac1bf12352875fe87d19ab7aabf25c7fd6a1a4bde812641104694d00fd",
+  "velvet_chain_cpu_arm64_fz": "22cbd9fca60496ba7b4072611239a799a47f313ce52dab972faa75570ac017e9"
+ },
+ "note": "No executable or library is in this folder."
+}

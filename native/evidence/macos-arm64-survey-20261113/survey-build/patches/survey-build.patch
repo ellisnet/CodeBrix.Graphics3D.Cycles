@@ -1,0 +1,41 @@
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+
+The three survey patches (rows 8b, 9, 11) combined. SURVEY BUILD ONLY, NEVER PRODUCT CODE.
+Apply either this file or the three single patches, not both.
+
+--- a/native/host/host_bake.inc
++++ b/native/host/host_bake.inc
+@@ -57,7 +57,6 @@
+   require(request.object, "Bake object handle is not an object");
+   request.mesh = dynamic_cast<Mesh *>(request.object->get_geometry());
+   require(request.mesh, "Only an object whose geometry is a triangle mesh can be baked");
+-  require(request.mesh->get_subdivision_type() == Mesh::SUBDIVISION_NONE, "A subdivision surface cannot be baked", CBC_UNSUPPORTED);
+   require(request.mesh->num_triangles() > 0, "The bake mesh has no triangles");
+   const char *name = config->uv_attribute;
+   request.uv = name && *name ? request.mesh->attributes.find(ustring(name)) : request.mesh->attributes.find(ATTR_STD_UV);
+--- a/native/host/cycles_host.cpp
++++ b/native/host/cycles_host.cpp
+@@ -1157,11 +1157,6 @@
+       region_height = int(std::lround(double(border.top) * config->height)) - region_y;
+       require(region_width > 0 && region_height > 0, "Camera border covers no whole pixel of this film");
+     }
+-    // Cycles upscales only in its GPU denoisers; the Open Image Denoise CPU denoiser that the CPU and WebGPU backends
+-    // use resets the factor to 1 (integrator/denoiser.cpp), so the setting would be lost.
+-    require(host.backend == CBC_HOST_METAL || !scene.integrator->get_use_denoise() || scene.integrator->get_denoiser_upscale_factor() == 1.0f,
+-            "Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)",
+-            CBC_UNSUPPORTED);
+     // Adaptive dicing of subdivision surfaces measures in the dicing camera's pixels: with subdivision faces in the scene
+     // the host keeps it equal to the render camera (Cycles' own scene leaves it at its defaults).
+     if (std::any_of(scene.geometry.begin(), scene.geometry.end(), [](Geometry *g) {
+--- a/native/host/cycles_host.cpp
++++ b/native/host/cycles_host.cpp
+@@ -612,6 +612,8 @@
+     // Unaligned BVH2 nodes for curves, as the pinned default: the BVH2 traversal of the CPU reference, of the Metal
+     // kernels and of the WGSL device all read them; only scenes with curves can have them (scene/geometry_bvh.cpp).
+     scene.use_bvh_unaligned_nodes = true; scene.use_texture_cache = false;
++    // SURVEY BUILD ONLY (KIT-MACOS-ARM64 row 11): BVH time steps from the environment; unset keeps Cycles' default 0.
++    if (const char *steps = std::getenv("CODEBRIX_SURVEY_BVH_TIME_STEPS")) scene.num_bvh_time_steps = std::atoi(steps);
+     host->session = std::make_unique<Session>(params, scene);
+     require(!host->session->progress.get_error(), host->session->progress.get_error_message().c_str(), CBC_FAILED);
+     require(host->session->device->info.type == type, "Device selection changed unexpectedly", CBC_FAILED);

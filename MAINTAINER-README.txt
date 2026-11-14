@@ -153,8 +153,9 @@ Only the first two folders below are .NET family-standard; everything else is
 the native source, its build and licensing tooling, and the evidence and
 research that back it.
 
-    build/                                the pack driver, the pack shim and the
-                                          platform nuspecs (nuget/)
+    build/                                the pack driver, the pack shim, the
+                                          platform nuspecs and the MacOSArm64
+                                          package's buildTransitive targets (nuget/)
     nugets/                               ignored pack output
     src/CodeBrix.Graphics3D.Cycles/       the library project (the Core package)
       CyclesScene.cs                      the typed facade entry point
@@ -1030,6 +1031,22 @@ Packages:
         native/binaries/<rid>/runtime/ as runtimes/<rid>/native/, and the documents
         below. Depends on Core at exactly its own version and, unless the platform's
         GPU backend does not use it, on the exact CodeBrix.WebGpu.Native version.
+    CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever
+        The osx-arm64 platform package: Cycles' own Metal device, so it depends on
+        Core only. The dylibs of native/binaries/osx-arm64/runtime/ are
+        runtimes/osx-arm64/native/. The Metal kernel sources
+        (runtime/codebrix-cycles/source) are at the package root as
+        codebrix-cycles/source, and buildTransitive/<package id>.targets
+        (build/nuget/CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever.targets)
+        copies them beside the host library in the consumer's output, for build,
+        run and publish: under runtimes/osx-arm64/native/ without a runtime
+        identifier, beside the application for osx-arm64. The host compiles its
+        Metal kernels at run time from that folder and nowhere else. They are not
+        native assets because NuGet keeps native-asset subfolders only without a
+        runtime identifier: with one it flattens them into the output folder, and
+        `dotnet publish -r osx-arm64` fails with NETSDK1152 because kernel header
+        names repeat. package_check.py checks the kernel files against the approved
+        payload like the dylibs, and the .targets file against the repository file.
 
 Every package carries icon-codebrix-128.png, README.md, AGENT-README.txt,
 THIRD-PARTY-NOTICES.txt, LICENSE and NOTICE.
@@ -1056,6 +1073,12 @@ one platform does not wait for another. Each publish republishes the whole famil
 at one new version, with any newly validated platform added. Jeremy publishes;
 nobody else pushes packages.
 
+The MacOSArm64 line of the _Nuspec list is conditional on its payload: it is packed
+when native/binaries/osx-arm64/provenance.json exists (the committed payload) or
+when MacOSArm64Payload names a scratch stage. A pack on the Linux x64 machine
+therefore works before the payload is committed, and packs MacOSArm64 with the rest
+of the family as soon as it is; the family is normally packed and published there.
+
 Adding a platform: stage and review its payload in native/binaries/<rid>/, add
 build/nuget/CodeBrix.Graphics3D.Cycles.<Platform>.nuspec, add it to the driver's
 _Nuspec list and to PLATFORMS in tools/licensing/package_check.py. Windows hosts skip
@@ -1072,19 +1095,70 @@ old payload first; a payload is only replaced on purpose. package_check.py warns
 when native sources changed after the payload's commit: restage before publishing,
 and validate on the commit you stage from.
 
+macOS ARM64 payload: staged on the Apple Silicon Mac from the build that a passed
+host gate and an oracle run validated (native/host/MACOS_ARM64.md;
+docs/TESTING-MACOS-ARM64.md, step 9):
+
+    python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation-<n> --oracles native/work/oracles/<run>
+
+It never rebuilds: a macOS rebuild is not byte-identical (object timestamps and
+absolute paths in the debug map change the host's UUID and signature), so only the
+validated files are staged. Instead native/tools/build_cycles_macos.py records the
+commit it builds from and the git status of the Cycles-with-Metal sources when it
+starts and when it completes (sourceCommit and metalSourceStatus in
+host/invocation.json, sourceAtEnd in host/status.json; a --target build records
+none). The stager refuses unless both records name one commit with a clean status,
+HEAD descends from that commit with no Cycles-with-Metal source change since, and the
+working tree has none. The order on the Mac is therefore: commit, build
+(python3 tools/build_macos.py), gate, render the oracles, stage, review, commit the
+payload. provenance.json records that commit as sourceCommit (and HEAD as
+stagedAtCommit), the notices of every library (OIDN's core and its CPU and Metal
+device modules included; Embree is linked statically into the host), and the render
+of a copy of runtime/ alone on CPU and Metal, whose CPU film must equal the oracle
+run's. It refuses an existing payload (remove it first) and any file or folder whose
+name starts with '.' (Finder's .DS_Store: git ignores it, so it could never be
+committed with its approval). runtime/, unstripped/ and symbols/ are committed in
+full.
+
+Payload staleness is judged per build profile: package_check.py reports a payload
+as STALE when a source of its profile changed after the payload's sourceCommit.
+
+    Cycles-with-Metal (osx-arm64)        METAL_SOURCES in tools/licensing/metal_sources.py:
+                                         what the macOS recipe reads (native/host,
+                                         native/cycles/cpu_arithmetic.cpp, the macOS
+                                         recipes and the dependency tools they import,
+                                         third_party/cycles, third_party/deps and their
+                                         manifests, and the oracle runner)
+    Cycles-with-WGSL (every other RID)   NATIVE_SOURCES in package_check.py (also in
+                                         stage_linux_binaries.py)
+
+A WGSL-only change (native/shaders, native/manylinux) leaves the osx-arm64 payload
+current; a change to a source both lists share (native/host, third_party/cycles)
+makes both payloads stale. A stale payload can be packed but is not published. When
+osx-arm64 is stale, the Mac rebuilds, validates and restages
+native/binaries/osx-arm64/ at a commit that contains the change, and that payload is
+committed before the family is packed and published on the Linux x64 machine.
+
 Scratch staging (for checks before a payload is committed):
 
     python3 native/tools/stage_linux_binaries.py --output native/work/staging/linux-x64
     dotnet build build/CodeBrix.Graphics3D.Cycles.Build.csproj -c Release -p:LinuxX64Payload=native/work/staging/linux-x64
 
+    python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation-<n> \
+        --oracles native/work/oracles/<run> --output native/work/staging/osx-arm64
+    dotnet build build/CodeBrix.Graphics3D.Cycles.Build.csproj -c Release -p:MacOSArm64Payload=native/work/staging/osx-arm64
+
 The scratch folder must be outside the tracked tree (git-ignored, or outside the
 checkout); native/binaries/ is not touched. A scratch stage may be made with
 uncommitted native changes: it records the SHA-256 of `git diff --binary` and the
 changed paths, and it is never approved ("approved": false, an empty
-approvedPayload, the staged files in payloadFiles). The pack driver then packs
-.LinuxX64 from that folder, and package_check.py (--payload linux-x64=<folder>)
-checks the package against it and reports it as NOT PUBLISHABLE. Delete the
-nugets/Release/<version>/ folder such a run writes.
+approvedPayload, the staged files in payloadFiles). A macOS scratch stage may also
+be made from a build that a real stage refuses (for example one that recorded no
+commit); provenance.json lists the reasons under buildSource. The pack driver then
+packs .LinuxX64 or .MacOSArm64 (or both, given both properties) from those folders,
+and package_check.py (--payload linux-x64=<folder>, --payload osx-arm64=<folder>)
+checks each package against its stage and reports it as NOT PUBLISHABLE. Delete
+the nugets/Release/<version>/ folder such a run writes.
 
 
 CODING CONVENTIONS

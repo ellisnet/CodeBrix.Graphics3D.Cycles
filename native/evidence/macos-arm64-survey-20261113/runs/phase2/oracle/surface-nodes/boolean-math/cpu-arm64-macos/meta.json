@@ -1,0 +1,102 @@
+{
+  "sceneId": "surface-nodes/boolean-math",
+  "sceneSha256": "75a10dcf782df317943cabb0a208ebc8831edd0f65f08d811452de32bba8b209",
+  "backend": "cpu-arm64-macos",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 28,
+  "height": 36,
+  "samples": 4,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.00181517,
+    0.000428583
+  ],
+  "filmSha256": [
+    "078b28993add34e79395f79089ec1562d09c937e5cde6c34d2ba2f0db98fbbeb",
+    "078b28993add34e79395f79089ec1562d09c937e5cde6c34d2ba2f0db98fbbeb"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "B",
+      "type": "aov_value",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "5e6b011986022c9a25ad2c2ef427b575fdf98d83515530d21e16c29389f22191",
+        "5e6b011986022c9a25ad2c2ef427b575fdf98d83515530d21e16c29389f22191"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "CELL",
+      "type": "aov_value",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "c41ee1257ba62c3a2e236408d83702d4bb79983ff935511c0f35662b60f4f7d0",
+        "c41ee1257ba62c3a2e236408d83702d4bb79983ff935511c0f35662b60f4f7d0"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "bfc223792fe1260d76ca578cd7aa1b16253a2df0",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/surface-nodes/boolean-math.json",
+  "backendDescription": "Cycles CPU device, Apple Clang arm64, plain C++ kernels (no sse2neon), fixed-baseline oracle: no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.066,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/surface-nodes/boolean-math.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-macos",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-survey-20261113-phase2/oracle/surface-nodes/boolean-math/cpu-arm64-macos",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

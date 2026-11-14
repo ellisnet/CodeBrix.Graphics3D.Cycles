@@ -1,0 +1,180 @@
+{
+  "scenes": {
+    "starter/diffuse-triangle": {
+      "cpu-arm64-macos": {
+        "renderSeconds": [
+          0.00199108,
+          0.0003775
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro": {
+        "renderSeconds": [
+          0.439009,
+          0.0167591
+        ],
+        "repeatBitwiseIdentical": false
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          0.465601,
+          0.05121
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "curves-b/motion-deform-thick": {
+      "cpu-arm64-macos": {
+        "renderSeconds": [
+          0.0115822,
+          0.00975337
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro": {
+        "renderSeconds": [
+          0.878645,
+          0.149618
+        ],
+        "repeatBitwiseIdentical": false
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          1.74756,
+          0.770521
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "points/deform-3": {
+      "cpu-arm64-macos": {
+        "renderSeconds": [
+          0.00766317,
+          0.00566387
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro": {
+        "renderSeconds": [
+          0.781788,
+          0.195953
+        ],
+        "repeatBitwiseIdentical": false
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          1.63397,
+          0.92168
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "linux-gates/deforming-motion-0": {
+      "cpu-arm64-macos": {
+        "renderSeconds": [
+          0.00258596,
+          0.000997708
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro": {
+        "renderSeconds": [
+          0.463966,
+          0.0265445
+        ],
+        "repeatBitwiseIdentical": false
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          2.12533,
+          0.279709
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "points/object-motion": {
+      "cpu-arm64-macos": {
+        "renderSeconds": [
+          0.00608775,
+          0.00402013
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro": {
+        "renderSeconds": [
+          0.764077,
+          0.229073
+        ],
+        "repeatBitwiseIdentical": false
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          0.774572,
+          0.260016
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    }
+  },
+  "backends": [
+    "cpu-arm64-macos",
+    "metal-m2pro",
+    "metal-m2pro-metalrt"
+  ],
+  "common": {
+    "machine": {
+      "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+      "cpu": "Apple M2 Pro",
+      "gpu": {
+        "model": "Apple M2 Pro",
+        "cores": 16
+      },
+      "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+      "xcode": "Xcode 27.2\nBuild version 27B52",
+      "cmake": "cmake version 4.4.5",
+      "python": "3.15.2",
+      "repoCommit": "0b19d87507ac24f1e55ba6a50d1ac6b05c8d417c",
+      "repoWorkingTreeClean": true,
+      "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+    },
+    "hostLibrarySha256": "5350f820421dbf81c451971a7246314f3cca272c88c11aba00d96838189a6971",
+    "runnerSha256": "f7139e6e568850975b7fdf03a157949f07f057b58602dbbc5cb7d56f08a21712",
+    "cpuKernelCompile": {
+      "file": "src/kernel/device/cpu/kernel.cpp",
+      "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+      "flags": [
+        "-std=c++17",
+        "-std=c++17",
+        "-ffp-contract=on",
+        "-freciprocal-math",
+        "-O3",
+        "-std=c++20",
+        "-ffp-contract=off",
+        "-fno-reciprocal-math"
+      ],
+      "ffpContractExplicit": true,
+      "fpContract": "off",
+      "reciprocalMath": false,
+      "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+    }
+  },
+  "kernelCompileSeconds": {
+    "metal-m2pro": {
+      "firstRenderSeconds": 1.20249,
+      "secondRenderSeconds": 0.0140536,
+      "scene": "starter/diffuse-triangle"
+    },
+    "metal-m2pro-metalrt": {
+      "firstRenderSeconds": 1.27152,
+      "secondRenderSeconds": 0.0190005,
+      "scene": "starter/diffuse-triangle"
+    }
+  },
+  "comparisonsPassed": {
+    "starter/diffuse-triangle": true,
+    "curves-b/motion-deform-thick": true,
+    "points/deform-3": true,
+    "linux-gates/deforming-motion-0": true,
+    "points/object-motion": true
+  }
+}

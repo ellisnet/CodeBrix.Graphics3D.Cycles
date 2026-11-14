@@ -1,0 +1,68 @@
+device Apple M2 Pro, macOS 27.2.1
+host reference (binary32, exact): expf(-87.1811905) = 1.37306174e-38 (normal, just above FLT_MIN 1.17549435e-38)
+== MTLCompileOptions: fastMathEnabled=YES languageVersion=0x30002 (3.2=0x30002) mathMode=MTLMathModeFast mathFloatingPointFunctions=MTLMathFloatingPointFunctionsFast
+cycles sigma 0.40 arg -49.0394135 expf 5.04027138e-22 e*inv 3.15016933e-21 D 7.84707925e-20 out 2.05891378e-20 invsigma2 6.24999952 | expf 0x1c185536 normal, out 0x1ec2757b normal
+cycles sigma 1.00 arg -7.8463068 expf 0.000391193986 e*inv 0.000391193986 D 0.00974465068 out 0.00255679805 invsigma2 1 | expf 0x39cd192b normal, out 0x3b278ff4 normal
+cycles sigma 0.01 arg -78463.0781 expf 0 e*inv 0 D 0 out 0 invsigma2 10000.001 | expf 0x00000000 zero, out 0x00000000 zero
+cycles sigma 0.60 arg -21.7952957 expf 3.42313178e-10 e*inv 9.50869938e-10 D 2.36861926e-08 out 6.21477447e-09 invsigma2 2.77777767 | expf 0x2fbc304c normal, out 0x31d589bc normal
+cycles sigma 0.50 arg -31.3852272 expf 2.34190261e-14 e*inv 9.36761045e-14 D 2.33347391e-12 out 6.12256068e-13 invsigma2 4 | expf 0x28d2f099 normal, out 0x2b2c55b3 normal
+cycles sigma 0.20 arg -196.157654 expf 0 e*inv 0 D 0 out 0 invsigma2 24.9999981 | expf 0x00000000 zero, out 0x00000000 zero
+cycles sigma 0.30 arg -87.1811829 expf 1.37307603e-38 e*inv 1.52563994e-37 D 3.80037238e-36 out 9.97140401e-37 invsigma2 11.1111107 | expf 0x009583c6 normal, out 0x03a9a797 normal
+cycles sigma 0.90 arg -9.68679905 expf 6.20978608e-05 e*inv 7.66640296e-05 D 0.00190970267 out 0.000501067145 invsigma2 1.234568 | expf 0x38823a89 normal, out 0x3a035a0c normal
+cycles sigma 0.45 arg -38.7471962 expf 1.48698553e-17 e*inv 7.34313905e-17 D 1.8291776e-15 out 4.79938979e-16 invsigma2 4.938272 | expf 0x23892674 normal, out 0x260a553f normal
+cprobe sigma 0.40 arg -49.0394135 expf 5.04027138e-22 e*inv 3.15016933e-21 D 7.84707925e-20 out 2.05891378e-20 invsigma2 6.24999952 | expf 0x1c185536 normal, out 0x1ec2757b normal
+cprobe sigma 1.00 arg -7.8463068 expf 0.000391193986 e*inv 0.000391193986 D 0.00974465068 out 0.00255679805 invsigma2 1 | expf 0x39cd192b normal, out 0x3b278ff4 normal
+cprobe sigma 0.01 arg -78463.0781 expf 0 e*inv 0 D 0 out 0 invsigma2 10000.001 | expf 0x00000000 zero, out 0x00000000 zero
+cprobe sigma 0.60 arg -21.7952957 expf 3.42313178e-10 e*inv 9.50869938e-10 D 2.36861926e-08 out 6.21477447e-09 invsigma2 2.77777767 | expf 0x2fbc304c normal, out 0x31d589bc normal
+cprobe sigma 0.50 arg -31.3852272 expf 2.34190261e-14 e*inv 9.36761045e-14 D 2.33347391e-12 out 6.12256068e-13 invsigma2 4 | expf 0x28d2f099 normal, out 0x2b2c55b3 normal
+cprobe sigma 0.20 arg -196.157654 expf 0 e*inv 0 D 0 out 0 invsigma2 24.9999981 | expf 0x00000000 zero, out 0x00000000 zero
+cprobe sigma 0.30 arg -87.1811829 expf 1.37307603e-38 e*inv 1.52563994e-37 D 3.80037238e-36 out 9.97140401e-37 invsigma2 11.1111107 | expf 0x009583c6 normal, out 0x03a9a797 normal
+cprobe sigma 0.90 arg -9.68679905 expf 6.20978608e-05 e*inv 7.66640296e-05 D 0.00190970267 out 0.000501067145 invsigma2 1.234568 | expf 0x38823a89 normal, out 0x3a035a0c normal
+cprobe sigma 0.45 arg -38.7471962 expf 1.48698553e-17 e*inv 7.34313905e-17 D 1.8291776e-15 out 4.79938979e-16 invsigma2 4.938272 | expf 0x23892674 normal, out 0x260a553f normal
+direct fast::exp(-87.1811905)                   1.37306146e-38  0x0095835e normal
+direct precise::exp(-87.1811905)                1.3730616e-38  0x0095835f normal
+direct exp(-87.1811905) (default namespace)     1.37306146e-38  0x0095835e normal
+direct 1e-39 * 1 (subnormal input)              0  0x00000000 zero
+direct 1e-39 + 0 (subnormal input)              0  0x00000000 zero
+direct FLT_MIN * 0.5 (subnormal result)         0  0x00000000 zero
+direct 1e-39 != 0                               0  0x00000000 zero
+direct fast::exp(-88.1811905)                   0  0x00000000 zero
+direct precise::exp(-88.1811905)                0  0x00000000 zero
+direct 1e-39 copied (no arithmetic)             1.00000022e-39  0x000ae398 subnormal (input bits 0x000ae398)
+gate path  534: normal-CPU eval 1.54958639e-38 (0x00a8bc2a normal) | Metal eval*1 1.54958639e-38 (0x00a8bc2a normal) | weight 0.5: CPU eval*weight 7.74793195e-39 (0x00545e15 subnormal), Metal 0 (0x00000000 zero)
+gate path  549: normal-CPU eval 8.23442718e-38 (0x01e02995 normal) | Metal eval*1 8.23442718e-38 (0x01e02995 normal) | weight 0.5: CPU eval*weight 4.11721359e-38 (0x01602995 normal), Metal 4.11721359e-38 (0x01602995 normal)
+gate path 1566: normal-CPU eval 9.84552301e-42 (0x00001b72 subnormal) | Metal eval*1 0 (0x00000000 zero) | weight 0.5: CPU eval*weight 4.92276151e-42 (0x00000db9 subnormal), Metal 0 (0x00000000 zero)
+gate path 2055: normal-CPU eval 1.13863109e-38 (0x007bfc67 subnormal) | Metal eval*1 0 (0x00000000 zero) | weight 0.800000012: CPU eval*weight 9.10904818e-39 (0x00633052 subnormal), Metal 0 (0x00000000 zero)
+== MTLCompileOptions: fastMathEnabled=NO languageVersion=0x30002 (3.2=0x30002) mathMode=MTLMathModeSafe mathFloatingPointFunctions=MTLMathFloatingPointFunctionsPrecise
+cycles sigma 0.40 arg -49.0394211 expf 5.04021786e-22 e*inv 3.15013601e-21 D 7.84699847e-20 out 2.05889261e-20 invsigma2 6.24999952 | expf 0x1c1854cc normal, out 0x1ec274f8 normal
+cycles sigma 1.00 arg -7.84630823 expf 0.000391193462 e*inv 0.000391193462 D 0.00974464044 out 0.00255679525 invsigma2 1 | expf 0x39cd1919 normal, out 0x3b278fe8 normal
+cycles sigma 0.01 arg -78463.0859 expf 0 e*inv 0 D 0 out 0 invsigma2 10000 | expf 0x00000000 zero, out 0x00000000 zero
+cycles sigma 0.60 arg -21.7952995 expf 3.42311818e-10 e*inv 9.50866164e-10 D 2.36861037e-08 out 6.21475138e-09 invsigma2 2.77777767 | expf 0x2fbc301b normal, out 0x31d58988 normal
+cycles sigma 0.50 arg -31.3852329 expf 2.34189025e-14 e*inv 9.36756098e-14 D 2.3334622e-12 out 6.12252978e-13 invsigma2 4 | expf 0x28d2f050 normal, out 0x2b2c557a normal
+cycles sigma 0.20 arg -196.157684 expf 0 e*inv 0 D 0 out 0 invsigma2 24.9999981 | expf 0x00000000 zero, out 0x00000000 zero
+cycles sigma 0.30 arg -87.1811981 expf 1.37305417e-38 e*inv 1.52561572e-37 D 3.80031318e-36 out 9.97124796e-37 invsigma2 11.1111107 | expf 0x0095832a normal, out 0x03a9a6e9 normal
+cycles sigma 0.90 arg -9.68680096 expf 6.20977371e-05 e*inv 7.66638768e-05 D 0.00190969941 out 0.000501066213 invsigma2 1.234568 | expf 0x38823a78 normal, out 0x3a0359fc normal
+cycles sigma 0.45 arg -38.7472038 expf 1.48697378e-17 e*inv 7.34308082e-17 D 1.82916363e-15 out 4.79935274e-16 invsigma2 4.938272 | expf 0x2389262d normal, out 0x260a54f9 normal
+cprobe sigma 0.40 arg -49.0394211 expf 5.04021786e-22 e*inv 3.15013601e-21 D 7.84699847e-20 out 2.05889261e-20 invsigma2 6.24999952 | expf 0x1c1854cc normal, out 0x1ec274f8 normal
+cprobe sigma 1.00 arg -7.84630823 expf 0.000391193462 e*inv 0.000391193462 D 0.00974464044 out 0.00255679525 invsigma2 1 | expf 0x39cd1919 normal, out 0x3b278fe8 normal
+cprobe sigma 0.01 arg -78463.0859 expf 0 e*inv 0 D 0 out 0 invsigma2 10000 | expf 0x00000000 zero, out 0x00000000 zero
+cprobe sigma 0.60 arg -21.7952995 expf 3.42311818e-10 e*inv 9.50866164e-10 D 2.36861037e-08 out 6.21475138e-09 invsigma2 2.77777767 | expf 0x2fbc301b normal, out 0x31d58988 normal
+cprobe sigma 0.50 arg -31.3852329 expf 2.34189025e-14 e*inv 9.36756098e-14 D 2.3334622e-12 out 6.12252978e-13 invsigma2 4 | expf 0x28d2f050 normal, out 0x2b2c557a normal
+cprobe sigma 0.20 arg -196.157684 expf 0 e*inv 0 D 0 out 0 invsigma2 24.9999981 | expf 0x00000000 zero, out 0x00000000 zero
+cprobe sigma 0.30 arg -87.1811981 expf 1.37305417e-38 e*inv 1.52561572e-37 D 3.80031318e-36 out 9.97124796e-37 invsigma2 11.1111107 | expf 0x0095832a normal, out 0x03a9a6e9 normal
+cprobe sigma 0.90 arg -9.68680096 expf 6.20977371e-05 e*inv 7.66638768e-05 D 0.00190969941 out 0.000501066213 invsigma2 1.234568 | expf 0x38823a78 normal, out 0x3a0359fc normal
+cprobe sigma 0.45 arg -38.7472038 expf 1.48697378e-17 e*inv 7.34308082e-17 D 1.82916363e-15 out 4.79935274e-16 invsigma2 4.938272 | expf 0x2389262d normal, out 0x260a54f9 normal
+direct fast::exp(-87.1811905)                   1.37306146e-38  0x0095835e normal
+direct precise::exp(-87.1811905)                1.3730616e-38  0x0095835f normal
+direct exp(-87.1811905) (default namespace)     1.3730616e-38  0x0095835f normal
+direct 1e-39 * 1 (subnormal input)              0  0x00000000 zero
+direct 1e-39 + 0 (subnormal input)              0  0x00000000 zero
+direct FLT_MIN * 0.5 (subnormal result)         0  0x00000000 zero
+direct 1e-39 != 0                               0  0x00000000 zero
+direct fast::exp(-88.1811905)                   0  0x00000000 zero
+direct precise::exp(-88.1811905)                0  0x00000000 zero
+direct 1e-39 copied (no arithmetic)             1.00000022e-39  0x000ae398 subnormal (input bits 0x000ae398)
+gate path  534: normal-CPU eval 1.54958639e-38 (0x00a8bc2a normal) | Metal eval*1 1.54958639e-38 (0x00a8bc2a normal) | weight 0.5: CPU eval*weight 7.74793195e-39 (0x00545e15 subnormal), Metal 0 (0x00000000 zero)
+gate path  549: normal-CPU eval 8.23442718e-38 (0x01e02995 normal) | Metal eval*1 8.23442718e-38 (0x01e02995 normal) | weight 0.5: CPU eval*weight 4.11721359e-38 (0x01602995 normal), Metal 4.11721359e-38 (0x01602995 normal)
+gate path 1566: normal-CPU eval 9.84552301e-42 (0x00001b72 subnormal) | Metal eval*1 0 (0x00000000 zero) | weight 0.5: CPU eval*weight 4.92276151e-42 (0x00000db9 subnormal), Metal 0 (0x00000000 zero)
+gate path 2055: normal-CPU eval 1.13863109e-38 (0x007bfc67 subnormal) | Metal eval*1 0 (0x00000000 zero) | weight 0.800000012: CPU eval*weight 9.10904818e-39 (0x00633052 subnormal), Metal 0 (0x00000000 zero)

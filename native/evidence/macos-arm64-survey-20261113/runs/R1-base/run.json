@@ -1,0 +1,312 @@
+{
+  "scenes": {
+    "starter/diffuse-triangle": {
+      "cpu-arm64-macos": {
+        "renderSeconds": [
+          0.00430167,
+          0.000296542
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro": {
+        "renderSeconds": [
+          0.668159,
+          0.0414617
+        ],
+        "repeatBitwiseIdentical": false
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          0.449339,
+          0.237639
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "survey/curves-thick-diffuse-both": {
+      "cpu-arm64-macos": {
+        "renderSeconds": [
+          0.00742075,
+          0.00522367
+        ],
+        "repeatBitwiseIdentical": false
+      },
+      "metal-m2pro": {
+        "renderSeconds": [
+          0.564414,
+          0.238642
+        ],
+        "repeatBitwiseIdentical": false
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          1.31795,
+          0.114682
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "survey/points-diffuse-both": {
+      "cpu-arm64-macos": {
+        "renderSeconds": [
+          0.00584604,
+          0.00431904
+        ],
+        "repeatBitwiseIdentical": false
+      },
+      "metal-m2pro": {
+        "renderSeconds": [
+          0.682702,
+          0.0999285
+        ],
+        "repeatBitwiseIdentical": false
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          1.60506,
+          0.175967
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "survey/denoise-upscale-1-gpu": {
+      "cpu-arm64-macos": {
+        "renderSeconds": [
+          0.205508,
+          0.00668492
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro": {
+        "renderSeconds": [
+          1.85276,
+          0.504954
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          1.27993,
+          0.202246
+        ],
+        "repeatBitwiseIdentical": true
+      }
+    },
+    "survey/denoise-upscale-1-gpu-catcher": {
+      "cpu-arm64-macos": {
+        "renderSeconds": [
+          0.0563252,
+          0.0198928
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro": {
+        "renderSeconds": [
+          2.12358,
+          0.169012
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          0.942484,
+          0.218697
+        ],
+        "repeatBitwiseIdentical": true
+      }
+    },
+    "survey/denoise-upscale-2-gpu": {
+      "metal-m2pro": {
+        "renderSeconds": [
+          2.88437,
+          0.914484
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          1.03053,
+          0.140335
+        ],
+        "repeatBitwiseIdentical": true
+      }
+    },
+    "survey/denoise-upscale-4-gpu": {
+      "metal-m2pro": {
+        "renderSeconds": [
+          2.03318,
+          0.0594553
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          1.1781,
+          0.247025
+        ],
+        "repeatBitwiseIdentical": true
+      }
+    },
+    "survey/denoise-upscale-1.5-gpu": {
+      "metal-m2pro": {
+        "renderSeconds": [
+          4.01883,
+          0.068098
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          1.32318,
+          0.0434848
+        ],
+        "repeatBitwiseIdentical": true
+      }
+    },
+    "survey/denoise-upscale-2-cpu-oidn": {
+      "metal-m2pro": {
+        "renderSeconds": [
+          0.97739,
+          0.600211
+        ],
+        "repeatBitwiseIdentical": false
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          0.574894,
+          0.285141
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "survey/denoise-upscale-2-gpu-catcher": {
+      "metal-m2pro": {
+        "renderSeconds": [
+          1.98861,
+          0.352409
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "metal-m2pro-metalrt": {
+        "renderSeconds": [
+          1.28179,
+          0.281957
+        ],
+        "repeatBitwiseIdentical": true
+      }
+    }
+  },
+  "backends": [
+    "cpu-arm64-macos",
+    "metal-m2pro",
+    "metal-m2pro-metalrt"
+  ],
+  "common": {
+    "machine": {
+      "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+      "cpu": "Apple M2 Pro",
+      "gpu": {
+        "model": "Apple M2 Pro",
+        "cores": 16
+      },
+      "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+      "xcode": "Xcode 27.2\nBuild version 27B52",
+      "cmake": "cmake version 4.4.5",
+      "python": "3.15.2",
+      "repoCommit": "0b19d87507ac24f1e55ba6a50d1ac6b05c8d417c",
+      "repoWorkingTreeClean": true,
+      "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+    },
+    "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+    "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+    "cpuKernelCompile": {
+      "file": "src/kernel/device/cpu/kernel.cpp",
+      "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+      "flags": [
+        "-std=c++17",
+        "-std=c++17",
+        "-ffp-contract=on",
+        "-freciprocal-math",
+        "-O3",
+        "-std=c++20",
+        "-ffp-contract=off",
+        "-fno-reciprocal-math"
+      ],
+      "ffpContractExplicit": true,
+      "fpContract": "off",
+      "reciprocalMath": false,
+      "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+    }
+  },
+  "kernelCompileSeconds": {
+    "metal-m2pro": {
+      "firstRenderSeconds": 2.05416,
+      "secondRenderSeconds": 0.0092655,
+      "scene": "starter/diffuse-triangle"
+    },
+    "metal-m2pro-metalrt": {
+      "firstRenderSeconds": 1.4535,
+      "secondRenderSeconds": 0.11884,
+      "scene": "starter/diffuse-triangle"
+    }
+  },
+  "failures": {
+    "survey/bake-subdivision": {
+      "cpu-arm64-macos": "codebrix_cycles_oracle: cbc_host_bake (size) returned 2: A subdivision surface cannot be baked",
+      "metal-m2pro": "codebrix_cycles_oracle: cbc_host_bake (size) returned 2: A subdivision surface cannot be baked",
+      "metal-m2pro-metalrt": "codebrix_cycles_oracle: cbc_host_bake (size) returned 2: A subdivision surface cannot be baked"
+    },
+    "survey/bake-zero-area-flat-normal": {
+      "cpu-arm64-macos": "codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output",
+      "metal-m2pro": "codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output",
+      "metal-m2pro-metalrt": "codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output"
+    },
+    "survey/denoise-upscale-2-gpu": {
+      "cpu-arm64-macos": "codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)"
+    },
+    "survey/denoise-upscale-4-gpu": {
+      "cpu-arm64-macos": "codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)"
+    },
+    "survey/denoise-upscale-1.5-gpu": {
+      "cpu-arm64-macos": "codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)"
+    },
+    "survey/denoise-upscale-2-cpu-oidn": {
+      "cpu-arm64-macos": "codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)"
+    },
+    "survey/denoise-upscale-2-gpu-catcher": {
+      "cpu-arm64-macos": "codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)"
+    },
+    "survey/points-gaussian-splats": {
+      "cpu-arm64-macos": "codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: Gaussian splats are not available in this library (the point cloud input render_as must be points)",
+      "metal-m2pro": "codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: Gaussian splats are not available in this library (the point cloud input render_as must be points)",
+      "metal-m2pro-metalrt": "codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: Gaussian splats are not available in this library (the point cloud input render_as must be points)"
+    },
+    "survey/denoise-dlss": {
+      "cpu-arm64-macos": "codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: the dlss denoiser is not available in this library (use openimagedenoise)",
+      "metal-m2pro": "codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: the dlss denoiser is not available in this library (use openimagedenoise)",
+      "metal-m2pro-metalrt": "codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: the dlss denoiser is not available in this library (use openimagedenoise)"
+    },
+    "survey/denoise-passes-128": {
+      "cpu-arm64-macos": "codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)",
+      "metal-m2pro": "codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)",
+      "metal-m2pro-metalrt": "codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)"
+    },
+    "survey/denoise-passes-albedo-normal-256": {
+      "cpu-arm64-macos": "codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)",
+      "metal-m2pro": "codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)",
+      "metal-m2pro-metalrt": "codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)"
+    }
+  },
+  "comparisonsPassed": {
+    "starter/diffuse-triangle": true,
+    "survey/curves-thick-diffuse-both": true,
+    "survey/points-diffuse-both": true,
+    "survey/denoise-upscale-1-gpu": true,
+    "survey/denoise-upscale-1-gpu-catcher": true,
+    "survey/denoise-upscale-2-gpu": false,
+    "survey/denoise-upscale-4-gpu": false,
+    "survey/denoise-upscale-1.5-gpu": false,
+    "survey/denoise-upscale-2-cpu-oidn": false,
+    "survey/denoise-upscale-2-gpu-catcher": false
+  }
+}

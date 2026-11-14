@@ -22,6 +22,10 @@
 	instead of native/binaries/linux-x64/, and package_check.py checks it against
 	that stage and reports it as not publishable. The tracked payload is not read.
 
+	SCRATCH PAYLOAD (macOS ARM64): -p:MacOSArm64Payload=<folder> does the same for
+	.MacOSArm64 with a scratch stage of native/tools/stage_macos_binaries.py. Both
+	properties may be given in one run.
+
 	ADDING A PLATFORM: stage and review its payload in native/binaries/<rid>/,
 	add its nuspec to build/nuget/ and add one line to the _Nuspec list below.
 	The next run packs it with the rest of the family at one version.
@@ -69,12 +73,21 @@
 		<!-- The Linux x64 payload folder (runtime/ inside it): the tracked one unless LinuxX64Payload names a scratch stage. -->
 		<_LinuxX64Payload Condition="'$(LinuxX64Payload)'==''">..\..\native\binaries\linux-x64</_LinuxX64Payload>
 		<_LinuxX64Payload Condition="'$(LinuxX64Payload)'!=''">$([System.IO.Path]::GetFullPath('$(LinuxX64Payload)'))</_LinuxX64Payload>
-		<_PayloadCheck Condition="'$(LinuxX64Payload)'!=''"> --payload &quot;linux-x64=$(_LinuxX64Payload)&quot;</_PayloadCheck>
+		<!-- The macOS ARM64 payload folder, likewise (MacOSArm64Payload). -->
+		<_MacOSArm64Payload Condition="'$(MacOSArm64Payload)'==''">..\..\native\binaries\osx-arm64</_MacOSArm64Payload>
+		<_MacOSArm64Payload Condition="'$(MacOSArm64Payload)'!=''">$([System.IO.Path]::GetFullPath('$(MacOSArm64Payload)'))</_MacOSArm64Payload>
+		<!-- package_check.py checks each scratch payload against its stage. -->
+		<_PayloadCheck Condition="'$(LinuxX64Payload)'!=''">$(_PayloadCheck) --payload &quot;linux-x64=$(_LinuxX64Payload)&quot;</_PayloadCheck>
+		<_PayloadCheck Condition="'$(MacOSArm64Payload)'!=''">$(_PayloadCheck) --payload &quot;osx-arm64=$(_MacOSArm64Payload)&quot;</_PayloadCheck>
 	</PropertyGroup>
 
 	<!-- The native platform packages. Only validated platforms are listed. -->
 	<ItemGroup>
 		<_Nuspec Include="$(_NuspecDir)\CodeBrix.Graphics3D.Cycles.LinuxX64.nuspec" />
+		<!-- Packed once its payload is present: the committed native/binaries/osx-arm64/
+		     (staged and committed on an Apple Silicon Mac), or a scratch stage named by
+		     MacOSArm64Payload. Until then a run packs the rest of the family without it. -->
+		<_Nuspec Include="$(_NuspecDir)\CodeBrix.Graphics3D.Cycles.MacOSArm64.nuspec" Condition="'$(MacOSArm64Payload)'!='' Or Exists('$(_RepoRoot)native\binaries\osx-arm64\provenance.json')" />
 	</ItemGroup>
 
 	<!-- Order only: the shim's restore must not overlap a solution build of it. -->
@@ -110,7 +123,7 @@
 		     property on, an explicit `dotnet pack` does NOT run Build first, so a
 		     package could ship a stale assembly stamped with an older version. -->
 		<Exec Command="dotnet pack &quot;$(_CoreProject)&quot; -c Release -p:BuildVersion=$(BuildVersion) -p:GeneratePackageOnBuild=false -p:BaseOutputPath=&quot;$(_PackWork)bin/&quot; -p:BaseIntermediateOutputPath=&quot;$(_PackWork)obj/&quot; --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
-		<Exec Command="dotnet pack &quot;$(_PackShim)&quot; -p:CbxNuspec=&quot;%(_Nuspec.Identity)&quot; -p:CbxNuspecBasePath=&quot;$(_NuspecDir)&quot; -p:CbxVersion=$(BuildVersion) -p:CbxBranch=$(_GitBranch) -p:CbxCommit=$(_GitCommit) -p:CbxLinuxX64Payload=&quot;$(_LinuxX64Payload)&quot; --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
+		<Exec Command="dotnet pack &quot;$(_PackShim)&quot; -p:CbxNuspec=&quot;%(_Nuspec.Identity)&quot; -p:CbxNuspecBasePath=&quot;$(_NuspecDir)&quot; -p:CbxVersion=$(BuildVersion) -p:CbxBranch=$(_GitBranch) -p:CbxCommit=$(_GitCommit) -p:CbxLinuxX64Payload=&quot;$(_LinuxX64Payload)&quot; -p:CbxMacOSArm64Payload=&quot;$(_MacOSArm64Payload)&quot; --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
 
 		<Exec Command="python3 tools/licensing/package_check.py &quot;$(_PackOutputDir)&quot; --version $(BuildVersion)$(_PayloadCheck)" WorkingDirectory="$(_RepoRoot)" />
 

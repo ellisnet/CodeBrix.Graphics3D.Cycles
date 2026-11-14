@@ -327,8 +327,53 @@ recovery, object edits after a render, passes, and the capability and device
 reports. Their films are judged by the reference policy in section 5. Record
 the passed, skipped and failed counts, and any skip reasons.
 
-The package carries no native runtime assets yet (MAINTAINER-README.txt,
-PACKAGING AND PUBLISHING), so no consumer-style package render is possible.
+A Release build of the solution also runs the pack driver (MAINTAINER-README.txt,
+PACKAGING AND PUBLISHING). It packs the MacOSArm64 package only when
+`native/binaries/osx-arm64/provenance.json` exists, so before that payload is
+committed it packs Core and LinuxX64 alone. Delete the `nugets/Release/<version>/`
+folders it writes.
+
+**Consumer test of the MacOSArm64 package.** Stage the build of steps 3 and 4 into
+a scratch folder (git-ignored; never approved) and pack the family from it:
+
+```sh
+python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation-<n> \
+  --oracles native/work/oracles/<run> --output native/work/staging/osx-arm64-<n>
+dotnet build build/CodeBrix.Graphics3D.Cycles.Build.csproj -c Release \
+  -p:MacOSArm64Payload=native/work/staging/osx-arm64-<n>
+```
+
+`package_check.py` must pass and must report the MacOSArm64 package as NOT
+APPROVED, NOT PUBLISHABLE. Then make a scratch console app under `native/work/` that
+references `CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever` at the packed
+version from a local folder feed (a NuGet.Config with `<clear />` and that folder;
+`NUGET_PACKAGES` inside `native/work/`, so the user's package cache is untouched).
+It renders a small scene with `CyclesBackend.CpuReference` and with
+`CyclesBackend.Gpu` (Metal), and checks that the films are finite and plausible.
+Run it for each of:
+
+```sh
+dotnet build -c Release && dotnet bin/Release/net10.0/<app>.dll
+dotnet run -c Release
+dotnet publish -c Release
+dotnet publish -c Release -r osx-arm64 --self-contained false
+dotnet publish -c Release -r osx-arm64 --self-contained
+```
+
+Each with a fresh copy of the app and a fresh `XDG_CACHE_HOME`. In every output
+`codebrix-cycles/source/` must sit beside `libcodebrix_cycles_host.dylib`, its files
+equal to the stage's `runtime/codebrix-cycles/source`: under
+`runtimes/osx-arm64/native/` without a runtime identifier, at the output root with
+`-r osx-arm64`; no kernel header may be flattened beside the library. The package's
+buildTransitive targets copy the tree there. The self-contained publish needs the
+`Microsoft.NETCore.App.Runtime.osx-arm64` runtime pack from nuget.org: record its
+version and SHA-512 from the NuGet cache. By default the SDK also fetches the
+ASP.NET Core runtime pack for a self-contained app; for a console app,
+`-p:DisableTransitiveFrameworkReferenceDownloads=true` avoids that. As a negative
+control, remove `codebrix-cycles/` from a copy of one output: Metal must then fail
+("Metal kernel sources are missing beside the native library") and the CPU must
+still render. Never set `CYCLES_KERNEL_PATH` for this test. Record the layout and
+the render results per mode, and delete the `nugets/Release/<version>/` folder.
 
 **Recording the Metal references.** `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64/`
 holds one reviewed Metal film per GPU test scene (`<name>.rgba.f32`) and
@@ -357,19 +402,42 @@ It must pass with the new evidence directory from step 6 in place.
 
 ### Step 9: staging (only on the maintainer's decision)
 
+A real stage needs a build made from a clean commit: commit first, then run steps
+2 to 4 on that commit, then stage.
+
 ```sh
 python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation-<n> --oracles native/work/oracles/<run>
 python3 tools/licensing/audit.py
 ```
 
-The stager refuses while `native/binaries/osx-arm64/` already holds a payload
-("review and remove it first"); at the current pin the folder is absent, so the
-first stage creates it. A committed payload is a reviewed
-deliverable: replace it only when the maintainer decides to, after reviewing what
-changed. When it runs, it copies the host and its dependency closure into
+The stager never rebuilds, because a rebuild is not byte-identical; it stages the
+files the gate and the oracle run validated. `native/tools/build_cycles_macos.py`
+records the commit it built from and the git status of the Cycles-with-Metal
+sources (`tools/licensing/metal_sources.py`) in `host/invocation.json` when it
+starts and in `host/status.json` when it completes (a `--target` build records no
+commit). The stager refuses unless both records name one commit with a clean
+status, HEAD descends from that commit with no Cycles-with-Metal source change
+since, and the working tree has none. It also refuses while
+`native/binaries/osx-arm64/` already holds a payload ("review and remove it
+first"); at the current pin the folder is absent, so the first stage creates it. A
+committed payload is a reviewed deliverable: replace it only when the maintainer
+decides to, after reviewing what changed. When it runs, it copies the host and its
+dependency closure (OIDN's core and its CPU and Metal device modules included) into
 `runtime/`, `unstripped/` and `symbols/`, removes build-tree rpaths, strips and
-ad-hoc signs the runtime copies, writes the dSYM, records `provenance.json`
-and renders from a temporary copy of `runtime/` alone on CPU and Metal.
+ad-hoc signs the runtime copies, writes the dSYM, copies the Metal kernel sources
+into `runtime/codebrix-cycles/source`, refuses any file whose name starts with `.`
+(such as `.DS_Store`), renders from a temporary copy of `runtime/` alone on CPU and
+Metal (the CPU film must equal the oracle run's) and records `provenance.json`,
+with that commit as `sourceCommit`. With `--output <git-ignored folder>` it makes
+the scratch stage of step 7 instead, which is never approved.
+
+The family is packed and published on the Linux x64 machine, from the committed
+payload: once `native/binaries/osx-arm64/provenance.json` is committed, every pack
+there includes the MacOSArm64 package. When `package_check.py` reports the
+osx-arm64 payload as STALE (a Cycles-with-Metal source changed since its
+`sourceCommit`), steps 2 to 4 and this step are run again on a commit that
+contains the change, and the new payload is committed before the family is
+published.
 
 **MISSING:** a comparison of a fresh build against the committed payload
 without restaging. Until one exists (and once a payload is committed again), compare the SHA-256 of

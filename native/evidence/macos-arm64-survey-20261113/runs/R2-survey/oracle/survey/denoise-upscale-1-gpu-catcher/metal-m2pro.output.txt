@@ -1,0 +1,28 @@
+{
+  "sceneId": "survey/denoise-upscale-1-gpu-catcher",
+  "sceneSha256": "4b6e65972df6f45ce2b1ffbf9f834184ded4a67f61bcf46bf87a261f1f556faa",
+  "backend": "metal-m2pro",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [2.38754,0.429966],
+  "filmSha256": ["dbf7a58ce467346583c26675776f371c6dcf2dfa974a19b85599c0205d9e3052","dbf7a58ce467346583c26675776f371c6dcf2dfa974a19b85599c0205d9e3052"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Shadow Catcher", "type": "shadow_catcher", "components": 3, "written": true, "filmSha256": ["165ebbc4810b7d39cb9b4b5c2f4f37cec2edce5cb057db402962fc43ddcdd76b","165ebbc4810b7d39cb9b4b5c2f4f37cec2edce5cb057db402962fc43ddcdd76b"]},
+    {"index": 1, "name": "Shadow Catcher Matte", "type": "shadow_catcher_matte", "components": 4, "written": true, "filmSha256": ["dbf7a58ce467346583c26675776f371c6dcf2dfa974a19b85599c0205d9e3052","dbf7a58ce467346583c26675776f371c6dcf2dfa974a19b85599c0205d9e3052"]},
+    {"index": 2, "name": "Shadow Catcher Sample Count", "type": "shadow_catcher_sample_count", "components": 1, "written": true, "filmSha256": ["a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990","a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990"]},
+    {"index": 3, "name": "Noisy Image", "type": "combined", "components": 4, "written": true, "filmSha256": ["025b139b90b4bf54da86d50154fd38fb32875f2233ae3dcbd751a019ffcae2e4","b1e596048fbd819cfa7cba62ea6208cbe147dee7a63719b18717e8312db09bec"]},
+    {"index": 4, "name": "Shadow Catcher Noisy", "type": "shadow_catcher", "components": 3, "written": true, "filmSha256": ["642fbe20b43bece0f3fefcf880df4fc3cfc170e26570601cb44ab9ba1da600d9","266b218e4e1c9f67db5a68914d9deaf89d1cf77e231b8e2bba2b28bf25fb0bda"]},
+    {"index": 5, "name": "Shadow Catcher Matte Noisy", "type": "shadow_catcher_matte", "components": 4, "written": true, "filmSha256": ["025b139b90b4bf54da86d50154fd38fb32875f2233ae3dcbd751a019ffcae2e4","b1e596048fbd819cfa7cba62ea6208cbe147dee7a63719b18717e8312db09bec"]}
+  ],
+  "warnings": []
+}
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)

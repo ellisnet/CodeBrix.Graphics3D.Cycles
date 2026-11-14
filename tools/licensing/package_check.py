@@ -4,11 +4,14 @@
 """Check a packed family against the reviewed payloads, then run the package audit.
 
     python3 tools/licensing/package_check.py nugets/Release/<version> --version <version>
-        [--payload linux-x64=<scratch stage folder>]
+        [--payload linux-x64=<scratch stage folder>] [--payload osx-arm64=<scratch stage folder>]
 
 The expected contents come from the repository, never from the package: the notices
 and documents must equal the files at the repository root, and a platform package's
-natives must be exactly the runtime/ files approved in native/binaries/<rid>/provenance.json.
+natives must be exactly the runtime/ files approved in native/binaries/<rid>/provenance.json:
+each at runtimes/<rid>/native/<name>, except a folder in OUTSIDE_NATIVE, which is at the
+package root (osx-arm64: the Metal kernel sources), and a package's PACKAGE_FILES (its
+buildTransitive targets) must equal those repository files.
 Only the packer's own metadata and the .Core assembly, which a pack run compiles, are
 taken from the package, by exact name. The result is the reviewed manifest that
 audit.py --package compares the package with, written to <folder>/audit/.
@@ -16,14 +19,17 @@ audit.py --package compares the package with, written to <folder>/audit/.
 Also required: one version across the family, an exact .Core dependency and the
 exact WebGPU runtime dependency on every platform package that needs it, and no
 dependencies and no natives on .Core. A payload whose native sources changed since
-it was staged is reported as stale, because a package can be packed but not published
-from it.
+the commit it was built from (its sourceCommit) is reported as stale, because a package
+can be packed but not published from it. Staleness is judged per build profile:
+osx-arm64 (Cycles-with-Metal) by METAL_SOURCES (tools/licensing/metal_sources.py),
+every other RID (Cycles-with-WGSL) by NATIVE_SOURCES below.
 
 --payload RID=FOLDER checks that platform package against a scratch stage
-(native/tools/stage_linux_binaries.py --output FOLDER) instead of the tracked
-native/binaries/<rid>/: its natives must be exactly the stage's payloadFiles. A
-scratch stage is never approved, so the check passes but reports the package as
-NOT publishable, with the uncommitted-change hash the stage recorded.
+(native/tools/stage_linux_binaries.py or stage_macos_binaries.py with --output
+FOLDER) instead of the tracked native/binaries/<rid>/: its natives must be exactly
+the stage's payloadFiles. A scratch stage is never approved, so the check passes
+but reports the package as NOT publishable, with the uncommitted-change hash the
+stage recorded.
 """
 import argparse,hashlib,json,re,subprocess,sys,xml.etree.ElementTree as ET,zipfile
 from pathlib import Path
@@ -31,15 +37,24 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools/licensing'))
 import audit
+from metal_sources import METAL_SOURCES
 
 SUFFIX='.ApacheLicenseForever'
 CORE='CodeBrix.Graphics3D.Cycles.Core'+SUFFIX
 WEBGPU='CodeBrix.WebGpu.Native.MitLicenseForever'
-PLATFORMS={'CodeBrix.Graphics3D.Cycles.LinuxX64'+SUFFIX:'linux-x64'}
-# The payload's GPU backend does not use the WebGPU runtime.
-NO_WEBGPU=set()
+PLATFORMS={'CodeBrix.Graphics3D.Cycles.LinuxX64'+SUFFIX:'linux-x64','CodeBrix.Graphics3D.Cycles.MacOSArm64'+SUFFIX:'osx-arm64'}
+# The payload's GPU backend does not use the WebGPU runtime (osx-arm64: Cycles' own Metal device).
+NO_WEBGPU={'CodeBrix.Graphics3D.Cycles.MacOSArm64'+SUFFIX}
 DOCUMENTS=['icon-codebrix-128.png','README.md','AGENT-README.txt','THIRD-PARTY-NOTICES.txt','LICENSE','NOTICE']
 CORE_ASSEMBLY=['lib/net10.0/CodeBrix.Graphics3D.Cycles.dll','lib/net10.0/CodeBrix.Graphics3D.Cycles.xml']
+# runtime/ folders shipped at the package root instead of under runtimes/<rid>/native/: NuGet flattens
+# native-asset subfolders under a runtime identifier, so the MacOSArm64 package's buildTransitive
+# targets copy its Metal kernel sources beside the host library instead.
+OUTSIDE_NATIVE={'osx-arm64':['codebrix-cycles/']}
+# Package path -> repository file, for the files a platform package carries besides natives and DOCUMENTS.
+PACKAGE_FILES={'CodeBrix.Graphics3D.Cycles.MacOSArm64'+SUFFIX:{
+ f'buildTransitive/CodeBrix.Graphics3D.Cycles.MacOSArm64{SUFFIX}.targets':f'build/nuget/CodeBrix.Graphics3D.Cycles.MacOSArm64{SUFFIX}.targets'}}
+# The Cycles-with-WGSL profile: every RID except osx-arm64.
 NATIVE_SOURCES=['native/host','native/cycles','native/shaders','native/oracle/runner.cpp','native/manylinux','third_party/cycles','third_party/deps','tools/dependencies']
 
 
@@ -66,13 +81,19 @@ def metadata_files(archive,nuspec):
  return files
 
 
+def profile_sources(rid):
+ """The build profile of a RID and the source paths its payload's staleness is judged by."""
+ return ('Cycles-with-Metal',METAL_SOURCES) if rid=='osx-arm64' else ('Cycles-with-WGSL',NATIVE_SOURCES)
+
+
 def stale(rid,provenance):
  commit=provenance.get('sourceCommit')
  if not commit:return None
- changed=subprocess.run(['git','diff','--name-only',commit,'--',*NATIVE_SOURCES],cwd=ROOT,capture_output=True,text=True)
- if changed.returncode:return f'{rid}: could not compare native sources with {commit}'
+ profile,sources=profile_sources(rid)
+ changed=subprocess.run(['git','diff','--name-only',commit,'--',*sources],cwd=ROOT,capture_output=True,text=True)
+ if changed.returncode:return f'{rid}: could not compare {profile} sources with {commit}'
  count=len(changed.stdout.split())
- return f'{rid}: payload is STALE: {count} native source files changed since it was staged at {commit}; restage it before publishing' if count else None
+ return f'{rid}: payload is STALE: {count} {profile} source files changed since its source commit {commit}; restage it before publishing' if count else None
 
 
 def scratch_payload(rid,folder):
@@ -85,12 +106,20 @@ def scratch_payload(rid,folder):
   if digest((folder/name).read_bytes())!=sha:raise RuntimeError(f'{folder/name} changed after it was staged')
  changes=provenance.get('uncommittedChanges')
  note=f'uncommitted changes, git diff --binary sha256 {changes["gitDiffBinarySha256"]}' if changes else 'no uncommitted changes'
- return files,f'{rid}: packed from the scratch stage {folder} (commit {provenance.get("sourceCommit")}, {note}): NOT APPROVED, NOT PUBLISHABLE'
+ commit=provenance.get('sourceCommit') or f'not recorded by the build; staged at {provenance.get("stagedAtCommit")}'
+ return files,f'{rid}: packed from the scratch stage {folder} (commit {commit}, {note}): NOT APPROVED, NOT PUBLISHABLE'
+
+
+def package_path(rid,name):
+ """Where a payload runtime/ file is in its platform package."""
+ relative=name[len('runtime/'):]
+ return relative if any(relative.startswith(folder) for folder in OUTSIDE_NATIVE.get(rid,[])) else f'runtimes/{rid}/native/{relative}'
 
 
 def expected_files(package_id,archive,nuspec,payloads={}):
  files=metadata_files(archive,nuspec)
  for name in DOCUMENTS:files[name]=digest((ROOT/name).read_bytes())
+ for name,source in PACKAGE_FILES.get(package_id,{}).items():files[name]=digest((ROOT/source).read_bytes())
  if package_id==CORE:
   for name in CORE_ASSEMBLY:
    if name not in archive.namelist():raise RuntimeError(f'{package_id} has no {name}')
@@ -100,11 +129,11 @@ def expected_files(package_id,archive,nuspec,payloads={}):
  if rid is None:raise RuntimeError(f'{package_id} is not a known package of this family')
  if rid in payloads:
   natives,warning=scratch_payload(rid,payloads[rid])
-  for name,sha in natives.items():files[f'runtimes/{rid}/native/{name[len("runtime/"):]}']=sha
+  for name,sha in natives.items():files[package_path(rid,name)]=sha
   return files,warning
  provenance=json.loads((ROOT/'native/binaries'/rid/'provenance.json').read_text())
  for name,sha in provenance['approvedPayload'].items():
-  if name.startswith('runtime/'):files[f'runtimes/{rid}/native/{name[len("runtime/"):]}']=sha
+  if name.startswith('runtime/'):files[package_path(rid,name)]=sha
  return files,stale(rid,provenance)
 
 

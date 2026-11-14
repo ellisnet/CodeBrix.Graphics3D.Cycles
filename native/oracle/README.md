@@ -271,6 +271,34 @@ Each is written by its family's script, whose `--check` still reproduces every c
 The description of `passes/motion` still says "and background motion vectors"; the release writes no background motion
 to the Motion pass, and the committed scene file is left as it is (its bytes are its identity).
 
+## Scenes added by the Apple Silicon feature survey
+
+One scene per case of the feature survey (docs/KIT-MACOS-ARM64.md, section 6) that no committed scene reached and whose
+pinned result is defined. Each is written by its family's script, whose `--check` still reproduces every committed scene:
+
+- `author_surface_nodes.py`: `surface-nodes/integer-math`, `surface-nodes/boolean-math` and
+  `surface-nodes/get-vector-component` (the nodes with linked inputs, which the WebGPU device refuses by name): table scenes
+  of one 4x4-pixel cell per case under an orthographic camera that maps one world unit to one pixel, with a box pixel filter
+  of width 1, so each cell's AOVs hold the case's values exactly. Each operand is the Integer Math sum of two face
+  attributes that binary32 holds exactly; an integer result leaves through the AOVs `D0`..`D3` (base-256 digits, `D3`
+  signed), `R` (the result as a float) and `CELL` (the cell number, from 1). Only cases whose pinned evaluation is defined
+  are committed (`pinned_integer_math` in the script checks each one); the cases with a signed overflow, `INT_MIN / -1` or
+  `divide_round` by `INT_MIN` are undefined in C++ and MSL and have no committed scene. `surface-nodes/get-vector-component-bump`
+  (the node's derivative form, as a Bump height) and `surface-nodes/image-missing` (the Missing and Missing Alpha inputs of
+  Image Texture nodes with no image, constant and linked, of an Attribute node asking for an absent name, and of an
+  Environment Texture world with no image).
+- `author_bsdf.py`: `bsdf/glass-multiscatter` (the Glass BSDF with the multiscatter GGX distribution).
+- `author_points.py`: `points/geometry-tangent` and `points/geometry-tangent-bump` (the Geometry node's Tangent output on
+  points, as a colour and as a Bump height).
+- `author_degenerate_lights.py`: `lamps/area-degenerate-spread-zero`, `-ellipse-spread-zero` (with the Glossy Direct pass),
+  `-spread-tiny`, `-spread-tiny-volume`, `-infinite-axis` and `-tree-transmissive` (the degenerate area light cases the
+  WebGPU device refuses by name, native/DEVICE.md item 148).
+- `author_world.py`: `world/portal-zero-u`, `world/portal-zero` and `world/portal-underflow` (the window portal of zero
+  extent).
+- `author_bake_motion.py`: `bake/zero-area-<type>` (the shading bake types that are finite on the sphere whose zero-area
+  pole triangles are in the UV layout; its flat Normal bake and its diffuse, diffuse direct, glossy, glossy direct,
+  transmission and transmission direct bakes fail with "Nonfinite bake output" on every backend and have no scene).
+
 ## Denoising scenes (`scenes/denoise/`)
 
 `author_denoise.py` (`--check`) writes `scenes/denoise/` from committed scenes:

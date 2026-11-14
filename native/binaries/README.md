@@ -34,7 +34,15 @@ is no `symbols/` folder. Its `unstripped/` folder is git-ignored while the
 library is a work in progress, and is committed with the final payload (remove
 the line from `.gitignore` and stage again, which also approves it for the
 audit); until then `provenance.json` records its hashes under `binaries` only,
-and staging recreates it. No NuGet release has been made.
+and staging recreates it. `osx-arm64`, once staged
+(`native/tools/stage_macos_binaries.py`, on an Apple Silicon Mac, from the
+build that its host gate and oracle run validated), commits `runtime/`,
+`unstripped/` and `symbols/` in full, with no `.gitignore` line; the Metal
+kernel sources in `runtime/codebrix-cycles/source` are `snapshotCopies` of
+`third_party/cycles/src`. Its `provenance.json` names as `sourceCommit` the
+commit that build was made from, which the stager requires to be clean and
+current for the Cycles-with-Metal sources (MAINTAINER-README.txt, "PACKAGING
+AND PUBLISHING"). No NuGet release has been made.
 
 Each delivery must carry source/dependency manifest hashes, toolchain and build
 options, binary hashes, a passing dependency/license audit and the applicable
@@ -47,5 +55,8 @@ the pinned snapshot. `tools/licensing/audit.py` rejects anything else.
 
 This location is deliberately unignored. Build work stays in ignored `work/`,
 `bin/` and `obj/` directories. A platform package carries its RID's `runtime/`
-folder only (`build/nuget/`, see MAINTAINER-README.txt, "PACKAGING AND PUBLISHING");
-unstripped and symbol files stay in Git. Jeremy handles commits and pushes.
+folder only, with its subfolders: the `osx-arm64` kernel sources go to the
+package root and are copied beside the host library by the package's
+buildTransitive targets (`build/nuget/`, see MAINTAINER-README.txt, "PACKAGING
+AND PUBLISHING"); unstripped and symbol files stay in Git. Jeremy handles
+commits and pushes.

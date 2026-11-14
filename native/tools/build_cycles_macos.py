@@ -15,6 +15,8 @@ from cycles_source import SOURCE,verify as verify_cycles,remove_stale_copy
 from cycles_overlay import registration_overlay
 spec=importlib.util.spec_from_file_location('macos_dependencies',REPO/'tools/dependencies/build_macos.py')
 deps=importlib.util.module_from_spec(spec);spec.loader.exec_module(deps)
+sys.path.append(str(REPO/'tools/licensing'))
+from metal_sources import METAL_SOURCES
 sha,save,tool=deps.sha,deps.save,deps.tool
 WORK=REPO/'native/work/macos/osx-arm64/host'
 HOST_TARGETS=['codebrix_cycles_host','codebrix_host_cpu_test','codebrix_host_gpu_test','codebrix_host_reload_test',
@@ -104,6 +106,19 @@ def closure(library,prefix):
  return dict(sorted(seen.items()))
 
 
+def source_state(partial=False):
+ """The commit the build is made from and the git status of the Cycles-with-Metal sources
+ (tools/licensing/metal_sources.py), recorded when the build starts and when it completes:
+ a rebuild is not byte-identical, so native/tools/stage_macos_binaries.py stages a build for
+ real only when both records name one commit with a clean status. None outside a git checkout,
+ and for a --target build, which need not rebuild the host library."""
+ if partial:return dict(sourceCommit=None,metalSourceStatus=None)
+ head=subprocess.run(['git','rev-parse','HEAD'],cwd=REPO,capture_output=True,text=True)
+ status=subprocess.run(['git','status','--porcelain','--',*METAL_SOURCES],cwd=REPO,capture_output=True,text=True)
+ if head.returncode or status.returncode:return dict(sourceCommit=None,metalSourceStatus=None)
+ return dict(sourceCommit=head.stdout.strip(),metalSourceStatus=status.stdout.splitlines())
+
+
 def platform_source():
  """Verified Cycles copy with the Apple ARM64 adaptation; the snapshot stays unchanged."""
  source=WORK/'cycles-source'
@@ -164,9 +179,9 @@ def main():
   build=WORK/'build'
   commands=[['cmake','-S',str(source),'-B',str(build),*['-D'+k+'='+str(v) for k,v in values.items()]],
    ['cmake','--build',str(build),'--target',*(a.target or HOST_TARGETS),'--parallel',str(a.jobs)]]
-  pin=dict(identity=deps.identity(),cyclesImportSha256=sha(REPO/'third_party/cycles-import.json'),dependencyMarkerSha256=sha(marker),
+  pin=dict(**source_state(bool(a.target)),identity=deps.identity(),cyclesImportSha256=sha(REPO/'third_party/cycles-import.json'),dependencyMarkerSha256=sha(marker),
    recipeSha256=sha(Path(__file__)),injectionSha256=sha(REPO/'native/tools/inject_cycles_macos.cmake'),
-   hostSourceSha256={str(p.relative_to(REPO)):sha(p) for p in sorted((REPO/'native/host').glob('*')) if p.is_file() and p.suffix in ('.cpp','.h','.inc','.cmake','.macos')},
+   hostSourceSha256={str(p.relative_to(REPO)):sha(p) for p in sorted((REPO/'native/host').glob('*')) if p.is_file() and p.suffix in ('.cpp','.h','.inc','.mm','.cmake','.macos')},
    overlaySha256=overlay_files,platformPatchSha256=sha(WORK/'platform.patch'),adaptedFiles=adapted,commands=commands,skippedTargets=SKIPPED_TARGETS)
   save(WORK/'invocation.json',pin);env=deps.environment_for(prefix,a.jobs)
   for step,command in zip(['configure','build'],commands):
@@ -209,7 +224,7 @@ def main():
    if p.is_file() and (p.name.startswith('codebrix_') or p.name=='libcodebrix_cycles_host.dylib')}
   if not a.target:assert len(artifacts)==len(HOST_TARGETS),artifacts
   state.update(complete=True,passed=True,phase='complete',artifacts=artifacts,exports=len(symbols),dependencyClosure=loaded,
-   kernelSourceFiles=len(kernels),executionProven=False,releaseCleared=False)
+   kernelSourceFiles=len(kernels),executionProven=False,releaseCleared=False,sourceAtEnd=source_state(bool(a.target)))
   print('osx-arm64: Metal host and lifecycle targets built',flush=True)
  except Exception as error:
   state.update(complete=True,passed=False,error=repr(error));raise

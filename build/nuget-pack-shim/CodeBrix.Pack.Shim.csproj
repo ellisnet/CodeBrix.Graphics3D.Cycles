@@ -15,6 +15,7 @@
 	  CbxVersion          the shared date-stamped version ($codebrixversion$)
 	  CbxBranch / CbxCommit  git info for the <repository> tokens
 	  CbxLinuxX64Payload  the Linux x64 payload folder ($linuxx64payload$)
+	  CbxMacOSArm64Payload  the macOS ARM64 payload folder ($macosarm64payload$)
 	  PackageOutputPath   where the .nupkg is written  (passed as -o)
 
 	NU5128 is expected for the native packages (they ship runtimes/ natives with
@@ -36,7 +37,7 @@
 
 		<NuspecFile>$(CbxNuspec)</NuspecFile>
 		<NuspecBasePath>$(CbxNuspecBasePath)</NuspecBasePath>
-		<NuspecProperties>codebrixversion=$(CbxVersion);branch=$(CbxBranch);commitid=$(CbxCommit);linuxx64payload=$(CbxLinuxX64Payload)</NuspecProperties>
+		<NuspecProperties>codebrixversion=$(CbxVersion);branch=$(CbxBranch);commitid=$(CbxCommit);linuxx64payload=$(CbxLinuxX64Payload);macosarm64payload=$(CbxMacOSArm64Payload)</NuspecProperties>
 	</PropertyGroup>
 
 </Project>

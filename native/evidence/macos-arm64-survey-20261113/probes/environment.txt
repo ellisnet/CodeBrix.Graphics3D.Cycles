@@ -1,0 +1,27 @@
+# Mac identity and probe binaries (2026-11-14T07:08:36Z)
+ProductName:		macOS
+ProductVersion:		27.2.1
+BuildVersion:		26B131
+Darwin <host> 27.2.0 Darwin Kernel Version 27.2.0: Thu Oct 15 00:00:57 PDT 2026; root:xnu-13432.41.4~25/RELEASE_ARM64_T6020 arm64
+Apple M2 Pro
+      Chipset Model: Apple M2 Pro
+      Total Number of Cores: 16
+      Metal Support: Metal 4
+Xcode 27.2
+Build version 27B52
+/Volumes/VideoWork/Applications/Xcode.app/Contents/Developer
+SDK: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk (27.2)
+Apple clang version 21.0.0 (clang-2100.4.1.1)
+repository HEAD 0b19d87507ac24f1e55ba6a50d1ac6b05c8d417c
+Build lines:
+  xcrun --sdk macosx clang -fobjc-arc -O2 metal_velvet_probe.m -framework Metal -framework Foundation -o metal_velvet_probe (1 warning: fastMathEnabled deprecated in macOS 15.0, logs/probe-build.txt)
+  xcrun --sdk macosx clang -O2 -ffp-contract=off -fno-reciprocal-math velvet_chain.c [-o velvet_chain_cpu_arm64 | fz_arm64.c -o velvet_chain_cpu_arm64_fz]
+  xcrun --sdk macosx clang -O2 velvet_chain.c -o velvet_chain_cpu_arm64_default
+--- SHA-256 (executables are not copied into evidence)
+6227f01076be6e9a749f6ef4dbd0dba1808bccbd31c5a6dc223f92f2ecb7cb51  probe-bin/metal_velvet_probe
+3186c2ca362d552a7ffcd3d4afc119b84642ebbdd73cfa15d9143db0b8dc0278  probe-bin/velvet_chain_cpu_arm64
+889940ac1bf12352875fe87d19ab7aabf25c7fd6a1a4bde812641104694d00fd  probe-bin/velvet_chain_cpu_arm64_default
+22cbd9fca60496ba7b4072611239a799a47f313ce52dab972faa75570ac017e9  probe-bin/velvet_chain_cpu_arm64_fz
+6868891635e35fc17223515a91cde7371f984118f5a9a26d64f998afc3854e85  probes/metal_velvet_probe.m
+c67dd308226d16e0952f691df2b066caeec0f4ae8639eb0537d84d8728fc80e3  probes/fz_arm64.c
+f6dce770e389d06a7e356c88f3df78ac424dd4b42e1df7e4e888d77ea0386296  probes/velvet_chain.c

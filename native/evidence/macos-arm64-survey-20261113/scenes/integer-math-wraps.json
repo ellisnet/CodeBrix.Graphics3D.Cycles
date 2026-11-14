@@ -1,0 +1,5472 @@
+{
+ "cbcOracleScene": 1,
+ "id": "survey/integer-math-wraps",
+ "description": "Integer Math cases whose pinned evaluation is undefined in C++ and MSL: signed overflow (two's-complement wraps on most machines); the result in the AOVs D0..D3 and R; survey row 2, never committed",
+ "sourceFixture": "native/work/macos-arm64-survey-20261113/make_survey_scenes.py (integer_table() of native/oracle/scenes/author_surface_nodes.py)",
+ "render": {
+  "width": 40,
+  "height": 48,
+  "samples": 4,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 0,
+    "max_bounce": 0,
+    "sampling_pattern": "tabulated_sobol",
+    "seed": 0
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "filter_type": "box",
+    "filter_width": 1.0,
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "camera_type": "orthograph",
+    "matrix": [
+     20.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     20.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     20.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "strength": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "im-add",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "im-subtract",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "subtract"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "im-multiply",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "multiply"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "im-multiply_add",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "multiply_add"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "im-power",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "power"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "im-floored_modulo",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "im-absolute",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "absolute"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "im-gcd",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "gcd"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "im-lcm",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "lcm"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "im-negate",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "negate"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "im-divide_ceil",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_ceil"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "im-divide_round",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "a-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_hi"
+      }
+     },
+     {
+      "handle": "a-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "a_lo"
+      }
+     },
+     {
+      "handle": "a",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "b-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_hi"
+      }
+     },
+     {
+      "handle": "b-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "b_lo"
+      }
+     },
+     {
+      "handle": "b",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "c-hi",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_hi"
+      }
+     },
+     {
+      "handle": "c-lo",
+      "type": "attribute",
+      "set": {
+       "attribute": "c_lo"
+      }
+     },
+     {
+      "handle": "c",
+      "type": "integer_math",
+      "set": {
+       "math_type": "add"
+      }
+     },
+     {
+      "handle": "op",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_round"
+      }
+     },
+     {
+      "handle": "q1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "q2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 65536
+      }
+     },
+     {
+      "handle": "d0",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d1",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d2",
+      "type": "integer_math",
+      "set": {
+       "math_type": "floored_modulo",
+       "value2": 256
+      }
+     },
+     {
+      "handle": "d3",
+      "type": "integer_math",
+      "set": {
+       "math_type": "divide_floor",
+       "value2": 16777216
+      }
+     },
+     {
+      "handle": "cell",
+      "type": "attribute",
+      "set": {
+       "attribute": "cell"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        1.0,
+        1.0
+       ]
+      }
+     },
+     {
+      "handle": "aov-D0",
+      "type": "aov_output",
+      "set": {
+       "name": "D0"
+      }
+     },
+     {
+      "handle": "aov-D1",
+      "type": "aov_output",
+      "set": {
+       "name": "D1"
+      }
+     },
+     {
+      "handle": "aov-D2",
+      "type": "aov_output",
+      "set": {
+       "name": "D2"
+      }
+     },
+     {
+      "handle": "aov-D3",
+      "type": "aov_output",
+      "set": {
+       "name": "D3"
+      }
+     },
+     {
+      "handle": "aov-R",
+      "type": "aov_output",
+      "set": {
+       "name": "R"
+      }
+     },
+     {
+      "handle": "aov-CELL",
+      "type": "aov_output",
+      "set": {
+       "name": "CELL"
+      }
+     }
+    ],
+    "connect": [
+     [
+      "a-hi",
+      "Fac",
+      "a",
+      "Value1"
+     ],
+     [
+      "a-lo",
+      "Fac",
+      "a",
+      "Value2"
+     ],
+     [
+      "b-hi",
+      "Fac",
+      "b",
+      "Value1"
+     ],
+     [
+      "b-lo",
+      "Fac",
+      "b",
+      "Value2"
+     ],
+     [
+      "c-hi",
+      "Fac",
+      "c",
+      "Value1"
+     ],
+     [
+      "c-lo",
+      "Fac",
+      "c",
+      "Value2"
+     ],
+     [
+      "a",
+      "Value",
+      "op",
+      "Value1"
+     ],
+     [
+      "b",
+      "Value",
+      "op",
+      "Value2"
+     ],
+     [
+      "c",
+      "Value",
+      "op",
+      "Value3"
+     ],
+     [
+      "op",
+      "Value",
+      "q1",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "q2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d0",
+      "Value1"
+     ],
+     [
+      "q1",
+      "Value",
+      "d1",
+      "Value1"
+     ],
+     [
+      "q2",
+      "Value",
+      "d2",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "d3",
+      "Value1"
+     ],
+     [
+      "op",
+      "Value",
+      "e",
+      "Strength"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ],
+     [
+      "d0",
+      "Value",
+      "aov-D0",
+      "Value"
+     ],
+     [
+      "d1",
+      "Value",
+      "aov-D1",
+      "Value"
+     ],
+     [
+      "d2",
+      "Value",
+      "aov-D2",
+      "Value"
+     ],
+     [
+      "d3",
+      "Value",
+      "aov-D3",
+      "Value"
+     ],
+     [
+      "op",
+      "Value",
+      "aov-R",
+      "Value"
+     ],
+     [
+      "cell",
+      "Fac",
+      "aov-CELL",
+      "Value"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "table",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -20.0,
+     20.0,
+     0.0,
+     -16.0,
+     20.0,
+     0.0,
+     -16.0,
+     24.0,
+     0.0,
+     -20.0,
+     24.0,
+     0.0,
+     -16.0,
+     20.0,
+     0.0,
+     -12.0,
+     20.0,
+     0.0,
+     -12.0,
+     24.0,
+     0.0,
+     -16.0,
+     24.0,
+     0.0,
+     -12.0,
+     20.0,
+     0.0,
+     -8.0,
+     20.0,
+     0.0,
+     -8.0,
+     24.0,
+     0.0,
+     -12.0,
+     24.0,
+     0.0,
+     -20.0,
+     16.0,
+     0.0,
+     -16.0,
+     16.0,
+     0.0,
+     -16.0,
+     20.0,
+     0.0,
+     -20.0,
+     20.0,
+     0.0,
+     -16.0,
+     16.0,
+     0.0,
+     -12.0,
+     16.0,
+     0.0,
+     -12.0,
+     20.0,
+     0.0,
+     -16.0,
+     20.0,
+     0.0,
+     -12.0,
+     16.0,
+     0.0,
+     -8.0,
+     16.0,
+     0.0,
+     -8.0,
+     20.0,
+     0.0,
+     -12.0,
+     20.0,
+     0.0,
+     -20.0,
+     12.0,
+     0.0,
+     -16.0,
+     12.0,
+     0.0,
+     -16.0,
+     16.0,
+     0.0,
+     -20.0,
+     16.0,
+     0.0,
+     -16.0,
+     12.0,
+     0.0,
+     -12.0,
+     12.0,
+     0.0,
+     -12.0,
+     16.0,
+     0.0,
+     -16.0,
+     16.0,
+     0.0,
+     -12.0,
+     12.0,
+     0.0,
+     -8.0,
+     12.0,
+     0.0,
+     -8.0,
+     16.0,
+     0.0,
+     -12.0,
+     16.0,
+     0.0,
+     -8.0,
+     12.0,
+     0.0,
+     -4.0,
+     12.0,
+     0.0,
+     -4.0,
+     16.0,
+     0.0,
+     -8.0,
+     16.0,
+     0.0,
+     -20.0,
+     8.0,
+     0.0,
+     -16.0,
+     8.0,
+     0.0,
+     -16.0,
+     12.0,
+     0.0,
+     -20.0,
+     12.0,
+     0.0,
+     -16.0,
+     8.0,
+     0.0,
+     -12.0,
+     8.0,
+     0.0,
+     -12.0,
+     12.0,
+     0.0,
+     -16.0,
+     12.0,
+     0.0,
+     -20.0,
+     4.0,
+     0.0,
+     -16.0,
+     4.0,
+     0.0,
+     -16.0,
+     8.0,
+     0.0,
+     -20.0,
+     8.0,
+     0.0,
+     -16.0,
+     4.0,
+     0.0,
+     -12.0,
+     4.0,
+     0.0,
+     -12.0,
+     8.0,
+     0.0,
+     -16.0,
+     8.0,
+     0.0,
+     -12.0,
+     4.0,
+     0.0,
+     -8.0,
+     4.0,
+     0.0,
+     -8.0,
+     8.0,
+     0.0,
+     -12.0,
+     8.0,
+     0.0,
+     -8.0,
+     4.0,
+     0.0,
+     -4.0,
+     4.0,
+     0.0,
+     -4.0,
+     8.0,
+     0.0,
+     -8.0,
+     8.0,
+     0.0,
+     -4.0,
+     4.0,
+     0.0,
+     0.0,
+     4.0,
+     0.0,
+     0.0,
+     8.0,
+     0.0,
+     -4.0,
+     8.0,
+     0.0,
+     0.0,
+     4.0,
+     0.0,
+     4.0,
+     4.0,
+     0.0,
+     4.0,
+     8.0,
+     0.0,
+     0.0,
+     8.0,
+     0.0,
+     4.0,
+     4.0,
+     0.0,
+     8.0,
+     4.0,
+     0.0,
+     8.0,
+     8.0,
+     0.0,
+     4.0,
+     8.0,
+     0.0,
+     8.0,
+     4.0,
+     0.0,
+     12.0,
+     4.0,
+     0.0,
+     12.0,
+     8.0,
+     0.0,
+     8.0,
+     8.0,
+     0.0,
+     12.0,
+     4.0,
+     0.0,
+     16.0,
+     4.0,
+     0.0,
+     16.0,
+     8.0,
+     0.0,
+     12.0,
+     8.0,
+     0.0,
+     16.0,
+     4.0,
+     0.0,
+     20.0,
+     4.0,
+     0.0,
+     20.0,
+     8.0,
+     0.0,
+     16.0,
+     8.0,
+     0.0,
+     -20.0,
+     0.0,
+     0.0,
+     -16.0,
+     0.0,
+     0.0,
+     -16.0,
+     4.0,
+     0.0,
+     -20.0,
+     4.0,
+     0.0,
+     -16.0,
+     0.0,
+     0.0,
+     -12.0,
+     0.0,
+     0.0,
+     -12.0,
+     4.0,
+     0.0,
+     -16.0,
+     4.0,
+     0.0,
+     -20.0,
+     -4.0,
+     0.0,
+     -16.0,
+     -4.0,
+     0.0,
+     -16.0,
+     0.0,
+     0.0,
+     -20.0,
+     0.0,
+     0.0,
+     -20.0,
+     -8.0,
+     0.0,
+     -16.0,
+     -8.0,
+     0.0,
+     -16.0,
+     -4.0,
+     0.0,
+     -20.0,
+     -4.0,
+     0.0,
+     -16.0,
+     -8.0,
+     0.0,
+     -12.0,
+     -8.0,
+     0.0,
+     -12.0,
+     -4.0,
+     0.0,
+     -16.0,
+     -4.0,
+     0.0,
+     -12.0,
+     -8.0,
+     0.0,
+     -8.0,
+     -8.0,
+     0.0,
+     -8.0,
+     -4.0,
+     0.0,
+     -12.0,
+     -4.0,
+     0.0,
+     -20.0,
+     -12.0,
+     0.0,
+     -16.0,
+     -12.0,
+     0.0,
+     -16.0,
+     -8.0,
+     0.0,
+     -20.0,
+     -8.0,
+     0.0,
+     -16.0,
+     -12.0,
+     0.0,
+     -12.0,
+     -12.0,
+     0.0,
+     -12.0,
+     -8.0,
+     0.0,
+     -16.0,
+     -8.0,
+     0.0,
+     -12.0,
+     -12.0,
+     0.0,
+     -8.0,
+     -12.0,
+     0.0,
+     -8.0,
+     -8.0,
+     0.0,
+     -12.0,
+     -8.0,
+     0.0,
+     -8.0,
+     -12.0,
+     0.0,
+     -4.0,
+     -12.0,
+     0.0,
+     -4.0,
+     -8.0,
+     0.0,
+     -8.0,
+     -8.0,
+     0.0,
+     -20.0,
+     -16.0,
+     0.0,
+     -16.0,
+     -16.0,
+     0.0,
+     -16.0,
+     -12.0,
+     0.0,
+     -20.0,
+     -12.0,
+     0.0,
+     -20.0,
+     -20.0,
+     0.0,
+     -16.0,
+     -20.0,
+     0.0,
+     -16.0,
+     -16.0,
+     0.0,
+     -20.0,
+     -16.0,
+     0.0,
+     -16.0,
+     -20.0,
+     0.0,
+     -12.0,
+     -20.0,
+     0.0,
+     -12.0,
+     -16.0,
+     0.0,
+     -16.0,
+     -16.0,
+     0.0,
+     -20.0,
+     -24.0,
+     0.0,
+     -16.0,
+     -24.0,
+     0.0,
+     -16.0,
+     -20.0,
+     0.0,
+     -20.0,
+     -20.0,
+     0.0,
+     -16.0,
+     -24.0,
+     0.0,
+     -12.0,
+     -24.0,
+     0.0,
+     -12.0,
+     -20.0,
+     0.0,
+     -16.0,
+     -20.0,
+     0.0,
+     -12.0,
+     -24.0,
+     0.0,
+     -8.0,
+     -24.0,
+     0.0,
+     -8.0,
+     -20.0,
+     0.0,
+     -12.0,
+     -20.0,
+     0.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3,
+     4,
+     5,
+     6,
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     8,
+     10,
+     11,
+     12,
+     13,
+     14,
+     12,
+     14,
+     15,
+     16,
+     17,
+     18,
+     16,
+     18,
+     19,
+     20,
+     21,
+     22,
+     20,
+     22,
+     23,
+     24,
+     25,
+     26,
+     24,
+     26,
+     27,
+     28,
+     29,
+     30,
+     28,
+     30,
+     31,
+     32,
+     33,
+     34,
+     32,
+     34,
+     35,
+     36,
+     37,
+     38,
+     36,
+     38,
+     39,
+     40,
+     41,
+     42,
+     40,
+     42,
+     43,
+     44,
+     45,
+     46,
+     44,
+     46,
+     47,
+     48,
+     49,
+     50,
+     48,
+     50,
+     51,
+     52,
+     53,
+     54,
+     52,
+     54,
+     55,
+     56,
+     57,
+     58,
+     56,
+     58,
+     59,
+     60,
+     61,
+     62,
+     60,
+     62,
+     63,
+     64,
+     65,
+     66,
+     64,
+     66,
+     67,
+     68,
+     69,
+     70,
+     68,
+     70,
+     71,
+     72,
+     73,
+     74,
+     72,
+     74,
+     75,
+     76,
+     77,
+     78,
+     76,
+     78,
+     79,
+     80,
+     81,
+     82,
+     80,
+     82,
+     83,
+     84,
+     85,
+     86,
+     84,
+     86,
+     87,
+     88,
+     89,
+     90,
+     88,
+     90,
+     91,
+     92,
+     93,
+     94,
+     92,
+     94,
+     95,
+     96,
+     97,
+     98,
+     96,
+     98,
+     99,
+     100,
+     101,
+     102,
+     100,
+     102,
+     103,
+     104,
+     105,
+     106,
+     104,
+     106,
+     107,
+     108,
+     109,
+     110,
+     108,
+     110,
+     111,
+     112,
+     113,
+     114,
+     112,
+     114,
+     115,
+     116,
+     117,
+     118,
+     116,
+     118,
+     119,
+     120,
+     121,
+     122,
+     120,
+     122,
+     123,
+     124,
+     125,
+     126,
+     124,
+     126,
+     127,
+     128,
+     129,
+     130,
+     128,
+     130,
+     131,
+     132,
+     133,
+     134,
+     132,
+     134,
+     135,
+     136,
+     137,
+     138,
+     136,
+     138,
+     139,
+     140,
+     141,
+     142,
+     140,
+     142,
+     143,
+     144,
+     145,
+     146,
+     144,
+     146,
+     147,
+     148,
+     149,
+     150,
+     148,
+     150,
+     151
+    ],
+    "attributes": [
+     {
+      "name": "a_hi",
+      "value": "float",
+      "domain": "face",
+      "data": [
+       2147483392.0,
+       2147483392.0,
+       -2147483648.0,
+       -2147483648.0,
+       1073741824.0,
+       1073741824.0,
+       -2147483648.0,
+       -2147483648.0,
+       2147483392.0,
+       2147483392.0,
+       0.0,
+       0.0,
+       65536.0,
+       65536.0,
+       46341.0,
+       46341.0,
+       2147483392.0,
+       2147483392.0,
+       -2147483648.0,
+       -2147483648.0,
+       2147483392.0,
+       2147483392.0,
+       65536.0,
+       65536.0,
+       2.0,
+       2.0,
+       2.0,
+       2.0,
+       -2.0,
+       -2.0,
+       2.0,
+       2.0,
+       3.0,
+       3.0,
+       10.0,
+       10.0,
+       10.0,
+       10.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       46341.0,
+       46341.0,
+       1.0,
+       1.0,
+       -1.0,
+       -1.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       65536.0,
+       65536.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       -2147483648.0,
+       5.0,
+       5.0,
+       -2147483648.0,
+       -2147483648.0,
+       1073741824.0,
+       1073741824.0,
+       2147483392.0,
+       2147483392.0,
+       -2147483648.0,
+       -2147483648.0
+      ]
+     },
+     {
+      "name": "a_lo",
+      "value": "float",
+      "domain": "face",
+      "data": [
+       255.0,
+       255.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       255.0,
+       255.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       255.0,
+       255.0,
+       0.0,
+       0.0,
+       255.0,
+       255.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       255.0,
+       255.0,
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "name": "b_hi",
+      "value": "float",
+      "domain": "face",
+      "data": [
+       1.0,
+       1.0,
+       -1.0,
+       -1.0,
+       1073741824.0,
+       1073741824.0,
+       1.0,
+       1.0,
+       -1.0,
+       -1.0,
+       -2147483648.0,
+       -2147483648.0,
+       65536.0,
+       65536.0,
+       46341.0,
+       46341.0,
+       2.0,
+       2.0,
+       -1.0,
+       -1.0,
+       1.0,
+       1.0,
+       32768.0,
+       32768.0,
+       30.0,
+       30.0,
+       31.0,
+       31.0,
+       31.0,
+       31.0,
+       32.0,
+       32.0,
+       20.0,
+       20.0,
+       9.0,
+       9.0,
+       10.0,
+       10.0,
+       1.0,
+       1.0,
+       2.0,
+       2.0,
+       1.0,
+       1.0,
+       2147483392.0,
+       2147483392.0,
+       -2147483648.0,
+       -2147483648.0,
+       0.0,
+       0.0,
+       6.0,
+       6.0,
+       0.0,
+       0.0,
+       -2147483648.0,
+       -2147483648.0,
+       65537.0,
+       65537.0,
+       1.0,
+       1.0,
+       6.0,
+       6.0,
+       -2147483648.0,
+       -2147483648.0,
+       0.0,
+       0.0,
+       -2147483648.0,
+       -2147483648.0,
+       -1.0,
+       -1.0,
+       3.0,
+       3.0,
+       1.0,
+       1.0,
+       1.0,
+       1.0
+      ]
+     },
+     {
+      "name": "b_lo",
+      "value": "float",
+      "domain": "face",
+      "data": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       255.0,
+       255.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "name": "c_hi",
+      "value": "float",
+      "domain": "face",
+      "data": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "name": "c_lo",
+      "value": "float",
+      "domain": "face",
+      "data": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "name": "cell",
+      "value": "float",
+      "domain": "face",
+      "data": [
+       1.0,
+       1.0,
+       2.0,
+       2.0,
+       3.0,
+       3.0,
+       4.0,
+       4.0,
+       5.0,
+       5.0,
+       6.0,
+       6.0,
+       7.0,
+       7.0,
+       8.0,
+       8.0,
+       9.0,
+       9.0,
+       10.0,
+       10.0,
+       11.0,
+       11.0,
+       12.0,
+       12.0,
+       13.0,
+       13.0,
+       14.0,
+       14.0,
+       15.0,
+       15.0,
+       16.0,
+       16.0,
+       17.0,
+       17.0,
+       18.0,
+       18.0,
+       19.0,
+       19.0,
+       20.0,
+       20.0,
+       21.0,
+       21.0,
+       22.0,
+       22.0,
+       23.0,
+       23.0,
+       24.0,
+       24.0,
+       25.0,
+       25.0,
+       26.0,
+       26.0,
+       27.0,
+       27.0,
+       28.0,
+       28.0,
+       29.0,
+       29.0,
+       30.0,
+       30.0,
+       31.0,
+       31.0,
+       32.0,
+       32.0,
+       33.0,
+       33.0,
+       34.0,
+       34.0,
+       35.0,
+       35.0,
+       36.0,
+       36.0,
+       37.0,
+       37.0,
+       38.0,
+       38.0
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "im-add",
+     "im-subtract",
+     "im-multiply",
+     "im-multiply_add",
+     "im-power",
+     "im-floored_modulo",
+     "im-absolute",
+     "im-gcd",
+     "im-lcm",
+     "im-negate",
+     "im-divide_ceil",
+     "im-divide_round"
+    ],
+    "shader": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     3,
+     3,
+     3,
+     3,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     5,
+     5,
+     5,
+     5,
+     6,
+     6,
+     7,
+     7,
+     7,
+     7,
+     7,
+     7,
+     8,
+     8,
+     8,
+     8,
+     8,
+     8,
+     8,
+     8,
+     9,
+     9,
+     10,
+     10,
+     10,
+     10,
+     11,
+     11,
+     11,
+     11,
+     11,
+     11
+    ]
+   }
+  },
+  {
+   "handle": "table-object",
+   "create": "object",
+   "set": {
+    "geometry": "table"
+   }
+  },
+  {
+   "handle": "pass-D0",
+   "create": "pass",
+   "set": {
+    "type": "aov_value",
+    "name": "D0"
+   }
+  },
+  {
+   "handle": "pass-D1",
+   "create": "pass",
+   "set": {
+    "type": "aov_value",
+    "name": "D1"
+   }
+  },
+  {
+   "handle": "pass-D2",
+   "create": "pass",
+   "set": {
+    "type": "aov_value",
+    "name": "D2"
+   }
+  },
+  {
+   "handle": "pass-D3",
+   "create": "pass",
+   "set": {
+    "type": "aov_value",
+    "name": "D3"
+   }
+  },
+  {
+   "handle": "pass-R",
+   "create": "pass",
+   "set": {
+    "type": "aov_value",
+    "name": "R"
+   }
+  },
+  {
+   "handle": "pass-CELL",
+   "create": "pass",
+   "set": {
+    "type": "aov_value",
+    "name": "CELL"
+   }
+  }
+ ],
+ "images": []
+}

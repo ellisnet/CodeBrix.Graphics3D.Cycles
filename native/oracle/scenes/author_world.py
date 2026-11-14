@@ -7,7 +7,8 @@ The sampling family's room with a ceiling that has a window, under a Sky Texture
 world sampled through a background light, through the public C API: background
 light portals (an area light with is_portal over the window, and an elliptical
 portal at the open side), with and without the importance map (use_mis), with the
-light tree and with sun guiding; scenes with two background light objects; and the
+light tree and with sun guiding; scenes with two background light objects; the window portal
+of zero extent (one size 0, both sizes 0, a size of 1e-23 whose square underflows); and the
 Ray Portal BSDF on a panel in front of the spheres.
 Usage: python3 native/oracle/scenes/author_world.py [--check]."""
 import argparse
@@ -35,7 +36,7 @@ def portal(handle, tfm, sizeu, sizev, ellipse=False):
             {'handle': handle+'-object', 'create': 'object', 'set': {'geometry': handle, 'tfm': tfm}}]
 
 
-def scene(scene_id, description, values, strength, portals=(), use_mis=True, lights=1, integrator=None):
+def scene(scene_id, description, values, strength, portals=(), use_mis=True, lights=1, integrator=None, window=(3.0, 2.0)):
     document = room.scene(scene_id, description, integrator or {}, samples=16)
     document['sourceFixture'] = 'native/oracle/scenes/author_world.py (the sampling family room with a ceiling window under a sky)'
     nodes = []
@@ -52,7 +53,7 @@ def scene(scene_id, description, values, strength, portals=(), use_mis=True, lig
     for k, corners in enumerate(CEILING):
         nodes += room.quad('ceiling-'+str(k), 'wall', corners)
     if 'window' in portals:
-        nodes += portal('window-portal', WINDOW, 3.0, 2.0)
+        nodes += portal('window-portal', WINDOW, *window)
     if 'side' in portals:
         nodes += portal('side-portal', SIDE, 2.5, 2.0, ellipse=True)
     document['nodes'] = nodes
@@ -78,6 +79,17 @@ def scenes():
         'two-background-lights-portal.json': scene('world/two-background-lights-portal', 'Two background light objects and the window portal',
                                                    PREETHAM, 0.05, portals=('window',), lights=2),
     }
+
+def portal_zero_scenes():
+    """The window portal of portal-window with sizes of zero extent (Light::has_contribution is false for portals, so they
+    are uploaded whatever their size)."""
+    return {
+        'portal-zero-u.json': scene('world/portal-zero-u', 'The window portal with sizeu 0 (sizev 2)', PREETHAM, 0.05, portals=('window',), window=(0.0, 2.0)),
+        'portal-zero.json': scene('world/portal-zero', 'The window portal with sizeu and sizev 0', PREETHAM, 0.05, portals=('window',), window=(0.0, 0.0)),
+        'portal-underflow.json': scene('world/portal-underflow', 'The window portal with sizeu 1e-23 (its square underflows; sizev 2)', PREETHAM, 0.05,
+                                       portals=('window',), window=(1e-23, 2.0)),
+    }
+
 
 # --- The Ray Portal BSDF (appended to author_world.py at item 3) -----------------------------------------------------
 # A vertical quad in front of the middle sphere carries the Ray Portal BSDF: alone with a constant direction (the path
@@ -193,7 +205,7 @@ def main():
     parser.add_argument('--check', action='store_true', help='Fail when a committed scene differs')
     args = parser.parse_args()
     HERE.mkdir(exist_ok=True)
-    for name, document in {**scenes(), **ray_portal_scenes(), **portal_volume_scenes()}.items():
+    for name, document in {**scenes(), **ray_portal_scenes(), **portal_volume_scenes(), **portal_zero_scenes()}.items():
         text = json.dumps(document, indent=1)+'\n'
         path = HERE/name
         if args.check:

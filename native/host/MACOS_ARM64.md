@@ -104,6 +104,11 @@ python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation
 python3 tools/licensing/audit.py
 ```
 
+A real stage needs a build made from a clean commit, so commit first and then
+build, gate, render and stage. `--output native/work/staging/osx-arm64-<n>` makes a
+scratch stage instead (never approved), for the package check and the consumer test
+(`docs/TESTING-MACOS-ARM64.md`, step 7).
+
 `--skip-dependencies` reuses only a complete prefix whose recipe, toolchain and
 library hashes still match. `tools/dependencies/build_macos.py` builds 16 of the
 18 snapshots; libpng is not built, and OIIO is configured with every format
@@ -159,17 +164,34 @@ Adaptations, all recorded by the recipes:
   or the debug map. Cycles appends its own linker flags as a CMake list, so the
   macOS hook adds `-oso_prefix` with `add_link_options` instead.
 
-`stage_macos_binaries.py` copies the host and its dependency closure (16 dylibs)
+`stage_macos_binaries.py` copies the host and its dependency closure (the dylibs
+`status.json` lists, OIDN's core and its CPU and Metal device modules among them)
 into `native/binaries/osx-arm64/{runtime,unstripped,symbols}`. It removes
 build-tree rpaths (leaving only `@loader_path`), strips the runtime copies
 (`strip -x -S`), signs everything ad hoc and writes the host dSYM, checking
 UUIDs across all three copies. `provenance.json` records the inputs,
-toolchain, build commands, hashes, the UUID mapping, notices per library,
-validation evidence and the exact approved payload. `tools/licensing/audit.py`
-accepts compiled files only when listed there with matching SHA-256, and kernel
-source copies only when byte-identical to `third_party/cycles/src`. Before the
-recorded result, the stager copies the runtime directory alone to a temporary
-folder and renders from it on CPU and Metal.
+toolchain, build commands, hashes, the UUID mapping, notices per library
+(Embree is linked statically into the host), validation evidence and the exact
+approved payload. `tools/licensing/audit.py` accepts compiled files only when
+listed there with matching SHA-256, and kernel source copies only when
+byte-identical to `third_party/cycles/src`. Before the record is written, the
+stager copies the runtime directory alone to a temporary folder and renders from
+it on CPU and Metal; the CPU film must equal the oracle run's.
+
+The stager never rebuilds: a rebuild is not byte-identical (object timestamps and
+absolute paths in the debug map change the host's UUID and signature), so it
+stages the build that the gate and the oracle run validated. To tie that build to
+a commit, `build_cycles_macos.py` records `sourceCommit` and the git status of the
+Cycles-with-Metal sources (`tools/licensing/metal_sources.py`) in
+`invocation.json` when it starts, and again as `sourceAtEnd` in `status.json` when
+it completes; a `--target` build records no commit, because it need not rebuild
+the host library. A real stage refuses unless both records name one commit with a
+clean status, HEAD descends from that commit with no Cycles-with-Metal source
+change since, and the working tree has none; `provenance.json` then names that
+commit as `sourceCommit`, from which `tools/licensing/package_check.py` judges the
+payload's staleness against the same list. Hidden files (a name starting with `.`,
+such as Finder's `.DS_Store`) are refused anywhere in the payload, because git
+ignores them and they could never be committed with their approval.
 
 The image fixtures run in their memory-only form. Under
 `CBC_HOST_NO_IMAGE_FILES` the independent image reference renders its 256
@@ -178,6 +200,37 @@ memory loader does), and the C reload test and the managed `ImageModes` and
 `ColorReload` fixtures verify that texture filenames are rejected instead of
 running the four file and rebind cases. The WGSL device and render gates are
 absent because this profile has no WebGPU device.
+
+## NuGet package
+
+`CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever`
+(`build/nuget/CodeBrix.Graphics3D.Cycles.MacOSArm64.nuspec`) is packed beside the
+other platform packages whenever `native/binaries/osx-arm64/provenance.json` is
+present, normally on the Linux x64 machine from the committed payload. It depends
+on the Core package only (no WebGPU runtime). Its dylibs are native assets in
+`runtimes/osx-arm64/native/`. The kernel sources are not: NuGet keeps native-asset
+subfolders only for an application without a runtime identifier and flattens them
+into the output folder for one with a runtime identifier, where `dotnet publish -r
+osx-arm64` then fails with NETSDK1152 because kernel header names repeat (18
+basenames occur more than once in the closure). The package therefore carries the
+tree at its root as `codebrix-cycles/source`, and its
+`buildTransitive/CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever.targets`
+copies it beside the host library in the consumer's output for build, run and
+publish: under `runtimes/osx-arm64/native/` without a runtime identifier, beside
+the application for `osx-arm64`, and not at all for other runtime identifiers. The
+host looks for the tree beside its own library, so an application that moves the
+library (into an app bundle, for example) moves `codebrix-cycles/` with it.
+
+Consumer test (2026-11-14, a scratch stage of the v5.3.0 base build, SDK 11.0.100,
+.NET 10.0.15): with the tree among the native assets, `dotnet build`, `dotnet run`
+and `dotnet publish` without a runtime identifier rendered on CPU and Metal, and
+both `dotnet publish -r osx-arm64` (framework-dependent and self-contained) failed
+with NETSDK1152. With the layout above, all five rendered on CPU, Metal and Metal
+with Open Image Denoise on the GPU, with all 292 kernel files beside the library
+and none flattened; the CPU film was bitwise the same in every mode, and Metal was
+within 7.5e-8 of it. Removing `codebrix-cycles/` from an output made Metal fail
+with "Metal kernel sources are missing beside the native library" while the CPU
+still rendered.
 
 ## Managed GPU tests and device errors
 
