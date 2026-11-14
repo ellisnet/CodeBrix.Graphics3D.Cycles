@@ -1,0 +1,63 @@
+$ CODEBRIX_CYCLES_RECORD_METAL_REFERENCES=1 dotnet test --project tests/CodeBrix.Graphics3D.Cycles.Tests --configuration Release --no-build --filter-class "*GpuRenderTests"
+start Fri Nov 13 22:04:21 PST 2026
+Running tests from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)
+failed CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_lamp_shaders_conductor_thin_films_and_sky_worlds_match_the_cpu_reference(variant: "sky-sun-guiding") (1s 424ms)
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+  Expected practical to be 0, but found 1 (difference of 1).
+    at SilverAssertions.Execution.XUnit3TestFramework.Throw(String message)
+    at SilverAssertions.Execution.TestFrameworkProvider.Throw(String message)
+    at SilverAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+    at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+    at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+    at SilverAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+    at SilverAssertions.Numeric.NumericAssertions`2.Be(T expected, String because, Object[] becauseArgs)
+    at CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_lamp_shaders_conductor_thin_films_and_sky_worlds_match_the_cpu_reference(String variant) in /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs:677
+    --- End of stack trace from previous location ---
+  Standard output
+    sky-sun-guiding: max abs error 0.00146294, practical failures 1, strict differences 2200
+    
+  Error output
+failed CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_cameras_and_sampling_features_match_the_cpu_reference(variant: "adaptive-blue-noise") (1s 073ms)
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+  Expected practical to be 0, but found 51 (difference of 51).
+    at SilverAssertions.Execution.XUnit3TestFramework.Throw(String message)
+    at SilverAssertions.Execution.TestFrameworkProvider.Throw(String message)
+    at SilverAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+    at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+    at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+    at SilverAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+    at SilverAssertions.Numeric.NumericAssertions`2.Be(T expected, String because, Object[] becauseArgs)
+    at CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_cameras_and_sampling_features_match_the_cpu_reference(String variant) in /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs:512
+    --- End of stack trace from previous location ---
+  Standard output
+    adaptive-blue-noise: max abs error 0.0427245, practical failures 51, strict differences 234
+    
+  Error output
+skipped CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.webgpu_refuses_the_integer_and_component_nodes_by_name_and_the_cpu_renders_them(node: "Get Vector Component")
+  Cycles' Metal device renders these nodes; the refusal is the WGSL device's.
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+skipped CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.webgpu_refuses_the_integer_and_component_nodes_by_name_and_the_cpu_renders_them(node: "Boolean Math")
+  Cycles' Metal device renders these nodes; the refusal is the WGSL device's.
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+skipped CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.webgpu_refuses_the_integer_and_component_nodes_by_name_and_the_cpu_renders_them(node: "Integer Math")
+  Cycles' Metal device renders these nodes; the refusal is the WGSL device's.
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+00:27.55 | ERROR: Texture exceeds maximum allowed size of 16384 x 16384 (requested: 16385 x 1)
+00:27.55 | ERROR: Refer to the Cycles GPU rendering documentation for possible solutions:
+00:27.55 | ERROR: https://docs.blender.org/manual/en/latest/render/cycles/gpu_rendering.html
+/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64) failed with 2 error(s) [+44/x2/?3] (36s 238ms)
+Exit code: 2
+
+Test run summary: Failed!
+  total: 49
+  failed: 2
+  succeeded: 44
+  skipped: 3
+  duration: 36s 610ms
+Test run completed with non-success exit code: 2. At least one test failed. See: https://aka.ms/testingplatform/exitcodes
+real 37.50
+user 7.42
+sys 27.73
+exit 2
+end Fri Nov 13 22:04:59 PST 2026

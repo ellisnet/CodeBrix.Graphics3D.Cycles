@@ -1,0 +1,448 @@
+{
+  "sceneId": "passes/motion-deforming",
+  "sceneSha256": "abfdcce6e6f3c0bbb1d7134464d5d7cea4a1a4c94360b035a809688bd4bbd7be",
+  "width": 48,
+  "height": 36,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/motion-deforming/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Vector",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Vector Weight",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Depth",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00500037,
+        0.00384233
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "arm64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/motion-deforming/metal-m2pro",
+      "backend": "metal-m2pro",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Vector",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "Vector Weight",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Depth",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 4.76837158203125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.76837158203125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 4.76837158203125e-07,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.493616,
+        0.155788
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/motion-deforming/metal-m2pro-metalrt",
+      "backend": "metal-m2pro-metalrt",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Vector",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "Vector Weight",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Depth",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 4.76837158203125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.76837158203125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 4.76837158203125e-07,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.363079,
+        0.20131
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    }
+  ],
+  "goldStandards": [
+    "cpu-arm64-macos",
+    "metal-m2pro",
+    "metal-m2pro-metalrt"
+  ],
+  "candidates": [],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.0003018379211425781,
+      "maxRelativeError": 0.00010793429773051844,
+      "rms": 9.132463980730545e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 1209,
+      "worstPixel": {
+        "x": 12,
+        "y": 22,
+        "channel": "R",
+        "reference": 1.591772437095642,
+        "candidate": 1.5918914079666138,
+        "absoluteDifference": 0.00011897087097167969,
+        "criterionRatio": 0.3229792904255022
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Vector",
+          "type": "motion",
+          "components": 4,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.62939453125e-06,
+          "maxRelativeError": 0.005415162454873646,
+          "rms": 6.790409312319454e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 3424,
+          "worstPixel": {
+            "x": 43,
+            "y": 27,
+            "channel": "B",
+            "reference": -0.2893867492675781,
+            "candidate": -0.2893943786621094,
+            "absoluteDifference": 7.62939453125e-06,
+            "criterionRatio": 0.07072285833504247
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Vector Weight",
+          "type": "motion_weight",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.0,
+            "candidate": 0.0,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Depth",
+          "type": "depth",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.9073486328125e-06,
+          "maxRelativeError": 1.9193633241530186e-07,
+          "rms": 1.581157099712335e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 7,
+          "worstPixel": {
+            "x": 28,
+            "y": 10,
+            "channel": 0,
+            "reference": 9.937402725219727,
+            "candidate": 9.93740463256836,
+            "absoluteDifference": 1.9073486328125e-06,
+            "criterionRatio": 0.0009361309669689931
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.0003199577331542969,
+      "maxRelativeError": 0.00010793429773051844,
+      "rms": 9.1228688939874e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 1196,
+      "worstPixel": {
+        "x": 12,
+        "y": 22,
+        "channel": "R",
+        "reference": 1.591772437095642,
+        "candidate": 1.5918914079666138,
+        "absoluteDifference": 0.00011897087097167969,
+        "criterionRatio": 0.3229792904255022
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Vector",
+          "type": "motion",
+          "components": 4,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.62939453125e-06,
+          "maxRelativeError": 0.0025381018910301313,
+          "rms": 6.932457813540068e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 3481,
+          "worstPixel": {
+            "x": 25,
+            "y": 29,
+            "channel": "A",
+            "reference": -0.12882232666015625,
+            "candidate": -0.1288166046142578,
+            "absoluteDifference": 5.7220458984375e-06,
+            "criterionRatio": 0.07552413751434958
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Vector Weight",
+          "type": "motion_weight",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.0,
+            "candidate": 0.0,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Depth",
+          "type": "depth",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.430511474609375e-06,
+          "maxRelativeError": 1.8554431651782302e-07,
+          "rms": 2.127538575623964e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 33,
+          "worstPixel": {
+            "x": 13,
+            "y": 3,
+            "channel": 0,
+            "reference": 5.139873504638672,
+            "candidate": 5.139874458312988,
+            "absoluteDifference": 9.5367431640625e-07,
+            "criterionRatio": 0.0008846908147153101
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 3.6716461181640625e-05,
+      "maxRelativeError": 3.133401220877844e-05,
+      "rms": 1.1602820380344092e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 192,
+      "worstPixel": {
+        "x": 17,
+        "y": 4,
+        "channel": "G",
+        "reference": 0.2902771830558777,
+        "candidate": 0.29028502106666565,
+        "absoluteDifference": 7.838010787963867e-06,
+        "criterionRatio": 0.07253694060918012
+      },
+      "reference": "metal-m2pro",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Vector",
+          "type": "motion",
+          "components": 4,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.62939453125e-06,
+          "maxRelativeError": 0.003590664272890485,
+          "rms": 5.713195548148531e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 3108,
+          "worstPixel": {
+            "x": 25,
+            "y": 29,
+            "channel": "A",
+            "reference": -0.12882232666015625,
+            "candidate": -0.1288166046142578,
+            "absoluteDifference": 5.7220458984375e-06,
+            "criterionRatio": 0.07552413751434958
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Vector Weight",
+          "type": "motion_weight",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.0,
+            "candidate": 0.0,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Depth",
+          "type": "depth",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.9073486328125e-06,
+          "maxRelativeError": 1.9193629557575322e-07,
+          "rms": 1.9056922289978343e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 21,
+          "worstPixel": {
+            "x": 28,
+            "y": 10,
+            "channel": 0,
+            "reference": 9.93740463256836,
+            "candidate": 9.937402725219727,
+            "absoluteDifference": 1.9073486328125e-06,
+            "criterionRatio": 0.0009361307917007886
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 0,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

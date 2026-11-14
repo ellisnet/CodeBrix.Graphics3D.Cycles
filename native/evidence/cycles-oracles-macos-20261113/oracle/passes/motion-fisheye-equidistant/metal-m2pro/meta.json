@@ -1,0 +1,134 @@
+{
+  "sceneId": "passes/motion-fisheye-equidistant",
+  "sceneSha256": "5132631423858dffe823c9b688b6e1817be314c2a7ee71aa41d7ef761db62aa9",
+  "backend": "metal-m2pro",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 2.384185791015625e-07,
+  "renderSeconds": [
+    0.473566,
+    0.0314635
+  ],
+  "filmSha256": [
+    "1cef580887e7f35fc0b6263d25f6204910b73d1cbe957833b44a34ee4389be73",
+    "ee6ce8c011311224e30f8a1be3dcb9d6843d1789a6f027d386b25a4932f096a6"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Vector",
+      "type": "motion",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "1871738395ffd6aaaccf5fb7bbccc16b89893e9945ba925cd8df56e12fa2067c",
+        "1871738395ffd6aaaccf5fb7bbccc16b89893e9945ba925cd8df56e12fa2067c"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Vector Weight",
+      "type": "motion_weight",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "eee3b70eb6f22540293e00f3a193e085192e58d38405c807d67479ba87a5a2b2",
+        "eee3b70eb6f22540293e00f3a193e085192e58d38405c807d67479ba87a5a2b2"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "08820711c5ee8bd51c2477153187b05300be7e18cfe861a149fb89ef7de00958",
+        "08820711c5ee8bd51c2477153187b05300be7e18cfe861a149fb89ef7de00958"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/motion-fisheye-equidistant.json",
+  "kernelCompileSeconds": 123.95,
+  "backendDescription": "Cycles Metal device, MetalRT off (BVH2), generic kernels (PSO_GENERIC), fastMathEnabled as pinned",
+  "environment": {
+    "CYCLES_METALRT": "0",
+    "CYCLES_METAL_SPECIALIZATION_LEVEL": "0"
+  },
+  "processSeconds": 0.62,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/passes/motion-fisheye-equidistant.json",
+    "--backend",
+    "metal",
+    "--label",
+    "metal-m2pro",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/motion-fisheye-equidistant/metal-m2pro",
+    "--threads",
+    "4"
+  ],
+  "metalSettings": {
+    "device": "DEVICE_METAL",
+    "metalrt": false,
+    "specializationLevel": "CYCLES_METAL_SPECIALIZATION_LEVEL=0 (PSO_GENERIC)",
+    "bvhLayout": "BVH_LAYOUT_BVH2",
+    "fastMathEnabled": true,
+    "denoiser": null,
+    "kernelSource": "native/work/macos/osx-arm64/host/build/lib/codebrix-cycles/source",
+    "kernelCache": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/cache/metal-m2pro/cycles",
+    "systemMetalShaderCache": "not cleared (macOS-managed)",
+    "optionNames": [
+      "CYCLES_METALRT",
+      "CYCLES_METAL_SPECIALIZATION_LEVEL",
+      "DeviceInfo::use_hardware_raytracing",
+      "DeviceInfo::kernel_optimization_level"
+    ]
+  },
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

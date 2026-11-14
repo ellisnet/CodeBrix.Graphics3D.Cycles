@@ -1,0 +1,223 @@
+{
+  "sceneId": "volumes/ray-marching-tree-catcher",
+  "sceneSha256": "de74aa09704d147d72eec6bf57a4cf529724c95bb3693835d8333235b8571a52",
+  "backend": "cpu-arm64-macos",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.012404,
+    0.0106318
+  ],
+  "filmSha256": [
+    "bb8025b631e6f9b34f456dc27e338d1c0f2d7200c1d9893483b60744d0806581",
+    "bb8025b631e6f9b34f456dc27e338d1c0f2d7200c1d9893483b60744d0806581"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "volume_direct",
+      "type": "volume_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "757a436ed0b7f75642399de93aa834949d16518896a10b4b21bb20c78031f099",
+        "757a436ed0b7f75642399de93aa834949d16518896a10b4b21bb20c78031f099"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "volume_indirect",
+      "type": "volume_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "d923032c258d1b3888e44b5ee656e83832e8067a7ce63ae8fe984bcbcfad6746",
+        "d923032c258d1b3888e44b5ee656e83832e8067a7ce63ae8fe984bcbcfad6746"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "diffuse_direct",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "a21f17ccb9a4f591fddf9985c318cadc3c993fd6f1e5e4e374d38effc0732684",
+        "a21f17ccb9a4f591fddf9985c318cadc3c993fd6f1e5e4e374d38effc0732684"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "diffuse_indirect",
+      "type": "diffuse_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2b0a726e36b34da02915dc589e0dbbb1c7e165a8dfb21aed672c7ec0a1b86cd5",
+        "2b0a726e36b34da02915dc589e0dbbb1c7e165a8dfb21aed672c7ec0a1b86cd5"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "glossy_direct",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "3df981515035af5bfc509f0b350077e0e800d9b4d0a854f4c991f343430d400b",
+        "3df981515035af5bfc509f0b350077e0e800d9b4d0a854f4c991f343430d400b"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "glossy_indirect",
+      "type": "glossy_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "0bfa997d9d3c1563adcd386e664dd41a45928f2c920b8c6507e112f22964628b",
+        "0bfa997d9d3c1563adcd386e664dd41a45928f2c920b8c6507e112f22964628b"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "transmission_direct",
+      "type": "transmission_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "transmission_indirect",
+      "type": "transmission_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "emission",
+      "type": "emission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "178d73f5cb49e95d8c06f55b156e2c8895444b67e667a6d94d84461ea4ae076e",
+        "178d73f5cb49e95d8c06f55b156e2c8895444b67e667a6d94d84461ea4ae076e"
+      ]
+    },
+    {
+      "index": 9,
+      "name": "background",
+      "type": "background",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "79553810587678742dbc8f56d92df562716fd9fabb8897298120dc9039bc09ea",
+        "79553810587678742dbc8f56d92df562716fd9fabb8897298120dc9039bc09ea"
+      ]
+    },
+    {
+      "index": 10,
+      "name": "Shadow Catcher",
+      "type": "shadow_catcher",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "b828d880c2799354ba664ec193d3b85145605cc1126014fa4869eec06ba1f287",
+        "b828d880c2799354ba664ec193d3b85145605cc1126014fa4869eec06ba1f287"
+      ]
+    },
+    {
+      "index": 11,
+      "name": "Shadow Catcher Matte",
+      "type": "shadow_catcher_matte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "bb8025b631e6f9b34f456dc27e338d1c0f2d7200c1d9893483b60744d0806581",
+        "bb8025b631e6f9b34f456dc27e338d1c0f2d7200c1d9893483b60744d0806581"
+      ]
+    },
+    {
+      "index": 12,
+      "name": "Shadow Catcher Sample Count",
+      "type": "shadow_catcher_sample_count",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "8ee23387e40374ccef4b1378e52ae6e0f949c09f7f4a3e595ad39908e41c06d8",
+        "8ee23387e40374ccef4b1378e52ae6e0f949c09f7f4a3e595ad39908e41c06d8"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/volumes/ray-marching-tree-catcher.json",
+  "backendDescription": "Cycles CPU device, Apple Clang arm64, plain C++ kernels (no sse2neon), fixed-baseline oracle: no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.091,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/volumes/ray-marching-tree-catcher.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-macos",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/ray-marching-tree-catcher/cpu-arm64-macos",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

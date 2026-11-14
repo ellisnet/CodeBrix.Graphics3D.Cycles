@@ -1,0 +1,113 @@
+{
+  "sceneId": "passes/motion-mirrorball",
+  "sceneSha256": "c27588d803f086708a75059c5617f10810817a1c5cc04a0745cc0a9ff60cd997",
+  "backend": "cpu-arm64-macos",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.00289896,
+    0.00152229
+  ],
+  "filmSha256": [
+    "92cfd43693bc1ce321e21d92b5d7351525b2b7c8d9337508d9089dbbb32e7386",
+    "92cfd43693bc1ce321e21d92b5d7351525b2b7c8d9337508d9089dbbb32e7386"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Vector",
+      "type": "motion",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "3ded0d69a93e7b0b18e6b9e8fdb478224204771e7c9d3a5615d7685055137b64",
+        "3ded0d69a93e7b0b18e6b9e8fdb478224204771e7c9d3a5615d7685055137b64"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Vector Weight",
+      "type": "motion_weight",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "152887464212923592587b17fd3fba5f392ff1072cee11b79d219bc9ce9cae7b",
+        "152887464212923592587b17fd3fba5f392ff1072cee11b79d219bc9ce9cae7b"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "184e231f64057cda09599036d18d01a8ea85ccb20d65a1b7c249f237b6431074",
+        "184e231f64057cda09599036d18d01a8ea85ccb20d65a1b7c249f237b6431074"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/motion-mirrorball.json",
+  "backendDescription": "Cycles CPU device, Apple Clang arm64, plain C++ kernels (no sse2neon), fixed-baseline oracle: no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.077,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/passes/motion-mirrorball.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-macos",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/motion-mirrorball/cpu-arm64-macos",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

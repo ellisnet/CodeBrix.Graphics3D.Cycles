@@ -1,0 +1,78 @@
+{
+  "sceneId": "volumes/phase-mie",
+  "sceneSha256": "f44cc24ee2c5b2f4a264465eb0cfb43863798660da9e1c1e2758b04ec48c0b9a",
+  "backend": "cpu-arm64-macos",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.00885608,
+    0.00713658
+  ],
+  "filmSha256": [
+    "d3d06510f8b330e759a69432d63f352fef2a3df1fd9bda62eabf3c79b17bc10e",
+    "d3d06510f8b330e759a69432d63f352fef2a3df1fd9bda62eabf3c79b17bc10e"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/volumes/phase-mie.json",
+  "backendDescription": "Cycles CPU device, Apple Clang arm64, plain C++ kernels (no sse2neon), fixed-baseline oracle: no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.082,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/volumes/phase-mie.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-macos",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/phase-mie/cpu-arm64-macos",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

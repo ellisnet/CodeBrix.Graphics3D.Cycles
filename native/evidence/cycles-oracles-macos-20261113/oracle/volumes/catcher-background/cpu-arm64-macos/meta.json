@@ -1,0 +1,124 @@
+{
+  "sceneId": "volumes/catcher-background",
+  "sceneSha256": "c122550749c51d5e330f5d1c88060fea2c20bed81505ea9debb94943e1b32df8",
+  "backend": "cpu-arm64-macos",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0082285,
+    0.00654029
+  ],
+  "filmSha256": [
+    "8b5a4eb94447177432e5052842722d3440aa16679a40176395b648cc7461e0e6",
+    "8b5a4eb94447177432e5052842722d3440aa16679a40176395b648cc7461e0e6"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Shadow Catcher",
+      "type": "shadow_catcher",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "19593c77ecf012b5e972abb8bdaa68f9a0b28b4b0c67891bc3cc21dfe7a0ac96",
+        "19593c77ecf012b5e972abb8bdaa68f9a0b28b4b0c67891bc3cc21dfe7a0ac96"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Shadow Catcher Matte",
+      "type": "shadow_catcher_matte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "8b5a4eb94447177432e5052842722d3440aa16679a40176395b648cc7461e0e6",
+        "8b5a4eb94447177432e5052842722d3440aa16679a40176395b648cc7461e0e6"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Shadow Catcher Sample Count",
+      "type": "shadow_catcher_sample_count",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "9ee30f13080d49484e55affbfc218873e055bdecd980dcc1b3317d0e4c806f1f",
+        "9ee30f13080d49484e55affbfc218873e055bdecd980dcc1b3317d0e4c806f1f"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Background",
+      "type": "background",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "35ff1021f150626a3ead886bd221c3ca4e22e2e02169d66599af8fc533ea2b81",
+        "35ff1021f150626a3ead886bd221c3ca4e22e2e02169d66599af8fc533ea2b81"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/volumes/catcher-background.json",
+  "backendDescription": "Cycles CPU device, Apple Clang arm64, plain C++ kernels (no sse2neon), fixed-baseline oracle: no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.094,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/volumes/catcher-background.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-macos",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/catcher-background/cpu-arm64-macos",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

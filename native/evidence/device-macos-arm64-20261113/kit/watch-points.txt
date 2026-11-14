@@ -1,0 +1,48 @@
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+
+Watch-points of docs/KIT-MACOS-ARM64.md section 4, checked on the passed build of 2026-11-13
+(python3 tools/build_macos.py --jobs 8, base commit 828f6c2f9ee2c57dd379d472a0252edaf3caa87a).
+Sources: <repo>/native/work/macos/osx-arm64/host/build/compile_commands.json (176 compile
+commands), host/kernel-sources.json (copied as build/kernel-sources.json), host/build.log (copied
+as build/host-build.output.txt), the dependency component logs under
+<repo>/native/work/macos/osx-arm64/dependencies/<component>/*.log (not copied) and
+kit/staged-files.txt.
+
+half.h work copy (host/cycles-source/src/util/half.h)
+  "#  include <arm_neon.h>" present once (line 10); the recipe's anchor matched.
+
+New host C++ compiled with Apple Clang (src/util/string.cpp, src/util/aligned_malloc.cpp,
+Gaussian-splat, quaternion and spherical-harmonics headers)
+  compiled without errors (the build passed); no warning names them.
+
+WITH_DLSS
+  0 of 176 compile commands contain WITH_DLSS. integrator/denoiser_dlss.cpp is compiled without it.
+
+WITH_EMBREE
+  src/bvh/embree.cpp: 1 compile command, -DWITH_EMBREE present.
+
+WITH_WEBGPU
+  0 of 176 compile commands contain WITH_WEBGPU.
+
+Overlay and the Metal kernel closure
+  stage_kernels passed (status.json passed true, kernelSourceFiles 292).
+  kernel-sources.json overlaidInClosure: ["util/types_gpu_compressed.h"] (exactly one).
+  kernel-sources.json entry kernel/device/metal/kernel.metal, root codebrix-cycles/source,
+  292 files; unresolvedIncludes: ["util/guarded_allocator.h: ../../guardedalloc/MEM_guardedalloc.h"].
+  The 292 staged kernel files are byte-identical to <repo>/third_party/cycles/src (kit/kernel-compare.txt
+  is the empty output of that comparison).
+
+Dispersion
+  kernel/tables_d65_codebrix.h is in the staged closure (kit/staged-files.txt line 217 and
+  kernel-sources.json files). No Metal compile error names cie_d65_spd, sample_wavelength or
+  wavelength_to_rgb_d65 (host gate and oracle run passed on Metal).
+
+Warnings (verbatim, host/build.log; 2 lines)
+  Own code (1): <repo>/native/tests/host/image_inputs.h:41:18: warning: unused function 'write_image' [-Wunused-function]
+    Recorded, not fixed: image_inputs.h is a host-gate fixture.
+  Pinned Cycles (1): <repo>/native/work/macos/osx-arm64/host/cycles-source/src/device/metal/device_impl.mm:559:13: warning: 'fastMathEnabled' is deprecated: first deprecated in macOS 15.0 - Use mathMode instead [-Wdeprecated-declarations]
+  Dependencies: 120 "warning:" lines (12 distinct) in the dependency component logs.
+
+Metal kernel compile (first render with an empty Cycles cache, run.json kernelCompileSeconds)
+  metal-m2pro 123.95 s, metal-m2pro-metalrt 115.20 s (scene ao/ao-node; second render 1.12 s and 0.12 s).

@@ -79,7 +79,9 @@ def nodes(n):
 
 def ast(upstream, work, name, translation_unit):
     output = work / (name.replace(':', '_') + '.ast.json')
-    command = ['clang++', '-std=c++20', '-fsyntax-only', '-Xclang', '-ast-dump=json',
+    # -U__ARM_NEON: on an ARM64 build host the AST comes from the same generic branches of the pinned
+    # headers as on x86-64 (util/half.h's NEON conversions would need arm_neon.h, which only sse2neon includes).
+    command = ['clang++', '-std=c++20', '-fsyntax-only', '-U__ARM_NEON', '-Xclang', '-ast-dump=json',
                '-I', str(Path(__file__).resolve().parents[1]/'third_party/deps/tbb/include'),
                '-Xclang', '-ast-dump-filter=ccl::' + name, '-I', str(upstream / 'src'),
                str(translation_unit)]

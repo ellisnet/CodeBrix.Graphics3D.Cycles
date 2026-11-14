@@ -1,0 +1,442 @@
+{
+  "sceneId": "passes/with-shadow-catcher-catcher-approximate",
+  "sceneSha256": "43765bd56947afe5a001c2621119e278c59aaa3b5df9b15757e374a539fab9c5",
+  "backend": "metal-m2pro-metalrt",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 2.384185791015625e-07,
+  "renderSeconds": [
+    0.406468,
+    0.227055
+  ],
+  "filmSha256": [
+    "487d098855ceb12903144ebfd1ce1e3bb91f316bc772f30302898032c82dd8b1",
+    "af55e4d6d6fd2205980fcac3e62edb9c2c71765f16c962e4384e3186fa6568a9"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Shadow Catcher",
+      "type": "shadow_catcher",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "de84bf36b20c078b30133148d78945f3f170b46e3decfa34f010134f0c85fa61",
+        "18260cf2fd0dbd5045674a93683acda98dc1492b8915d5ee6e78844733693358"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Shadow Catcher Matte",
+      "type": "shadow_catcher_matte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "487d098855ceb12903144ebfd1ce1e3bb91f316bc772f30302898032c82dd8b1",
+        "af55e4d6d6fd2205980fcac3e62edb9c2c71765f16c962e4384e3186fa6568a9"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Shadow Catcher Sample Count",
+      "type": "shadow_catcher_sample_count",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990",
+        "a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "DiffDir",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "bb3c5991dc1a144da3e0cc0d5e2c30cabdc76e93e9c33a42f3b20e857769c83c",
+        "5d0086696a98a9d12c315e40a4d96233deb3f8da6bc8de9a6ade17a250fbff5b"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "DiffInd",
+      "type": "diffuse_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "c9f53a987fb00ae14ed8d4adf92a731104e17cd1401210407c3bd7c508e823d2",
+        "96d57eed6a256b2740ade4b10988754db2b097ccbab521b8024b42b0826b8f27"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "DiffCol",
+      "type": "diffuse_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2a2394347421e567ee66acfbd372b01fc3db304bad30ebaef4942611a0a7cba5",
+        "2a2394347421e567ee66acfbd372b01fc3db304bad30ebaef4942611a0a7cba5"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "GlossDir",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "51a10432a76b0b8b1001c273a5efc9eed3c778af3bd853050947d7a3189c1db3",
+        "2c6c6bf56fab36ba8b907c80a66d4e2476f5ac59b1f0361f1e7cab03249db2fc"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "GlossInd",
+      "type": "glossy_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "8aded889ab9bae0a0e098fb58247273ca8a542868c7acf8075bf38723d8d74d1",
+        "93a3f723415ecf45cbf4caaf1e9b513db26425420718b30335b1809bd0f42333"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "GlossCol",
+      "type": "glossy_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "41f8b470d3608af0d84bac8adf011cca2d89b5c68773b72b86100ed1251d3b0a",
+        "41f8b470d3608af0d84bac8adf011cca2d89b5c68773b72b86100ed1251d3b0a"
+      ]
+    },
+    {
+      "index": 9,
+      "name": "TransDir",
+      "type": "transmission_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75",
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75"
+      ]
+    },
+    {
+      "index": 10,
+      "name": "TransInd",
+      "type": "transmission_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75",
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75"
+      ]
+    },
+    {
+      "index": 11,
+      "name": "TransCol",
+      "type": "transmission_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75",
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75"
+      ]
+    },
+    {
+      "index": 12,
+      "name": "Emit",
+      "type": "emission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75",
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75"
+      ]
+    },
+    {
+      "index": 13,
+      "name": "Env",
+      "type": "background",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "d6e8a35bba20c1aa5b80ed9a7509936c6da96d3aa6a79486686c397bc15a88d6",
+        "d6e8a35bba20c1aa5b80ed9a7509936c6da96d3aa6a79486686c397bc15a88d6"
+      ]
+    },
+    {
+      "index": 14,
+      "name": "Diffuse",
+      "type": "diffuse",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "58d0fe5c657e9e89c617426210635df8e33a0659d07a851ceea9aa199abd60c7",
+        "041512c08de58bba4c47a8a1b7812f1adb80624436f32d29810f655c194c4b80"
+      ]
+    },
+    {
+      "index": 15,
+      "name": "Glossy",
+      "type": "glossy",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "780b78dca0b7299a61b191816694ae8f725b500d79e94b2c164219d137c8c55f",
+        "d85a38295a43840ca951c830668971e0ba2770a743a799981da172ab4b9fde5c"
+      ]
+    },
+    {
+      "index": 16,
+      "name": "Transmission",
+      "type": "transmission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75",
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75"
+      ]
+    },
+    {
+      "index": 17,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "cc08ee47cb10f7d2bdbaa0f10bfc461ce5bae395f247f3d55f330dba032ca006",
+        "cc08ee47cb10f7d2bdbaa0f10bfc461ce5bae395f247f3d55f330dba032ca006"
+      ]
+    },
+    {
+      "index": 18,
+      "name": "Position",
+      "type": "position",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "0ce601399342f5d09e40ce8e215ad542bc6f937ca3e2aeadd5eea8d35e734b07",
+        "0ce601399342f5d09e40ce8e215ad542bc6f937ca3e2aeadd5eea8d35e734b07"
+      ]
+    },
+    {
+      "index": 19,
+      "name": "Normal",
+      "type": "normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "0b43321e7cca1f61797d13e730807811f4417b982197b73e404f3a624eda6258",
+        "957c7a48684a16d022273f2d8e9d48275702fe8c8608f7a00cbae639b72cbdb6"
+      ]
+    },
+    {
+      "index": 20,
+      "name": "Roughness",
+      "type": "roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "84bed5113716090f2e09cfe113efd0deb33c686570ce9fa7c1083f9be0a95bc8",
+        "84bed5113716090f2e09cfe113efd0deb33c686570ce9fa7c1083f9be0a95bc8"
+      ]
+    },
+    {
+      "index": 21,
+      "name": "UV",
+      "type": "uv",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75",
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75"
+      ]
+    },
+    {
+      "index": 22,
+      "name": "IndexOB",
+      "type": "object_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a",
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a"
+      ]
+    },
+    {
+      "index": 23,
+      "name": "IndexMA",
+      "type": "material_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a",
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a"
+      ]
+    },
+    {
+      "index": 24,
+      "name": "Mist",
+      "type": "mist",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "7e438492c87edaef24fcc4fb367fd902e9fc6995c4fb4e0156142abb936461f6",
+        "4542d2552b46b26c4c634551cc5dc1531b2cf41572df9072c4fb9dd409abf8a2"
+      ]
+    },
+    {
+      "index": 25,
+      "name": "AO",
+      "type": "ao",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1296a704f1df9defecd0e00a889a37de6c44c0ebd1c6ec9ef9692938b09752b5",
+        "1296a704f1df9defecd0e00a889a37de6c44c0ebd1c6ec9ef9692938b09752b5"
+      ]
+    },
+    {
+      "index": 26,
+      "name": "Denoising Albedo",
+      "type": "denoising_albedo",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "76f8f44eb3086dbeacc7bd0d2da552843f6376de8f0caf1d560b561df91cf115",
+        "76f8f44eb3086dbeacc7bd0d2da552843f6376de8f0caf1d560b561df91cf115"
+      ]
+    },
+    {
+      "index": 27,
+      "name": "Denoising Normal",
+      "type": "denoising_normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "da72a70023acf5544927ea46bdedbf135447b30f8d9789b5fcacc0644da4f7d3",
+        "1bad57d9b85fe009c1493720bd09c4b66f7d8a8c72152c68ffaf52b525cada4c"
+      ]
+    },
+    {
+      "index": 28,
+      "name": "Denoising Specular Albedo",
+      "type": "denoising_specular_albedo",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "59bfcc71f1f82bd80dddd9439af588992fe5a608f9224355c22bd12b005af74d",
+        "59bfcc71f1f82bd80dddd9439af588992fe5a608f9224355c22bd12b005af74d"
+      ]
+    },
+    {
+      "index": 29,
+      "name": "Denoising Roughness",
+      "type": "denoising_roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "84bed5113716090f2e09cfe113efd0deb33c686570ce9fa7c1083f9be0a95bc8",
+        "84bed5113716090f2e09cfe113efd0deb33c686570ce9fa7c1083f9be0a95bc8"
+      ]
+    },
+    {
+      "index": 30,
+      "name": "Denoising Depth",
+      "type": "denoising_depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "68c15e659ca4c12819135fede71bd0390d69b994bd16d46a146a9e5cc7446cf4",
+        "de64f0676afb2585078290851b33fc90c80cf96b3b7b13335883896ec39dea7f"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/with-shadow-catcher-catcher-approximate.json",
+  "kernelCompileSeconds": 115.202,
+  "backendDescription": "Cycles Metal device, MetalRT forced on (Apple ray-tracing API, software on M2), generic kernels; validation of the M3+ default path",
+  "environment": {
+    "CYCLES_METALRT": "1",
+    "CYCLES_METAL_SPECIALIZATION_LEVEL": "0"
+  },
+  "processSeconds": 0.758,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/passes/with-shadow-catcher-catcher-approximate.json",
+    "--backend",
+    "metal",
+    "--label",
+    "metal-m2pro-metalrt",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/with-shadow-catcher-catcher-approximate/metal-m2pro-metalrt",
+    "--threads",
+    "4"
+  ],
+  "metalSettings": {
+    "device": "DEVICE_METAL",
+    "metalrt": true,
+    "specializationLevel": "CYCLES_METAL_SPECIALIZATION_LEVEL=0 (PSO_GENERIC)",
+    "bvhLayout": "BVH_LAYOUT_METAL",
+    "fastMathEnabled": true,
+    "denoiser": null,
+    "kernelSource": "native/work/macos/osx-arm64/host/build/lib/codebrix-cycles/source",
+    "kernelCache": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/cache/metal-m2pro-metalrt/cycles",
+    "systemMetalShaderCache": "not cleared (macOS-managed)",
+    "optionNames": [
+      "CYCLES_METALRT",
+      "CYCLES_METAL_SPECIALIZATION_LEVEL",
+      "DeviceInfo::use_hardware_raytracing",
+      "DeviceInfo::kernel_optimization_level"
+    ]
+  },
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

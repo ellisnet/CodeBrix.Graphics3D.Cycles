@@ -1,0 +1,222 @@
+{
+  "sceneId": "volumes/passes-emission",
+  "sceneSha256": "5593523ecd5d61bcdf964711743742348bfdb7030f1d8e1e35159aa5424e4813",
+  "backend": "metal-m2pro-metalrt",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 5.960464477539063e-08,
+  "renderSeconds": [
+    3.14761,
+    2.74443
+  ],
+  "filmSha256": [
+    "cdb9236e73cf49f233ae0cc60e4696b25f56ca31161e1238af7fd2a6be3875ef",
+    "9d9a810d038078277acac68f1dc4373479dc5069a92c78e3b43451a44d92a952"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "volume_direct",
+      "type": "volume_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "8a6c67568c25b66eddd08b60bcf9199f6352057796a13affb544ed17090a0b45",
+        "5dbea67bb81d1341b5b0be7f5a422759dfc463902ed2b856e8b81e0ab139bb93"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "volume_indirect",
+      "type": "volume_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1186bf41067d9c8cbc1f175fbb9b4caa14097a62149b7bcd5ea7c80c2e4c361e",
+        "36994c4e1f44784d136f5e4a6059c02fae4802244df9c7b15fb09f1307466761"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "diffuse_direct",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "511648e69552c341a5f17d7feb7c078385e38d62ac3049163fb0588a7bac49ac",
+        "cedda465fd5cbfade4d14f0f9c2cc68d2b337d1bb5e3637fe7745900380d5d36"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "diffuse_indirect",
+      "type": "diffuse_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "61270104ce39646134970bcacef68308eb8ddcdcb01eea265f98cad0769779c5",
+        "fdac58dbcd687962439d6e46613d7cb4aeaa5638757a317e6dab7fcd8d62e2ee"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "glossy_direct",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "33bb67e22ec16b44da9b4010035edd6498323d018320e24fbc29e178efae5977",
+        "30ce8f8b3879d503b002e0f7375cddad8207f99a88c96c8bef7e355b1d6db382"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "glossy_indirect",
+      "type": "glossy_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "fcbd545036b978c910f1f485032e56c48bbbe5a96d6b47738204d2a3fc8a551a",
+        "ec65268715b64dbc9305008dbbcb12fc35e76c57bbf06f59ec135522ad489022"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "transmission_direct",
+      "type": "transmission_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "ee54edfb0c2c03dbcef7e55a65883cb0744d794ec0dc6045b8b31e2f4c8b4cfb",
+        "253fadb9cab4eced85e808cc40edcb78d774508293adefccee8cc9abdac5552b"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "transmission_indirect",
+      "type": "transmission_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "6106b8b0bd073195a3373a034953fb5086bfecb3e4c6a9e68a006f3e4f8d53b8",
+        "01536e771885f8bda1e987955c2b161bf02cc0eba3369216a9c4c4fea6b96bf8"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "emission",
+      "type": "emission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "07576b9d471921726e2caec23eb1124d415a6f836c10ff69bbc821b8af6d0cdc",
+        "2182aaf2cabf1939aae1c9a3cea4ffce6f06dbbfc47b2e6e67809128cb80da56"
+      ]
+    },
+    {
+      "index": 9,
+      "name": "background",
+      "type": "background",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2f21a8ca19de37bea1231fa9799fe2d3a9f77348e388b1c647a8157f62b8a288",
+        "2f21a8ca19de37bea1231fa9799fe2d3a9f77348e388b1c647a8157f62b8a288"
+      ]
+    },
+    {
+      "index": 10,
+      "name": "Combined_one",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "6937310724c741a35eda485e9eb6bb65fa6e3394ad48ae2983affdf56a38636e",
+        "4e1eeb5e10c12cb2da70dcc1bfc2648db686825272d4081ba224c22939fff1ba"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/volumes/passes-emission.json",
+  "kernelCompileSeconds": 115.202,
+  "backendDescription": "Cycles Metal device, MetalRT forced on (Apple ray-tracing API, software on M2), generic kernels; validation of the M3+ default path",
+  "environment": {
+    "CYCLES_METALRT": "1",
+    "CYCLES_METAL_SPECIALIZATION_LEVEL": "0"
+  },
+  "processSeconds": 6.018,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/volumes/passes-emission.json",
+    "--backend",
+    "metal",
+    "--label",
+    "metal-m2pro-metalrt",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/passes-emission/metal-m2pro-metalrt",
+    "--threads",
+    "4"
+  ],
+  "metalSettings": {
+    "device": "DEVICE_METAL",
+    "metalrt": true,
+    "specializationLevel": "CYCLES_METAL_SPECIALIZATION_LEVEL=0 (PSO_GENERIC)",
+    "bvhLayout": "BVH_LAYOUT_METAL",
+    "fastMathEnabled": true,
+    "denoiser": null,
+    "kernelSource": "native/work/macos/osx-arm64/host/build/lib/codebrix-cycles/source",
+    "kernelCache": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/cache/metal-m2pro-metalrt/cycles",
+    "systemMetalShaderCache": "not cleared (macOS-managed)",
+    "optionNames": [
+      "CYCLES_METALRT",
+      "CYCLES_METAL_SPECIALIZATION_LEVEL",
+      "DeviceInfo::use_hardware_raytracing",
+      "DeviceInfo::kernel_optimization_level"
+    ]
+  },
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

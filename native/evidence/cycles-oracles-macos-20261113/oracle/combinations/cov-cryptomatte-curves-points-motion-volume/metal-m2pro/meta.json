@@ -1,0 +1,167 @@
+{
+  "sceneId": "combinations/cov-cryptomatte-curves-points-motion-volume",
+  "sceneSha256": "66ff34d0cda87000652c5006e7ef610918419b49d41d82dd27aec46b02cb237f",
+  "backend": "metal-m2pro",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 5.960464477539063e-08,
+  "renderSeconds": [
+    1.57481,
+    1.29213
+  ],
+  "filmSha256": [
+    "461a40607caa07f5e2ece8aa5c9f6e657e9fe1d6166faaf4eeaa7c4c84763aaf",
+    "9499e737eec6b212ad1a56e78605ad34ffc4bdb9a610ff71d8e9bf666f5f2930"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "CryptoObject00",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "f9ff71b21cc949683bf7c4c91d693917a0253094ace22d1cbc649c99ecdb1fc6",
+        "294cbadd85f9bde57fffd68518016d84e8fe5b258bcc1e8cce4b2a62d25f43d8"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "CryptoObject01",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a",
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "CryptoMaterial00",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "0ccb1a5ef17e1e297ad440f1812bf83659a9b61a6b486b42eeef138d6b122927",
+        "24d25fc8afb83d222a940eda94ea2ff66b3c57fe43a8c6f7890058c1d9948e2a"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "CryptoMaterial01",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a",
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "CryptoAsset00",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "e3459cfba2df75b6a1ec758d457b8c4c881329995dd49786b43a7fe5c9dcb874",
+        "b68f61e8de67053189b3c885b7dfa0156a45f5386526ea27aba0035c8be2f6a4"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "CryptoAsset01",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a",
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/combinations/cov-cryptomatte-curves-points-motion-volume.json",
+  "kernelCompileSeconds": 123.95,
+  "backendDescription": "Cycles Metal device, MetalRT off (BVH2), generic kernels (PSO_GENERIC), fastMathEnabled as pinned",
+  "environment": {
+    "CYCLES_METALRT": "0",
+    "CYCLES_METAL_SPECIALIZATION_LEVEL": "0"
+  },
+  "processSeconds": 2.99,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/combinations/cov-cryptomatte-curves-points-motion-volume.json",
+    "--backend",
+    "metal",
+    "--label",
+    "metal-m2pro",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/combinations/cov-cryptomatte-curves-points-motion-volume/metal-m2pro",
+    "--threads",
+    "4"
+  ],
+  "metalSettings": {
+    "device": "DEVICE_METAL",
+    "metalrt": false,
+    "specializationLevel": "CYCLES_METAL_SPECIALIZATION_LEVEL=0 (PSO_GENERIC)",
+    "bvhLayout": "BVH_LAYOUT_BVH2",
+    "fastMathEnabled": true,
+    "denoiser": null,
+    "kernelSource": "native/work/macos/osx-arm64/host/build/lib/codebrix-cycles/source",
+    "kernelCache": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/cache/metal-m2pro/cycles",
+    "systemMetalShaderCache": "not cleared (macOS-managed)",
+    "optionNames": [
+      "CYCLES_METALRT",
+      "CYCLES_METAL_SPECIALIZATION_LEVEL",
+      "DeviceInfo::use_hardware_raytracing",
+      "DeviceInfo::kernel_optimization_level"
+    ]
+  },
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

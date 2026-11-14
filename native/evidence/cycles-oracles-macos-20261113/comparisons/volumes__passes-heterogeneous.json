@@ -1,0 +1,1057 @@
+{
+  "sceneId": "volumes/passes-heterogeneous",
+  "sceneSha256": "1067bd91e5a15cae62ffe6d1996d748dd0c4a192b14342a7cc2a78fbd11bf38f",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/passes-heterogeneous/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "volume_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "volume_indirect",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "diffuse_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "diffuse_indirect",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "glossy_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "glossy_indirect",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "transmission_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "transmission_indirect",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "emission",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "background",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        1.33865,
+        0.00722396
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "arm64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/passes-heterogeneous/metal-m2pro",
+      "backend": "metal-m2pro",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "volume_direct",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.4901161193847656e-08
+        },
+        {
+          "name": "volume_indirect",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.4901161193847656e-08
+        },
+        {
+          "name": "diffuse_direct",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 8.940696716308594e-08
+        },
+        {
+          "name": "diffuse_indirect",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.470348358154297e-08
+        },
+        {
+          "name": "glossy_direct",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.9802322387695312e-08
+        },
+        {
+          "name": "glossy_indirect",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.384185791015625e-07
+        },
+        {
+          "name": "transmission_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "transmission_indirect",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 9.313225746154785e-10
+        },
+        {
+          "name": "emission",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "background",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 5.960464477539063e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 5.960464477539063e-08,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.715037,
+        0.135127
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/passes-heterogeneous/metal-m2pro-metalrt",
+      "backend": "metal-m2pro-metalrt",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "volume_direct",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.4901161193847656e-08
+        },
+        {
+          "name": "volume_indirect",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.4901161193847656e-08
+        },
+        {
+          "name": "diffuse_direct",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 8.940696716308594e-08
+        },
+        {
+          "name": "diffuse_indirect",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.9802322387695312e-08
+        },
+        {
+          "name": "glossy_direct",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.9802322387695312e-08
+        },
+        {
+          "name": "glossy_indirect",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.384185791015625e-07
+        },
+        {
+          "name": "transmission_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "transmission_indirect",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.4901161193847656e-08
+        },
+        {
+          "name": "emission",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "background",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 2.9802322387695312e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.9802322387695312e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 2.9802322387695312e-08,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        3.07823,
+        2.59065
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    }
+  ],
+  "goldStandards": [
+    "cpu-arm64-macos",
+    "metal-m2pro",
+    "metal-m2pro-metalrt"
+  ],
+  "candidates": [],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.06891205906867981,
+      "maxRelativeError": 0.3809195581376376,
+      "rms": 0.004687472359299757,
+      "practicalFailures": 537,
+      "strictDifferences": 878,
+      "worstPixel": {
+        "x": 16,
+        "y": 10,
+        "channel": "G",
+        "reference": 0.13753671944141388,
+        "candidate": 0.1899271458387375,
+        "absoluteDifference": 0.05239042639732361,
+        "criterionRatio": 675.9414497913632
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "volume_direct",
+          "type": "volume_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.03335928916931152,
+          "maxRelativeError": 5.185303632887996,
+          "rms": 0.001593095893254893,
+          "practicalFailures": 448,
+          "strictDifferences": 585,
+          "worstPixel": {
+            "x": 19,
+            "y": 11,
+            "channel": 2,
+            "reference": 0.06592284888029099,
+            "candidate": 0.03256355971097946,
+            "absoluteDifference": 0.03335928916931152,
+            "criterionRatio": 527.9657563159031
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "volume_indirect",
+          "type": "volume_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.039393745362758636,
+          "maxRelativeError": 3.706932483074254,
+          "rms": 0.0015927930333202302,
+          "practicalFailures": 525,
+          "strictDifferences": 634,
+          "worstPixel": {
+            "x": 20,
+            "y": 7,
+            "channel": 2,
+            "reference": 0.08517329394817352,
+            "candidate": 0.045779548585414886,
+            "absoluteDifference": 0.039393745362758636,
+            "criterionRatio": 587.6623536845678
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "diffuse_direct",
+          "type": "diffuse_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.2217409908771515,
+          "maxRelativeError": 0.5877788612536405,
+          "rms": 0.0069558703445566075,
+          "practicalFailures": 300,
+          "strictDifferences": 721,
+          "worstPixel": {
+            "x": 15,
+            "y": 12,
+            "channel": 2,
+            "reference": 0.37940672039985657,
+            "candidate": 0.15766572952270508,
+            "absoluteDifference": 0.2217409908771515,
+            "criterionRatio": 1761.507970047423
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "diffuse_indirect",
+          "type": "diffuse_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.24494266510009766,
+          "maxRelativeError": 3.322637229540134,
+          "rms": 0.006260928449967002,
+          "practicalFailures": 308,
+          "strictDifferences": 600,
+          "worstPixel": {
+            "x": 15,
+            "y": 12,
+            "channel": 2,
+            "reference": 0.07371935248374939,
+            "candidate": 0.31866201758384705,
+            "absoluteDifference": 0.24494266510009766,
+            "criterionRatio": 3783.256441432455
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "glossy_direct",
+          "type": "glossy_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.029829736799001694,
+          "maxRelativeError": 0.34583311162769487,
+          "rms": 0.0010430117725002243,
+          "practicalFailures": 18,
+          "strictDifferences": 59,
+          "worstPixel": {
+            "x": 16,
+            "y": 10,
+            "channel": 0,
+            "reference": 0.08625471591949463,
+            "candidate": 0.056424979120492935,
+            "absoluteDifference": 0.029829736799001694,
+            "criterionRatio": 443.5586385373323
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "glossy_indirect",
+          "type": "glossy_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.037667036056518555,
+          "maxRelativeError": 0.05377972343768995,
+          "rms": 0.0016087924236021954,
+          "practicalFailures": 64,
+          "strictDifferences": 163,
+          "worstPixel": {
+            "x": 18,
+            "y": 6,
+            "channel": 0,
+            "reference": 0.16720189154148102,
+            "candidate": 0.15834081172943115,
+            "absoluteDifference": 0.008861079812049866,
+            "criterionRatio": 106.19654406778783
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "transmission_direct",
+          "type": "transmission_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.0,
+            "candidate": 0.0,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "transmission_indirect",
+          "type": "transmission_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.030372127890586853,
+          "maxRelativeError": 0.2421160304810729,
+          "rms": 0.0010143682741423456,
+          "practicalFailures": 11,
+          "strictDifferences": 54,
+          "worstPixel": {
+            "x": 16,
+            "y": 10,
+            "channel": 0,
+            "reference": 0.12468430399894714,
+            "candidate": 0.1548723727464676,
+            "absoluteDifference": 0.030188068747520447,
+            "criterionRatio": 402.84672223159464
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "emission",
+          "type": "emission",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.0,
+            "candidate": 0.0,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "background",
+          "type": "background",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.30000001192092896,
+            "candidate": 0.30000001192092896,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.06891217827796936,
+      "maxRelativeError": 0.38091869139245105,
+      "rms": 0.004687472821529702,
+      "practicalFailures": 537,
+      "strictDifferences": 873,
+      "worstPixel": {
+        "x": 16,
+        "y": 10,
+        "channel": "G",
+        "reference": 0.13753671944141388,
+        "candidate": 0.18992702662944794,
+        "absoluteDifference": 0.05239030718803406,
+        "criterionRatio": 675.9399117527262
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "volume_direct",
+          "type": "volume_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.03335928916931152,
+          "maxRelativeError": 5.181278699255141,
+          "rms": 0.0015930956391115886,
+          "practicalFailures": 448,
+          "strictDifferences": 585,
+          "worstPixel": {
+            "x": 19,
+            "y": 11,
+            "channel": 2,
+            "reference": 0.06592284888029099,
+            "candidate": 0.03256355971097946,
+            "absoluteDifference": 0.03335928916931152,
+            "criterionRatio": 527.9657563159031
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "volume_indirect",
+          "type": "volume_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.03939375281333923,
+          "maxRelativeError": 3.7069252616492205,
+          "rms": 0.0015927918045924702,
+          "practicalFailures": 525,
+          "strictDifferences": 634,
+          "worstPixel": {
+            "x": 20,
+            "y": 7,
+            "channel": 2,
+            "reference": 0.08517329394817352,
+            "candidate": 0.04577954113483429,
+            "absoluteDifference": 0.03939375281333923,
+            "criterionRatio": 587.6624648297684
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "diffuse_direct",
+          "type": "diffuse_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.2217409461736679,
+          "maxRelativeError": 0.587778680874751,
+          "rms": 0.006955869474225506,
+          "practicalFailures": 300,
+          "strictDifferences": 717,
+          "worstPixel": {
+            "x": 15,
+            "y": 12,
+            "channel": 2,
+            "reference": 0.37940672039985657,
+            "candidate": 0.15766577422618866,
+            "absoluteDifference": 0.2217409461736679,
+            "criterionRatio": 1761.5076149234458
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "diffuse_indirect",
+          "type": "diffuse_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.24494263529777527,
+          "maxRelativeError": 3.32263682527285,
+          "rms": 0.006260925714376792,
+          "practicalFailures": 308,
+          "strictDifferences": 599,
+          "worstPixel": {
+            "x": 15,
+            "y": 12,
+            "channel": 2,
+            "reference": 0.07371935248374939,
+            "candidate": 0.31866198778152466,
+            "absoluteDifference": 0.24494263529777527,
+            "criterionRatio": 3783.2559811213528
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "glossy_direct",
+          "type": "glossy_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.029833577573299408,
+          "maxRelativeError": 0.34587763990950265,
+          "rms": 0.001043099714900006,
+          "practicalFailures": 18,
+          "strictDifferences": 56,
+          "worstPixel": {
+            "x": 16,
+            "y": 10,
+            "channel": 0,
+            "reference": 0.08625471591949463,
+            "candidate": 0.05642113834619522,
+            "absoluteDifference": 0.029833577573299408,
+            "criterionRatio": 443.6157496218149
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "glossy_indirect",
+          "type": "glossy_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.03766679763793945,
+          "maxRelativeError": 0.0537894190043548,
+          "rms": 0.0016087651842585733,
+          "practicalFailures": 64,
+          "strictDifferences": 167,
+          "worstPixel": {
+            "x": 18,
+            "y": 6,
+            "channel": 0,
+            "reference": 0.16720189154148102,
+            "candidate": 0.158339262008667,
+            "absoluteDifference": 0.008862629532814026,
+            "criterionRatio": 106.2151168594695
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "transmission_direct",
+          "type": "transmission_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.0,
+            "candidate": 0.0,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "transmission_indirect",
+          "type": "transmission_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.030372023582458496,
+          "maxRelativeError": 0.24211519390321176,
+          "rms": 0.0010143649750313155,
+          "practicalFailures": 11,
+          "strictDifferences": 52,
+          "worstPixel": {
+            "x": 16,
+            "y": 10,
+            "channel": 0,
+            "reference": 0.12468430399894714,
+            "candidate": 0.15487226843833923,
+            "absoluteDifference": 0.03018796443939209,
+            "criterionRatio": 402.84533028473106
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "emission",
+          "type": "emission",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.0,
+            "candidate": 0.0,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "background",
+          "type": "background",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.30000001192092896,
+            "candidate": 0.30000001192092896,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 3.129243850708008e-06,
+      "maxRelativeError": 1.3140843751050095e-05,
+      "rms": 8.16625961780354e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 35,
+      "worstPixel": {
+        "x": 10,
+        "y": 11,
+        "channel": "R",
+        "reference": 0.23813112080097198,
+        "candidate": 0.23812799155712128,
+        "absoluteDifference": 3.129243850708008e-06,
+        "criterionRatio": 0.03205331229007942
+      },
+      "reference": "metal-m2pro",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "volume_direct",
+          "type": "volume_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 9.726500138640404e-07,
+          "maxRelativeError": 0.0006507253114388475,
+          "rms": 2.990523887636771e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 3,
+          "worstPixel": {
+            "x": 19,
+            "y": 3,
+            "channel": 2,
+            "reference": 0.0014947167364880443,
+            "candidate": 0.0014937440864741802,
+            "absoluteDifference": 9.726500138640404e-07,
+            "criterionRatio": 0.01933738462751022
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "volume_indirect",
+          "type": "volume_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 3.0919909477233887e-06,
+          "maxRelativeError": 0.0017960097329433762,
+          "rms": 8.215472280060223e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 7,
+          "worstPixel": {
+            "x": 10,
+            "y": 11,
+            "channel": 0,
+            "reference": 0.0936889722943306,
+            "candidate": 0.09368588030338287,
+            "absoluteDifference": 3.0919909477233887e-06,
+            "criterionRatio": 0.044982399741872556
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "diffuse_direct",
+          "type": "diffuse_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.152557373046875e-07,
+          "maxRelativeError": 6.218982300524251e-06,
+          "rms": 3.60909465855687e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 31,
+          "worstPixel": {
+            "x": 26,
+            "y": 11,
+            "channel": 0,
+            "reference": 0.5585567951202393,
+            "candidate": 0.558556079864502,
+            "absoluteDifference": 7.152557373046875e-07,
+            "criterionRatio": 0.004423039554063255
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "diffuse_indirect",
+          "type": "diffuse_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.5406479835510254e-06,
+          "maxRelativeError": 2.108888140986037e-05,
+          "rms": 8.033299004962108e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 32,
+          "worstPixel": {
+            "x": 19,
+            "y": 7,
+            "channel": 0,
+            "reference": 0.12047334015369415,
+            "candidate": 0.1204758808016777,
+            "absoluteDifference": 2.5406479835510254e-06,
+            "criterionRatio": 0.03428921474480478
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "glossy_direct",
+          "type": "glossy_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 3.840774297714233e-06,
+          "maxRelativeError": 6.806868797438875e-05,
+          "rms": 1.211249708256566e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 14,
+          "worstPixel": {
+            "x": 16,
+            "y": 10,
+            "channel": 0,
+            "reference": 0.056424979120492935,
+            "candidate": 0.05642113834619522,
+            "absoluteDifference": 3.840774297714233e-06,
+            "criterionRatio": 0.06267071158392667
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "glossy_indirect",
+          "type": "glossy_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.384185791015625e-06,
+          "maxRelativeError": 1.0246627455582102e-05,
+          "rms": 1.491731926264464e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 71,
+          "worstPixel": {
+            "x": 18,
+            "y": 6,
+            "channel": 0,
+            "reference": 0.15834081172943115,
+            "candidate": 0.158339262008667,
+            "absoluteDifference": 1.5497207641601562e-06,
+            "criterionRatio": 0.01897582509077013
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "transmission_direct",
+          "type": "transmission_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.0,
+            "candidate": 0.0,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "transmission_indirect",
+          "type": "transmission_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.043081283569336e-07,
+          "maxRelativeError": 7.205438088233952e-07,
+          "rms": 4.518176351726686e-09,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 16,
+            "y": 10,
+            "channel": 0,
+            "reference": 0.1548723727464676,
+            "candidate": 0.15487226843833923,
+            "absoluteDifference": 1.043081283569336e-07,
+            "criterionRatio": 0.0012881606078645885
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "emission",
+          "type": "emission",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.0,
+            "candidate": 0.0,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "background",
+          "type": "background",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.30000001192092896,
+            "candidate": 0.30000001192092896,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 0,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

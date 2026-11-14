@@ -1,0 +1,190 @@
+{
+  "sceneId": "volumes/passes-emission-heterogeneous",
+  "sceneSha256": "47fe28423face986eb19da2ca739f985690d3b8af45d19d91445040e182b8c88",
+  "backend": "cpu-arm64-macos",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    1.35008,
+    0.00716425
+  ],
+  "filmSha256": [
+    "4bbecf206e250c488142e14b0ff15d1bb605e072fca31c3446c4976a975aad99",
+    "4bbecf206e250c488142e14b0ff15d1bb605e072fca31c3446c4976a975aad99"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "volume_direct",
+      "type": "volume_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "73dbc3cda6a8cc2c29c96e489828dc13bee004251209b6bc794d8681f33ae119",
+        "73dbc3cda6a8cc2c29c96e489828dc13bee004251209b6bc794d8681f33ae119"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "volume_indirect",
+      "type": "volume_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "9838fd4219d1413b41794bc276a8a71e5e37f2d65dafbf9f65f80f86dc14146d",
+        "9838fd4219d1413b41794bc276a8a71e5e37f2d65dafbf9f65f80f86dc14146d"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "diffuse_direct",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "e6ac98303c2fd643c341be343bc603664770945a39f66c5e8bf878bb18f8ab40",
+        "e6ac98303c2fd643c341be343bc603664770945a39f66c5e8bf878bb18f8ab40"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "diffuse_indirect",
+      "type": "diffuse_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "94266cf01447f94e533dc9c1e0f59aa744b14a05938be644712c5abb76a07aa1",
+        "94266cf01447f94e533dc9c1e0f59aa744b14a05938be644712c5abb76a07aa1"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "glossy_direct",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "94316d26745ab48ef7c24a33dae1860069e140d3affc36158765d6714fb3d4e5",
+        "94316d26745ab48ef7c24a33dae1860069e140d3affc36158765d6714fb3d4e5"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "glossy_indirect",
+      "type": "glossy_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "eda14c7db7907e1c0478de28573fe1cbd0645672229bcfda29e387beec2636cb",
+        "eda14c7db7907e1c0478de28573fe1cbd0645672229bcfda29e387beec2636cb"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "transmission_direct",
+      "type": "transmission_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "8bf2f86e5c54a02ed4285866a3e342f87187ef2b6f19809f85b57356dd6b2bd9",
+        "8bf2f86e5c54a02ed4285866a3e342f87187ef2b6f19809f85b57356dd6b2bd9"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "transmission_indirect",
+      "type": "transmission_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "a1f9a36260dbac9b8454be51f3a0b9b28767c390420a6511ea8c019e94f21639",
+        "a1f9a36260dbac9b8454be51f3a0b9b28767c390420a6511ea8c019e94f21639"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "emission",
+      "type": "emission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "6f1ff9974ce1ed754e2050bd0b698eef9adad0ae781c5b41494ce2d0661d82b2",
+        "6f1ff9974ce1ed754e2050bd0b698eef9adad0ae781c5b41494ce2d0661d82b2"
+      ]
+    },
+    {
+      "index": 9,
+      "name": "background",
+      "type": "background",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2f21a8ca19de37bea1231fa9799fe2d3a9f77348e388b1c647a8157f62b8a288",
+        "2f21a8ca19de37bea1231fa9799fe2d3a9f77348e388b1c647a8157f62b8a288"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/volumes/passes-emission-heterogeneous.json",
+  "backendDescription": "Cycles CPU device, Apple Clang arm64, plain C++ kernels (no sse2neon), fixed-baseline oracle: no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 1.434,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/volumes/passes-emission-heterogeneous.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-macos",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/passes-emission-heterogeneous/cpu-arm64-macos",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

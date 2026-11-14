@@ -1,0 +1,17 @@
+--- a/src/util/half.h
++++ b/src/util/half.h
+@@ -1,8 +1,14 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// Apple ARM64 adaptation; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2026 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+ 
+ #pragma once
++
++#if defined(__ARM_NEON) && !defined(__KERNEL_GPU__)
++#  include <arm_neon.h>
++#endif
+ 
+ #include "util/defines.h"
+ #include "util/math_base.h"

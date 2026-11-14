@@ -1,0 +1,113 @@
+$ dotnet test --solution CodeBrix.Graphics3D.Cycles.slnx --configuration Debug --no-build
+start Fri Nov 13 22:01:09 PST 2026
+Running tests from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)
+skipped CodeBrix.Graphics3D.Cycles.Tests.WebGpuAmbientOcclusionTests.gpu_ao_pass_matches_the_cpu_reference_with_the_practical_criterion
+  CyclesBackend.Gpu resolved to Metal, not WebGPU.
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+skipped CodeBrix.Graphics3D.Cycles.Tests.BakingTests.the_webgpu_device_bakes_the_known_results_and_matches_the_cpu_bake
+  This binary's GPU backend is not WebGPU.
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+skipped CodeBrix.Graphics3D.Cycles.Tests.SceneSettingsTests.Dispersion_is_refused_by_name_on_the_webgpu_backend
+  This binary's GPU backend is not WebGPU.
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+failed CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gltf_textured_plane_with_the_blender_mapping_renders_on_the_gpu_within_the_practical_criterion (496ms)
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+  Expected comparison.PracticalFailures to be 0, but found 4 (difference of 4).
+    at SilverAssertions.Execution.XUnit3TestFramework.Throw(String message)
+    at SilverAssertions.Execution.TestFrameworkProvider.Throw(String message)
+    at SilverAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+    at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+    at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+    at SilverAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+    at SilverAssertions.Numeric.NumericAssertions`2.Be(T expected, String because, Object[] becauseArgs)
+    at CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gltf_textured_plane_with_the_blender_mapping_renders_on_the_gpu_within_the_practical_criterion() in /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs:1155
+    --- End of stack trace from previous location ---
+  Standard output
+    gltf-textured-plane-blender: CPU comparison (reported, not required on Metal): floats 6144, max abs error 0.00657511, practical failures 162, strict differences 1660, bitwise different, practical FAIL
+    gltf-textured-plane-blender: authority recorded Metal reference: floats 6144, max abs error 0.0071179, practical failures 4, strict differences 1599, bitwise different, practical FAIL
+    
+  Error output
+failed CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_cameras_and_sampling_features_match_the_cpu_reference(variant: "adaptive-blue-noise") (467ms)
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+  Expected practical to be 0, but found 51 (difference of 51).
+    at SilverAssertions.Execution.XUnit3TestFramework.Throw(String message)
+    at SilverAssertions.Execution.TestFrameworkProvider.Throw(String message)
+    at SilverAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+    at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+    at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+    at SilverAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+    at SilverAssertions.Numeric.NumericAssertions`2.Be(T expected, String because, Object[] becauseArgs)
+    at CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_cameras_and_sampling_features_match_the_cpu_reference(String variant) in /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs:512
+    --- End of stack trace from previous location ---
+  Standard output
+    adaptive-blue-noise: max abs error 0.0427245, practical failures 51, strict differences 220
+    
+  Error output
+00:24.48 | ERROR: Texture exceeds maximum allowed size of 16384 x 16384 (requested: 16385 x 1)
+00:24.48 | ERROR: Refer to the Cycles GPU rendering documentation for possible solutions:
+00:24.48 | ERROR: https://docs.blender.org/manual/en/latest/render/cycles/gpu_rendering.html
+skipped CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.webgpu_refuses_the_integer_and_component_nodes_by_name_and_the_cpu_renders_them(node: "Integer Math")
+  Cycles' Metal device renders these nodes; the refusal is the WGSL device's.
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+skipped CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.webgpu_refuses_the_integer_and_component_nodes_by_name_and_the_cpu_renders_them(node: "Get Vector Component")
+  Cycles' Metal device renders these nodes; the refusal is the WGSL device's.
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+skipped CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.webgpu_refuses_the_integer_and_component_nodes_by_name_and_the_cpu_renders_them(node: "Boolean Math")
+  Cycles' Metal device renders these nodes; the refusal is the WGSL device's.
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+failed CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_film_matches_its_backend_reference_with_the_practical_criterion(name: "glass") (1s 525ms)
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+  Expected comparison.PracticalFailures to be 0, but found 15 (difference of 15).
+    at SilverAssertions.Execution.XUnit3TestFramework.Throw(String message)
+    at SilverAssertions.Execution.TestFrameworkProvider.Throw(String message)
+    at SilverAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+    at SilverAssertions.Numeric.NumericAssertions`2.Be(T expected, String because, Object[] becauseArgs)
+    at CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_film_matches_its_backend_reference_with_the_practical_criterion(String name) in /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs:114
+    --- End of stack trace from previous location ---
+  Standard output
+    glass: CPU comparison (reported, not required on Metal): floats 3072, max abs error 1.09076E-05, practical failures 0, strict differences 283, bitwise different, practical PASS
+    glass: authority recorded Metal reference: floats 3072, max abs error 0.0302477, practical failures 15, strict differences 68, bitwise different, practical FAIL
+    
+  Error output
+failed CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_lamp_shaders_conductor_thin_films_and_sky_worlds_match_the_cpu_reference(variant: "sky-sun-guiding") (1s 670ms)
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+  Expected practical to be 0, but found 1 (difference of 1).
+    at SilverAssertions.Execution.XUnit3TestFramework.Throw(String message)
+    at SilverAssertions.Execution.TestFrameworkProvider.Throw(String message)
+    at SilverAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+    at SilverAssertions.Numeric.NumericAssertions`2.Be(T expected, String because, Object[] becauseArgs)
+    at CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_lamp_shaders_conductor_thin_films_and_sky_worlds_match_the_cpu_reference(String variant) in /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs:677
+    --- End of stack trace from previous location ---
+  Standard output
+    sky-sun-guiding: max abs error 0.00146294, practical failures 1, strict differences 2201
+    
+  Error output
+failed CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gltf_sample_renders_on_the_gpu_within_the_practical_criterion (1s 040ms)
+  from /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64)
+  Expected comparison.PracticalFailures to be 0, but found 3 (difference of 3).
+    at SilverAssertions.Execution.XUnit3TestFramework.Throw(String message)
+    at SilverAssertions.Execution.TestFrameworkProvider.Throw(String message)
+    at SilverAssertions.Numeric.NumericAssertions`2.Be(T expected, String because, Object[] becauseArgs)
+    at CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gltf_sample_renders_on_the_gpu_within_the_practical_criterion() in /Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs:1130
+    --- End of stack trace from previous location ---
+  Standard output
+    gltf-sample: CPU comparison (reported, not required on Metal): floats 6144, max abs error 9.20892E-06, practical failures 0, strict differences 483, bitwise different, practical PASS
+    gltf-sample: authority recorded Metal reference: floats 6144, max abs error 0.00521946, practical failures 3, strict differences 19, bitwise different, practical FAIL
+    
+  Error output
+/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Debug/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|arm64) failed with 5 error(s) [+321/x5/?6] (48s 506ms)
+Exit code: 2
+
+Test run summary: Failed!
+  total: 332
+  failed: 5
+  succeeded: 321
+  skipped: 6
+  duration: 49s 068ms
+Test run completed with non-success exit code: 2. At least one test failed. See: https://aka.ms/testingplatform/exitcodes
+real 49.84
+user 9.61
+sys 31.42
+exit 2
+end Fri Nov 13 22:01:59 PST 2026

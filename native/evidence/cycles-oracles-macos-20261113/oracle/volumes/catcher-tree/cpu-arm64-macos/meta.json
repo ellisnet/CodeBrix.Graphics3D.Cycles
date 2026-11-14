@@ -1,0 +1,113 @@
+{
+  "sceneId": "volumes/catcher-tree",
+  "sceneSha256": "57e97085bf282d6afef9fdb079011d4e36deef74dbf24d3a64dffdfe2f0f053a",
+  "backend": "cpu-arm64-macos",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0200766,
+    0.018758
+  ],
+  "filmSha256": [
+    "f0179e0875696d6f411d37245d3d587ec2e888c8c2c2896f192484587a90abdd",
+    "f0179e0875696d6f411d37245d3d587ec2e888c8c2c2896f192484587a90abdd"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Shadow Catcher",
+      "type": "shadow_catcher",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "32536a014e20c0c0e5412d1c7c47d5419c32ef2a2c4337e228c1bd962be2a4bd",
+        "32536a014e20c0c0e5412d1c7c47d5419c32ef2a2c4337e228c1bd962be2a4bd"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Shadow Catcher Matte",
+      "type": "shadow_catcher_matte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "f0179e0875696d6f411d37245d3d587ec2e888c8c2c2896f192484587a90abdd",
+        "f0179e0875696d6f411d37245d3d587ec2e888c8c2c2896f192484587a90abdd"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Shadow Catcher Sample Count",
+      "type": "shadow_catcher_sample_count",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "683477dd62fdf2d7a98fad4925b7ed8460548229cb24722dca70590b802e11f2",
+        "683477dd62fdf2d7a98fad4925b7ed8460548229cb24722dca70590b802e11f2"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/volumes/catcher-tree.json",
+  "backendDescription": "Cycles CPU device, Apple Clang arm64, plain C++ kernels (no sse2neon), fixed-baseline oracle: no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.107,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/volumes/catcher-tree.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-macos",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/catcher-tree/cpu-arm64-macos",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

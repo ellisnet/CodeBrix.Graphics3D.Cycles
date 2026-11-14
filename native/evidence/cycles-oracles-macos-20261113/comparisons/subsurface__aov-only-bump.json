@@ -1,0 +1,361 @@
+{
+  "sceneId": "subsurface/aov-only-bump",
+  "sceneSha256": "16b218abe72f61e82ac1a9419d09a765d2f51a4723d95e16964fa6662084ceb9",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/subsurface/aov-only-bump/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Coords",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Height",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.005057,
+        0.00358525
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "arm64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/subsurface/aov-only-bump/metal-m2pro",
+      "backend": "metal-m2pro",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Coords",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "Height",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 5.960464477539063e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 5.960464477539063e-08,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.497403,
+        0.108456
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/subsurface/aov-only-bump/metal-m2pro-metalrt",
+      "backend": "metal-m2pro-metalrt",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Coords",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "Height",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 5.960464477539063e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 5.960464477539063e-08,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.46499,
+        0.202605
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    }
+  ],
+  "goldStandards": [
+    "cpu-arm64-macos",
+    "metal-m2pro",
+    "metal-m2pro-metalrt"
+  ],
+  "candidates": [],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.03427192568778992,
+      "maxRelativeError": 0.17931389892245597,
+      "rms": 0.0006271213673649116,
+      "practicalFailures": 8,
+      "strictDifferences": 872,
+      "worstPixel": {
+        "x": 15,
+        "y": 8,
+        "channel": "B",
+        "reference": 0.19112810492515564,
+        "candidate": 0.22540003061294556,
+        "absoluteDifference": 0.03427192568778992,
+        "criterionRatio": 388.4577439653804
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Coords",
+          "type": "aov_color",
+          "components": 4,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1324882507324219e-06,
+          "maxRelativeError": 1.0441687503099876e-05,
+          "rms": 7.385802939542717e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 85,
+          "worstPixel": {
+            "x": 19,
+            "y": 9,
+            "channel": "B",
+            "reference": 0.10845835506916046,
+            "candidate": 0.1084594875574112,
+            "absoluteDifference": 1.1324882507324219e-06,
+            "criterionRatio": 0.015796650220552415
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Height",
+          "type": "aov_value",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.086162567138672e-07,
+          "maxRelativeError": 3.638661765841128e-06,
+          "rms": 2.5883413799652727e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 9,
+          "worstPixel": {
+            "x": 19,
+            "y": 7,
+            "channel": 0,
+            "reference": 0.026107098907232285,
+            "candidate": 0.026107003912329674,
+            "absoluteDifference": 9.499490261077881e-08,
+            "criterionRatio": 0.001720254621969999
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.034272000193595886,
+      "maxRelativeError": 0.17931428874375407,
+      "rms": 0.0006271144385424597,
+      "practicalFailures": 8,
+      "strictDifferences": 868,
+      "worstPixel": {
+        "x": 15,
+        "y": 8,
+        "channel": "B",
+        "reference": 0.19112810492515564,
+        "candidate": 0.22540010511875153,
+        "absoluteDifference": 0.034272000193595886,
+        "criterionRatio": 388.4585884570954
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Coords",
+          "type": "aov_color",
+          "components": 4,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.6093254089355469e-06,
+          "maxRelativeError": 1.0441687503099876e-05,
+          "rms": 7.914660275447161e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 102,
+          "worstPixel": {
+            "x": 19,
+            "y": 9,
+            "channel": "B",
+            "reference": 0.10845835506916046,
+            "candidate": 0.1084594875574112,
+            "absoluteDifference": 1.1324882507324219e-06,
+            "criterionRatio": 0.015796650220552415
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Height",
+          "type": "aov_value",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.76837158203125e-07,
+          "maxRelativeError": 5.362616883793792e-06,
+          "rms": 4.044629730227237e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 19,
+          "worstPixel": {
+            "x": 27,
+            "y": 8,
+            "channel": 0,
+            "reference": 0.19429343938827515,
+            "candidate": 0.19429391622543335,
+            "absoluteDifference": 4.76837158203125e-07,
+            "criterionRatio": 0.005366241271305487
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 3.1128525733947754e-05,
+      "maxRelativeError": 0.00012937340477916134,
+      "rms": 6.910352723311345e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 128,
+      "worstPixel": {
+        "x": 13,
+        "y": 9,
+        "channel": "G",
+        "reference": 0.24060992896556854,
+        "candidate": 0.2406410574913025,
+        "absoluteDifference": 3.1128525733947754e-05,
+        "criterionRatio": 0.3172431283604574
+      },
+      "reference": "metal-m2pro",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Coords",
+          "type": "aov_color",
+          "components": 4,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.2516975402832031e-06,
+          "maxRelativeError": 8.334698291169423e-06,
+          "rms": 6.781143365311158e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 77,
+          "worstPixel": {
+            "x": 27,
+            "y": 8,
+            "channel": "B",
+            "reference": 0.16063542664051056,
+            "candidate": 0.16063445806503296,
+            "absoluteDifference": 9.685754776000977e-07,
+            "criterionRatio": 0.011793618070464652
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Height",
+          "type": "aov_value",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.023313522338867e-07,
+          "maxRelativeError": 5.422339224253039e-06,
+          "rms": 3.085101209284078e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 7,
+          "worstPixel": {
+            "x": 27,
+            "y": 8,
+            "channel": 0,
+            "reference": 0.19429351389408112,
+            "candidate": 0.19429391622543335,
+            "absoluteDifference": 4.023313522338867e-07,
+            "criterionRatio": 0.004527765313380221
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 0,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

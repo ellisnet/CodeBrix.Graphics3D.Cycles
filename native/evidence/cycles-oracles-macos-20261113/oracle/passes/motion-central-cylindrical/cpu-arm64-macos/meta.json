@@ -1,0 +1,113 @@
+{
+  "sceneId": "passes/motion-central-cylindrical",
+  "sceneSha256": "c90f76ff11b87ba8ee5178fddc57169364f5c9494d296667e73e732e30bceeb8",
+  "backend": "cpu-arm64-macos",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.00328792,
+    0.00250592
+  ],
+  "filmSha256": [
+    "4382a5c2ec67f2bfd769fe86a66bb0b253163776e2bc14fe86bf397c9d7151bb",
+    "4382a5c2ec67f2bfd769fe86a66bb0b253163776e2bc14fe86bf397c9d7151bb"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Vector",
+      "type": "motion",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "7fc84c74c342ec1f8b1bb27a1bf33e98adfe97c5f22000c5476f1146c432fd8f",
+        "7fc84c74c342ec1f8b1bb27a1bf33e98adfe97c5f22000c5476f1146c432fd8f"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Vector Weight",
+      "type": "motion_weight",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "b3402195e3168e84f57b4e4c85a15beb0bd16c851aeff1c1f30d4245383ec947",
+        "b3402195e3168e84f57b4e4c85a15beb0bd16c851aeff1c1f30d4245383ec947"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "6f5b612a17b5f2b57f50e6b4ee2932bb25210d062401229a528af40cf1697db2",
+        "6f5b612a17b5f2b57f50e6b4ee2932bb25210d062401229a528af40cf1697db2"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/motion-central-cylindrical.json",
+  "backendDescription": "Cycles CPU device, Apple Clang arm64, plain C++ kernels (no sse2neon), fixed-baseline oracle: no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.073,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/passes/motion-central-cylindrical.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-macos",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/motion-central-cylindrical/cpu-arm64-macos",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

@@ -1,0 +1,156 @@
+{
+  "sceneId": "passes/light-groups",
+  "sceneSha256": "3cb03425e1eae3eec53b6656fcab83b4d5a92e68d79087628dd87933a89bff4b",
+  "backend": "metal-m2pro",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 4.76837158203125e-07,
+  "renderSeconds": [
+    0.839836,
+    0.283348
+  ],
+  "filmSha256": [
+    "89894d8693edf2427aa94a7eb6ceb52a2e6f13f35a44618e1b7fc1b7bead3a85",
+    "8bfb8182d37f14726dfeeb8b1df1a348e290d01f7d6f0d6702bab36c5cf30cdd"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "LG lamp",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "e85970299ad4018182e89de86ea3f7c824d9c8a20cdc542d4a8735289ee225d5",
+        "06377cdde303baad3c9ab1b72f2be56ac7d9bd929af9a32edb92b3dab6b7c8f7"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "LG panel",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "31171ac36a87093c44a9562ff59531b246e56d3f4b6eca631188b0539ce80944",
+        "31171ac36a87093c44a9562ff59531b246e56d3f4b6eca631188b0539ce80944"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "LG world",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "4e5d54945cd1d2c52898a03786da7525c3170705ae3cf49263a79f88ba2359ce",
+        "e4e3d988b7a904d37c6796924d8f548d5bdfcd68f4e1ff78dbe102174258a7b0"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "DiffDir",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "b4b979979a6bbca03164cbe9c509af5f63038fbb196d681d8305f4f9841aee18",
+        "944ea6356a350f50d9308dfdef3f4eafe625c41e5f70acf837f5d2de1a3e62c1"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "GlossDir",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "982623a2342047c790187f8aa857e9456d27db3cfdd57a30632982abce15eb24",
+        "657908025e04089e05127e0fe336717b2d13737fb753307d74ce94f625a2f272"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/light-groups.json",
+  "kernelCompileSeconds": 123.95,
+  "backendDescription": "Cycles Metal device, MetalRT off (BVH2), generic kernels (PSO_GENERIC), fastMathEnabled as pinned",
+  "environment": {
+    "CYCLES_METALRT": "0",
+    "CYCLES_METAL_SPECIALIZATION_LEVEL": "0"
+  },
+  "processSeconds": 1.239,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/passes/light-groups.json",
+    "--backend",
+    "metal",
+    "--label",
+    "metal-m2pro",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/light-groups/metal-m2pro",
+    "--threads",
+    "4"
+  ],
+  "metalSettings": {
+    "device": "DEVICE_METAL",
+    "metalrt": false,
+    "specializationLevel": "CYCLES_METAL_SPECIALIZATION_LEVEL=0 (PSO_GENERIC)",
+    "bvhLayout": "BVH_LAYOUT_BVH2",
+    "fastMathEnabled": true,
+    "denoiser": null,
+    "kernelSource": "native/work/macos/osx-arm64/host/build/lib/codebrix-cycles/source",
+    "kernelCache": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/cache/metal-m2pro/cycles",
+    "systemMetalShaderCache": "not cleared (macOS-managed)",
+    "optionNames": [
+      "CYCLES_METALRT",
+      "CYCLES_METAL_SPECIALIZATION_LEVEL",
+      "DeviceInfo::use_hardware_raytracing",
+      "DeviceInfo::kernel_optimization_level"
+    ]
+  },
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

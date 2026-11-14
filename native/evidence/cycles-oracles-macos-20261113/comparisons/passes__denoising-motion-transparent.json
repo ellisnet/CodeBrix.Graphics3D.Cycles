@@ -1,0 +1,361 @@
+{
+  "sceneId": "passes/denoising-motion-transparent",
+  "sceneSha256": "a0a665afc8f031af7db674d4228fde4812a3d5f4f16b26c586fdedcb66b275fe",
+  "width": 48,
+  "height": 36,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/denoising-motion-transparent/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Denoising Backward Motion",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Denoising Depth",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00634742,
+        0.00461067
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "arm64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/denoising-motion-transparent/metal-m2pro",
+      "backend": "metal-m2pro",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Denoising Backward Motion",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "Denoising Depth",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.52587890625e-05
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 4.76837158203125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.76837158203125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 4.76837158203125e-07,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.906599,
+        0.231713
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/denoising-motion-transparent/metal-m2pro-metalrt",
+      "backend": "metal-m2pro-metalrt",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Denoising Backward Motion",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "Denoising Depth",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.52587890625e-05
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 2.384185791015625e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.384185791015625e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 2.384185791015625e-07,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.39009,
+        0.143776
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    }
+  ],
+  "goldStandards": [
+    "cpu-arm64-macos",
+    "metal-m2pro",
+    "metal-m2pro-metalrt"
+  ],
+  "candidates": [],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.00030231475830078125,
+      "maxRelativeError": 8.758401860440576e-05,
+      "rms": 9.12816734659271e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 1188,
+      "worstPixel": {
+        "x": 12,
+        "y": 22,
+        "channel": "R",
+        "reference": 1.5779749155044556,
+        "candidate": 1.5780938863754272,
+        "absoluteDifference": 0.00011897087097167969,
+        "criterionRatio": 0.3254171322664129
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Denoising Backward Motion",
+          "type": "denoising_backward_motion",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 3.814697265625e-06,
+          "maxRelativeError": 0.0010871534698314912,
+          "rms": 5.45418820254312e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 2565,
+          "worstPixel": {
+            "x": 23,
+            "y": 27,
+            "channel": 1,
+            "reference": -0.19610881805419922,
+            "candidate": -0.1961057186126709,
+            "absoluteDifference": 3.0994415283203125e-06,
+            "criterionRatio": 0.03473862657365978
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Denoising Depth",
+          "type": "denoising_depth",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.0189208984375,
+          "maxRelativeError": 0.00025492523352859325,
+          "rms": 0.002584265127501385,
+          "practicalFailures": 35,
+          "strictDifferences": 606,
+          "worstPixel": {
+            "x": 44,
+            "y": 17,
+            "channel": 0,
+            "reference": 72.36582946777344,
+            "candidate": 72.38427734375,
+            "absoluteDifference": 0.0184478759765625,
+            "criterionRatio": 1.2702379158768393
+          },
+          "status": "compared",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.0003199577331542969,
+      "maxRelativeError": 8.758401860440576e-05,
+      "rms": 9.12797788051929e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 1165,
+      "worstPixel": {
+        "x": 12,
+        "y": 22,
+        "channel": "R",
+        "reference": 1.5779749155044556,
+        "candidate": 1.5780938863754272,
+        "absoluteDifference": 0.00011897087097167969,
+        "criterionRatio": 0.3254171322664129
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Denoising Backward Motion",
+          "type": "denoising_backward_motion",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 3.337860107421875e-06,
+          "maxRelativeError": 0.0008528178523203753,
+          "rms": 5.470368437871514e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 2592,
+          "worstPixel": {
+            "x": 22,
+            "y": 26,
+            "channel": 1,
+            "reference": -0.19847464561462402,
+            "candidate": -0.1984713077545166,
+            "absoluteDifference": 3.337860107421875e-06,
+            "criterionRatio": 0.03721347616928729
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Denoising Depth",
+          "type": "denoising_depth",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.0189208984375,
+          "maxRelativeError": 0.00025492523352859325,
+          "rms": 0.0025842719340486734,
+          "practicalFailures": 35,
+          "strictDifferences": 592,
+          "worstPixel": {
+            "x": 44,
+            "y": 17,
+            "channel": 0,
+            "reference": 72.36582946777344,
+            "candidate": 72.38427734375,
+            "absoluteDifference": 0.0184478759765625,
+            "criterionRatio": 1.2702379158768393
+          },
+          "status": "compared",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 3.6716461181640625e-05,
+      "maxRelativeError": 2.7150646030523933e-05,
+      "rms": 1.1790940157585056e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 180,
+      "worstPixel": {
+        "x": 5,
+        "y": 9,
+        "channel": "R",
+        "reference": 0.965386152267456,
+        "candidate": 0.9653661847114563,
+        "absoluteDifference": 1.996755599975586e-05,
+        "criterionRatio": 0.0821449049855631
+      },
+      "reference": "metal-m2pro",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Denoising Backward Motion",
+          "type": "denoising_backward_motion",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.291534423828125e-06,
+          "maxRelativeError": 0.0006321112515802782,
+          "rms": 3.4788416205968176e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 1551,
+          "worstPixel": {
+            "x": 16,
+            "y": 18,
+            "channel": 0,
+            "reference": -0.0023772716522216797,
+            "candidate": -0.002376079559326172,
+            "absoluteDifference": 1.1920928955078125e-06,
+            "criterionRatio": 0.023617279157184326
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Denoising Depth",
+          "type": "denoising_depth",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.52587890625e-05,
+          "maxRelativeError": 3.2963957538467014e-07,
+          "rms": 1.7096288198752332e-06,
+          "practicalFailures": 0,
+          "strictDifferences": 117,
+          "worstPixel": {
+            "x": 25,
+            "y": 25,
+            "channel": 0,
+            "reference": 8.679245948791504,
+            "candidate": 8.679248809814453,
+            "absoluteDifference": 2.86102294921875e-06,
+            "criterionRatio": 0.0016020518225315346
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 0,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

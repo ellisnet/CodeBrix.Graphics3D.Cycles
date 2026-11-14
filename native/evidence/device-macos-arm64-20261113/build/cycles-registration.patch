@@ -1,0 +1,191 @@
+--- a/src/device/device.h
++++ b/src/device/device.h
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -46,6 +48,7 @@
+   DEVICE_METAL,
+   DEVICE_ONEAPI,
+   DEVICE_DUMMY,
++  DEVICE_WEBGPU,
+ };
+ 
+ enum DeviceTypeMask {
+@@ -55,6 +58,7 @@
+   DEVICE_MASK_HIP = (1 << DEVICE_HIP),
+   DEVICE_MASK_METAL = (1 << DEVICE_METAL),
+   DEVICE_MASK_ONEAPI = (1 << DEVICE_ONEAPI),
++  DEVICE_MASK_WEBGPU = (1 << DEVICE_WEBGPU),
+   DEVICE_MASK_ALL = ~0
+ };
+ 
+@@ -186,6 +190,11 @@
+     return !error_message().empty();
+   }
+   virtual void set_error(const string &error);
++  /* CodeBrix host: forget a recorded error before a full scene re-upload. */
++  void clear_error()
++  {
++    error_msg.clear();
++  }
+   virtual BVHLayoutMask get_bvh_layout_mask(uint64_t kernel_features) const = 0;
+ 
+   /* statistics */
+--- a/src/device/device.cpp
++++ b/src/device/device.cpp
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -8,6 +10,9 @@
+ #include "bvh/bvh2.h"
+ 
+ #include "device/device.h"
++#ifdef WITH_WEBGPU
++#  include "codebrix_webgpu_device.h"
++#endif
+ #include "device/queue.h"
+ 
+ #include "device/cpu/device.h"
+@@ -113,6 +118,11 @@
+   unique_ptr<Device> device;
+ 
+   switch (info.type) {
++#ifdef WITH_WEBGPU
++    case DEVICE_WEBGPU:
++      device = device_webgpu_create(info, stats, profiler, headless);
++      break;
++#endif
+     case DEVICE_CPU:
+       device = device_cpu_create(info, stats, profiler, headless);
+       break;
+@@ -184,6 +194,9 @@
+   if (strcmp(name, "METAL") == 0) {
+     return DEVICE_METAL;
+   }
++  if (strcmp(name, "WEBGPU") == 0) {
++    return DEVICE_WEBGPU;
++  }
+   if (strcmp(name, "ONEAPI") == 0) {
+     return DEVICE_ONEAPI;
+   }
+@@ -214,6 +227,9 @@
+   if (type == DEVICE_METAL) {
+     return "METAL";
+   }
++  if (type == DEVICE_WEBGPU) {
++    return "WEBGPU";
++  }
+   if (type == DEVICE_ONEAPI) {
+     return "ONEAPI";
+   }
+@@ -228,6 +244,9 @@
+ {
+   vector<DeviceType> types;
+   types.push_back(DEVICE_CPU);
++#ifdef WITH_WEBGPU
++  types.push_back(DEVICE_WEBGPU);
++#endif
+ #ifdef WITH_CUDA
+   types.push_back(DEVICE_CUDA);
+ #endif
+@@ -345,6 +364,12 @@
+   }
+ #endif
+ 
++#ifdef WITH_WEBGPU
++  if (mask & DEVICE_MASK_WEBGPU) {
++    device_webgpu_info(devices);
++  }
++#endif
++
+   if (mask & DEVICE_MASK_CPU) {
+     if (!(devices_initialized_mask & DEVICE_MASK_CPU)) {
+       device_cpu_info(cpu_devices());
+--- a/src/integrator/path_trace.cpp
++++ b/src/integrator/path_trace.cpp
+@@ -1,8 +1,13 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+ 
+ #include "integrator/path_trace.h"
++
++#include <cstdio>
++#include <cstdlib>
+ 
+ #include "device/cpu/device.h"
+ #include "device/device.h"
+@@ -213,6 +218,16 @@
+     const uint num_rendered_samples = render_scheduler_.get_num_rendered_samples();
+     const uint limit = next_power_of_two(num_rendered_samples) - num_rendered_samples;
+     render_scheduler_.set_limit_samples_per_update(limit);
++    /* CodeBrix WebGPU: one sample per update with volumes (the CPU device's sample order). */
++    if (device_->info.type == DEVICE_WEBGPU) {
++      render_scheduler_.set_limit_samples_per_update(1);
++    }
++  }
++  /* CodeBrix maintainer modes (native/cycles/fingerprint.h, scene_capture.h): one sample per update keeps the
++   * hashed command sequence independent of the clock (RenderScheduler::calculate_num_samples_per_update), and a
++   * capture's path records at their first size. The film does not depend on this grouping. */
++  if (device_->info.type == DEVICE_WEBGPU && (getenv("CODEBRIX_CYCLES_FINGERPRINT") || getenv("CODEBRIX_CYCLES_RENDER_CAPTURE"))) {
++    render_scheduler_.set_limit_samples_per_update(1);
+   }
+ 
+   path_trace(render_work);
+@@ -245,6 +260,16 @@
+   denoise_volume_guiding_buffers(render_work, has_volume);
+   if (render_cancel_.is_requested) {
+     return;
++  }
++  /* CodeBrix maintainer tool: raw render buffer of the CPU device, DIR/s<samples>.bin. */
++  if (const char *dump = getenv("CODEBRIX_CYCLES_RENDER_BUFFER_DUMP")) {
++    path_trace_works_[0]->copy_render_buffers_from_device();
++    RenderBuffers *buffers = path_trace_works_[0]->get_render_buffers();
++    const string name = string(dump) + "/s" + to_string(render_work.path_trace.start_sample + render_work.path_trace.num_samples) + ".bin";
++    if (FILE *file = fopen(name.c_str(), "wb")) {
++      fwrite(buffers->buffer.data(), sizeof(float), buffers->buffer.size(), file);
++      fclose(file);
++    }
+   }
+ 
+   write_tile_buffer(render_work);
+@@ -1336,6 +1361,8 @@
+       return "Multi";
+     case DEVICE_METAL:
+       return "Metal";
++    case DEVICE_WEBGPU:
++      return "WebGPU";
+   }
+ 
+   return "UNKNOWN";
+--- a/src/util/types_gpu_compressed.h
++++ b/src/util/types_gpu_compressed.h
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2026 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -177,5 +179,14 @@
+ template<typename T> struct gpu_state_storage<T, gpu_void_t<typename T::compressed_type>> {
+   using gpu_type = typename T::compressed_type;
+ };
++#ifdef WITH_WEBGPU
++/* CodeBrix WebGPU: compressed-on-GPU state fields are stored in full precision. */
++template<> struct gpu_state_storage<FloatCompressedOnGPU, void> {
++  using gpu_type = float;
++};
++template<> struct gpu_state_storage<SpectrumCompressedOnGPU, void> {
++  using gpu_type = PackedSpectrum;
++};
++#endif
+ 
+ CCL_NAMESPACE_END

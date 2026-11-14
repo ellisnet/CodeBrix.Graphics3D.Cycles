@@ -1,0 +1,50 @@
+ocio_profile_version: 2
+
+environment:
+  {}
+search_path: ""
+strictparsing: false
+luma: [0.2126, 0.7152, 0.0722]
+
+roles:
+  default: raw
+  default_byte: cbc_scaled
+  default_float: cbc_linear
+  scene_linear: cbc_linear
+
+file_rules:
+  - !<Rule> {name: Default, colorspace: default}
+
+displays:
+  sRGB:
+    - !<View> {name: Raw, colorspace: raw}
+
+active_displays: []
+active_views: []
+
+colorspaces:
+  - !<ColorSpace>
+    name: raw
+    family: raw
+    equalitygroup: ""
+    bitdepth: 32f
+    description: A raw color space. Conversions to and from this space are no-ops.
+    isdata: true
+    allocation: uniform
+
+  - !<ColorSpace>
+    name: cbc_linear
+    family: ""
+    equalitygroup: ""
+    bitdepth: unknown
+    isdata: false
+    allocation: uniform
+
+  - !<ColorSpace>
+    name: cbc_scaled
+    family: ""
+    equalitygroup: ""
+    bitdepth: unknown
+    isdata: false
+    allocation: uniform
+    to_scene_reference: !<MatrixTransform> {matrix: [0.5, 0, 0, 0, 0, 1.5, 0, 0, 0, 0, 0.75, 0, 0, 0, 0, 1]}
