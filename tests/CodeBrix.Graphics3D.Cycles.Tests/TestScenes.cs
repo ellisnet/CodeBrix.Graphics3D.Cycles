@@ -67,6 +67,21 @@ internal static class TestScenes
         return (material, diffuse, mesh);
     }
 
+    // A shader with displacement method Both and a linked Displacement input: Cycles' bump from displacement reads values
+    // it never sets on curves and points, so the host refuses those geometries with it on every backend; meshes keep it.
+    internal static ShaderNode BuildBothDisplacementShader(CyclesScene scene)
+    {
+        ShaderNode displaced = scene.CreateShader();
+        DiffuseBsdfNode diffuse = displaced.Add<DiffuseBsdfNode>();
+        NoiseTextureNode noise = displaced.Add<NoiseTextureNode>();
+        DisplacementNode displacement = displaced.Add<DisplacementNode>();
+        displaced.Connect(diffuse.BsdfOutput, displaced.Output.SurfaceInput);
+        displaced.Connect(noise.FacOutput, displacement.HeightInput);
+        displaced.Connect(displacement.DisplacementOutput, displaced.Output.DisplacementInput);
+        displaced.DisplacementMethod = ShaderDisplacementMethod.Both;
+        return displaced;
+    }
+
     // The by-name CyclesHost tier.
     internal static void BuildByName(CyclesHost host)
     {

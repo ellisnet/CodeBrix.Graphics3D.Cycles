@@ -885,7 +885,7 @@ public class GpuRenderTests(ITestOutputHelper output)
             report.PipelineTier.Should().BeNull();
             report.Scope.CameraTypes.Should().Contain(["perspective", "orthograph", "panorama"]);
             report.Scope.RenderTimeRejections.Should().Equal(report.BackendScopes["metal"].RenderTimeRejections);
-            report.Scope.RenderTimeRejections.Should().NotContain(rejection => rejection.Contains("upscale"));
+            report.Scope.RenderTimeRejections.Should().Contain(["a denoiser upscale factor other than 1", "curves and points with a Both displacement shader"]);
             report.Scope.PassesNote.Should().NotBeNullOrEmpty();
         }
         else
@@ -894,6 +894,45 @@ public class GpuRenderTests(ITestOutputHelper output)
             report.PipelineTier.Should().BeOneOf("full", "conservative");
             report.Scope.WrittenPasses.Should().Contain("combined");
         }
+    }
+
+    // The host refuses both before the device sees the scene, on Metal as on every backend: Metal with GPU denoising
+    // would return the reduced-resolution render packed into the film, and a Both displacement shader on curves or
+    // points has no defined result there either.
+    [Fact]
+    public void gpu_denoiser_upscale_factor_and_both_displacement_on_curves_and_points_are_refused_by_name()
+    {
+        //Arrange
+        using CyclesScene gpu = CreateGpuScene();
+        (ShaderNode material, _, _) = TestScenes.BuildTyped(gpu);
+        RenderSettings settings = new(32, 24, 8);
+        gpu.Integrator.UseDenoise = true;
+        gpu.Integrator.DenoiseUseGpu = true;
+        gpu.Integrator.DenoiserUpscaleFactor = 2f;
+        ShaderNode displaced = TestScenes.BuildBothDisplacementShader(gpu);
+
+        //Act
+        Action upscaled = () => gpu.Render(settings);
+        Action curves = () => gpu.Render(settings);
+        Action points = () => gpu.Render(settings);
+
+        //Assert
+        CyclesException upscaleError = upscaled.Should().Throw<CyclesException>().Which;
+        upscaleError.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        upscaleError.Message.Should().Contain("a denoiser upscale factor other than 1");
+        gpu.Integrator.DenoiserUpscaleFactor = 1f;
+        gpu.Integrator.UseDenoise = false;
+        HairNode hair = gpu.CreateHair([-.5f, -.5f, -1f, 0f, 0f, -1f, .5f, .5f, -1f], [.1f, .1f, .1f], [0u], CurveShape.Thick, displaced);
+        gpu.CreateObject(hair);
+        CyclesException curvesError = curves.Should().Throw<CyclesException>().Which;
+        curvesError.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        curvesError.Message.Should().Contain("curves and points with a Both displacement shader");
+        hair.UsedShaders = [material];
+        gpu.CreateObject(gpu.CreatePointCloud([-.5f, .5f, -1f, .5f, -.5f, -1f], [.2f, .2f], displaced));
+        CyclesException pointsError = points.Should().Throw<CyclesException>().Which;
+        pointsError.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        pointsError.Message.Should().Contain("curves and points with a Both displacement shader");
+        gpu.IsFaulted.Should().BeFalse();
     }
 
     [Fact]

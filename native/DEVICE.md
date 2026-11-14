@@ -3365,7 +3365,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     `author_sampling.py` with an empty integrator block (8 samples, 64 x 48; now committed as `sampling/tabulated-sobol-room`)
     gave 3 practical failures at x=34, y=20 (1.88 times the tolerance); it is perfect since item 152.
 86. **Point clouds on the reference devices: not run yet.** Points pass on Linux in x64 arithmetic against the x64 CPU oracle (`native/tools/point_gate.py`, `scenes/points/`). `arm64-scalar` on Linux compiles and runs, judged against nothing here. No ARM64 oracle exists for this family, so that says nothing about correctness there. Checkpoint 1 and the ARM64 oracle films owe them.
-87. **The pinned kernel reads an uninitialized stack for a Both displacement shader on a point or a curve.** `svm_node_set_bump` loads `bump_state_offset + 4` and `+ 7`, which `svm_node_enter_bump_eval` only stores when `ATTR_STD_POSITION_UNDISPLACED` is found, and only meshes have it (`scene/mesh.cpp`). The WGSL stack check reports it (mask 8), so scenes with that combination are refused by name on the device; the CPU's result depends on what the stack held. Keep the refusal unless the kernel changes. Evidence (2026-11-11, `curves/thick-diffuse` and `points/diffuse` with displacement/both's Both shader on the curves or points, not committed): the CPU device (BVH2, 1, 2, 4 and 8 threads, 4 threads twice) and the Embree CPU device (twice), each process rendering twice, gave 13 distinct film hashes in 14 films per scene; the two films of one process differed in 12 of 14 processes; up to 2,481 (curves) and 3,105 (points) of 12,288 film components differed, by up to 0.173 and 0.432. FACT from the pinned source: `svm_eval_nodes` declares the stack `float stack[SVM_STACK_SIZE]` without initializer (`kernel/svm/svm.h`) and Cycles' Metal device compiles the same kernel source, so its result there is not defined by the source either.
+87. **The pinned kernel reads an uninitialized stack for a Both displacement shader on a point or a curve: refused by the host on every backend (the maintainer's ruling).** `svm_node_set_bump` loads `bump_state_offset + 4` and `+ 7`, which `svm_node_enter_bump_eval` only stores when `ATTR_STD_POSITION_UNDISPLACED` is found, and only meshes have it (`scene/mesh.cpp`). The WGSL stack check reports it (mask 8), so the device refuses that combination by name; the CPU's result depends on what the stack held. The host now refuses it before any device sees the scene, on the CPU, Metal and WebGPU backends alike (`validate_unavailable` in `native/host/host_scene.inc`: a `used_shaders` entry of a hair or point cloud geometry with `displacement_method` `both` and a linked `Displacement` output input; `CBC_UNSUPPORTED`, "Unsupported feature: curves and points with a Both displacement shader ..."; AGENT-README.txt "RENDER-TIME REJECTIONS", every backend). The device's own refusal (`validate_curves`, `validate_points`) stays as the device's second line, which `point_gate` exercises without the host. Keep both unless the kernel changes. Evidence (2026-11-11, `curves/thick-diffuse` and `points/diffuse` with displacement/both's Both shader on the curves or points, not committed): the CPU device (BVH2, 1, 2, 4 and 8 threads, 4 threads twice) and the Embree CPU device (twice), each process rendering twice, gave 13 distinct film hashes in 14 films per scene; the two films of one process differed in 12 of 14 processes; up to 2,481 (curves) and 3,105 (points) of 12,288 film components differed, by up to 0.173 and 0.432. FACT from the pinned source: `svm_eval_nodes` declares the stack `float stack[SVM_STACK_SIZE]` without initializer (`kernel/svm/svm.h`) and Cycles' Metal device compiles the same kernel source, so its result there is not defined by the source either. Evidence at Cycles v5.3.0 on Apple Silicon (`native/evidence/macos-arm64-survey-20261113/`, row 6): the CPU films were not repeat-identical, and two Metal runs disagreed with each other (BVH2 and MetalRT) far beyond Metal's repeat noise.
 98. **Device replays of Linux x64 captures: three scenes cannot pass bit for bit on another GPU (a known cross-GPU limitation;
     recorded, not fixed).** The device job `oracle-replays` replays 20 Linux x64 captures of oracle scenes on the device with every
     readback checked bit for bit. Three cannot pass on a GPU other than the one that captured them, and no product code is wrong:
@@ -3739,7 +3739,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     which this host never reaches (`use_texture_cache = false`, `cbc_host_create`). Evidence: scenes `cameras/border-inner`
     (practical 0, strict 94) and `cameras/border-corner` (practical 0, strict 26); the ABI test's `border` film, WebGPU
     against the CPU (practical 0, strict 0); on the CPU the region is bit-identical to the same pixels of a whole-film render.
-169. **Denoiser upscale factor other than 1: refused by name on the CPU and WebGPU backends: FOR THE MAINTAINER.** FACT from
+169. **Denoiser upscale factor other than 1: refused by name on every backend (the maintainer's ruling).** FACT from
     the pinned source: the factor is applied by `RenderScheduler` (`integrator/render_scheduler.cpp`, the render's
     resolution divider is multiplied by it when denoising) and undone by the GPU denoisers' shared postprocess
     (`integrator/denoiser_gpu.cpp`, `filter_color_postprocess` with `upscale_factor`, `kernel/device/gpu/kernel.h`); the
@@ -3751,8 +3751,13 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     CUDA, HIP, Metal), and the pinned CPU denoiser (`integrator/denoiser_oidn.cpp`) has no upscale path. What the CPU and
     WebGPU path would need: a render at the divided resolution and an upscaling step before Open Image Denoise on the CPU,
     which no pinned code provides (the GPU postprocess kernel is one of the denoise filter kernels, not ported), so the CPU
-    reference would have no Cycles behaviour to be judged against. A ruling is needed: an unfinished gap against Metal, or
-    a permanent refusal because the denoiser library has no device for this backend.
+    reference would have no Cycles behaviour to be judged against. FACT at Cycles v5.3.0 on Apple Silicon
+    (`native/evidence/macos-arm64-survey-20261113/`, row 9), contrary to the reading above: Cycles-with-Metal with GPU
+    denoising accepted factors 2, 4 and 1.5 and returned the reduced-resolution image packed into the first pixels of the
+    full-size film, zeros after it (INFERENCE of that report: the host's output driver read the reduced-size render, which
+    nothing upscaled). Ruling: the host refuses the factor on every backend when denoising (`cbc_host_render`,
+    `CBC_UNSUPPORTED`, "Unsupported feature: a denoiser upscale factor other than 1 (no backend of this library returns an
+    upscaled film)"; AGENT-README.txt "RENDER-TIME REJECTIONS", every backend).
 170. **Linear subdivision surfaces: RESOLVED (implemented, every backend); Catmull-Clark stays refused under (b).** FACT
     (diagnosis): `Mesh::num_subd_faces` (`scene/mesh.h`) is a plain member that only `Mesh::resize_subd_faces` sets; the
     `subd_*` sockets the generic socket layer writes leave it at 0, so `Mesh::tessellate` returned at once
@@ -7753,7 +7758,8 @@ surface module's node tests and curve intersection, shared with MNEE: MNEE scene
 **Displacement.** A true displacement shader on curves renders (`scenes/curves-b/displacement-on-curves`). Method Both on a curve is refused by
 name, "WebGPU curves with a Both displacement shader not implemented": `svm_node_enter_bump_eval` finds no undisplaced position (only meshes have
 one), saves no differential, and `svm_node_set_bump` reads those stack entries uninitialized, so the pinned CPU result is undefined (open item
-87 found the same for points; checked here with a Both shader on a tuft: the CPU renders, the WGSL stack check reports it).
+87 found the same for points; checked here with a Both shader on a tuft: the CPU renders, the WGSL stack check reports it). Since open item 87's
+ruling the host refuses it first, on every backend, so a scene authored through the host never reaches this device refusal.
 
 **Gates.** `native/tools/curve_mixed_gate.py` runs the AO, raytrace node, subsurface, volume boundary, MNEE and shadow linking state gates
 with `CODEBRIX_CYCLES_GATE_CURVES=1`: tufts of every shape in their fixtures (`curve_gate_tuft.h`). Scenes: `scenes/curves-b/` (caustics,
@@ -7790,7 +7796,7 @@ previous pinned revision a point's `dPdu` and `dPdv` were zero, so `du` and `dv`
 oracle's NaN bit pattern in every component (`point_frame_nan`: 0xffc00000 on x86-64; the ARM64 pattern 0x7fc00000 is an inference, not run).
 
 **Refused by name:** "WebGPU points with a Both displacement shader not implemented": `svm_node_enter_bump_eval` finds no `ATTR_STD_POSITION_UNDISPLACED` on a point,
-saves no differential, and `svm_node_set_bump` then reads stack entries that nothing wrote (item 87). "WebGPU BVH time steps not implemented". At the previous pinned
+saves no differential, and `svm_node_set_bump` then reads stack entries that nothing wrote (item 87; the host refuses it first, on every backend). "WebGPU BVH time steps not implemented". At the previous pinned
 revision the Geometry node's Tangent output on a point reported error 16 (`primitive_tangent` was `normalize(0)` there, NaN on the oracle); at Cycles v5.3.0 it is
 `normalize(dPdu)` of the frame above and renders (`svm_geometry_tangent`).
 

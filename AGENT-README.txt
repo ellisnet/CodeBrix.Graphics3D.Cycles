@@ -745,7 +745,7 @@ SpecularMotion; Open Image Denoise reads Albedo and Normal, the default; a
 DenoiserPasses value with a bit outside these fails a denoising render).
 DenoiseUseGpu lets Open Image Denoise use the GPU where it can (Metal); the
 CPU and WebGPU backends denoise on the CPU (GetCapabilities().DenoiseDevices).
-DenoiserUpscaleFactor other than 1 is refused on the CPU and WebGPU backends
+DenoiserUpscaleFactor other than 1 is refused on every backend when denoising
 (RENDER-TIME REJECTIONS).
 
 Lights (CreateLight<T>, placed by an object; see A light): every LightNode has
@@ -806,7 +806,8 @@ gets Cycles' own conversion node, as in Blender; the Convert*Node classes do
 the same explicitly. A shader output links only into a shader input.
 Displacement: ShaderNode.DisplacementMethod Bump, True or Both, with a
 DisplacementNode or VectorDisplacementNode into OutputNode.DisplacementInput;
-BumpNode for bump mapping inside a graph.
+BumpNode for bump mapping inside a graph. Both is for meshes: curves and points
+with a Both displacement shader are refused (RENDER-TIME REJECTIONS).
 
 Volumes: a volume shader (ScatterVolumeNode, AbsorptionVolumeNode,
 PrincipledVolumeNode, VolumeCoefficientsNode, emission) into
@@ -1370,13 +1371,12 @@ Every backend:
   - Catmull-Clark subdivision surfaces (they need OpenSubdiv, which this library does not include)
   - the dlss denoiser
   - point clouds rendered as Gaussian splats
-The CPU backends and the WebGPU backend:
   - a denoiser upscale factor other than 1
+  - curves and points with a Both displacement shader
 The WebGPU backend:
   - dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0)
   - custom (OSL) cameras
   - path guiding (the integrator's use_guiding) and its passes
-  - curves and points with a Both displacement shader
   - a Radial Tiling node with at most two sides and a roundness strictly between 0 and 1
   - scenes whose device data does not fit the GPU (there is no host-memory fallback)
   - BVH time steps
@@ -1406,8 +1406,10 @@ GetVectorComponentNode are not implemented by the WebGPU device; with constant
 inputs Cycles folds them away and every backend renders them, with a linked
 input the CPU and Metal backends render them. Path
 guiding is not part of Cycles' Metal device either. A Both displacement shader
-on curves or points makes Cycles' own kernels read values they never set, so
-that scene has no defined result. The Radial Tiling case is binary32 rounding
+(DisplacementMethod Both with OutputNode.DisplacementInput linked) on curves or
+points makes Cycles' own kernels read values they never set, so that scene has
+no defined result on any backend; give curves and points a shader with
+DisplacementMethod Bump or True. The Radial Tiling case is binary32 rounding
 residue in Cycles' CPU kernels that Cycles' Metal device does not reproduce
 either; when Sides or Roundness is linked, the render fails at run time with an
 unsupported-parameter error instead. BVH time steps and volume velocity cannot
@@ -1415,7 +1417,9 @@ be set through this API; the entries name what the device would refuse. A
 scene larger than the GPU's storage binding fails (see EXCEEDING THE GPU
 STORAGE-BINDING LIMIT) instead of moving device data to host memory, as on
 Cycles' Metal device. Open Image Denoise on the CPU, which the CPU and WebGPU
-backends use, does not upscale. For the area light, portal and bake entries
+backends use, does not upscale, and with GPU denoising on the Metal backend
+Cycles leaves the render at the reduced resolution: no backend returns an
+upscaled film. For the area light, portal and bake entries
 Cycles' own kernels evaluate the light or the texel at a direction that is not
 a number, and the CPU result depends on how each comparison and minimum drops
 that value, which WGSL does not define. The Adreno 650 entries (for example the

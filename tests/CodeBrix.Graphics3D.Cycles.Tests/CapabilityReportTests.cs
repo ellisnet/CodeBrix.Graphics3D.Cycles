@@ -105,7 +105,7 @@ public class CapabilityReportTests
     }
 
     // AGENT-README.txt, RENDER-TIME REJECTIONS: the "  - " entries under each group heading, in order.
-    private static readonly string[] RejectionGroups = ["Every backend:", "The CPU backends and the WebGPU backend:", "The WebGPU backend:"];
+    private static readonly string[] RejectionGroups = ["Every backend:", "The WebGPU backend:"];
 
     private static Dictionary<string, List<string>> ReadmeRejections()
     {
@@ -126,8 +126,7 @@ public class CapabilityReportTests
     {
         Dictionary<string, List<string>> groups = ReadmeRejections();
         IEnumerable<string> entries = groups[RejectionGroups[0]];
-        if (backend != "metal") entries = entries.Concat(groups[RejectionGroups[1]]);
-        if (backend == "webgpu") entries = entries.Concat(groups[RejectionGroups[2]]);
+        if (backend == "webgpu") entries = entries.Concat(groups[RejectionGroups[1]]);
         return entries.ToList();
     }
 

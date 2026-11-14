@@ -109,6 +109,18 @@ void validate_unavailable(Host &host) {
   for(auto geom:host.session->scene->geometry)if(auto points=dynamic_cast<PointCloud *>(geom))
     require(points->get_render_as()!=PointCloud::RENDER_AS_GSPLATS,
             "Unsupported feature: Gaussian splats are not available in this library (the point cloud input render_as must be points)",CBC_UNSUPPORTED);
+  // A Both displacement shader on curves or points: its bump from displacement starts with svm_node_enter_bump_eval,
+  // which finds no undisplaced position there (only meshes have one) and saves no differential, so svm_node_set_bump
+  // reads stack entries nothing wrote; the pinned kernels have no defined result on any device (native/DEVICE.md 87).
+  // Refused when a hair or point cloud geometry lists a caller's shader whose displacement method is Both and whose
+  // output's Displacement input is linked (Cycles adds the bump state only for Both, and the bump only with a displacement).
+  for(auto geom:host.session->scene->geometry)if(dynamic_cast<Hair *>(geom)||dynamic_cast<PointCloud *>(geom))
+    for(auto used:geom->get_used_shaders()){
+      auto shader=static_cast<Shader *>(used);auto stored=host.graphs.find(shader);
+      require(stored==host.graphs.end()||shader->get_displacement_method()!=DISPLACE_BOTH||!stored->second->authoring->output()->input("Displacement")->link,
+              "Unsupported feature: curves and points with a Both displacement shader (Cycles' bump from displacement reads values it never sets there; "
+              "use displacement method bump or true)",CBC_UNSUPPORTED);
+    }
   // The DLSS denoiser is not part of this library; the pinned Cycles would fall back to another denoiser with no message.
   auto integrator=host.session->scene->integrator;
   require(!integrator->get_use_denoise()||integrator->get_denoiser_type()!=DENOISER_DLSS,

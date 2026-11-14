@@ -1158,9 +1158,11 @@ extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, fl
       require(region_width > 0 && region_height > 0, "Camera border covers no whole pixel of this film");
     }
     // Cycles upscales only in its GPU denoisers; the Open Image Denoise CPU denoiser that the CPU and WebGPU backends
-    // use resets the factor to 1 (integrator/denoiser.cpp), so the setting would be lost.
-    require(host.backend == CBC_HOST_METAL || !scene.integrator->get_use_denoise() || scene.integrator->get_denoiser_upscale_factor() == 1.0f,
-            "Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)",
+    // use resets the factor to 1 (integrator/denoiser.cpp), so the setting would be lost, and with GPU denoising on the
+    // Metal backend the output driver receives the reduced-resolution render, which the film does not upscale. Refused
+    // on every backend.
+    require(!scene.integrator->get_use_denoise() || scene.integrator->get_denoiser_upscale_factor() == 1.0f,
+            "Unsupported feature: a denoiser upscale factor other than 1 (no backend of this library returns an upscaled film)",
             CBC_UNSUPPORTED);
     // Adaptive dicing of subdivision surfaces measures in the dicing camera's pixels: with subdivision faces in the scene
     // the host keeps it equal to the render camera (Cycles' own scene leaves it at its defaults).

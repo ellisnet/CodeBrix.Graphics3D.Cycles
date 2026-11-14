@@ -143,7 +143,7 @@ public class SceneSettingsTests
     }
 
     [Fact]
-    public void Denoiser_upscale_factor_other_than_one_is_refused_where_the_cpu_denoiser_runs()
+    public void Denoiser_upscale_factor_other_than_one_is_refused_by_name_when_denoising()
     {
         //Arrange
         using CyclesScene scene = TestScenes.CreateCpuScene();
@@ -154,12 +154,47 @@ public class SceneSettingsTests
 
         //Act
         Action render = () => scene.Render(Small);
+        Action again = () => scene.Render(Small);
 
         //Assert
         withoutDenoising.Span.ToArray().All(float.IsFinite).Should().BeTrue();
         CyclesException error = render.Should().Throw<CyclesException>().Which;
         error.NativeStatus.Should().Be(NativeStatus.Unsupported);
-        error.Message.Should().Contain("upscale");
+        error.Message.Should().Contain("a denoiser upscale factor other than 1");
+        scene.Integrator.DenoiserUpscaleFactor = 1f;
+        again.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Both_displacement_shader_on_curves_and_points_is_refused_by_name_and_renders_on_a_mesh()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        (ShaderNode material, _, MeshNode mesh) = TestScenes.BuildTyped(scene);
+        ShaderNode displaced = TestScenes.BuildBothDisplacementShader(scene);
+        mesh.UsedShaders = [displaced];
+        FilmBuffer onMesh = scene.Render(Small);
+        HairNode hair = scene.CreateHair([-.5f, -.5f, -1f, 0f, 0f, -1f, .5f, .5f, -1f], [.1f, .1f, .1f], [0u], CurveShape.Thick, displaced);
+        scene.CreateObject(hair);
+
+        //Act
+        Action curves = () => scene.Render(Small);
+        Action bumpOnCurves = () => scene.Render(Small);
+        Action points = () => scene.Render(Small);
+
+        //Assert
+        onMesh.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        CyclesException curvesError = curves.Should().Throw<CyclesException>().Which;
+        curvesError.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        curvesError.Message.Should().Contain("curves and points with a Both displacement shader");
+        displaced.DisplacementMethod = ShaderDisplacementMethod.Bump;
+        bumpOnCurves.Should().NotThrow();
+        hair.UsedShaders = [material];
+        displaced.DisplacementMethod = ShaderDisplacementMethod.Both;
+        scene.CreateObject(scene.CreatePointCloud([-.5f, .5f, -1f, .5f, -.5f, -1f], [.2f, .2f], displaced));
+        CyclesException pointsError = points.Should().Throw<CyclesException>().Which;
+        pointsError.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        pointsError.Message.Should().Contain("curves and points with a Both displacement shader");
     }
 
     [Fact]
