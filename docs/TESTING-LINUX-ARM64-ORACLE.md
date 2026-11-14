@@ -13,6 +13,11 @@ SPDX-License-Identifier: Apache-2.0
 > evidence for the current source. Films and references recorded at the
 > previous revision cannot be compared with the current source: the CPU
 > oracle's films changed with the pin.
+>
+> The procedure below is the procedure for the current pin. The first run on it also answers the questions of
+> section 10. A `native/evidence/linux-x64-reference-<date>/` folder counts as "of the current pin" only if its
+> README names Cycles v5.3.0; until one is committed, the comparison of section 6 is skipped and the README of the
+> new folder says so. A run made on a branch is committed on that branch.
 
 > **MANDATORY TEST RULES** (the same as every TESTING document):
 >
@@ -193,6 +198,11 @@ for d in "$RUN"/oracle/*/*/cpu-arm64-linux; do s=${d#"$RUN"/oracle/}; s=${s%/cpu
 done
 ```
 
+**Only against an x64 folder of the same pinned Cycles revision.** The CPU films changed with the pin, so a
+comparison with an x64 folder of another revision says nothing and is not made; when no x64 folder of the current
+revision is committed, skip this section, say so in the README, and the comparison is made later on the Linux x64
+machine.
+
 Record, per scene: identical / within the practical criterion / beyond it, with the
 counts and maxima. Differences between the two CPU oracles are **findings to
 record, never failures and never tuned away** (native/DEVICE.md open item 25:
@@ -242,7 +252,8 @@ Steps (sections 3 to 7, with these requirements):
    is recorded verbatim.
 4. Compare with the newest `native/evidence/linux-x64-reference-<date>/` (section 6)
    and name it in the README; the x64 folder may be of an earlier commit when the
-   current commit has no Linux x64 evidence yet. Per-scene results go in `vs-x64/`.
+   current commit has no Linux x64 evidence yet, but never of another pinned Cycles
+   revision (section 6). Per-scene results go in `vs-x64/`.
 5. Commit the run as a NEW folder `native/evidence/linux-arm64-cpu-oracle-<date>/`
    with the layout of section 7. The README states: the commit hash, that the folder
    is the ARM64 gold standard for that commit (section 1), the x64 folder compared
@@ -251,3 +262,35 @@ Steps (sections 3 to 7, with these requirements):
 6. After the commit, Android ARM64 validation of that commit judges product-default
    films against this folder (native/DEVICE.md, "Validation reference policy",
    Option A); the Linux x64 host must `git pull` before it starts.
+
+## 10. The first run at the current pin: what it has to show
+
+Nothing of this pin has been built for Linux ARM64. `build_cycles_linux_arm64.py` and the dependency recipe were
+brought to the pin by reading only; a build failure is recorded verbatim (the compiler's text, the file, the line) and
+is never corrected by editing a file under `third_party/cycles`.
+
+Beyond sections 3 to 9, record these in the README of the new folder. Each is something only an ARM64 CPU run can show;
+the shared WGSL carries a scalar (ARM64) branch for each that was written from the source and never run.
+
+1. **The scene count.** Every committed scene document plus the two bench documents rendered (section 9, step 2);
+   `bsdf/principled-dispersion` among them: dispersion renders on the CPU device at this pin.
+2. **The mixed-phase volume helpers.** `volumes/phase-mie` and `volumes/mixed-phase-world` render and are
+   repeat-identical.
+3. **The step count of an unbounded volume segment.** `volumes/heterogeneous-world-sun-tail` renders. The pinned code
+   converts `roundf(sigma * length)` to `int` and clamps it to 1 to `VOLUME_MAX_STEPS` (`kernel/integrator/shade_volume.h`);
+   on x86-64 an infinite or out-of-range value converts to `0x80000000`, so such a segment takes ONE step and the
+   scene's sun is visible through the far medium. Establish what the ARM64 kernel does, two ways: compile and run,
+   inside the container with the oracle's own compiler flags (read them from the kernel's entry in the build tree's
+   `compile_commands.json`), a few lines of C that print `(int)roundf(x)` for `inf`, `FLT_MAX`, `1e37f`, `2147483648.0f`,
+   `4294967296.0f` and a NaN; and record the mean of the film's first pass. The WGSL assumes ARM64 SATURATES the
+   conversion (the largest step count, the sun fully shadowed); the README states whether that holds.
+4. **The NaN of a point hit at its own centre.** The normal there is a zero vector normalized, a `0.0f / 0.0f`. The
+   x86-64 kernel produces the bit pattern `0xffc00000`; the WGSL assumes the ARM64 kernel produces `0x7fc00000`
+   (`native/shaders/wavefront_point_shader_data.wgsl`). In the same small program, print the bits of `0.0f / 0.0f` and
+   of `sqrtf(-1.0f)` computed at run time (values read from `argv`, so the compiler cannot fold them), and record
+   them; the README states whether the assumption holds.
+5. **Repeat identity** for every scene, with the wall-clock pass of `passes/data-passes` named as the one pass that
+   legitimately differs between two renders, if it does here too.
+
+The small program is scratch: it lives under the ignored `native/work/`, its source and output are copied into the new
+evidence folder, and it is not added to the build.

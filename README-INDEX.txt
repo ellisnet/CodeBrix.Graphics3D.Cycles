@@ -30,6 +30,10 @@ MAINTAINER AND EXTRAS
   docs/TESTING-MACOS-ARM64.md
       Test procedure for Apple Silicon Macs: the Metal product binary, the
       macOS host gate and the CPU-arm64 and Metal oracle bundle.
+  docs/KIT-MACOS-ARM64.md
+      Work order for an Apple Silicon Mac, carried out on a branch: the base
+      build and validation at the current pin, a survey of what the Metal
+      device renders, and the host work that makes it reachable.
   docs/TESTING-MACOS-X64.md
       Test procedure for Intel Macs: WGSL on the shipped WebGPU runtime's
       Metal route.
