@@ -38,6 +38,8 @@ static std::vector<float> fixture_pixels(OIIO::TypeDesc type, int channels, int 
   return pixels;
 }
 
+#ifndef CBC_HOST_NO_IMAGE_FILES
+// Builds with image file readers only: without them (CBC_HOST_NO_IMAGE_FILES) the fixtures are served from memory.
 static FileImage write_image(const fs::path &path, OIIO::TypeDesc type,
                             int channels, int width, int height, unsigned seed) {
   FileImage image{path,type,channels,width,height,path.extension()!=".jpg",{}};
@@ -53,4 +55,5 @@ static FileImage write_image(const fs::path &path, OIIO::TypeDesc type,
   require(output->close(),"Cannot close fixture: "+output->geterror());
   return image;
 }
+#endif
 

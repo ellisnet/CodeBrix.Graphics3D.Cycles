@@ -44,10 +44,11 @@ Deliverables, all on the branch:
    recorded transforms or the overlay (`native/tools/cycles_overlay.py`). A compile error in a pinned file is reported with
    the compiler's text; it is not "fixed" in place.
 4. **Licence.** Nothing incompatible with Apache-2.0 enters the repository, code or data, including from memory. Blender
-   outside Cycles is GPL: read only the pinned Cycles source in this repository, and copy nothing from Blender, its
-   exporter or its add-ons. Something usable only with a rights holder's permission is unusable. No new NuGet package and
-   no new third-party source. The illuminant numbers live in `kernel/tables_d65_codebrix.h` and are never retyped, restored
-   from elsewhere or discussed in a comment; a file may name that header and its identifiers and nothing more.
+   outside Cycles is under a licence that is incompatible with Apache-2.0: read only the pinned Cycles source in this
+   repository, and copy nothing from Blender, its exporter or its add-ons. Something usable only with a rights holder's
+   permission is unusable. No new NuGet package and no new third-party source. The illuminant numbers live in
+   `kernel/tables_d65_codebrix.h` and are never retyped, restored from elsewhere or discussed in a comment; a file may
+   name that header and its identifiers and nothing more.
 5. **Never approximate, never relax.** A request the library cannot honour fails with an error that names the feature. No
    tolerance, comparator, scene or gate expectation is changed to make something pass. A gate follows the pinned kernel.
 6. **What this kit does not touch:** the shared WGSL (`native/shaders`), the WebGPU device (`native/cycles`, `native/src`)

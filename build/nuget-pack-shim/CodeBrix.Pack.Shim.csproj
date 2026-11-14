@@ -29,7 +29,10 @@
 		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 		<NoWarn>$(NoWarn);NU5128;CS2008</NoWarn>
-		<IsPackable>true</IsPackable>
+		<!-- Packable only when the driver names a nuspec: a solution-level `dotnet pack` skips the
+		     shim instead of failing with NU5017 (no nuspec, no content). -->
+		<IsPackable>false</IsPackable>
+		<IsPackable Condition="'$(CbxNuspec)'!=''">true</IsPackable>
 
 		<NuspecFile>$(CbxNuspec)</NuspecFile>
 		<NuspecBasePath>$(CbxNuspecBasePath)</NuspecBasePath>

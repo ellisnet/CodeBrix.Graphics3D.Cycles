@@ -1,0 +1,191 @@
+{
+  "sceneId": "volumes/passes-emission-heterogeneous",
+  "sceneSha256": "47fe28423face986eb19da2ca739f985690d3b8af45d19d91445040e182b8c88",
+  "backend": "cpu-arm64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    1.47141,
+    0.00916938
+  ],
+  "filmSha256": [
+    "203327c0785d31c45f7fd69ccf956740b61c534b17c08e257c10dc0af16adc03",
+    "203327c0785d31c45f7fd69ccf956740b61c534b17c08e257c10dc0af16adc03"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "volume_direct",
+      "type": "volume_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "f9be56b17a7ae855f463d2dc0f649453b478c885787692d5ff8ad50f54eb19e8",
+        "f9be56b17a7ae855f463d2dc0f649453b478c885787692d5ff8ad50f54eb19e8"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "volume_indirect",
+      "type": "volume_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "b2afaa4f0222bf32fef508adddd8ad25056859d82edc976da6f3d6ab29fdb52a",
+        "b2afaa4f0222bf32fef508adddd8ad25056859d82edc976da6f3d6ab29fdb52a"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "diffuse_direct",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "9b6b334fa6b2b65c2d70c85f492e40303e42a0ffdbcc004ed51d937e5e8f57ed",
+        "9b6b334fa6b2b65c2d70c85f492e40303e42a0ffdbcc004ed51d937e5e8f57ed"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "diffuse_indirect",
+      "type": "diffuse_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "fb544464a805149606b48ab85ab2fab079e2675c7e10ef547e24e23f441d0b26",
+        "fb544464a805149606b48ab85ab2fab079e2675c7e10ef547e24e23f441d0b26"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "glossy_direct",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "ae7e73be665c5283f3b3a2e98915ed986754c0d37001f93b0ba9e15b8a9e3e3d",
+        "ae7e73be665c5283f3b3a2e98915ed986754c0d37001f93b0ba9e15b8a9e3e3d"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "glossy_indirect",
+      "type": "glossy_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "6fd8282c6a4797c89acf92c405a93eb4d0e2864f4b17c49209450c73e955c921",
+        "6fd8282c6a4797c89acf92c405a93eb4d0e2864f4b17c49209450c73e955c921"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "transmission_direct",
+      "type": "transmission_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "8bf2f86e5c54a02ed4285866a3e342f87187ef2b6f19809f85b57356dd6b2bd9",
+        "8bf2f86e5c54a02ed4285866a3e342f87187ef2b6f19809f85b57356dd6b2bd9"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "transmission_indirect",
+      "type": "transmission_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "effc2447fd4dc55fbc53f7403bde2076f90173c51a8841dca7056dfbad70b26f",
+        "effc2447fd4dc55fbc53f7403bde2076f90173c51a8841dca7056dfbad70b26f"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "emission",
+      "type": "emission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "6f1ff9974ce1ed754e2050bd0b698eef9adad0ae781c5b41494ce2d0661d82b2",
+        "6f1ff9974ce1ed754e2050bd0b698eef9adad0ae781c5b41494ce2d0661d82b2"
+      ]
+    },
+    {
+      "index": 9,
+      "name": "background",
+      "type": "background",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2f21a8ca19de37bea1231fa9799fe2d3a9f77348e388b1c647a8157f62b8a288",
+        "2f21a8ca19de37bea1231fa9799fe2d3a9f77348e388b1c647a8157f62b8a288"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux e5c18b8d0f24 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 30 13:45:20 UTC 2026 aarch64 GNU/Linux",
+    "cpu": "",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "0b19d87507ac24f1e55ba6a50d1ac6b05c8d417c",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981",
+    "deviceModel": "unavailable: no /proc/device-tree/model (no device tree, for example in a container)",
+    "vulkan": "unavailable: [Errno 2] No such file or directory: 'vulkaninfo'"
+  },
+  "hostLibrarySha256": "b9bbcacdb3fe4144fdbd3f03dfc00a98f72bffae5aca95c987efc007fc923681",
+  "runnerSha256": "17e2ceb7942f5f4ef686a93f1c85a894417c8443a2fe02c69c06ad403db5c2ce",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/linux/linux-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/volumes/passes-emission-heterogeneous.json",
+  "backendDescription": "Cycles CPU device, GCC 14 aarch64 (glibc), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 1.52,
+  "runnerCommand": [
+    "native/work/linux/linux-arm64/host/build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/work/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/volumes/passes-emission-heterogeneous.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-linux",
+    "--output",
+    "/work/CodeBrix.Graphics3D.Cycles/native/work/oracles/linux-arm64-20261113/oracle/volumes/passes-emission-heterogeneous/cpu-arm64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": " (the C API does not expose Cycles' DeviceInfo)"
+}

@@ -1,0 +1,79 @@
+{
+  "sceneId": "curves-b/subsurface-beside",
+  "sceneSha256": "c577e90c0c01e95e7ca0d614ac5aa20ac18d09625dc4d4deec4af661dd37710e",
+  "backend": "cpu-arm64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-arm64",
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0265497,
+    0.0217758
+  ],
+  "filmSha256": [
+    "38db2896db28c991e854b87f36b39db37d75d07e93746f6ff0227f7d5be7a1b0",
+    "38db2896db28c991e854b87f36b39db37d75d07e93746f6ff0227f7d5be7a1b0"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "warnings": [],
+  "machine": {
+    "os": "Linux e5c18b8d0f24 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 30 13:45:20 UTC 2026 aarch64 GNU/Linux",
+    "cpu": "",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "0b19d87507ac24f1e55ba6a50d1ac6b05c8d417c",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981",
+    "deviceModel": "unavailable: no /proc/device-tree/model (no device tree, for example in a container)",
+    "vulkan": "unavailable: [Errno 2] No such file or directory: 'vulkaninfo'"
+  },
+  "hostLibrarySha256": "b9bbcacdb3fe4144fdbd3f03dfc00a98f72bffae5aca95c987efc007fc923681",
+  "runnerSha256": "17e2ceb7942f5f4ef686a93f1c85a894417c8443a2fe02c69c06ad403db5c2ce",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/linux/linux-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/curves-b/subsurface-beside.json",
+  "backendDescription": "Cycles CPU device, GCC 14 aarch64 (glibc), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.079,
+  "runnerCommand": [
+    "native/work/linux/linux-arm64/host/build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/work/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/curves-b/subsurface-beside.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-linux",
+    "--output",
+    "/work/CodeBrix.Graphics3D.Cycles/native/work/oracles/linux-arm64-20261113/oracle/curves-b/subsurface-beside/cpu-arm64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": " (the C API does not expose Cycles' DeviceInfo)"
+}

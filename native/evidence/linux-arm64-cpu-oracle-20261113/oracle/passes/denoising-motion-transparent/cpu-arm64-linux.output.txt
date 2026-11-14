@@ -1,0 +1,24 @@
+{
+  "sceneId": "passes/denoising-motion-transparent",
+  "sceneSha256": "a0a665afc8f031af7db674d4228fde4812a3d5f4f16b26c586fdedcb66b275fe",
+  "backend": "cpu-arm64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-arm64",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [0.00651292,0.00341075],
+  "filmSha256": ["197739690997017957cd3f12b29396546ecef8410bd10d292990741842a583da","197739690997017957cd3f12b29396546ecef8410bd10d292990741842a583da"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Denoising Backward Motion", "type": "denoising_backward_motion", "components": 3, "written": true, "filmSha256": ["c0e5c2eca15e45e5567aeb4a0beaee842e1efa3c510f27f3bcda64bd6accab2d","c0e5c2eca15e45e5567aeb4a0beaee842e1efa3c510f27f3bcda64bd6accab2d"]},
+    {"index": 1, "name": "Denoising Depth", "type": "denoising_depth", "components": 1, "written": true, "filmSha256": ["16457b1d6fbff6590b842f689d86f7f8db7ae815b02b0285c06bd86082136f0a","16457b1d6fbff6590b842f689d86f7f8db7ae815b02b0285c06bd86082136f0a"]}
+  ],
+  "warnings": []
+}
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)
