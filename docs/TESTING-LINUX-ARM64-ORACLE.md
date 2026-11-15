@@ -16,8 +16,8 @@ SPDX-License-Identifier: Apache-2.0
 >
 > The procedure below is the procedure for the current pin. The first run on it also answers the questions of
 > section 10. A `native/evidence/linux-x64-reference-<date>/` folder counts as "of the current pin" only if its
-> README names Cycles v5.3.0; until one is committed, the comparison of section 6 is skipped and the README of the
-> new folder says so. A run made on a branch is committed on that branch.
+> README names Cycles v5.3.0; until one exists, the comparison of section 6 is skipped and the README of the
+> new folder says so.
 
 > **MANDATORY TEST RULES** (the same as every TESTING document):
 >
@@ -37,7 +37,7 @@ Renders the committed oracle corpus (`native/oracle/scenes/**`) with the
 `cpu-arm64-linux` backend of `native/oracle/render_oracles.py`: the unmodified
 Cycles CPU kernels at the fixed ARM64 oracle baseline (ARMv8-A base level, no FMA
 contraction, no reciprocal math; native/DEVICE.md "Validation reference policy"),
-GCC 14 and glibc. The result is the Linux ARM64 CPU oracle film set, committed as
+GCC 14 and glibc. The result is the Linux ARM64 CPU oracle film set, kept as
 a new frozen evidence folder, so that WGSL renders on ARM64 devices can be compared
 against a CPU rendering of the same architecture.
 
@@ -63,7 +63,7 @@ Pi 5 remains the Linux ARM64 reference for the WGSL device on its own GPU
 On the Mac (the maintainer installs these; nothing is installed by the procedure):
 
 - Docker Desktop for Mac (Apple Silicon), running `linux/arm64` containers natively.
-- The repository checked out at the commit to be rendered (`git pull`), clean.
+- The repository checked out at the commit to be rendered, clean.
 - The NuGet cache holding `codebrix.webgpu.native.mitlicenseforever/1.0.300.210`
   (restore it once on the Mac, e.g. `dotnet restore research/GpuProbe/GpuProbe.csproj`
   with SDK 11.0.100). The package contains every RID, including
@@ -209,14 +209,14 @@ record, never failures and never tuned away** (native/DEVICE.md open item 25:
 x64 and ARM64 CPU oracles are known to differ on some scenes). Use the
 `linux-x64-reference-<date>` folder of the same or the nearest commit and name it.
 
-## 7. Evidence to commit
+## 7. Evidence folder
 
 Copy the run into a NEW folder `native/evidence/linux-arm64-cpu-oracle-<date>/`
 (never into an existing evidence folder): `oracle/<scene>/cpu-arm64-linux/`
 (films and `meta.json`), `run.json`, the comparison JSON of section 6, and a
 `README.md` with the commit, the image (`debian:trixie` digest from
 `docker image inspect`), the tool versions of section 2, the walls, and the list of
-refused or failed scenes, and commit. No licence checks are needed: the run adds films and records, no external
+refused or failed scenes. No licence checks are needed: the run adds films and records, no external
 code (MAINTAINER-README.txt, "Licensing and source checks").
 
 ## 8. What to record
@@ -254,14 +254,14 @@ Steps (sections 3 to 7, with these requirements):
    and name it in the README; the x64 folder may be of an earlier commit when the
    current commit has no Linux x64 evidence yet, but never of another pinned Cycles
    revision (section 6). Per-scene results go in `vs-x64/`.
-5. Commit the run as a NEW folder `native/evidence/linux-arm64-cpu-oracle-<date>/`
+5. Add the run as a NEW folder `native/evidence/linux-arm64-cpu-oracle-<date>/`
    with the layout of section 7. The README states: the commit hash, that the folder
    is the ARM64 gold standard for that commit (section 1), the x64 folder compared
    against, the scene count, and the refused, failed or non-identical scenes
    (or "none"). Earlier `linux-arm64-cpu-oracle-*` folders stay untouched.
-6. After the commit, Android ARM64 validation of that commit judges product-default
-   films against this folder (native/DEVICE.md, "Validation reference policy",
-   Option A); the Linux x64 host must `git pull` before it starts.
+6. Android ARM64 validation of that commit then judges product-default films
+   against this folder (native/DEVICE.md, "Validation reference policy",
+   Option A); the Linux x64 host's checkout must contain the folder before it starts.
 
 ## 10. The first run at the current pin: what it has to show
 

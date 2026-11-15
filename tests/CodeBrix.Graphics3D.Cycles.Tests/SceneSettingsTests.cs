@@ -287,8 +287,10 @@ public class SceneSettingsTests
         again.Should().NotThrow();
     }
 
+    // Gaussian splats render on the CPU and Metal backends with their standard attributes (GaussianSplatTests); a cloud
+    // without them is refused by name instead of rendering as plain points, as the pinned Cycles would with no message.
     [Fact]
-    public void Point_cloud_rendered_as_gaussian_splats_is_refused_by_name()
+    public void Point_cloud_rendered_as_gaussian_splats_without_its_attributes_is_refused_by_name()
     {
         //Arrange
         using CyclesScene scene = TestScenes.CreateCpuScene();
@@ -305,8 +307,9 @@ public class SceneSettingsTests
         //Assert
         renderAsByDefault.Should().Be(PointCloudRenderAs.Points);
         CyclesException error = render.Should().Throw<CyclesException>().Which;
-        error.NativeStatus.Should().Be(NativeStatus.Unsupported);
-        error.Message.Should().Contain("Gaussian splats");
+        error.NativeStatus.Should().Be(NativeStatus.Invalid);
+        error.Message.Should().Contain("Gaussian splats need the standard point attributes radiance:base, scale and rotation");
+        error.Message.Should().Contain("(missing: radiance:base, scale, rotation)");
         points.RenderAs = PointCloudRenderAs.Points;
         again.Should().NotThrow();
     }

@@ -50,7 +50,7 @@ M4's handoff has no `before/`: its base copies were rebuilt from `native/work/me
 - `svm_surface_gate.cpp`: the hook is removed (above).
 - `nodes_gate.py`: `PROBE_FEATURES` and the `CODEBRIX_M4_PROBE_FEATURES` environment are removed. The nodes_svm probe
   now uses the scene-specialized module (`gate_probe_wgsl`, `refresh_probe`).
-- **Spec-off runs (Jeremy, 17:52, option 1).** With M4's regions the unspecialized modules exceed what Intel Mesa
+- **Spec-off runs (the maintainer, 17:52, option 1).** With M4's regions the unspecialized modules exceed what Intel Mesa
   25.0.7 handles reliably. `nodes_gate.py` therefore takes `--unspecialized KINDS`, with default `nodes_world`: only
   the listed kinds also run with `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` and are compared on/off. A comment in the
   script, plus the status scope string and `unspecializedKinds` in the report, record which kinds ran. No check is

@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 2: Android gate builds (arm64, x64) into native/work/merge2/build-<rid>, review + staging lists.
-M=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2; cd $M/tools
+M=<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2; cd $M/tools
 K="glass_render principled_svm principled_bounce principled_render nodes_svm nodes_world nodes_render"
 for rid in android-arm64 android-x64; do
   echo "[$(date +%H:%M:%S)] DECLARED android gate build $rid (--jobs 6): budget 3600 s" >> $M/budgets.txt

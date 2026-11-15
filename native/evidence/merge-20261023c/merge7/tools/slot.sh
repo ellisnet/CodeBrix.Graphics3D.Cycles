@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 7 (copy of merge wave 4's slot.sh). Usage: slot.sh LABEL BUDGET_SECONDS COMMAND...  (cold scratch Mesa cache, timeout, exit record)
 label=$1; budget=$2; shift 2
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge7; V=$M/validation
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge7; V=$M/validation
 export MESA_SHADER_CACHE_DIR=$M/mesa/$label; rm -rf "$MESA_SHADER_CACHE_DIR"; mkdir -p "$MESA_SHADER_CACHE_DIR" $V/$label
 cd $R
 echo "[$(date +%H:%M:%S)] DECLARED $label budget=${budget}s: $*" >> $M/budgets.txt

@@ -10,7 +10,7 @@ under merge-<lane>/; clean results copied in, conflicts left for hand reconcilia
 RENAMES maps a lane path to the path main uses (WebGpuRenderTests.cs -> GpuRenderTests.cs on main)."""
 import hashlib, json, shutil, subprocess, sys
 from pathlib import Path
-root = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge8'
+root = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge8'
 BASE = 'aa71c74010aca466124b8fedfc5ef5a5dceef75b'
 T = 'tests/CodeBrix.Graphics3D.Cycles.Tests/'
 RENAMES = {T + 'WebGpuRenderTests.cs': T + 'GpuRenderTests.cs'}

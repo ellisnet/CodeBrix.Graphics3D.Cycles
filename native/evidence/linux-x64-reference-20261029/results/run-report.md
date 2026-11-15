@@ -1,6 +1,6 @@
 # r29-linux: Linux x64 reference set at HEAD 686f79282 (2026-10-29, 10:53-12:32)
 
-All outputs: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux (timeline.log, budgets.txt, validation/, tools/, orig-tools/, cmp-vs-w300.txt, cmp_docker.txt, oracle-wgsl-vs-cpu.txt).
+All outputs: <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux (timeline.log, budgets.txt, validation/, tools/, orig-tools/, cmp-vs-w300.txt, cmp_docker.txt, oracle-wgsl-vs-cpu.txt).
 
 ## Start state (verified)
 HEAD 686f79282, branch main; 5 modified docs/TESTING-*.md; `git diff --binary | sha256sum` = 2220dcea... (matches, unchanged at end). dotnet 10.0.403. Disk 228 GB at start, 208 GB at end. Host ldd -> ~/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.300.210/runtimes/linux-x64/native/libcodebrix_wgpu.so sha256 5a61096ef092ae3fb6638189f1ea9fe7a99350f21376f5ea1ce9b22afce35b2b.
@@ -41,13 +41,13 @@ Known failures reproduced verbatim-class: p8-light-tree exit 1 (290 s); p8-light
 5. Job 7 bench: bundle generated with make_bench_bundle.py --model bench_01.gltf --tool <Release GltfRender>; oracle run with both scene JSONs in one invocation.
 
 ## Deliverable paths
-- A1 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/reference/linux-overlay-hashes.json
-- A2 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/host-gate/ (status.json, comparisons.json)
-- A3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/oracles/corpus/ (oracle/, comparisons/, run.json)
-- A4 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/oracles/bench/ and bundle /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/oracles/bundle/ (+ bundle-sha256.txt)
-- A5 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/reference/libm-linux-x64-glibc.json
-- A6 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/managed-linux-x64/
-- Also (slot C, w300-style) /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/reference-p2/{libm-linux-x64-glibc.json,linux-x64/}; wave-style oracles in /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/oracles-p2/, bundles in /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/bundles-p2/.
+- A1 <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/reference/linux-overlay-hashes.json
+- A2 <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/host-gate/ (status.json, comparisons.json)
+- A3 <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/oracles/corpus/ (oracle/, comparisons/, run.json)
+- A4 <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/oracles/bench/ and bundle <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/oracles/bundle/ (+ bundle-sha256.txt)
+- A5 <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/reference/libm-linux-x64-glibc.json
+- A6 <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/managed-linux-x64/
+- Also (slot C, w300-style) <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/reference-p2/{libm-linux-x64-glibc.json,linux-x64/}; wave-style oracles in <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/oracles-p2/, bundles in <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/bundles-p2/.
 
 ## Not run
 Nothing from the brief omitted. No devices, no locks.

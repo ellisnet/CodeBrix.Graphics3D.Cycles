@@ -35,7 +35,7 @@ static void gate_require(bool ok,const std::string &message){
 // kind 1 the film, kind 2 the queue counters.
 struct Miss {int path;int kind;bool queued_kernel;std::string message;};
 #if defined(CBC_BSDF_FIXTURE)
-// Velvet subnormal rule (Jeremy's ruling, native/DEVICE.md open item 29). A path-state difference is accepted only when
+// Velvet subnormal rule (the maintainer's ruling, native/DEVICE.md open item 29). A path-state difference is accepted only when
 // (a) every differing path's evaluated closures contain an Ashikhmin velvet closure (the original CPU surface shader on
 // the input state), (b) the queue counters differ only together with a differing velvet path's next kernel, (c) the
 // film written by the stage matches the normal CPU oracle by the practical criterion (no film difference is accepted),

@@ -855,7 +855,7 @@ GPU or driver refuses a module"). For compile-heavy jobs, the largest
 
 ## 8. Standing rules
 
-- Never commit evidence into a frozen checkpoint: every existing
+- Never add evidence to a frozen checkpoint: every existing
   `native/evidence/*` directory is immutable. New output goes to new
   directories only.
 - Never relax a tolerance, change a tier, budget or specialization mode to
@@ -865,7 +865,6 @@ GPU or driver refuses a module"). For compile-heavy jobs, the largest
   shipped.
 - Nothing run on the Pi uses `sudo`; packages are the maintainer's to install, with
   apt only.
-- Never commit from the test machine without reviewing the complete list of
-  new and changed paths (`git status --porcelain`) first; build output under
-  `native/work/` stays uncommitted (it is ignored).
+- Review the complete list of new and changed paths (`git status --porcelain`)
+  after every run; build output under `native/work/` is git-ignored.
 - Record every MISSING step that blocked or limited the run.

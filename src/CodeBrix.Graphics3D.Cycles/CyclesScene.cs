@@ -58,9 +58,15 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     private BackgroundNode background;
     private SceneAttributesNode sceneAttributes;
     private TimeSpan renderTimeLimit;
+    private uint textureLimit;
+    private bool useBvhSpatialSplit;
+    private uint tileSize;
     private Task activeRender = Task.CompletedTask;
     private int disposed;
     private volatile bool faulted;
+    // The first exception a tiled image's reader threw during the current render or bake (provisional CreateTiledImage).
+    // The readers hold this box, not the scene, so a scene that is never disposed can still be collected.
+    private readonly TiledReadFailure tiledReadFailure = new();
 
     /// <summary>
     /// Creates a scene on a backend-neutral device.
@@ -69,13 +75,26 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// <param name="threads">The number of native worker threads (CPU reference backend).</param>
     /// <exception cref="PlatformNotSupportedException">The process is not 64-bit, or the operating system is older than the native library supports.</exception>
     /// <exception cref="NativeFailure">The native host could not be created (for example no usable GPU, status 2 or 3).</exception>
-    public CyclesScene(CyclesBackend backend, uint threads = 1) : this(backend switch
+    public CyclesScene(CyclesBackend backend, uint threads = 1) : this(backend, threads, HostFlags.None)
+    {
+    }
+
+    /// <summary>
+    /// Creates a scene on a backend-neutral device with host options fixed for its lifetime (provisional): with
+    /// <see cref="HostFlags.ProgressiveResults"/> every render raises <see cref="IntermediateFilmReceived"/>.
+    /// </summary>
+    /// <param name="backend">The device choice; <see cref="CyclesBackend.Gpu"/> resolves per platform (see <see cref="ResolveBackend"/>).</param>
+    /// <param name="threads">The number of native worker threads (CPU reference backend).</param>
+    /// <param name="flags">The host options.</param>
+    /// <exception cref="PlatformNotSupportedException">The process is not 64-bit, or the operating system is older than the native library supports.</exception>
+    /// <exception cref="NativeFailure">The native host could not be created (for example no usable GPU, status 2 or 3).</exception>
+    public CyclesScene(CyclesBackend backend, uint threads, HostFlags flags) : this(backend switch
     {
         CyclesBackend.CpuReference => Backend.CpuReference,
         CyclesBackend.Gpu => Backend.Gpu,
         CyclesBackend.Cpu => Backend.Cpu,
         _ => throw new ArgumentOutOfRangeException(nameof(backend))
-    }, threads)
+    }, threads, flags)
     {
     }
 
@@ -86,9 +105,22 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// <param name="threads">The number of native worker threads (CPU reference backend).</param>
     /// <exception cref="PlatformNotSupportedException">The process is not 64-bit, or the operating system is older than the native library supports.</exception>
     /// <exception cref="NativeFailure">The native host could not be created.</exception>
-    public CyclesScene(Backend backend, uint threads = 1)
+    public CyclesScene(Backend backend, uint threads = 1) : this(backend, threads, HostFlags.None)
     {
-        Host = new CyclesHost(backend, threads);
+    }
+
+    /// <summary>
+    /// Creates a scene on an explicit native backend with host options fixed for its lifetime (provisional): with
+    /// <see cref="HostFlags.ProgressiveResults"/> every render raises <see cref="IntermediateFilmReceived"/>.
+    /// </summary>
+    /// <param name="backend">The backend; <see cref="Backend.Gpu"/> lets the native host choose its GPU backend.</param>
+    /// <param name="threads">The number of native worker threads (CPU reference backend).</param>
+    /// <param name="flags">The host options.</param>
+    /// <exception cref="PlatformNotSupportedException">The process is not 64-bit, or the operating system is older than the native library supports.</exception>
+    /// <exception cref="NativeFailure">The native host could not be created, or a flag is unknown (status 1).</exception>
+    public CyclesScene(Backend backend, uint threads, HostFlags flags)
+    {
+        Host = new CyclesHost(backend, threads, flags);
         try
         {
             Backend = Host.GetBackend();
@@ -132,7 +164,8 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// the device itself is intact, and raises a status event that starts with "Device recovered".
     /// Remove the cause of the failure first. When the device cannot recover (a lost WebGPU device,
     /// or an error on the CPU or Metal device), every later render fails with a message that starts
-    /// with "Host faulted": dispose the scene and build a new one.
+    /// with "Host faulted": dispose the scene and build a new one. A failed read of a tiled image (provisional,
+    /// <see cref="CreateTiledImage"/>) is no device error and leaves it unchanged.
     /// </summary>
     public bool IsFaulted => faulted;
 
@@ -144,6 +177,17 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// render, and the render then rethrows that exception.
     /// </summary>
     public event EventHandler<RenderEvent> RenderEventReceived;
+
+    /// <summary>
+    /// Raised with each intermediate film of a render (provisional), on a scene created with
+    /// <see cref="HostFlags.ProgressiveResults"/>: a copy of the Combined film after the samples done so far, at
+    /// Cycles' display updates (after the first sample, then about every 1 to 2 seconds, and at the end; the last one of
+    /// a render is the returned film). Raised on a native render thread or on the rendering thread, never concurrently
+    /// with itself or with <see cref="RenderEventReceived"/>, and never after the render returns or for a bake. The
+    /// rules of <see cref="RenderEventReceived"/> apply: return quickly, do not call the scene, and a handler that throws
+    /// cancels the render. Film events are not raised through <see cref="RenderEventReceived"/>.
+    /// </summary>
+    public event EventHandler<IntermediateFilm> IntermediateFilmReceived;
 
     /// <summary>
     /// Gets or sets how often <see cref="RenderAsync(RenderSettings, IProgress{RenderProgress}, CancellationToken)"/>
@@ -292,6 +336,76 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
+    /// Gets or sets Cycles' texture limit (provisional): the largest side, in pixels, an image keeps when a render or bake
+    /// loads it. A larger image is reduced on the host before any device sees it, by halving until its larger side fits (a
+    /// box filter; sides rounded down); this covers images bound with <c>Bind</c> or <c>BindTiles</c> and Cycles' own (the
+    /// Sky Texture's), and brings an image within Metal's 16384-pixel texture limit. 0, the default, keeps every image at
+    /// its size. Set it before the first render that loads images: Cycles does not load an image again, so a different
+    /// value afterwards is refused. The WebGPU backend refuses a render with a limit by name (RENDER-TIME REJECTIONS).
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value exceeds <see cref="int.MaxValue"/>.</exception>
+    /// <exception cref="InvalidOperationException">A render or bake of this scene has loaded images, and the value differs.</exception>
+    public uint TextureLimit
+    {
+        get => ThrowIfDisposed(textureLimit);
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(value, (uint)int.MaxValue);
+            try
+            {
+                Host.SetTextureLimit(value);
+            }
+            catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.NotReady)
+            {
+                throw new InvalidOperationException($"The texture limit cannot change to {value}: {failure.Message}", failure);
+            }
+            textureLimit = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets whether Cycles builds its BVHs with spatial splits (provisional): the BVH2 builder then splits
+    /// primitives between nodes in the BVH of each geometry Cycles keeps in object space (one that several objects use,
+    /// or one with true displacement, subsurface scattering or subdivision; never in the scene's top level, for curves or
+    /// for geometry with motion blur), and <see cref="Backend.Cpu"/> builds at Embree's high quality; MetalRT ignores it, as in
+    /// Cycles. A speed setting: it changes how rays find the closest hit, not which one, so a film does not change by
+    /// design. <see langword="false"/> is the default. A change has every BVH built again at the next render or bake. The
+    /// WebGPU backend refuses a render with it enabled by name (RENDER-TIME REJECTIONS).
+    /// </summary>
+    public bool UseBvhSpatialSplit
+    {
+        get => ThrowIfDisposed(useBvhSpatialSplit);
+        set
+        {
+            Host.SetBvhSpatialSplit(value);
+            useBvhSpatialSplit = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the tile size of this scene's later renders and bakes (provisional; Cycles' tiled rendering): Cycles
+    /// renders tiles of this many pixels square one after another, so the device holds one tile's buffers at a time, and
+    /// the library keeps the finished tiles in system memory (no file is written) and returns the whole film, denoised when
+    /// denoising and with every pass, as an untiled render does. 0, the default, renders the whole film (or its camera
+    /// border) in one tile. Cycles uses one tile when the tile's area is at least the film's and no side exceeds 8192.
+    /// With tiles the render time limit applies to each tile, and adaptive sampling also renders 4 pixels beyond each
+    /// tile's edges. The WebGPU backend refuses a render with tiles by name (RENDER-TIME REJECTIONS).
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not 0, 8 to 128, or a multiple of 128 up to 8192 (the
+    /// sizes Cycles uses as given).</exception>
+    public uint TileSize
+    {
+        get => ThrowIfDisposed(tileSize);
+        set
+        {
+            if (!(value == 0 || (value >= 8 && value <= 128) || (value % 128 == 0 && value <= 8192)))
+                throw new ArgumentOutOfRangeException(nameof(value), value, "Tile size must be 0 (one tile), 8 to 128, or a multiple of 128 up to 8192");
+            Host.SetTileSize(value);
+            tileSize = value;
+        }
+    }
+
+    /// <summary>
     /// Creates an object that places a geometry (a mesh, other geometry or a light) in the scene.
     /// </summary>
     /// <param name="geometry">The geometry or light the object instances.</param>
@@ -326,6 +440,35 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     {
         Image image = Host.CreateImage(width, height, format, PixelBytes(format, pixels));
         return new CyclesImage(this, image, width, height, format);
+    }
+
+    /// <summary>
+    /// Creates a tiled image (provisional; Cycles' texture cache): a render or bake loads only the tiles
+    /// (<paramref name="tileSize"/> pixels square, 64 by default) and mip levels it samples, and asks
+    /// <paramref name="reader"/> for each, so the image is never held whole in memory by this library. Bind it like an image
+    /// from <see cref="CreateImage{T}"/> (<c>Bind</c>, or <c>BindTiles</c> with tiled images only); it cannot be updated.
+    /// The reader decodes its own files (for example with CodeBrix.Imaging) and serves level L at
+    /// <see cref="TiledImage.LevelSize"/> for the same tile size; see <see cref="ITiledImageReader"/> for the threading
+    /// rules. Each mip level is chosen from the ray footprint, so a minified texture reads the small levels only. The CPU
+    /// and Metal backends render it; the WebGPU backend refuses a render with it (RENDER-TIME REJECTIONS).
+    /// </summary>
+    /// <param name="width">The width of level 0 in pixels.</param>
+    /// <param name="height">The height of level 0 in pixels.</param>
+    /// <param name="format">The pixel layout the reader writes.</param>
+    /// <param name="reader">The reader; kept alive until the image is no longer used.</param>
+    /// <param name="tileSize">Provisional: the tile side, a power of two from 64 to 128 on the Metal backend and to
+    /// 65536 on the CPU backends (and on WebGPU, which refuses the render); 64 by default (<see cref="TiledImage"/>).</param>
+    /// <returns>The image; dispose it once it is bound (bindings keep the reader).</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="reader"/> is <see langword="null"/>.</exception>
+    /// <exception cref="NativeFailure">The size, format or tile size is invalid (status 1).</exception>
+    public unsafe CyclesImage CreateTiledImage(uint width, uint height, ImageFormat format, ITiledImageReader reader, uint tileSize = TiledImage.TileSize)
+    {
+        ArgumentNullException.ThrowIfNull(reader);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        // The native host owns the handle from here: its release callback frees it exactly once, also when the call fails.
+        GCHandle state = GCHandle.Alloc(new TiledReaderState(reader, format, tiledReadFailure));
+        Image image = Host.CreateTiledImage(width, height, format, &OnTiledRead, &OnTiledRelease, GCHandle.ToIntPtr(state), tileSize);
+        return new CyclesImage(this, image, width, height, format, tiled: true);
     }
 
     internal static ReadOnlySpan<byte> PixelBytes<T>(ImageFormat format, ReadOnlySpan<T> pixels) where T : unmanaged
@@ -578,6 +721,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// <param name="settings">The size and samples.</param>
     /// <param name="destination">At least <see cref="RenderSettings.FloatCount"/> floats.</param>
     /// <exception cref="NativeFailure">The render failed, was rejected (status 1) or was cancelled (status 4).</exception>
+    /// <exception cref="CyclesException">A tiled image's reader threw (provisional; <see cref="CreateTiledImage"/>): status 3, the message names the image and the tile, and <see cref="Exception.InnerException"/> is the reader's exception.</exception>
     /// <exception cref="InvalidOperationException">A <see cref="RenderEventReceived"/> handler threw (the exception is rethrown as is after the render stops).</exception>
     public void Render(RenderSettings settings, Span<float> destination) => RenderCore(settings, destination, new RenderListener(this, null, CancellationToken.None, settings.Samples, Stopwatch.StartNew()));
 
@@ -587,6 +731,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// <param name="settings">The size and samples.</param>
     /// <returns>The film.</returns>
     /// <exception cref="NativeFailure">The render failed or was cancelled (status 4).</exception>
+    /// <exception cref="CyclesException">A tiled image's reader threw (provisional; <see cref="CreateTiledImage"/>): status 3, the message names the image and the tile, and <see cref="Exception.InnerException"/> is the reader's exception.</exception>
     public FilmBuffer Render(RenderSettings settings)
     {
         float[] pixels = new float[checked((int)settings.FloatCount)];
@@ -603,6 +748,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// <returns>The film.</returns>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> cancelled the render.</exception>
     /// <exception cref="NativeFailure">The render failed.</exception>
+    /// <exception cref="CyclesException">A tiled image's reader threw (provisional; <see cref="CreateTiledImage"/>): status 3, the message names the image and the tile, and <see cref="Exception.InnerException"/> is the reader's exception.</exception>
     public async Task<FilmBuffer> RenderAsync(RenderSettings settings, IProgress<RenderProgress> progress = null, CancellationToken cancellationToken = default)
     {
         float[] pixels = new float[checked((int)settings.FloatCount)];
@@ -629,6 +775,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// <returns>A task that completes when the film is written.</returns>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> cancelled the render.</exception>
     /// <exception cref="NativeFailure">The render failed or was rejected.</exception>
+    /// <exception cref="CyclesException">A tiled image's reader threw (provisional; <see cref="CreateTiledImage"/>): status 3, the message names the image and the tile, and <see cref="Exception.InnerException"/> is the reader's exception.</exception>
     public async Task RenderAsync(RenderSettings settings, Memory<float> destination, IProgress<RenderProgress> progress = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -670,19 +817,20 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// fill. A bake clears the last render's passes, and later renders are unchanged by it. It runs one
     /// at a time with renders and raises the same events.
     /// </summary>
-    /// <param name="target">The object to bake; its geometry must be a triangle mesh with the UV attribute.</param>
+    /// <param name="target">The object to bake; its geometry must be a triangle mesh with the UV attribute, or (provisional) a linear subdivision cage diced in object space with the UV attribute among its subdivision attributes, baked through Cycles' tessellation of it.</param>
     /// <param name="settings">The size, samples, type and options.</param>
     /// <returns>The film.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="target"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="target"/> belongs to another scene.</exception>
-    /// <exception cref="NativeFailure">The bake was rejected (status 1: no such UV attribute, a geometry that is not a mesh, a bad size), was refused (status 2: a scene the bake does not support, such as a subdivision surface), failed (status 3, also when the device does not implement a combination, named in the message) or was cancelled (status 4).</exception>
+    /// <exception cref="NativeFailure">The bake was rejected (status 1: no such UV attribute, a geometry that is not a mesh, a bad size), was refused (status 2: a scene the bake does not support, such as a Catmull-Clark subdivision surface or one diced in pixel space), failed (status 3, also when the device does not implement a combination, named in the message) or was cancelled (status 4).</exception>
+    /// <exception cref="CyclesException">A tiled image's reader threw (provisional; <see cref="CreateTiledImage"/>): status 3, the message names the image and the tile, and <see cref="Exception.InnerException"/> is the reader's exception.</exception>
     public FilmBuffer Bake(ObjectNode target, BakeSettings settings) => BakeCore(target, settings, new RenderListener(this, null, CancellationToken.None, settings.Samples, Stopwatch.StartNew()));
 
     /// <summary>
     /// Bakes on a thread-pool thread into a new film, reporting progress and honouring cancellation, as
     /// <see cref="RenderAsync(RenderSettings, IProgress{RenderProgress}, CancellationToken)"/> does for a render.
     /// </summary>
-    /// <param name="target">The object to bake; its geometry must be a triangle mesh with the UV attribute.</param>
+    /// <param name="target">The object to bake; its geometry must be a triangle mesh with the UV attribute, or (provisional) a linear subdivision cage diced in object space with the UV attribute among its subdivision attributes, baked through Cycles' tessellation of it.</param>
     /// <param name="settings">The size, samples, type and options.</param>
     /// <param name="progress">Receives progress reports, or <see langword="null"/>.</param>
     /// <param name="cancellationToken">Cancels the bake; the task then throws <see cref="OperationCanceledException"/>.</param>
@@ -691,6 +839,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// <exception cref="ArgumentException"><paramref name="target"/> belongs to another scene.</exception>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> cancelled the bake.</exception>
     /// <exception cref="NativeFailure">The bake was rejected, refused or failed.</exception>
+    /// <exception cref="CyclesException">A tiled image's reader threw (provisional; <see cref="CreateTiledImage"/>): status 3, the message names the image and the tile, and <see cref="Exception.InnerException"/> is the reader's exception.</exception>
     public async Task<FilmBuffer> BakeAsync(ObjectNode target, BakeSettings settings, IProgress<RenderProgress> progress = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(target);
@@ -765,6 +914,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
         lock (renderGate)
         {
             GCHandle handle = GCHandle.Alloc(listener);
+            tiledReadFailure.Clear();
             try
             {
                 Host.SetEventCallback(&OnNativeEvent, GCHandle.ToIntPtr(handle));
@@ -773,7 +923,11 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
                     Host.Bake(HandleOf(target), settings, values, out _, out components);
                     faulted = false;
                 }
-                catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.Failed)
+                catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.Failed && listener.HandlerFailure == null && tiledReadFailure.Exception != null)
+                {
+                    throw tiledReadFailure.Rethrow(failure);
+                }
+                catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.Failed && !TiledReadFailure.IsTiledRead(failure))
                 {
                     faulted = true;
                     throw;
@@ -843,6 +997,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
         lock (renderGate)
         {
             GCHandle handle = GCHandle.Alloc(listener);
+            tiledReadFailure.Clear();
             try
             {
                 Host.SetEventCallback(&OnNativeEvent, GCHandle.ToIntPtr(handle));
@@ -851,7 +1006,13 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
                     Host.Render(settings.Width, settings.Height, settings.Samples, destination);
                     faulted = false;
                 }
-                catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.Failed)
+                catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.Failed && listener.HandlerFailure == null && tiledReadFailure.Exception != null)
+                {
+                    // A tiled image's reader threw: the native host failed the render naming the image and the tile (not a
+                    // device error). The reader's exception is the cause.
+                    throw tiledReadFailure.Rethrow(failure);
+                }
+                catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.Failed && !TiledReadFailure.IsTiledRead(failure))
                 {
                     faulted = true;
                     throw;
@@ -904,6 +1065,73 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
         }
     }
 
+    // A tiled image's reader and the scene's failure box, behind the GCHandle passed to the native host as user data.
+    private sealed class TiledReaderState(ITiledImageReader reader, ImageFormat format, TiledReadFailure failure)
+    {
+        public readonly ITiledImageReader Reader = reader;
+        public readonly ImageFormat Format = format;
+        public readonly TiledReadFailure Failure = failure;
+    }
+
+    // The first reader exception of a render or bake. Written on a native thread, read after the render returned.
+    private sealed class TiledReadFailure
+    {
+        private Exception exception;
+
+        public Exception Exception => Volatile.Read(ref exception);
+
+        public void Clear() => Volatile.Write(ref exception, null);
+
+        public void Record(Exception value) => Interlocked.CompareExchange(ref exception, value, null);
+
+        // A tiled image's failed read (every such native message starts "Tiled image N:"): no device failed.
+        public static bool IsTiledRead(NativeFailure failure) => failure.Message.StartsWith("Tiled image ", StringComparison.Ordinal);
+
+        public CyclesException Rethrow(NativeFailure failure)
+        {
+            Exception cause = Exception;
+            return new CyclesException(NativeStatus.Failed, $"{failure.Message}: the reader threw {cause.GetType().Name}: {cause.Message}", cause);
+        }
+    }
+
+    // CBCImageTileReadCallback: serialized per host by the native host; the span covers exactly the rectangle's rows.
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    private static unsafe int OnTiledRead(nint userData, uint level, uint x, uint y, uint width, uint height, void* pixels, ulong rowBytes)
+    {
+        if (userData == 0 || pixels == null) return 1;
+        if (GCHandle.FromIntPtr(userData).Target is not TiledReaderState state) return 1;
+        try
+        {
+            ulong pixelBytes = (ulong)(ComponentBytes(state.Format) * Channels(state.Format));
+            if (height == 0 || width == 0 || rowBytes < width * pixelBytes || rowBytes > int.MaxValue) return 1;
+            ulong length = checked(rowBytes * (height - 1) + width * pixelBytes);
+            if (length > int.MaxValue) return 1;
+            state.Reader.ReadTile(checked((int)level), checked((int)x), checked((int)y), checked((int)width), checked((int)height),
+                new Span<byte>(pixels, (int)length), (int)rowBytes);
+            return 0;
+        }
+        catch (Exception exception)
+        {
+            state.Failure.Record(exception);
+            return 1;
+        }
+    }
+
+    // CBCReleaseCallback: the native host no longer uses the reader.
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    private static void OnTiledRelease(nint userData)
+    {
+        if (userData == 0) return;
+        try
+        {
+            GCHandle.FromIntPtr(userData).Free();
+        }
+        catch (InvalidOperationException)
+        {
+            // Never freed twice: the native host calls this exactly once.
+        }
+    }
+
     private sealed unsafe class RenderListener(CyclesScene scene, IProgress<RenderProgress> progress, CancellationToken cancellationToken, uint samples, Stopwatch timer)
     {
         public Exception HandlerFailure;
@@ -916,6 +1144,16 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
             RenderEventKind kind = (RenderEventKind)nativeEvent->Kind;
             ulong done = nativeEvent->SamplesDone;
             ulong total = nativeEvent->SamplesTotal;
+            if (kind == RenderEventKind.Film)
+            {
+                // The native film is valid only during the callback: the handler gets a copy.
+                EventHandler<IntermediateFilm> handler = scene.IntermediateFilmReceived;
+                if (handler == null || nativeEvent->Film == null) return cancellationToken.IsCancellationRequested;
+                float[] pixels = new ReadOnlySpan<float>(nativeEvent->Film, checked((int)((ulong)nativeEvent->Width * nativeEvent->Height * FilmBuffer.Channels))).ToArray();
+                handler(scene, new IntermediateFilm(new FilmBuffer(nativeEvent->Width, nativeEvent->Height, pixels, RenderPass.Combined),
+                    (uint)Math.Min(done, uint.MaxValue), (uint)Math.Min(total, uint.MaxValue), TimeSpan.FromSeconds(nativeEvent->ElapsedSeconds)));
+                return cancellationToken.IsCancellationRequested;
+            }
             string message = nativeEvent->Message == null ? string.Empty : Marshal.PtrToStringUTF8((nint)nativeEvent->Message) ?? string.Empty;
             if (kind == RenderEventKind.Progress)
             {
@@ -1039,6 +1277,25 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     }
 
     internal void UnbindImage(ShaderGraphNode texture) => Host.BindImage(texture.Handle, default);
+
+    // UDIM tiles (provisional): the native host validates the tile numbers and formats; here only the images' scene and
+    // lifetime are checked, as for BindImage. A negative tile number reaches the host as a number above INT_MAX and is
+    // refused there with the other out-of-range numbers.
+    internal void BindImageTiles(ShaderGraphNode texture, ReadOnlySpan<UdimTile> tiles)
+    {
+        uint[] numbers = new uint[tiles.Length];
+        Image[] images = new Image[tiles.Length];
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            CyclesImage image = tiles[i].Image;
+            if (image == null) throw new ArgumentException($"UDIM tile {tiles[i].Number} has no image.", nameof(tiles));
+            if (!ReferenceEquals(image.Scene, this)) throw new ArgumentException($"The image of UDIM tile {tiles[i].Number} belongs to another scene.", nameof(tiles));
+            ObjectDisposedException.ThrowIf(image.IsReleased, image);
+            numbers[i] = unchecked((uint)tiles[i].Number);
+            images[i] = image.Handle;
+        }
+        Host.BindImageTiles(texture.Handle, numbers, images);
+    }
 
     internal void ReleaseImage(CyclesImage image)
     {

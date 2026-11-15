@@ -4,8 +4,8 @@
 # Merge wave 4: Pixel 4 XL provisional materials jobs ONLY (lane P's table), one job per run, each with a hard cutoff
 # max(5 s, 3 x this merge's Samsung wall for the same job; lane S's device-times.tsv when this merge has none).
 # run_corpus.py kills the exact PID (pid file + readlink check) at the cutoff. Nothing else runs on the Pixel.
-cd "$(dirname "$0")"; M=$(realpath ..); L=/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
-ref=$M/reference/linux-x64; serial=98271FFBA0048D; A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"
+cd "$(dirname "$0")"; M=$(realpath ..); L=<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
+ref=$M/reference/linux-x64; serial=98271FFBA0048D; A="<home>/Android/Sdk/platform-tools/adb -s $serial"
 lg(){ echo "[$(date +%H:%M:%S)] pixel $*" >> $M/timeline.log; }
 until grep -q "samsung corpus materials-m4 exit=" $M/timeline.log; do grep -q "samsung chain not started\|samsung lock HELD" $M/timeline.log && { lg "not started (no Samsung materials walls)"; exit 1; }; sleep 20; done
 python3 pixel_cutoffs.py > $M/device/pixel-cutoffs.json || { lg "cutoff computation failed"; exit 1; }

@@ -7,7 +7,7 @@ evidence summaries, handoff.json with the patch sha256)."""
 import hashlib, json, shutil, subprocess, sys, tempfile, datetime
 from pathlib import Path
 WT = Path(__file__).resolve().parents[4]; E1 = WT/'native/work/x1'; OUT = E1/'handoff'
-SEED = Path('/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-phaseE.json')
+SEED = Path('<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-phaseE.json')
 def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 seed = json.loads(SEED.read_text()); before = seed['sourceSha256']
 def excluded(rel):
@@ -23,8 +23,8 @@ if OUT.exists(): shutil.rmtree(OUT)
 (OUT/'source').mkdir(parents=True)
 base = E1/'handoff-baseline'
 # X1: baseline copies of the seed content, taken read-only from any tree holding the seed bytes.
-CANDIDATES = [Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'), Path('/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/handoff-baseline'),
-              *sorted(p for p in Path('/home/jeremy/ClaudeHome/cycles-worktrees').iterdir() if p.name != WT.name)]
+CANDIDATES = [Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'), Path('<home>/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/handoff-baseline'),
+              *sorted(p for p in Path('<home>/ClaudeHome/cycles-worktrees').iterdir() if p.name != WT.name)]
 for r in modified+deleted:
     if (base/r).exists() and sha(base/r) == seeded[r]: continue
     for c in CANDIDATES:

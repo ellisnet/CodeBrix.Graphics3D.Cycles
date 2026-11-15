@@ -1,5 +1,5 @@
 # Lane Q checkpoint status (written 16:41:15, last step: complete)
-Worktree /home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep (base 3392df3d). Chain: native/work/q/tools/chain_s20.sh [STEP ...];
+Worktree <home>/ClaudeHome/cycles-worktrees/q-s20-sweep (base 3392df3d). Chain: native/work/q/tools/chain_s20.sh [STEP ...];
 steps in order: stage hostgate canary triangle emitter lighting regression transparent terminator specrefusal featurecomb motion precision volume hostcap app materials. A step whose runs/s20/<corpus>-<label>/status.json (or device/android-host-gate, android-app/webgpu-s20) exists is skipped on re-run.
 Builds: Linux native/work/cycles-build; Android gates native/work/q/build-android-arm64 (staged-binaries-android-arm64.json); APK native/work/q/android-app/validation-q.
 Lock: not held (s20 lock dir absent)

@@ -1,6 +1,6 @@
 # Cycles parity ledger
 
-Full Cycles parity is the intended outcome, explicitly requested by Jeremy.
+Full Cycles parity is the intended outcome, explicitly requested by the maintainer.
 The reference is the pinned upstream revision
 `a456b761034dda42c32eef9f4aae0fa5a5c9f604`; each new behavior needs comparison
 with original Cycles code and, ultimately, complete reference renders.

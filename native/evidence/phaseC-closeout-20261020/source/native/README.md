@@ -219,7 +219,7 @@ regression crashes. The candidate and failure evidence are preserved under
 `native/work/mesh-light-v1/deferred-candidate`; it is excluded from production.
 The validated pre-extension source was restored by exact hash, retaining the
 original triangle-light guards and recorder v5. Restoration and follow-up results
-are recorded under `native/work/mesh-light-v1` and in section 44 of Jeremy's plan.
+are recorded under `native/work/mesh-light-v1` and in section 44 of the maintainer's plan.
 Before reintegration, resolve the transparent-lighting regression and the retained
 instanced-emitter image mismatch, then validate moving emitters and broader
 interactions. Environment/textured emission, light trees and remaining full MIS

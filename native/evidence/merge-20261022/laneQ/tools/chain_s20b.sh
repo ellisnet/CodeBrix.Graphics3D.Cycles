@@ -4,10 +4,10 @@
 # Lane Q: S20 FE 5G (RFCRB0MPHYH, Adreno 650) sweep chain. One job at a time; per-job timeout = max(600, 3 x tablet wall).
 # chain_s20b.sh = chain_s20.sh plus step hostcap2 (Linux captures re-recorded in this worktree; merge3's capture arenas had been deleted).
 # Usage: chain_s20.sh [STEP ...]  (default: every step in order). Steps are skipped when runs/s20/<corpus>-<label>/status.json exists.
-R=/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep; Q=$R/native/work/q; cd $Q/tools
-G=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3   # read-only inputs (Linux references and captures; code identical, docs-only diff)
+R=<home>/ClaudeHome/cycles-worktrees/q-s20-sweep; Q=$R/native/work/q; cd $Q/tools
+G=<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3   # read-only inputs (Linux references and captures; code identical, docs-only diff)
 ref=$G/reference/linux-x64; F="--reference $ref --device-scene"; FM="--reference $ref"
-S=RFCRB0MPHYH; A="adb -s $S"; L=/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks/s20
+S=RFCRB0MPHYH; A="adb -s $S"; L=<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks/s20
 lg(){ echo "[$(date +%H:%M:%S)] $*" >> $Q/timeline.log; }
 decl(){ echo "[$(date +%H:%M:%S)] DECLARED $1 timeout=$2s" >> $Q/budgets.txt; }
 ckpt(){ python3 sweep_table.py > /dev/null 2>> $Q/logs/sweep-table.err; python3 status_md.py "$1" >> $Q/logs/sweep-table.err 2>&1; }

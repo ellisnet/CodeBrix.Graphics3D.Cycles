@@ -50,17 +50,17 @@
 [15:39:40] device capture shows Android ARM64 layout = scalar oracle (CAMERA_NATIVE_VECTOR_DIVIDE 0, NATIVE_FLOAT3_RECIPROCAL_NORMALIZE 1, NATIVE_TRIANGLE_ARITHMETIC 0), not 2; candidate 3: reference_oracle_sse() (Android + REFERENCE_IMPORT -> x64 oracle constants)
 [15:58:10] samsung triangle c3: triangle_lighting 6/6 PASS vs glibc (mode 4: 0 practical, 11 strict, 3.7e-7); sampler 41->2 practical; replay-4 failed only against the capture's bionic CPU film -> runner now judges device replays against the glibc device-scene reference (bionic = diagnostic). Starting FINAL clean Linux build + full Android build
 --- device runner lines (written to native/work/e4/timeline.log before the runners were pointed at handoff/) ---
-[15:21:56] samsung hostcap-c1-linux-triangle: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-0)
+[15:21:56] samsung hostcap-c1-linux-triangle: START tri0 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-0)
 [15:22:17] samsung hostcap-c1-linux-triangle: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
-[15:22:18] samsung hostcap-c1-linux-triangle: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-1)
+[15:22:18] samsung hostcap-c1-linux-triangle: START tri1 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-1)
 [15:22:57] samsung hostcap-c1-linux-triangle: PASS tri1 readbacks=417 max=1.49e-07 strict=1 fmt=native-command-stream-v6
-[15:22:57] samsung hostcap-c1-linux-triangle: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-2)
+[15:22:57] samsung hostcap-c1-linux-triangle: START tri2 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-2)
 [15:23:36] samsung hostcap-c1-linux-triangle: PASS tri2 readbacks=415 max=6.41e-07 strict=14 fmt=native-command-stream-v6
-[15:23:36] samsung hostcap-c1-linux-triangle: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-3)
+[15:23:36] samsung hostcap-c1-linux-triangle: START tri3 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-3)
 [15:24:16] samsung hostcap-c1-linux-triangle: PASS tri3 readbacks=473 max=1.76e-06 strict=236 fmt=native-command-stream-v6
-[15:24:16] samsung hostcap-c1-linux-triangle: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-4)
+[15:24:16] samsung hostcap-c1-linux-triangle: START tri4 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-4)
 [15:24:56] samsung hostcap-c1-linux-triangle: PASS tri4 readbacks=415 max=3.73e-07 strict=8 fmt=native-command-stream-v6
-[15:24:56] samsung hostcap-c1-linux-triangle: START tri5 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-5)
+[15:24:56] samsung hostcap-c1-linux-triangle: START tri5 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-5)
 [15:26:25] samsung hostcap-c1-linux-triangle: PASS tri5 readbacks=464 max=2.38e-06 strict=258 fmt=native-command-stream-v6
 [15:26:28] samsung hostcap-c1-linux-triangle: END passed=True wall=273s/3600s
 [15:26:40] samsung triangle-c1: START triangle_sample timeout=900s
@@ -223,15 +223,15 @@
 [16:47:17] END f2-transparent-shadow exit=0 170s
 [16:47:17] slot2 DONE
 [16:47:41] FINAL-2 android binaries staged on Samsung
-[16:47:48] samsung triangle-final: ERROR CalledProcessError(1, ['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-triangle-final"], None, None)
+[16:47:48] samsung triangle-final: ERROR CalledProcessError(1, ['<home>/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-triangle-final"], None, None)
 [16:47:53] samsung triangle-final: END passed=False wall=7s/2400s failures=0
-[16:47:59] samsung emitter-final: ERROR CalledProcessError(1, ['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-emitter-final"], None, None)
+[16:47:59] samsung emitter-final: ERROR CalledProcessError(1, ['<home>/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-emitter-final"], None, None)
 [16:48:04] samsung emitter-final: END passed=False wall=7s/600s failures=0
-[16:48:11] samsung precision-final: ERROR CalledProcessError(1, ['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-precision-final"], None, None)
+[16:48:11] samsung precision-final: ERROR CalledProcessError(1, ['<home>/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-precision-final"], None, None)
 [16:48:16] samsung precision-final: END passed=False wall=6s/900s failures=0
-[16:48:23] samsung spec-refusal-final: ERROR CalledProcessError(1, ['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-spec-refusal-final"], None, None)
+[16:48:23] samsung spec-refusal-final: ERROR CalledProcessError(1, ['<home>/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-spec-refusal-final"], None, None)
 [16:48:28] samsung spec-refusal-final: END passed=False wall=7s/600s failures=0
-[16:48:34] samsung regression-final: ERROR CalledProcessError(1, ['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-regression-final"], None, None)
+[16:48:34] samsung regression-final: ERROR CalledProcessError(1, ['<home>/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-regression-final"], None, None)
 [16:48:40] samsung regression-final: END passed=False wall=6s/1500s failures=0
 [16:48:46] samsung transparent-final: START transparent_shadow timeout=900s
 [16:49:04] samsung transparent-final: PASS transparent_shadow 17s maxPipelineMs=1991.99
@@ -360,21 +360,21 @@
 [17:43:15] samsung volume-final: START closed-replay-inside timeout=94s
 [17:43:53] samsung volume-final: PASS closed-replay-inside 36s readbacks=1116 max=1.53e-05 strict=1801 fmt=native-command-stream-v6
 [17:43:58] samsung volume-final: END passed=True wall=1743s/1800s failures=0
-[17:44:03] samsung hostcap-final-linux-triangle: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-0)
+[17:44:03] samsung hostcap-final-linux-triangle: START tri0 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-0)
 [17:44:25] samsung hostcap-final-linux-triangle: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
-[17:44:25] samsung hostcap-final-linux-triangle: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-1)
+[17:44:25] samsung hostcap-final-linux-triangle: START tri1 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-1)
 [17:45:04] samsung hostcap-final-linux-triangle: PASS tri1 readbacks=417 max=1.49e-07 strict=1 fmt=native-command-stream-v6
-[17:45:04] samsung hostcap-final-linux-triangle: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-2)
+[17:45:04] samsung hostcap-final-linux-triangle: START tri2 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-2)
 [17:45:43] samsung hostcap-final-linux-triangle: PASS tri2 readbacks=415 max=6.41e-07 strict=14 fmt=native-command-stream-v6
-[17:45:43] samsung hostcap-final-linux-triangle: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-3)
+[17:45:43] samsung hostcap-final-linux-triangle: START tri3 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-3)
 [17:45:54] FINAL-2 linux build exit=0, gates+host tests exit=0 448s
 [17:46:23] samsung hostcap-final-linux-triangle: PASS tri3 readbacks=473 max=1.76e-06 strict=236 fmt=native-command-stream-v6
-[17:46:23] samsung hostcap-final-linux-triangle: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-4)
+[17:46:23] samsung hostcap-final-linux-triangle: START tri4 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-4)
 [17:46:27] START g1-host-gate
 [17:46:27] START g2-reference-export
 [17:46:33] Pixel lock 98271FFBA0048D taken
 [17:47:02] samsung hostcap-final-linux-triangle: PASS tri4 readbacks=415 max=3.73e-07 strict=8 fmt=native-command-stream-v6
-[17:47:02] samsung hostcap-final-linux-triangle: START tri5 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-5)
+[17:47:02] samsung hostcap-final-linux-triangle: START tri5 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-5)
 [17:47:05] PROTOCOL INCIDENT: Pixel lock mkdir failed (held by merge-wave-2 agent (materials merge) 2026-10-20T17:19:08-07:00 ) but my compound command still ran stage.py push pixel (rm -rf + push of my own /data/local/tmp/codebrix-e4-stage, 61 files) and one read-only adb shell ps/ls. No process of the lock holder was touched. Now waiting for the lock in a 30 s loop.
 [17:48:21] CORRECTION: the '[17:46:33] Pixel lock 98271FFBA0048D taken' line above is FALSE - it was written by the same compound command after the failed mkdir; the lock was NOT taken then (see the incident line).
 [17:48:29] samsung hostcap-final-linux-triangle: PASS tri5 readbacks=464 max=2.38e-06 strict=258 fmt=native-command-stream-v6
@@ -383,31 +383,31 @@
 [17:48:35] START g1-dotnet-build
 [17:48:37] END g1-dotnet-build exit=0 2s
 [17:48:37] START g1-dotnet-test
-[17:48:38] samsung hostcap-final-linux-terminator: START term0 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-0)
+[17:48:38] samsung hostcap-final-linux-terminator: START term0 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-0)
 [17:48:52] END g2-reference-export exit=0 145s
 [17:48:52] START g2-triangle
 [17:48:55] samsung hostcap-final-linux-terminator: PASS term0 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
-[17:48:55] samsung hostcap-final-linux-terminator: START term1 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-1)
+[17:48:55] samsung hostcap-final-linux-terminator: START term1 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-1)
 [17:49:15] samsung hostcap-final-linux-terminator: PASS term1 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
-[17:49:15] samsung hostcap-final-linux-terminator: START term2 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-2)
+[17:49:15] samsung hostcap-final-linux-terminator: START term2 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-2)
 [17:49:34] samsung hostcap-final-linux-terminator: PASS term2 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
-[17:49:35] samsung hostcap-final-linux-terminator: START term3 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-3)
+[17:49:35] samsung hostcap-final-linux-terminator: START term3 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-3)
 [17:49:44] END g1-dotnet-test exit=0 67s
 [17:49:44] START g1-all-lanes
 [17:49:54] samsung hostcap-final-linux-terminator: PASS term3 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
-[17:49:54] samsung hostcap-final-linux-terminator: START term4 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-4)
+[17:49:54] samsung hostcap-final-linux-terminator: START term4 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-4)
 [17:50:28] samsung hostcap-final-linux-terminator: PASS term4 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
-[17:50:28] samsung hostcap-final-linux-terminator: START term5 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-5)
+[17:50:28] samsung hostcap-final-linux-terminator: START term5 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-5)
 [17:50:42] END g2-triangle exit=0 110s
 [17:50:42] START g2-shadow-terminator
 [17:51:01] samsung hostcap-final-linux-terminator: PASS term5 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
-[17:51:02] samsung hostcap-final-linux-terminator: START term6 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-6)
+[17:51:02] samsung hostcap-final-linux-terminator: START term6 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-6)
 [17:51:35] samsung hostcap-final-linux-terminator: PASS term6 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
-[17:51:35] samsung hostcap-final-linux-terminator: START term7 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-7)
+[17:51:35] samsung hostcap-final-linux-terminator: START term7 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-7)
 [17:52:05] END g2-shadow-terminator exit=0 83s
 [17:52:05] START g2-closest-static
 [17:52:09] samsung hostcap-final-linux-terminator: PASS term7 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
-[17:52:09] samsung hostcap-final-linux-terminator: START term8 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-8)
+[17:52:09] samsung hostcap-final-linux-terminator: START term8 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-8)
 [17:52:10] END g2-closest-static exit=0 5s
 [17:52:10] START g2-closest-motion
 [17:52:23] END g2-closest-motion exit=0 13s
@@ -417,7 +417,7 @@
 [17:52:41] END g2-closest-deform-motion exit=0 13s
 [17:52:41] START g2-shadow
 [17:52:42] samsung hostcap-final-linux-terminator: PASS term8 readbacks=407 max=2.93e-05 strict=8 fmt=native-command-stream-v6
-[17:52:42] samsung hostcap-final-linux-terminator: START term9 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-9)
+[17:52:42] samsung hostcap-final-linux-terminator: START term9 (<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-9)
 [17:53:32] END g2-shadow exit=0 51s
 [17:53:32] START g2-glass-spec-on
 [17:53:54] samsung hostcap-final-linux-terminator: PASS term9 readbacks=443 max=2.93e-05 strict=22 fmt=native-command-stream-v6

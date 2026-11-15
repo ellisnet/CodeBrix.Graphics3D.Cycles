@@ -1,6 +1,6 @@
 # M4 materials lane: bump stages and derivative opcodes
 
-Worktree `/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative` (detached 01eb27b6 + sealed M3
+Worktree `<home>/ClaudeHome/cycles-worktrees/m4-bump-derivative` (detached 01eb27b6 + sealed M3
 patch 00895dfa..., seed manifest `baseline-m4.json`, 32,861 files). Linux x64, Intel UHD ADL-S,
 Mesa 25.0.7, unchanged `CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433`. No commits, no
 stash, no sub-agents. Job 2 (specialized probe + Gabor) was dropped by the coordinator at 15:55;

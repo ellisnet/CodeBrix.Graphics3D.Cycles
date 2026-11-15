@@ -7,7 +7,7 @@ hunks; otherwise the differing lines are listed (expected only where the merge r
 usage: idempotence.py lane [lane ...]"""
 import json, subprocess, sys, tempfile, os
 from pathlib import Path
-root = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles')
+root = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles')
 T = 'tests/CodeBrix.Graphics3D.Cycles.Tests/'; REN = {T + 'WebGpuRenderTests.cs': T + 'GpuRenderTests.cs'}
 for lane in sys.argv[1:]:
     wt = Path.home() / 'ClaudeHome/cycles-worktrees' / lane

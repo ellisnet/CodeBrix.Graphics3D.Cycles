@@ -558,4 +558,3 @@ backend. A disagreement is a finding to report with its reproducer.
 - Only the reviewed snapshots in `third_party/` are built; nothing from another
   compiler distribution is linked or included.
 - The shipped WebGPU runtime and DXC are used unchanged.
-- The maintainer makes every commit and push.

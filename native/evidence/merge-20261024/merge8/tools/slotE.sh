@@ -5,9 +5,9 @@
 # textured-plane control (CPU vs WGSL), the bench bundle (make_bench_bundle.py, verified against the committed manifest)
 # and the control bundle for part 2, oracle runs (starters, bench, control), comparator proof (starters perfect,
 # corrupted films fail).
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh
 B=$R/native/work/cycles-build; TOOL=$R/tools/gltf/CycleGltfRender/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.GltfRender
-MODEL=/home/jeremy/GitHome/Oasys/Assets/ForestCommunity/Domes/ForestVillage/CommunityProps/bench_01.gltf
+MODEL=<home>/GitHome/Oasys/Assets/ForestCommunity/Domes/ForestVillage/CommunityProps/bench_01.gltf
 O="--runner $B/bin/codebrix_cycles_oracle --host-library $B/lib/libcodebrix_cycles_host.so --backend cpu-x64-linux --backend wgsl-linux-intel"
 cd $R; mkdir -p $V/e-gltf
 $S e-gltf-sample-write 300 $TOOL --write-sample $V/e-gltf/sample.glb

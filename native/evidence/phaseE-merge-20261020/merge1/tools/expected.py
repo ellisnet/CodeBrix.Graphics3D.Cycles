@@ -5,8 +5,8 @@
 usage: expected.py build | check"""
 import hashlib, json, sys
 from pathlib import Path
-W = Path('/home/jeremy/ClaudeHome/cycles-worktrees')
-root = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles')
+W = Path('<home>/ClaudeHome/cycles-worktrees')
+root = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles')
 out = root / 'native/work/merge1/expected.json'
 lanes = {'e1': 'e1-triangle-arm', 'e2': 'e2-pixel', 'e3': 'e3-host-edits', 'x1': 'x1-android-reference', 'x2': 'x2-exact-traversal'}
 def load():

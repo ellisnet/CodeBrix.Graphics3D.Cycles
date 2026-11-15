@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 8 part 1b, final slot: the three runs that met leftovers of the aborted first 1b run (fresh folders),
 # and the eight C1 comparator runs + the six Mac comparisons with the ISA-family compare.py.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh; T=$R/native/tools; B=$R/native/work/cycles-build/bin
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh; T=$R/native/tools; B=$R/native/work/cycles-build/bin
 TOOL=$R/tools/gltf/CycleGltfRender/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.GltfRender
 E1=$R/native/evidence/cycles-oracles-macos-20261023/oracle; E2=$R/native/evidence/cycles-oracles-macos-20261023-2/oracle
 cd $R; mkdir -p $M/bundles-1b $V/b8f-comparator $V/b8f-comparator-mac

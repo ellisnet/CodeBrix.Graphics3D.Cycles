@@ -5,9 +5,9 @@
 binaries, *.bin films and files over 1 MB recorded by sha256 and work location)."""
 import datetime, gzip, hashlib, json, os, shutil, subprocess, sys
 from pathlib import Path
-REPO = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles')
+REPO = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles')
 OUT = REPO/'native/evidence/phaseE-merge-20261020'
-WT = Path('/home/jeremy/ClaudeHome/cycles-worktrees')
+WT = Path('<home>/ClaudeHome/cycles-worktrees')
 SOURCES = [  # (label in checkpoint, absolute folder, location string)
     ('laneE1', WT/'e1-triangle-arm/native/work/e1/handoff', 'worktree e1-triangle-arm: native/work/e1/handoff'),
     ('laneE2', WT/'e2-pixel/native/work/e2/handoff', 'worktree e2-pixel: native/work/e2/handoff'),

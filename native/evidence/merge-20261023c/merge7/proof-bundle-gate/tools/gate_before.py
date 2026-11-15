@@ -4,7 +4,7 @@
 """Install a reviewed local validation APK and independently check its output."""
 import argparse,concurrent.futures,io,json,math,struct,subprocess,sys,tarfile,time,traceback
 from pathlib import Path
-REPO=Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles');sys.path.insert(0,str(REPO/'native/tools'))
+REPO=Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles');sys.path.insert(0,str(REPO/'native/tools'))
 from device_gate import sha,save
 from render_gate import inputs
 from android_toolchain import TARGETS

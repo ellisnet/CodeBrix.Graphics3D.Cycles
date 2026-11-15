@@ -1,6 +1,6 @@
 #!/bin/bash
 # Merge wave 6 part 2: managed bundle-mode run of the bench bundle (scene.json = copy of bench_01.json) on one device, under the lock.
-cd "$(dirname "$0")"; dev=$1; M=$(realpath ..); R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; source ./lock6.sh
+cd "$(dirname "$0")"; dev=$1; M=$(realpath ..); R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; source ./lock6.sh
 case $dev in hp) serial=192.168.86.225:5555; rid=android-x64;; samsung) serial=R52W207XQ1V; rid=android-arm64;; esac
 lg(){ echo "[$(date +%H:%M:%S)] $dev $*" >> $M/timeline.log; }
 acquire $dev "bench_app.sh $dev (bench bundle managed app)" || exit 2

@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
   /* Tests keep a known cache state (native/DEVICE.md "Pipeline cache"). */
   CBCPipelineCacheConfig cache = {sizeof(cache), CBC_HOST_ABI, CBC_PIPELINE_CACHE_OFF, 0, {0}};
   CHECK(cbc_host_pipeline_cache_config(&cache, NULL));
-  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, gpu ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE, 1, {0}};
+  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, gpu ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE, 1, {0}, 0, 0};
   config.backend = CBC_HOST_CPU + 1; REQUIRE(cbc_host_create(&config, &host) == CBC_INVALID && host == 0);
   config.backend = gpu ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE;
   CHECK(cbc_host_create(&config, &host));
@@ -429,7 +429,7 @@ int main(int argc, char **argv) {
   /* Image updates: re-upload caller-decoded pixels to a bound handle. */
   uint8_t red[4 * 4 * 4], green[4 * 4 * 4];
   for (unsigned i = 0; i < 16; ++i) { uint8_t r[] = {230, 20, 20, 255}, g[] = {20, 230, 20, 255}; memcpy(red + 4 * i, r, 4); memcpy(green + 4 * i, g, 4); }
-  CBCImageConfig image_config = {sizeof(image_config), 4, 4, CBC_IMAGE_BYTE4, {0}};
+  CBCImageConfig image_config = {sizeof(image_config), 4, 4, CBC_IMAGE_BYTE4, 0, {0}};
   CBCImage image = 0; CHECK(cbc_host_image_create(host, &image_config, red, sizeof(red), &image));
   CBCNode texture = graph_node(material, "image_texture"), coords = graph_node(material, "texture_coordinate");
   text(texture, "colorspace", "__builtin_srgb"); CHECK(cbc_host_image_bind(host, texture, image));
@@ -444,7 +444,7 @@ int main(int argc, char **argv) {
   REQUIRE(cbc_host_image_update(host, image + 1000, &image_config, red, sizeof(red)) == CBC_INVALID);
   /* A size/format change on the same handle. */
   float gray[2 * 2]; for (unsigned i = 0; i < 4; ++i) gray[i] = .5f;
-  CBCImageConfig gray_config = {sizeof(gray_config), 2, 2, CBC_IMAGE_FLOAT, {0}};
+  CBCImageConfig gray_config = {sizeof(gray_config), 2, 2, CBC_IMAGE_FLOAT, 0, {0}};
   CHECK(cbc_host_image_update(host, image, &gray_config, gray, sizeof(gray))); render(third); REQUIRE(!same(third, second));
   CHECK(cbc_host_image_update(host, image, &image_config, red, sizeof(red))); render(third);
   const int image_update_restores = restored(gpu, third, first); REQUIRE(image_update_restores);

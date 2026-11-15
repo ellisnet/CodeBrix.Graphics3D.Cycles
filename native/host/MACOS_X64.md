@@ -95,7 +95,7 @@ compiler) and what is still open are in
   both Intel and AMD graphics, the default adapter rule prefers the Intel GPU
   (Apple builds only; an explicit `CODEBRIX_CYCLES_WEBGPU_ADAPTER` still wins).
 - Reviewed deliverables go to `native/binaries/osx-x64/` (runtime, unstripped
-  and symbols) with provenance. The maintainer makes every commit and push.
+  and symbols) with provenance.
 
 ## Why separate scripts
 

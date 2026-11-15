@@ -103,6 +103,9 @@ class PlatformPackageTests(unittest.TestCase):
         for rid in ['linux-x64','linux-arm64','win-x64','osx-x64','android-arm64']:
             self.assertEqual(package_check.profile_sources(rid),('Cycles-with-WGSL',package_check.NATIVE_SOURCES))
         self.assertNotIn('native/shaders',metal_sources.METAL_SOURCES)
+        # The oracle runner and everything its build reads (tools/build_macos.py configures native/oracle).
+        for name in ['native/oracle/runner.cpp','native/oracle/json.h','native/oracle/sha256.h','native/oracle/CMakeLists.txt']:
+            with self.subTest(runner=name):self.assertIn(name,metal_sources.METAL_SOURCES)
         for name in metal_sources.METAL_SOURCES:
             with self.subTest(path=name):self.assertTrue((self.ROOT/name).exists())
 

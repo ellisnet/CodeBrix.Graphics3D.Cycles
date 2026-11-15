@@ -828,7 +828,7 @@ refuses another commit's tables):
 | Step | Where | Command | Hand over |
 |---|---|---|---|
 | D1 | this device | `python -I -X utf8 native/tools/reference_exchange_handoff.py device-dump --output native/work/exchange-<n>/out-1` | `out-1/` to the Linux machine |
-| L1 | Linux x64 | `python3 native/tools/reference_exchange_handoff.py linux-reference --dump <x>/out-1 --output <x>/in-1` | `in-1/` back (committed under `native/evidence/`, then `git pull`) |
+| L1 | Linux x64 | `python3 native/tools/reference_exchange_handoff.py linux-reference --dump <x>/out-1 --output <x>/in-1` | `in-1/` back to this device (as a folder under `native/evidence/`) |
 | D2 | this device | `python -I -X utf8 native/tools/reference_exchange_handoff.py device-import --dump native/work/exchange-<n>/out-1 --reference <in-1> --output native/work/exchange-<n>/out-2` | `out-2/` to the Linux machine |
 | L2 | Linux x64 | `python3 native/tools/reference_exchange_handoff.py linux-judge --dump <x>/out-1 --reference <x>/in-1 --run <x>/out-2 --output <x>/in-2 --evidence native/evidence/<device>-exchange-<date>` | the final verdicts |
 
@@ -912,8 +912,7 @@ limits:
   device build (since 2026-10-27 HEAD is built on the device for testing, see
   "Building on the device"); changing
   `provenance.json`; relaxing tolerances, adjusting films or changing backend
-  settings; writing into `native/evidence/*`; installing software; commits and
-  pushes.
+  settings; writing into `native/evidence/*`; installing software.
 - **Fixes:** a cause that needs a code change is proposed as a finding with the
   suggested change, for the maintainer to apply on the build machine, re-stage
   and re-validate on both RIDs. ARM64-only workarounds are not developed on the

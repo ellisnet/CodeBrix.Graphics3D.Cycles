@@ -1,6 +1,6 @@
 # M1 materials: Principled BSDF closures in the WGSL backend
 
-Worktree `/home/jeremy/ClaudeHome/cycles-worktrees/m1-principled` (clean checkout of 01eb27b6,
+Worktree `<home>/ClaudeHome/cycles-worktrees/m1-principled` (clean checkout of 01eb27b6,
 baseline manifest `baseline-materials.json`). Linux only (Intel UHD ADL-S, Mesa 25.0.7); no
 Android devices. No commits, refs, stash or index changes. Sealed handoff:
 `native/work/m1/handoff/` (changes.patch sha256 `b2072d45e257675c923172af566369179aab9d9f236b6acad20a86c1567dae13`,
@@ -145,7 +145,7 @@ unaffected (no closure setup). The unspecialized prepare_surface grows by 0.61 M
    kernel's barycentric differs beyond the practical tolerance (t differs by 3 ulps). This is in
    the closest stage, not in Principled shading, and outside M1 ownership. The fixture was not
    changed to avoid it; the clay bench never generated this ray. Needs an intersection-precision
-   follow-up (same-prim barycentric adapter or comparison rule decision by Jeremy).
+   follow-up (same-prim barycentric adapter or comparison rule decision by the maintainer).
 2. The thin-wall path with `ior < 1` at grazing incidence reads an uninitialized
    `cos_theta_t` in the pinned CPU code (TIR in `fresnel_dielectric`); WGSL uses 0. Fixtures avoid
    thin wall with ior < 1.

@@ -111,7 +111,7 @@ to overwrite it. No executable or native dependency library is archived.
 
 Unsupported direct lights/MIS, image textures, most closures, volumes, motion,
 curves/points, guiding, MNEE and general film/session modes still require work.
-The broad roadmap is `/home/jeremy/ClaudeHome/PLAN_Cycles_Targetting_WGSL_WebGPU.md`;
+The broad roadmap is `<home>/ClaudeHome/PLAN_Cycles_Targetting_WGSL_WebGPU.md`;
 all nine requested RIDs and full functionality remain its target.
 
 ## What is implemented

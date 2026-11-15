@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Phase C close-out Linux validation (pattern of C3 run_c3.sh / C1 run_phaseC_r2.sh): every corpus with a
 # fresh, empty Mesa shader cache; declared budgets; two lanes at most.
-cd /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles
+cd <home>/GitHome/CodeBrix.Graphics3D.Cycles
 V=$PWD/native/work/phaseC4/03-linux-validation; T=$PWD/native/work/phaseC4/tools; BIN=$PWD/native/work/cycles-build/bin
 mkdir -p $V
 log(){ echo "[$(date +%H:%M:%S)] $*" | tee -a $V/run.log; }

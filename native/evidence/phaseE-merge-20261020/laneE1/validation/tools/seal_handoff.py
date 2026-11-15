@@ -7,7 +7,7 @@ evidence summaries, handoff.json with the patch sha256)."""
 import hashlib, json, shutil, subprocess, sys, tempfile, datetime
 from pathlib import Path
 WT = Path(__file__).resolve().parents[4]; E1 = WT/'native/work/e1'; OUT = E1/'handoff'
-SEED = Path('/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-phaseE.json')
+SEED = Path('<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-phaseE.json')
 def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 seed = json.loads(SEED.read_text()); before = seed['sourceSha256']
 def excluded(rel):

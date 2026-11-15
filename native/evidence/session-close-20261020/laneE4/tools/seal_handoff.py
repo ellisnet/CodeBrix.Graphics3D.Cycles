@@ -6,7 +6,7 @@ sources, validation, device evidence). Changed paths are found by hashing every 
 import hashlib, json, shutil, subprocess, tempfile, datetime
 from pathlib import Path
 E = Path(__file__).resolve().parents[1]; REPO = E.parents[2]; H = E/'handoff'
-MANIFEST = '/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-merge1.json'
+MANIFEST = '<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-merge1.json'
 SEED = json.loads(Path(MANIFEST).read_text())['sourceSha256']
 def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 changed = sorted(p for p, h in SEED.items() if sha(REPO/p) != h)

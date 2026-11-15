@@ -8,7 +8,7 @@ replays (Linux x2 from this run, HP x2, Samsung x2 from this run's device runs) 
 mnee), each rebuilt from this run's Linux slots (p8-*, p8v-*) and device runs (runs/<device>/*-m8). Nothing is hand-edited."""
 import hashlib, json, shutil, datetime, re
 from pathlib import Path
-R = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); M = R/'native/work/merge8'; V = M/'validation'
+R = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); M = R/'native/work/merge8'; V = M/'validation'
 DEST = M/'ledger'; CK = 'native/evidence/merge-20261024/merge8/ledger/'
 sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
 assert not DEST.exists(), 'ledger work folder exists'

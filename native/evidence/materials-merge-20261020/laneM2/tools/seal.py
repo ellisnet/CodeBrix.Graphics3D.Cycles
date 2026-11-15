@@ -5,8 +5,8 @@
 validation copies and handoff.json (patch sha256 and every file hash)."""
 import hashlib,json,os,shutil,subprocess,difflib
 from pathlib import Path
-TREE=Path('/home/jeremy/ClaudeHome/cycles-worktrees/m2-svm-nodes');M2=TREE/'native/work/m2';H=M2/'handoff'
-base=json.load(open('/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-materials.json'))['sourceSha256']
+TREE=Path('<home>/ClaudeHome/cycles-worktrees/m2-svm-nodes');M2=TREE/'native/work/m2';H=M2/'handoff'
+base=json.load(open('<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-materials.json'))['sourceSha256']
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def skip(rel):
     parts=rel.split('/')

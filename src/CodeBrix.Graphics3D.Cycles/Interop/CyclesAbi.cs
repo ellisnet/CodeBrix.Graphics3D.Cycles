@@ -78,9 +78,17 @@ public static unsafe class CyclesAbi
     /// <param name="threads">The native worker thread count.</param>
     /// <param name="host">Receives the host handle (zero on failure).</param>
     /// <returns>The native status.</returns>
-    public static NativeStatus Create(Backend backend, uint threads, out ulong host)
+    public static NativeStatus Create(Backend backend, uint threads, out ulong host) => Create(backend, threads, HostFlags.None, out host);
+
+    /// <summary><c>cbc_host_create</c> with host options (provisional <c>CBCHostConfig.flags</c>).</summary>
+    /// <param name="backend">The backend.</param>
+    /// <param name="threads">The native worker thread count.</param>
+    /// <param name="flags">The host options, fixed for the host's lifetime.</param>
+    /// <param name="host">Receives the host handle (zero on failure).</param>
+    /// <returns>The native status (<see cref="NativeStatus.Invalid"/> for an unknown flag).</returns>
+    public static NativeStatus Create(Backend backend, uint threads, HostFlags flags, out ulong host)
     {
-        Native.HostConfig config = new() { Size = StructSize, Abi = ExpectedAbiVersion, Backend = (uint)backend, Threads = threads };
+        Native.HostConfig config = new() { Size = (uint)sizeof(Native.HostConfig), Abi = ExpectedAbiVersion, Backend = (uint)backend, Threads = threads, Flags = (uint)flags };
         return (NativeStatus)Native.Create(ref config, out host);
     }
 
@@ -413,11 +421,47 @@ public static unsafe class CyclesAbi
     /// <returns>The native status.</returns>
     public static NativeStatus BindImage(ulong host, ulong texture, ulong image) => (NativeStatus)Native.BindImage(host, texture, image);
 
+    /// <summary><c>cbc_host_image_bind_tiles</c> (provisional): binds images to an image texture node as UDIM tiles.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="texture">The image texture node handle.</param>
+    /// <param name="tiles">The tile numbers (1001 + 10 * v + u; distinct).</param>
+    /// <param name="images">The image handles, one per tile, all of one format.</param>
+    /// <returns>The native status (<see cref="NativeStatus.Invalid"/> also when the two spans differ in length).</returns>
+    public static NativeStatus BindImageTiles(ulong host, ulong texture, ReadOnlySpan<uint> tiles, ReadOnlySpan<ulong> images)
+    {
+        if (tiles.Length != images.Length) return NativeStatus.Invalid;
+        fixed (uint* tileData = tiles)
+        fixed (ulong* imageData = images)
+            return (NativeStatus)Native.BindImageTiles(host, texture, tileData, imageData, (ulong)tiles.Length);
+    }
+
     /// <summary><c>cbc_host_image_release</c>.</summary>
     /// <param name="host">The host handle.</param>
     /// <param name="image">The image handle.</param>
     /// <returns>The native status.</returns>
     public static NativeStatus ReleaseImage(ulong host, ulong image) => (NativeStatus)Native.ReleaseImage(host, image);
+
+    /// <summary>
+    /// <c>cbc_host_image_create_tiled</c> (provisional): a tiled image read through <paramref name="read"/> by Cycles'
+    /// texture cache. <paramref name="release"/> runs exactly once, also when the call fails (then before it returns).
+    /// </summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="width">The width in pixels.</param>
+    /// <param name="height">The height in pixels.</param>
+    /// <param name="format">The pixel layout the reader writes.</param>
+    /// <param name="read">The read callback (user data, level, x, y, width, height, pixels, row bytes; 0 for success).</param>
+    /// <param name="release">The release callback, or null.</param>
+    /// <param name="userData">The value passed to both callbacks.</param>
+    /// <param name="image">Receives the image handle.</param>
+    /// <param name="tileSize">Provisional: the tile side (0 for 64, the default).</param>
+    /// <returns>The native status.</returns>
+    public static NativeStatus CreateTiledImage(ulong host, uint width, uint height, ImageFormat format,
+        delegate* unmanaged[Cdecl]<nint, uint, uint, uint, uint, uint, void*, ulong, int> read, delegate* unmanaged[Cdecl]<nint, void> release,
+        nint userData, out ulong image, uint tileSize = 0)
+    {
+        Native.ImageConfig config = new() { Size = StructSize, Width = width, Height = height, Format = (uint)format, TileSize = tileSize };
+        return (NativeStatus)Native.CreateTiledImage(host, ref config, read, release, userData, out image);
+    }
 
     /// <summary><c>cbc_host_mesh</c>: replaces a mesh's triangles.</summary>
     /// <param name="host">The host handle.</param>

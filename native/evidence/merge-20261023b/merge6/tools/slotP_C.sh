@@ -4,7 +4,7 @@
 # Merge wave 6 part 2, Linux slot C: glass/Principled/node-render superset identity with WGSL dumps, ABI and transparent-lighting
 # WGSL dumps, the Intel compile envelope over all of them; then the device reference export and the Linux triangle and
 # terminator captures that part 2 replays on the devices.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge6; V=$M/validation; S=$M/tools/slot.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge6; V=$M/validation; S=$M/tools/slot.sh
 T=$R/native/tools; B=$R/native/work/cycles-build/bin
 cd $R; mkdir -p $M/reference-p2
 $S p2-glass-superset 1800 python3 $M/tools/superset_dump.py glass_render $V/p2-glass-superset/out 900

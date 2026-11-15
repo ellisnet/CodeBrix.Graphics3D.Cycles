@@ -1,9 +1,9 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Phase C close-out Step 2(a): Adreno 640 known-adapter entry -> full tier with a 20 s compile
-# budget (Jeremy's decision, applied only after the Pixel full-tier measurement passed).
+# budget (the maintainer's decision, applied only after the Pixel full-tier measurement passed).
 from pathlib import Path
-R = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles')
+R = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles')
 def sub(path, old, new):
     p = R/path; s = p.read_text(); assert s.count(old) == 1, (path, old[:60]); p.write_text(s.replace(old, new))
 sub('native/cycles/device_tier.cpp',

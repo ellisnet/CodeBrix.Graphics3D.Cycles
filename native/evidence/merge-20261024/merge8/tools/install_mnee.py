@@ -6,7 +6,7 @@
 writes the results and registers new files with git add -N."""
 import hashlib, json, shutil, subprocess
 from pathlib import Path
-root = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); S = root/'native/work/merge8/merge-m2-mnee'
+root = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); S = root/'native/work/merge8/merge-m2-mnee'
 wt = Path.home()/'ClaudeHome/cycles-worktrees/m2-mnee'
 files = json.load(open(wt/'native/work/m2-mnee/handoff/changes.json'))['files']
 h = lambda p: hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else None

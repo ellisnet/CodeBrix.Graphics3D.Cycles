@@ -20,21 +20,34 @@ typedef uint64_t CBCImage;
 enum { CBC_HOST_ABI = 1, CBC_HOST_WEBGPU = 1, CBC_HOST_CPU_REFERENCE = 2, CBC_HOST_METAL = 3 };
 enum { CBC_OK = 0, CBC_INVALID = 1, CBC_UNSUPPORTED = 2, CBC_FAILED = 3,
        CBC_CANCELLED = 4, CBC_NOT_READY = 5, CBC_SMALL_BUFFER = 6 };
+/* PROVISIONAL (ABI.md "Progressive results"): flags and reserved2 are trailing fields; the library accepts struct_size
+ * 32 (no flags) and 40. CBC_HOST_PROGRESSIVE_RESULTS creates the host's session with Cycles' display updates (background
+ * scheduling, not headless) and sends CBC_EVENT_FILM events during its renders; other flag bits and a nonzero
+ * reserved2 are CBC_INVALID. A positional initializer names every field, for example
+ * {sizeof(config), CBC_HOST_ABI, CBC_HOST_GPU, 0, {0}, 0, 0}. */
+enum { CBC_HOST_PROGRESSIVE_RESULTS = 1 };
 typedef struct CBCHostConfig {
   uint32_t struct_size, abi_version, backend, threads;
   uint32_t reserved[4];
+  uint32_t flags;      /* PROVISIONAL: CBC_HOST_* flags */
+  uint32_t reserved2;  /* PROVISIONAL: must be zero */
 } CBCHostConfig;
 typedef struct CBCRenderConfig {
   uint32_t struct_size, width, height, samples;
   uint32_t reserved[4];
 } CBCRenderConfig;
-/* Stable C value kinds; independent of native enum values or structure layout. */
+/* Stable C value kinds; independent of native enum values or structure layout.
+ * PROVISIONAL (ABI.md): CBC_VALUE_QUATERNION and CBC_VALUE_SPHERICAL_HARMONICS_REST are geometry attribute kinds only. A
+ * quaternion is 4 floats per element in Cycles' order w, x, y, z. Spherical-harmonics "rest" coefficients are 45 floats
+ * per element: the 15 RGB coefficients of bands 1 to 3 in Cycles' order (L1 M-1, L1 M0, L1 M1, L2 M-2, ..., L3 M3), each
+ * in [-1, 1]; Cycles stores them at 8 bits over that range. */
 enum { CBC_VALUE_UNSUPPORTED = 0, CBC_VALUE_BOOLEAN = 1, CBC_VALUE_INT = 2,
        CBC_VALUE_UINT = 3, CBC_VALUE_UINT64 = 4, CBC_VALUE_FLOAT = 5,
        CBC_VALUE_COLOR = 6, CBC_VALUE_VECTOR = 7, CBC_VALUE_POINT = 8,
        CBC_VALUE_NORMAL = 9, CBC_VALUE_POINT2 = 10, CBC_VALUE_STRING = 11,
        CBC_VALUE_ENUM = 12, CBC_VALUE_TRANSFORM = 13, CBC_VALUE_NODE = 14,
-       CBC_VALUE_CLOSURE = 15, CBC_VALUE_FLOAT4 = 16, CBC_VALUE_BYTE4 = 17 };
+       CBC_VALUE_CLOSURE = 15, CBC_VALUE_FLOAT4 = 16, CBC_VALUE_BYTE4 = 17,
+       CBC_VALUE_QUATERNION = 18, CBC_VALUE_SPHERICAL_HARMONICS_REST = 19 };
 enum { CBC_PROPERTY_ARRAY = 1, CBC_PROPERTY_LINKABLE = 2,
        CBC_PROPERTY_INTERNAL = 4, CBC_PROPERTY_READABLE = 8, CBC_PROPERTY_WRITABLE = 16 };
 typedef struct CBCPropertyInfo {
@@ -45,7 +58,11 @@ enum { CBC_ATTR_MESH = 1, CBC_ATTR_FACE = 2, CBC_ATTR_VERTEX = 3,
        CBC_ATTR_CORNER = 4, CBC_ATTR_CURVE = 5, CBC_ATTR_CURVE_KEY = 6,
        CBC_ATTR_VERTEX_NORMAL = 7, CBC_ATTR_CORNER_NORMAL = 8,
        CBC_ATTR_CORNER_BYTE = 9, CBC_ATTR_CURVE_KEY_NORMAL = 10 };
-enum { CBC_ATTR_STANDARD = 1, CBC_ATTR_SUBDIVISION = 2 };
+/* CBC_ATTR_SPLAT_BOUNDING_RADIUS (PROVISIONAL, ABI.md "Point clouds"): cbc_host_attribute_get_floats only; reads the
+ * bounding radius Cycles computed for each splat of a Gaussian splat cloud (render_as gaussian_splats) at the last
+ * render or bake, instead of the authored radius. Name "radius"; CBC_NOT_READY until a render has computed it for the
+ * cloud as it is (before the first render and after an edit of the cloud). */
+enum { CBC_ATTR_STANDARD = 1, CBC_ATTR_SUBDIVISION = 2, CBC_ATTR_SPLAT_BOUNDING_RADIUS = 4 };
 typedef struct CBCAttributeConfig {
   uint32_t struct_size, value_type, domain, flags;
   uint32_t reserved[4];
@@ -53,9 +70,13 @@ typedef struct CBCAttributeConfig {
 enum { CBC_IMAGE_FLOAT = 1, CBC_IMAGE_FLOAT4 = 2, CBC_IMAGE_HALF = 3,
        CBC_IMAGE_HALF4 = 4, CBC_IMAGE_BYTE = 5, CBC_IMAGE_BYTE4 = 6,
        CBC_IMAGE_USHORT = 7, CBC_IMAGE_USHORT4 = 8 };
+/* tile_size (PROVISIONAL): cbc_host_image_create_tiled only, the side of the square tiles Cycles' texture cache loads:
+ * 0 (64, the default) or a power of two from 64 to 128 on the Metal backend and to 65536 on the others (ABI.md "Tiled
+ * images"); 0 for cbc_host_image_create and cbc_host_image_update. */
 typedef struct CBCImageConfig {
   uint32_t struct_size, width, height, format;
-  uint32_t reserved[4];
+  uint32_t tile_size;
+  uint32_t reserved[3];
 } CBCImageConfig;
 
 uint32_t cbc_host_abi_version(void);
@@ -98,10 +119,19 @@ int cbc_host_node_type(CBCHost host, CBCNode node, char *name, uint64_t capacity
 /* Registration metadata describes native properties, not WebGPU feature support. */
 int cbc_host_registry_json(char *json, uint64_t capacity, uint64_t *required);
 /* Attribute element counts derive from current geometry. Values are copied.
- * Standard mode currently accepts P, N, uv, generated, radius, tangent and
- * tangent_sign for applicable geometry/domain combinations. Other names create
- * custom attributes. Normal domains use native packed-normal storage; readback
- * returns its decoded direction. Existing topology must be established first. */
+ * Standard mode accepts the names ABI.md lists per geometry (P, N, uv, generated,
+ * radius, tangent, tangent_sign, ...) for applicable geometry/domain combinations.
+ * Other names create custom attributes. Normal domains use native packed-normal
+ * storage; readback returns its decoded direction. Existing topology must be
+ * established first. Quaternion attributes (PROVISIONAL) are accepted on meshes,
+ * point clouds and curves (CBC_ATTR_CURVE, CBC_ATTR_CURVE_KEY, CBC_ATTR_MESH),
+ * spherical-harmonics attributes (PROVISIONAL) on meshes and point clouds only;
+ * spherical-harmonics values outside [-1, 1] are CBC_INVALID, and readback returns
+ * the stored 8-bit value.
+ * PROVISIONAL (ABI.md): on point clouds the standard names radiance:base
+ * (CBC_VALUE_FLOAT4), scale (CBC_VALUE_VECTOR), rotation (CBC_VALUE_QUATERNION) and
+ * radiance:sh (CBC_VALUE_SPHERICAL_HARMONICS_REST), on CBC_ATTR_VERTEX, are the
+ * attributes of a Gaussian splat (render_as gaussian_splats). */
 int cbc_host_attribute_floats(CBCHost host, CBCNode geometry, const char *name, const CBCAttributeConfig *config, const float *values, uint64_t count);
 int cbc_host_attribute_bytes(CBCHost host, CBCNode geometry, const char *name, const CBCAttributeConfig *config, const uint8_t *values, uint64_t count);
 int cbc_host_attribute_get_floats(CBCHost host, CBCNode geometry, const char *name, uint32_t flags, float *values, uint64_t capacity, uint64_t *required);
@@ -140,7 +170,9 @@ int cbc_host_curve_shape(CBCHost host, CBCNode hair, uint32_t shape);
 int cbc_host_curve_subdivisions(CBCHost host, uint32_t subdivisions);
 /* Point cloud geometry, like cbc_host_curves: xyz has 3 floats and radius 1 float per point. Values are validated and
  * copied; every point initially uses material 0 (the shader socket). Replaces the geometry and removes its motion;
- * further point attributes follow it, since their size derives from it. */
+ * further point attributes follow it, since their size derives from it. A cloud rendered as Gaussian splats
+ * (PROVISIONAL) is bounded by the radius Cycles computes from radiance:base and scale; reads of radius and the center
+ * step of cbc_host_point_motion keep the radius given here. */
 int cbc_host_points(CBCHost host, CBCNode pointcloud, const float *xyz, const float *radius, uint64_t count);
 /* Deformation motion for a point cloud: steps (odd, 3..129) time-ordered arrays, count = steps * point_count entries,
  * 3 floats per position and 1 float per radius; the center step must equal the points bit for bit. steps == 1 with
@@ -242,13 +274,21 @@ int cbc_host_motion_positions(CBCHost host, CBCNode mesh, uint32_t steps, const 
  * and only while cbc_host_render is executing. It must not call any cbc_host_
  * function other than cbc_host_error and cbc_host_version: such calls return
  * CBC_NOT_READY. Returning nonzero requests cancellation (cbc_host_render then
- * returns CBC_CANCELLED). message is UTF-8 and valid only during the call. */
-enum { CBC_EVENT_STATUS = 1, CBC_EVENT_PROGRESS = 2, CBC_EVENT_ERROR = 3 };
+ * returns CBC_CANCELLED). message is UTF-8 and valid only during the call.
+ * PROVISIONAL: CBC_EVENT_FILM, sent only by hosts created with
+ * CBC_HOST_PROGRESSIVE_RESULTS during cbc_host_render (never a bake): film holds
+ * width * height * 4 floats, the Combined film so far (scene-linear RGBA,
+ * lower-left origin, zero outside a camera border, samples_done samples), valid
+ * only during the call; film is NULL and width, height 0 for the other kinds.
+ * struct_size is 56 with the trailing fields; read only fields that fit. */
+enum { CBC_EVENT_STATUS = 1, CBC_EVENT_PROGRESS = 2, CBC_EVENT_ERROR = 3, CBC_EVENT_FILM = 4 };
 typedef struct CBCEvent {
   uint32_t struct_size, kind;
   uint64_t samples_done, samples_total;
   double elapsed_seconds;
   const char *message;
+  const float *film;      /* PROVISIONAL, CBC_EVENT_FILM only */
+  uint32_t width, height; /* PROVISIONAL, CBC_EVENT_FILM only */
 } CBCEvent;
 typedef int (*CBCEventCallback)(void *user_data, const CBCEvent *event);
 /* Registers (or with NULL clears) the host's callback. Serializes with
@@ -303,8 +343,8 @@ typedef struct CBCBakeConfig {
   uint32_t struct_size, width, height, samples;
   uint32_t type, flags;
   uint32_t reserved[2];
-  CBCNode object;           /* An object whose geometry is a triangle mesh. */
-  const char *uv_attribute; /* NULL or empty: the standard "uv" attribute. A float2 corner or vertex attribute. */
+  CBCNode object;           /* An object whose geometry is a triangle mesh or (PROVISIONAL) a linear subdivision cage diced in object space. */
+  const char *uv_attribute; /* NULL or empty: the standard "uv" attribute. A float2 corner or vertex attribute (of a cage: a subdivision attribute). */
   const char *aov_name;     /* AOV types only: the name of an existing AOV pass node of that type. */
   uint64_t reserved2;
 } CBCBakeConfig;
@@ -318,7 +358,8 @@ typedef struct CBCBakeConfig {
  * device does not implement fails by name (CBC_FAILED) and never falls back to the CPU. */
 int cbc_host_bake(CBCHost host, const CBCBakeConfig *config, float *values, uint64_t capacity, uint64_t *required, uint32_t *components);
 /* The map a bake with this config uses, without rendering, on any backend. Per pixel:
- * triangles[i] is the covering triangle's index in the mesh, or -1; coordinates (may be
+ * triangles[i] is the covering triangle's index in the mesh (of a subdivision cage: in Cycles'
+ * tessellation of it, PROVISIONAL), or -1; coordinates (may be
  * NULL) holds six floats, u, v, du/dx, du/dy, dv/dx, dv/dy, where the point is
  * u * V0 + v * V1 + (1 - u - v) * V2 and x, y are in pixels (all zero where uncovered).
  * Where UV triangles overlap, the lowest triangle index wins. capacity and required
@@ -329,7 +370,8 @@ int cbc_host_bake_map(CBCHost host, const CBCBakeConfig *config, int32_t *triang
  * floats each) and face_count polygon faces, face_corners[f] (at least 3) corners each, listed in order in corners
  * (corner_count indices into the positions). Replaces the mesh's geometry and its subdivision attributes; every face
  * starts on material 0 (subd_shader) and flat (subd_smooth). Each render tessellates it with Cycles' adaptive dicing
- * (subd_dicing_rate, subd_max_level, subd_adaptive_space; pixel space measures in the render camera). */
+ * (subd_dicing_rate, subd_max_level, subd_adaptive_space; pixel space measures in the render camera), and so does each
+ * bake (PROVISIONAL: object space only; ABI.md "Baking"). */
 int cbc_host_subd_mesh(CBCHost host, CBCNode mesh, const float *xyz, uint64_t vertex_count, const uint32_t *face_corners,
                        uint64_t face_count, const uint32_t *corners, uint64_t corner_count);
 
@@ -339,6 +381,81 @@ int cbc_host_subd_mesh(CBCHost host, CBCNode mesh, const float *xyz, uint64_t ve
  * default, renders every sample; otherwise a render stops once the limit has passed, after its first batch of
  * samples, and returns the samples done by then, so its film is not reproducible. Serializes with rendering. */
 int cbc_host_render_time_limit(CBCHost host, double seconds);
+
+/* ---- UDIM tiles (addition to ABI 1, PROVISIONAL; ABI.md "Images"). ---- */
+
+/* Binds count images to one Image Texture node as Cycles' UDIM tiles: images[i] at tile tiles[i], the tile covering
+ * UV [u, u + 1) x [v, v + 1) being 1001 + 10 * v + u (u 0 to 9). Tiles are distinct, 1001 to INT_MAX; every image is a
+ * live handle of this host and all have the same CBC_IMAGE_* format (Cycles decodes every tile with the first tile's
+ * settings). A UV outside every bound tile reads the node's Missing inputs. Replaces any earlier binding of the node;
+ * cbc_host_image_bind(node, 0) removes it, and cbc_host_image_update of a member image applies at the next render (an
+ * update that would leave the tiles of a binding with different formats is CBC_INVALID).
+ * Image Texture nodes only: an Environment Texture node is CBC_UNSUPPORTED. On the WebGPU backend a render or bake of a
+ * scene with a tiles binding is CBC_UNSUPPORTED ("WebGPU UDIM tiles not implemented"). Nothing changes on failure. */
+int cbc_host_image_bind_tiles(CBCHost host, CBCNode texture_node, const uint32_t *tiles, const CBCImage *images, uint64_t count);
+
+/* ---- Texture limit (addition to ABI 1, PROVISIONAL; ABI.md "Images"). ---- */
+
+/* Cycles' texture limit: an image whose larger side exceeds max_size is reduced when a render or bake loads it, on the
+ * host and before any device sees it: halved, as often as its larger side needs to be at most max_size, by a box filter
+ * (each side times the power-of-two scale, rounded down, at least 1 pixel). It applies to caller images and to Cycles' own (the Sky Texture's), and
+ * brings an image within Metal's 16384-pixel texture limit. 0, the default, keeps every image at its size; max_size is
+ * 0 to INT_MAX, else CBC_INVALID. The same value is always accepted; a different one is CBC_NOT_READY once a render or
+ * bake has loaded images (Cycles does not load an image again). On the WebGPU backend a render or bake with a limit
+ * other than 0 is CBC_UNSUPPORTED ("WebGPU texture limit not implemented"). */
+int cbc_host_texture_limit(CBCHost host, uint32_t max_size);
+
+/* ---- BVH spatial splits (addition to ABI 1, PROVISIONAL; ABI.md "Scene authoring"). ---- */
+
+/* Cycles' BVH spatial splits (SceneParams::use_bvh_spatial_split): the BVH2 builder splits primitives between nodes in
+ * the BVH of each geometry Cycles keeps in object space (Geometry::is_instanced: used by several objects, or with true
+ * displacement, subsurface scattering or subdivision; never in the scene's top level, for curves or for geometry with
+ * motion blur), and the
+ * Embree CPU backend (CBC_HOST_CPU) builds at Embree's high quality; MetalRT ignores it, as in Cycles. A speed setting:
+ * it changes how rays find the closest hit, not which one, so renders do not change by design. enabled is 0 (the
+ * default) or 1, else CBC_INVALID. A change has every BVH built again at the next render or bake. On the WebGPU backend a
+ * render or bake with it enabled is CBC_UNSUPPORTED ("WebGPU BVH spatial splits not implemented"). */
+int cbc_host_bvh_spatial_split(CBCHost host, uint32_t enabled);
+
+/* ---- Tiled rendering (addition to ABI 1, PROVISIONAL; ABI.md "Tiled rendering"). ---- */
+
+/* Later renders and bakes of this host render in Cycles' tiles of tile_size x tile_size pixels (SessionParams::
+ * use_auto_tile and tile_size). 0, the default, renders the whole film (or its camera border) in one tile; tile_size is
+ * 0, 8 to 128, or a multiple of 128 up to 8192 (the sizes Cycles uses as given), else CBC_INVALID. Cycles uses one tile
+ * when the tile's area is at least the film's and no side exceeds 8192. The device holds one tile's buffers at a time;
+ * the library keeps the finished tiles in system memory (no file is written) and, once the last tile is done, denoises
+ * the whole film and returns it, every pass included, as for an untiled render. With tiles the time limit applies to
+ * each tile, and adaptive sampling renders 4 pixels beyond each tile's edges (not for bakes). On the WebGPU backend a
+ * render or bake with a tile size other than 0 is CBC_UNSUPPORTED ("WebGPU tiled rendering not implemented"). */
+int cbc_host_tile_size(CBCHost host, uint32_t tile_size);
+
+/* ---- Tiled images, Cycles' texture cache (addition to ABI 1, PROVISIONAL; ABI.md "Tiled images"). ---- */
+
+/* Reads one rectangle of mip level `level` of a tiled image into pixels: width x height pixels starting at column x and
+ * row y of that level, rows bottom first (row y at v = y / level_height, as in cbc_host_image_create), row_bytes apart,
+ * tightly packed in the image's CBC_IMAGE_* format (float and half values finite). Level 0 is the image; level L is max(1, image_width >> L) x
+ * max(1, image_height >> L) pixels, and the levels run from 0 to the first one whose sides are both at most 64 (an image
+ * smaller than 64 pixels in both sides has level 0 only). The pixels of every level are the caller's own (Cycles' own
+ * levels are 2 x 2 box reductions). Return 0, or nonzero to fail the render or bake (CBC_FAILED, naming the image, the
+ * level and the rectangle). Called only during cbc_host_render and cbc_host_bake, on any native thread, never
+ * concurrently with this host's other read and release callbacks; it must not call any cbc_host_ function other than
+ * cbc_host_error and cbc_host_version (those calls return CBC_NOT_READY). */
+typedef int (*CBCImageTileReadCallback)(void *user_data, uint32_t level, uint32_t x, uint32_t y, uint32_t width,
+                                        uint32_t height, void *pixels, uint64_t row_bytes);
+/* Called exactly once for every call that passed it, when the library no longer uses user_data: after the image handle
+ * is released, no binding uses it and Cycles has freed its image (at the next render or bake), at cbc_host_destroy, at
+ * process exit with the host live, or, when the call that passed it fails, before that call returns. Never concurrently
+ * with this host's read callbacks; the same rule for library calls as the read callback. */
+typedef void (*CBCReleaseCallback)(void *user_data);
+/* A tiled image: Cycles' texture cache loads only the tiles (64 x 64, or config->tile_size, PROVISIONAL) and mip levels
+ * a render samples, through read, on demand (the CPU device at once, the Metal device after a cache miss restarts the
+ * path). config as for cbc_host_image_create (width, height, one of the eight formats) plus tile_size; read is
+ * required, release may be NULL. Bind it with
+ * cbc_host_image_bind or as UDIM tiles of tiled images only; cbc_host_image_update of it is CBC_INVALID. A read that
+ * fails, or a reader stopped by a cancel, is read again by the next render. On the WebGPU backend a render or bake of a
+ * scene that binds one is CBC_UNSUPPORTED ("WebGPU tiled images not implemented"). */
+int cbc_host_image_create_tiled(CBCHost host, const CBCImageConfig *config, CBCImageTileReadCallback read,
+                                CBCReleaseCallback release, void *user_data, CBCImage *image);
 #ifdef __cplusplus
 }
 #endif

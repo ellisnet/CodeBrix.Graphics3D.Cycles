@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 8: Linux builds in main's own tree. b0 = default targets (reconfigure); b<n> = every codebrix target.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; cd $R || exit 9
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; cd $R || exit 9
 L=${1:-b1}; J=${2:-8}
 if [ "$L" = b0 ]; then
   echo "[$(date +%H:%M:%S)] DECLARED b0 Linux build (default host+gates, reconfigure, --jobs $J) budget=2400s" >> $M/budgets.txt

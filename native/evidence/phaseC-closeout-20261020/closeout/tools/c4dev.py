@@ -25,7 +25,7 @@ from android_toolchain import AndroidToolchain
 from build_cycles_android import dependencies
 from android_host_gate import PLATFORM
 
-ADB = '/home/jeremy/Android/Sdk/platform-tools/adb'
+ADB = '<home>/Android/Sdk/platform-tools/adb'
 DEVICES = {'samsung': ('R52W207XQ1V', 'android-arm64', 'SM-X700'), 'pixel': ('98271FFBA0048D', 'android-arm64', 'Pixel 4 XL'),
            'hp': ('192.168.86.225:5555', 'android-x64', None)}
 RUNTIME_SHA = {'android-arm64': '8113cbfa287b5ffc3d9b3c092ddc5ce543b8390abf05eefdde86cf69792fed52'}

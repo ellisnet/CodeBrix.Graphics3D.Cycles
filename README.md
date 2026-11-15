@@ -26,7 +26,7 @@ Note that the NuGet package ID and the namespace are different - there is no pac
 
 XML documentation (IntelliSense) ships alongside the assembly.
 
-Platform names are `LinuxX64`, `LinuxArm64`, `LinuxRiscv64`, `WindowsX64`, `WindowsArm64`, `MacOSX64`, `MacOSArm64` and `Android`. A platform package is published once that platform has been validated, and an application that targets several platforms references several platform packages.
+Platform names are `LinuxX64`, `LinuxArm64`, `LinuxRiscv64`, `WindowsX64`, `WindowsArm64`, `MacOSX64`, `MacOSArm64` and `Android`. A platform package exists only for a platform that has been validated, and an application that targets several platforms references several platform packages.
 
 Every platform package depends on the Core package at exactly its own version and, where its GPU backend uses WebGPU, on `CodeBrix.WebGpu.Native.MitLicenseForever`. The Core package has no NuGet dependencies.
 

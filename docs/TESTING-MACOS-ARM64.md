@@ -114,8 +114,16 @@ Machine and toolchain:
   27.0 and Apple Clang 21.0.0. Cycles compiles the Metal kernels at run time
   from the kernel sources staged beside the host library; no offline Metal
   compiler step exists.
-- CMake 3.24 or newer (CMake 4 works; the recipes pass
-  `CMAKE_POLICY_VERSION_MINIMUM=3.5` for the old snapshot minimums).
+- CMake 4.2 or newer (the recipes pass `CMAKE_POLICY_VERSION_MINIMUM=3.5` for
+  the old snapshot minimums). The reproducible build (`native/host/MACOS_ARM64.md`,
+  "Reproducible builds") names objects with CMake's `OBJECT_NAME`, which CMake 4.2
+  added. With an older CMake (3.24 to 4.1) the build still runs, but
+  `inject_cycles_macos.cmake` warns ("CMake <version> has no OBJECT_NAME: the debug
+  map names the checkout path and repeats archive member names"): the host
+  library, the executables and the dSYM then differ with the checkout path, and the
+  dSYM lacks the line tables of the objects whose file names repeat within one
+  Cycles static library, so such a build cannot be compared with a payload by hash
+  (step 9).
 - Python 3.
 - zstd (`render_oracles.py --bundle` runs `zstd -19`).
 - The .NET 11 SDK, **version 11.0.100 only** (no earlier version; `dotnet
@@ -208,12 +216,37 @@ that every linked library is `@rpath/`, `/usr/lib/` or `/System/Library/`;
 the Mach-O minimum OS; ad-hoc signatures (`codesign --verify`); that the Metal
 framework is linked and no image codec library is in the load closure; the
 public-API contract (`CBC_HOST_WEBGPU` and texture `filename` sockets
-rejected with `CBC_UNSUPPORTED`); the native Session references (`session` and
+rejected with `CBC_UNSUPPORTED`; UDIM tiles refused by name on an Environment
+Texture node, below tile 1001, repeated and across image formats, then bound
+and rendered on the CPU; the texture limit refused above `INT_MAX`, accepted
+before that render and, after it, accepted unchanged and refused when changed
+with `CBC_NOT_READY`; BVH spatial splits accepted as 0 and 1 and refused as 2,
+then rendered on the CPU with them; a tiled image without a reader refused and
+released at once, then created, bound and released once by the destroy; tile
+sizes Cycles would change refused, then a render in four tiles of 8 whose device
+report counts the four tiles kept in memory and the frame read back; on a CPU
+host of its own, a linear subdivision cage whose bake map and bake are refused
+with pixel-space dicing, whose map covers texels with indices into Cycles'
+tessellation and whose Combined bake is finite in object space, and whose
+Catmull-Clark bake map is refused); the
+native Session references (`session` and
 `session64`, CPU); the C lifecycle and process-exit consumers, bitwise
-against those references; the thin .NET wrapper (`HostLifecycle`, built with
+against those references, and the lifecycle consumer on hosts created with
+progressive results (`--progressive`: film events, the last film equal to the
+returned one, the films bitwise against the same references) and in tiles
+(`--tiles`: tiles of 8, 12 per film, kept in memory; sizes Cycles would change
+refused by name; the device report's tile counts after every render, none held
+after a cancel; the films bitwise against the same references, and no tile file
+written); the tiled-image consumer (`--tiled`: a tiled image served by a C reader renders the film of the
+same pixels bound plainly bit for bit, a failing read fails the render by name and
+is read again by the next render, a call into the library from the reader and an
+update of the tiled image are refused, release runs once per image) and its
+process-exit case (`--tiled-exit`: the release callback runs once from the exit
+hook); the thin .NET wrapper (`HostLifecycle`, built with
 `dotnet build`), bitwise against the same references; and the Metal lifecycle
-(`codebrix_host_gpu_test`) with shipped settings and with `CYCLES_METALRT=1`,
-compared with the CPU references by the practical criterion. It then runs the
+(`codebrix_host_gpu_test`) with shipped settings, with `CYCLES_METALRT=1`, with
+progressive results and in tiles (`--tiles`), compared with the CPU references by
+the practical criterion. It then runs the
 image fixtures in their memory-only form, because this profile reads no image
 files: the independent image reference (`codebrix_host_image_reference`, three
 runs of 256 memory-image cases), the C reload test (six rounds, bitwise against
@@ -328,9 +361,9 @@ reports. Their films are judged by the reference policy in section 5. Record
 the passed, skipped and failed counts, and any skip reasons.
 
 A Release build of the solution also runs the pack driver (MAINTAINER-README.txt,
-PACKAGING AND PUBLISHING). It packs the MacOSArm64 package only when
-`native/binaries/osx-arm64/provenance.json` exists, so before that payload is
-committed it packs Core and LinuxX64 alone. Delete the `nugets/Release/<version>/`
+PACKAGING). It packs the MacOSArm64 package only when
+`native/binaries/osx-arm64/provenance.json` exists, so without that payload it
+packs Core and LinuxX64 alone. Delete the `nugets/Release/<version>/`
 folders it writes.
 
 **Consumer test of the MacOSArm64 package.** Stage the build of steps 3 and 4 into
@@ -388,7 +421,7 @@ CODEBRIX_CYCLES_RECORD_METAL_REFERENCES=1 dotnet test --project tests/CodeBrix.G
 
 Then review every changed film and its recorded CPU comparison (`git diff` of
 `manifest.json`; a CPU comparison that grew is a finding to explain before the
-films are committed) and run the tests again without the variable. A test
+films are accepted) and run the tests again without the variable. A test
 whose film no longer matches its manifest length fails with a request to
 re-record; a missing reference fails, never skips.
 
@@ -402,16 +435,16 @@ It must pass with the new evidence directory from step 6 in place.
 
 ### Step 9: staging (only on the maintainer's decision)
 
-A real stage needs a build made from a clean commit: commit first, then run steps
-2 to 4 on that commit, then stage.
+A real stage needs a build made from a clean commit: run steps 2 to 4 on a clean
+checkout of that commit, then stage.
 
 ```sh
 python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation-<n> --oracles native/work/oracles/<run>
 python3 tools/licensing/audit.py
 ```
 
-The stager never rebuilds, because a rebuild is not byte-identical; it stages the
-files the gate and the oracle run validated. `native/tools/build_cycles_macos.py`
+The stager never rebuilds: it stages the files the gate and the oracle run
+validated. `native/tools/build_cycles_macos.py`
 records the commit it built from and the git status of the Cycles-with-Metal
 sources (`tools/licensing/metal_sources.py`) in `host/invocation.json` when it
 starts and in `host/status.json` when it completes (a `--target` build records no
@@ -431,21 +464,54 @@ Metal (the CPU film must equal the oracle run's) and records `provenance.json`,
 with that commit as `sourceCommit`. With `--output <git-ignored folder>` it makes
 the scratch stage of step 7 instead, which is never approved.
 
-The family is packed and published on the Linux x64 machine, from the committed
-payload: once `native/binaries/osx-arm64/provenance.json` is committed, every pack
-there includes the MacOSArm64 package. When `package_check.py` reports the
+Once `native/binaries/osx-arm64/provenance.json` is present, every pack of the
+family includes the MacOSArm64 package. When `package_check.py` reports the
 osx-arm64 payload as STALE (a Cycles-with-Metal source changed since its
 `sourceCommit`), steps 2 to 4 and this step are run again on a commit that
-contains the change, and the new payload is committed before the family is
-published.
+contains the change.
 
-**MISSING:** a comparison of a fresh build against the committed payload
-without restaging. Until one exists (and once a payload is committed again), compare the SHA-256 of
-`native/work/macos/osx-arm64/host/build/lib/libcodebrix_cycles_host.dylib`
-and of the dependency libraries with `approvedPayload` in
-`native/binaries/osx-arm64/provenance.json` by hand (`shasum -a 256`) and
-record the result; differences are expected wherever the build path length or
-the sources changed.
+#### Comparing a fresh build with the committed payload
+
+A build of the same Cycles-with-Metal sources with the same toolchain (CMake 4.2
+or newer, section 2) is byte-identical at any checkout path (`native/host/MACOS_ARM64.md`, "Reproducible
+builds"), so a committed payload can be checked against its sources by hash,
+without restaging:
+
+1. In a clean checkout at any path, check out a commit at which
+   `tools/licensing/package_check.py` reports the osx-arm64 payload current (no
+   Cycles-with-Metal source changed since its `sourceCommit`). The toolchain must
+   be the one `native/binaries/osx-arm64/provenance.json` records under
+   `toolchain` (Xcode, SDK, Apple Clang and CMake versions and hashes, and the
+   SDK's path, which the dSYM names); another compiler gives other bytes. Leave
+   `SOURCE_DATE_EPOCH` unset: the recipe takes it from the newest commit that
+   changed a Cycles-with-Metal source, which dates the host library's version.
+2. Run steps 2 to 4. The stager needs a passed gate and an oracle run of this
+   build; the run may be limited to the scene its standalone render checks
+   (`--backend cpu-arm64-macos --scene native/oracle/scenes/starter/diffuse-triangle.json`).
+3. Make a scratch stage of the build:
+
+   ```sh
+   python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation-<n> \
+     --oracles native/work/oracles/<run> --output native/work/staging/osx-arm64-check
+   ```
+
+4. Compare every staged file with the approved payload:
+
+   ```sh
+   python3 - <<'EOF'
+   import json
+   fresh = json.load(open('native/work/staging/osx-arm64-check/provenance.json'))['payloadFiles']
+   committed = json.load(open('native/binaries/osx-arm64/provenance.json'))['approvedPayload']
+   differ = sorted(n for n in set(fresh) | set(committed) if fresh.get(n) != committed.get(n))
+   print(len(committed), 'approved files,', len(differ), 'differ')
+   print('\n'.join(differ))
+   EOF
+   ```
+
+Every file must be identical: the stripped and unstripped libraries, the dSYM
+and the kernel sources. Record the output. A difference with the recorded
+toolchain is a finding: compare the two files' Mach-O sections and load commands
+(`otool -l`) and keep both copies for the record.
 
 ## 5. Reference policy and tolerances
 
@@ -609,16 +675,15 @@ bring them back verbatim.
 
 ## 8. Standing rules
 
-- Never commit evidence into a frozen checkpoint: every existing
+- Never add evidence to a frozen checkpoint: every existing
   `native/evidence/*` directory is immutable. New output goes to new
   directories only.
 - Never relax a tolerance, edit a film, rerun until a comparison passes, or
   change scenes or Metal settings to make backends agree.
 - Never modify the shipped CodeBrix.WebGpu.Native runtime or the pinned
   snapshots under `third_party/`.
-- Never commit from the test machine without reviewing the complete list of
-  new and changed paths (`git status --porcelain`) first; build output under
-  `native/work/` stays uncommitted (it is ignored).
+- Review the complete list of new and changed paths (`git status --porcelain`)
+  after every run; build output under `native/work/` is git-ignored.
 - Record every MISSING step that blocked or limited the run.
 
 ## 9. Metal comparison: Velvet subnormal paths and Radial Tiling with two sides
@@ -653,6 +718,6 @@ questions). Build first as in sections 3 and 4 (steps 1-2) at the checked-out co
    - For each rendered scene compare the Metal films with `cpu-x64-linux/` and with `cpu-arm64-macos`: practical
      failures, strict differences, maxima, and any NaN or Inf values. The WebGPU device on Linux renders roundness 0
      and 1 and refuses 0.3, 0.5 and 0.75 (`wgsl-linux-intel/` in the evidence folder).
-4. Commit the run as a new folder `native/evidence/cycles-oracles-macos-metal-comparison-<date>/` (the oracle films,
+4. Add the run as a new folder `native/evidence/cycles-oracles-macos-metal-comparison-<date>/` (the oracle films,
    `run.json`, the comparison JSON files, the probe source and its output, and a README with the observations of
    steps 2 and 3). Never write into the frozen input folder.

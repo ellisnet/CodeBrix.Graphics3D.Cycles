@@ -6,7 +6,7 @@ baseline state: for files that existed pre-merge, from native/work/merge5/base/ 
 added files diff against /dev/null; removed files are listed (none expected). usage: wave5_diff.py OUT.patch"""
 import hashlib, json, subprocess, sys
 from pathlib import Path
-R = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); M = R/'native/work/merge5'
+R = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); M = R/'native/work/merge5'
 pre = json.load(open(M/'pre-merge.json'))['sourceSha256']
 cur = {n: hashlib.sha256((R/n).read_bytes()).hexdigest() for n in subprocess.check_output(['git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z'], cwd=R).decode().split('\0') if n and (R/n).is_file()}
 changed = sorted(n for n in cur if pre.get(n) != cur[n]); removed = sorted(set(pre) - set(cur))

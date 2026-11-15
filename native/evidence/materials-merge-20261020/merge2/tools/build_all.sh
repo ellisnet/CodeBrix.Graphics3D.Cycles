@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 2: clean native build (linux-x64 package + default gates), then every codebrix gate/host target.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge2; V=$M/validation
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge2; V=$M/validation
 cd $R
 echo "[$(date +%H:%M:%S)] DECLARED v1-native-build (clean: removed native/work/cycles-build) budget=3600s" >> $M/budgets.txt
 rm -rf $R/native/work/cycles-build

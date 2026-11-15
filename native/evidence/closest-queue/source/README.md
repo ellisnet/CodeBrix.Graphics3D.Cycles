@@ -19,4 +19,4 @@ Work is in progress; this is not yet a production renderer or NuGet package.
 The prototype renders an actual Cycles-prepared scene on Linux x64 and Android
 ARM64/x64, including API 33, with no CLR or Slang in the rendering path. Its
 current shading is deliberately restricted; full materials and integration
-remain under development. Changes are left uncommitted for Jeremy's review.
+remain under development. Changes are left uncommitted for the maintainer's review.

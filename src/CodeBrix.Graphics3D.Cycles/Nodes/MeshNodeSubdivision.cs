@@ -10,7 +10,8 @@ public partial class MeshNode
     /// <summary>
     /// Replaces this mesh's geometry with a subdivision cage: polygon faces that each render tessellates with Cycles'
     /// adaptive dicing (<see cref="SubdDicingRate"/>, <see cref="SubdMaxLevel"/>, <see cref="SubdAdaptiveSpace"/>; pixel
-    /// space measures in the render camera). Set <see cref="SubdivisionType"/> to <see cref="MeshSubdivisionType.Linear"/>;
+    /// space measures in the render camera), and each bake (provisional; <see cref="MeshSubdAdaptiveSpace.Object"/> only, a
+    /// bake having no render camera). Set <see cref="SubdivisionType"/> to <see cref="MeshSubdivisionType.Linear"/>;
     /// Catmull-Clark needs OpenSubdiv, which this library does not include. Every face starts on material 0, flat
     /// (<see cref="SubdShader"/>, <see cref="SubdSmooth"/>).
     /// </summary>

@@ -5,7 +5,7 @@
 changed sources; and whether its report file exists and matches its recorded sha256. usage: ledger_stale.py OUT.txt"""
 import hashlib, json, sys
 from pathlib import Path
-R = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles')
+R = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles')
 cps = json.loads((R/'compatibility/evidence.json').read_text())['checkpoints']
 h = lambda p: hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else None
 lines = []; stale = 0

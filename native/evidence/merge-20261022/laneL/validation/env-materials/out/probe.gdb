@@ -3,7 +3,7 @@ set confirm off
 set print thread-events off
 set breakpoint pending on
 set libthread-db-search-path /nonexistent
-set debug-file-directory /home/jeremy/ClaudeHome/cycles-worktrees/l-linux-mesa/native/work/l/debug
+set debug-file-directory <home>/ClaudeHome/cycles-worktrees/l-linux-mesa/native/work/l/debug
 handle SIGPIPE nostop noprint pass
 break brw_opt_combine_constants
 commands

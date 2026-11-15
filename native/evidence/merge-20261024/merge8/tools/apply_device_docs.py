@@ -6,7 +6,7 @@ new section. No other text of DEVICE.md is touched; the section contains tool ou
 (DEVICE.md is a hashed input of the gates)."""
 import subprocess, sys
 from pathlib import Path
-R = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); M = R/'native/work/merge8'; p = R/'native/DEVICE.md'; t = p.read_text()
+R = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); M = R/'native/work/merge8'; p = R/'native/DEVICE.md'; t = p.read_text()
 assert '## Merge wave 7: device tables' not in t, 'already applied'
 tables = subprocess.run([sys.executable, str(M/'tools/device_tables.py'), 'samsung', 'hp', 's20'], check=True, capture_output=True, text=True).stdout
 (M/'device/device-tables.md').write_text(tables)

@@ -4,10 +4,10 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 
 SPDX-License-Identifier: Apache-2.0
 
-Jeremy's `/home/jeremy/ClaudeHome/Apache-2.0 License Plan for Cycles Build.md`
+The maintainer's `<home>/ClaudeHome/Apache-2.0 License Plan for Cycles Build.md`
 (October 18, 2026) was read for this work. This is a tracking note, not a
 license clearance or a copy of that plan. The source of the detailed policy
-remains Jeremy's document. Current provenance and unresolved findings are in
+remains the maintainer's document. Current provenance and unresolved findings are in
 [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) and
 [third_party/provenance.json](third_party/provenance.json).
 
@@ -18,7 +18,7 @@ An unresolved license is not an approved dependency.
 
 The following work remains required before release:
 
-- Resolve the CPU/host atomic-header blocker. Jeremy is handling this issue.
+- Resolve the CPU/host atomic-header blocker. The maintainer is handling this issue.
   Any replacement must be written from required signatures and behavior,
   without editing, translating, or paraphrasing the excluded implementation.
   Rebuild and verify the CPU reference under multithreaded execution afterward.
@@ -36,7 +36,7 @@ The following work remains required before release:
   runtime exceptions. A keyword occurrence alone does not identify the license
   governing a shipped implementation.
 - Inspect Git history and the actual proposed GitHub contents, including
-  evidence and generated files. Any history rewrite is Jeremy's operation;
+  evidence and generated files. Any history rewrite is the maintainer's operation;
   no commit, push, or history rewrite is performed by this session.
 - Unpack and scan each candidate NuGet package, compare every payload with
   the manifest, and archive the source/dependency/binary/package reports.

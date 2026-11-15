@@ -2,9 +2,9 @@
 # Lane Q: one isolated confirmation run (fresh stage, device idle >= 60 s first) of the jobs that ran directly after a
 # device-lost process (transparent_shadow after transparent_lighting; nodes_world after nodes_svm), so their verdicts do not
 # depend on a preceding GPU fault. Same runner, same criteria; not a diagnosis.
-R=/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep; Q=$R/native/work/q; cd $Q/tools
-G=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3; ref=$G/reference/linux-x64
-S=RFCRB0MPHYH; A="adb -s $S"; L=/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks/s20
+R=<home>/ClaudeHome/cycles-worktrees/q-s20-sweep; Q=$R/native/work/q; cd $Q/tools
+G=<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3; ref=$G/reference/linux-x64
+S=RFCRB0MPHYH; A="adb -s $S"; L=<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks/s20
 lg(){ echo "[$(date +%H:%M:%S)] $*" >> $Q/timeline.log; }
 mkdir $L 2>/dev/null || { lg "lock s20 HELD; rerun not started"; exit 2; }
 echo "lane Q (q-s20-sweep) pid=$$ $(date -Iseconds) rerun_isolated.sh" > $L/owner.txt; lg "lock s20 taken (pid $$) for isolated reruns"

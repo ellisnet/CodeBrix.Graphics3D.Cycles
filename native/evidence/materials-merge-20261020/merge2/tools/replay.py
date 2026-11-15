@@ -4,7 +4,7 @@
 """Merge wave 2 copy of M3's replay helper: build the Linux render replay tool (maintained location) and replay one capture."""
 import sys
 from pathlib import Path
-ROOT=Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles')
+ROOT=Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles')
 sys.path.insert(0,str(ROOT/'native/tools'))
 import render_replay
 render_replay.build('linux-x64')

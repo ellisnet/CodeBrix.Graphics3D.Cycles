@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 1: managed WebGPU app (D5 scenes, E3 default shadow-terminator offsets) on one device, judged against the
 # Linux glibc films (X1 --linux-reference); waits for WAIT_MARKER. Usage: chain_app.sh LABEL RID SERIAL WAIT_MARKER
-cd "$(dirname "$0")"; label=$1; rid=$2; serial=$3; marker=$4; R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge1
+cd "$(dirname "$0")"; label=$1; rid=$2; serial=$3; marker=$4; R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge1
 until grep -q "$marker" $M/timeline.log; do sleep 15; done
 echo "[$(date +%H:%M:%S)] DECLARED managed app WebGPU mode on $label (--linux-reference, result timeout 2400 s, --uninstall): budget 2700 s" >> $M/budgets.txt
 echo "[$(date +%H:%M:%S)] START $label app-webgpu" >> $M/timeline.log

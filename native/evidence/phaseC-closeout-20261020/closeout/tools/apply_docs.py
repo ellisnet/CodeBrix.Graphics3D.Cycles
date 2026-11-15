@@ -3,7 +3,7 @@
 # Phase C close-out Step 4: descriptive doc edits (C2 ARM64 + C2 x64 proposals, C3 text already merged,
 # the Adreno 640 table decision, device confirmation of the device-tier mechanism, open device items).
 from pathlib import Path
-R = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); S = Path('/tmp/claude-1000/-home-jeremy/c2281c28-97ca-4e0e-87ce-8b9b6c8aba81/scratchpad')
+R = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); S = Path('/tmp/claude-1000/<home>/c2281c28-97ca-4e0e-87ce-8b9b6c8aba81/scratchpad')
 def sub(path, old, new):
     p = R/path; s = p.read_text(); assert s.count(old) == 1, (path, old[:70]); p.write_text(s.replace(old, new))
 

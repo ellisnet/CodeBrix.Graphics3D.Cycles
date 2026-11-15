@@ -102,7 +102,7 @@ static void floor_cage(Scene *s, const Params *p) {
 
 /* Builds a scene in a fixed node creation order so a fresh host can rebuild any edited state. */
 static void build(Scene *s, uint32_t backend, const Params *p) {
-  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, backend, 1, {0}};
+  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, backend, 1, {0}, 0, 0};
   CHECK(cbc_host_create(&config, &s->host)); CBCHost h = s->host;
   s->integrator = singleton(h, "integrator"); s->camera = singleton(h, "camera");
   integer(h, s->integrator, "use_guiding", 0); integer(h, s->integrator, "use_light_tree", 0);

@@ -1,10 +1,10 @@
 # Cycles WebGPU feasibility
 
-Research performed 2026-10-18/19. **Conditional GO for a limited native prototype; full Cycles feature parity and useful rendering performance remain unproven.** Jeremy subsequently authorized that prototype and permissively licensed dependency vendoring.
+Research performed 2026-10-18/19. **Conditional GO for a limited native prototype; full Cycles feature parity and useful rendering performance remain unproven.** The maintainer subsequently authorized that prototype and permissively licensed dependency vendoring.
 
 Update: the [native scene-to-image gate](../prototype/README.md) now passes on
 Linux and all three Android devices using unchanged shipped WebGPU binaries.
-Jeremy has authorized continued work toward **full parity**; see the
+The maintainer has authorized continued work toward **full parity**; see the
 [parity ledger](../PARITY.md). The kernel results and their numerical failures
 below remain valid; the small image test does not supersede them.
 

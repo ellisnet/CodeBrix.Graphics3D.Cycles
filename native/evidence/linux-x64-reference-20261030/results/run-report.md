@@ -1,6 +1,6 @@
 # f32-linux: final full Linux x64 regression after item27 / item27b (2026-10-30). RUN AND REPORT, nothing diagnosed
 
-Folder: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261030/f32-linux (timeline.log, budgets.txt, validation/<label>/{exit.json,slot.stdout.txt,out/}, freshness.txt, cmp-vs-r29.txt, o-compare/, o-compare-summary.txt, linux-bin-sha256.txt, ldd.txt, warn-counts.txt).
+Folder: <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261030/f32-linux (timeline.log, budgets.txt, validation/<label>/{exit.json,slot.stdout.txt,out/}, freshness.txt, cmp-vs-r29.txt, o-compare/, o-compare-summary.txt, linux-bin-sha256.txt, ldd.txt, warn-counts.txt).
 Run: 11:38-14:05:31 (build 11:38-11:45; sequence to 12:13; five lanes 12:13-14:04; jobs 10-11 to 14:05:31).
 
 ## Start/end state
@@ -30,7 +30,7 @@ Passed: log has `Built target codebrix_cycles_overlay` (1); no overlay *.inc new
 
 ## Non-zero results (verbatim, not diagnosed)
 1. p8-sim650-nodes-world exit 1 (0 s), by design.
-2. x-inventory-check exit 1, expected; first message (stderr): `[Errno 2] No such file or directory: '/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/evidence/linux-x64-ledger-20261030/native-render/validation.json'`
+2. x-inventory-check exit 1, expected; first message (stderr): `[Errno 2] No such file or directory: '<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/evidence/linux-x64-ledger-20261030/native-render/validation.json'`
 3. Job 11: compare.py exit 2 for the four scenes above (o-compare/<scene>.txt).
 No other non-zero. No retries needed.
 

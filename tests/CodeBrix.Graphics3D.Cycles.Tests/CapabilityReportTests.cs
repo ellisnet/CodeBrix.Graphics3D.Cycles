@@ -39,7 +39,7 @@ public class CapabilityReportTests
         report.Scope.CameraTypes.Should().Contain("perspective");
         report.ImageFormats.Should().Equal("float", "float4", "half", "half4", "byte", "byte4", "ushort", "ushort4");
         report.PassTypes["combined"].Should().Be(1);
-        report.Events.Should().Equal("status", "progress", "error");
+        report.Events.Should().Equal("status", "progress", "error", "film");
         report.Limits["maxMotionSteps"].Should().Be(129L);
         report.DeterminismReference.Should().NotBeNullOrEmpty();
         report.Json.Should().Contain("\"host\"");
@@ -104,6 +104,32 @@ public class CapabilityReportTests
         report.BackendScopes["webgpu"].RenderTimeRejections.Should().NotBeEmpty();
     }
 
+    // The largest image side per backend (provisional backendScope.<backend>.maxImageDimension): Cycles' Metal device refuses a
+    // side above 16384 (MetalDevice::image_alloc), the WGSL device one above INT32_MAX / 2 (WebGPUDevice::mem_alloc), and the
+    // CPU device checks none beyond the host's own limit; limits.maxImageDimension stays the largest side the API accepts.
+    // On Metal the limit is measured: 16384 x 1 renders, 16385 x 1 fails with Cycles' message.
+    [Fact]
+    public void the_report_states_the_largest_image_side_of_every_backend()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        ICapabilityReport device = cpu.GetCapabilities();
+
+        //Assert
+        report.Limits["maxImageDimension"].Should().Be(int.MaxValue);
+        report.BackendScopes["cpu"].MaxImageDimension.Should().Be(int.MaxValue);
+        report.BackendScopes["cpu-embree"].MaxImageDimension.Should().Be(int.MaxValue);
+        device.Scope.MaxImageDimension.Should().Be(int.MaxValue);
+        if (report.CompiledBackends.Contains("metal")) report.BackendScopes["metal"].MaxImageDimension.Should().Be(16384L);
+        if (report.CompiledBackends.Contains("webgpu")) report.BackendScopes["webgpu"].MaxImageDimension.Should().Be(1073741823L);
+        report.BackendScopes.Values.All(scope => scope.MaxImageDimension.HasValue).Should().BeTrue();
+        CapabilityReport.Parse("{\"schemaVersion\":1,\"backendScope\":{\"cpu\":{\"device\":\"x\"}}}").BackendScopes["cpu"].MaxImageDimension.Should().BeNull();
+    }
+
     // AGENT-README.txt, RENDER-TIME REJECTIONS: the "  - " entries under each group heading, in order.
     private static readonly string[] RejectionGroups = ["Every backend:", "The WebGPU backend:"];
 
@@ -147,6 +173,176 @@ public class CapabilityReportTests
         report.BackendScopes.Count.Should().Be(report.CompiledBackends.Count);
         foreach (string backend in report.CompiledBackends)
             report.BackendScopes[backend].RenderTimeRejections.Should().Equal(RejectionsOf(backend), backend);
+    }
+
+    // The quaternion and spherical-harmonics attribute kinds render on the CPU and Metal backends; only the WebGPU device
+    // refuses a scene that reads one, so the entry is in the WebGPU group and in no other backend's scope.
+    [Fact]
+    public void quaternion_and_spherical_harmonics_attributes_are_a_rejection_of_the_webgpu_backend_only()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        const string entry = "quaternion and spherical-harmonics attributes read by a shader";
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+
+        //Assert
+        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[0]].Should().NotContain(entry);
+        foreach (string backend in report.CompiledBackends)
+            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+    }
+
+    // Gaussian splats render on the CPU and Metal backends; the host refuses them on the WebGPU backend only, by that
+    // device's words, so the entry is in the WebGPU group and in no other backend's scope.
+    [Fact]
+    public void point_clouds_rendered_as_gaussian_splats_are_a_rejection_of_the_webgpu_backend_only()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        const string entry = "point clouds rendered as Gaussian splats";
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+
+        //Assert
+        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[0]].Should().NotContain(entry);
+        foreach (string backend in report.CompiledBackends)
+            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+    }
+
+    // UDIM tiles (provisional cbc_host_image_bind_tiles) render on the CPU and Metal backends; the host refuses a tiles
+    // binding on the WebGPU backend only, so the entry is in the WebGPU group and in no other backend's scope.
+    [Fact]
+    public void udim_tiles_are_a_rejection_of_the_webgpu_backend_only()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        const string entry = "UDIM tiles (several images bound to one Image Texture node)";
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+
+        //Assert
+        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[0]].Should().NotContain(entry);
+        foreach (string backend in report.CompiledBackends)
+            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+    }
+
+    // Tiled rendering (provisional CyclesScene.TileSize) renders on the CPU and Metal backends; the host refuses a tile size
+    // other than 0 on the WebGPU backend only, so the entry is in the WebGPU group and in no other backend's scope.
+    [Fact]
+    public void tiled_rendering_is_a_rejection_of_the_webgpu_backend_only()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        const string entry = "tiled rendering (a tile size other than 0)";
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+
+        //Assert
+        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[0]].Should().NotContain(entry);
+        foreach (string backend in report.CompiledBackends)
+            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+    }
+
+    // BVH spatial splits (provisional CyclesScene.UseBvhSpatialSplit) apply on the CPU and Metal backends; the host refuses
+    // them on the WebGPU backend only, so the entry is in the WebGPU group and in no other backend's scope.
+    [Fact]
+    public void bvh_spatial_splits_are_a_rejection_of_the_webgpu_backend_only()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        const string entry = "BVH spatial splits";
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+
+        //Assert
+        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[0]].Should().NotContain(entry);
+        foreach (string backend in report.CompiledBackends)
+            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+    }
+
+    // The texture limit (provisional CyclesScene.TextureLimit) reduces images on the host for every device; the host refuses
+    // a limit on the WebGPU backend only, so the entry is in the WebGPU group and in no other backend's scope.
+    [Fact]
+    public void a_texture_limit_is_a_rejection_of_the_webgpu_backend_only()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        const string entry = "a texture limit (images reduced when they load)";
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+
+        //Assert
+        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[0]].Should().NotContain(entry);
+        foreach (string backend in report.CompiledBackends)
+            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+    }
+
+    // Progressive results (provisional HostFlags.ProgressiveResults) are delivered on the CPU and Metal backends; the host
+    // refuses a progressive host on the WebGPU backend only, so the entry is in the WebGPU group and in no other scope.
+    [Fact]
+    public void progressive_results_are_a_rejection_of_the_webgpu_backend_only()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        const string entry = "progressive results (intermediate films during a render)";
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+
+        //Assert
+        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[0]].Should().NotContain(entry);
+        foreach (string backend in report.CompiledBackends)
+            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+        report.Events.Should().Contain("film");
+    }
+
+    // Tiled images (provisional CyclesScene.CreateTiledImage) render through Cycles' texture cache on the CPU and Metal
+    // backends; the host refuses one on the WebGPU backend only ("WebGPU tiled images not implemented"), whose existing
+    // entry "sparse or tiled images" names it, in the WebGPU group and in no other backend's scope.
+    [Fact]
+    public void sparse_or_tiled_images_are_a_rejection_of_the_webgpu_backend_only()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        const string entry = "sparse or tiled images";
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+
+        //Assert
+        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[0]].Should().NotContain(entry);
+        foreach (string backend in report.CompiledBackends)
+            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
     }
 
     [Fact]

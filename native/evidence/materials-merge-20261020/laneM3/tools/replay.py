@@ -4,7 +4,7 @@
 """M3 measurement helper (from M1): build the Linux render replay tool and replay one capture."""
 import sys
 from pathlib import Path
-ROOT=Path('/home/jeremy/ClaudeHome/cycles-worktrees/m3-procedural')
+ROOT=Path('<home>/ClaudeHome/cycles-worktrees/m3-procedural')
 sys.path.insert(0,str(ROOT/'native/tools'))
 import render_replay
 render_replay.build('linux-x64')

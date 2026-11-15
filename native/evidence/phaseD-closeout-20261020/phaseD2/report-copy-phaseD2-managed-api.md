@@ -1,8 +1,8 @@
 # Phase D2 - managed API (typed facade, generated model, public interop tier)
 
-Agent: Phase D2 (Opus 5.5), worktree `/home/jeremy/ClaudeHome/cycles-worktrees/d2-managed-api`
+Agent: Phase D2 (Opus 5.5), worktree `<home>/ClaudeHome/cycles-worktrees/d2-managed-api`
 (detached at 00a8f4aa, seeded from main incl. uncommitted D1; seed manifest
-`/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-phaseD2.json`). Linux x64 only, CPU
+`<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-phaseD2.json`). Linux x64 only, CPU
 reference backend for tests. No git operations, no main/D3 changes, no native/WGSL/CMake/gate/
 evidence/third_party edits, no new NuGet references, no sub-agents.
 

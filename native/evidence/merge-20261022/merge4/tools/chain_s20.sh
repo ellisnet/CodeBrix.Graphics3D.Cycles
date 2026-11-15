@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 4: rerun on the S20 (RFCRB0MPHYH) the jobs lane Q marked failing, on the merged tree; one job per run,
 # timeout max(600 s, 3 x this merge's Samsung tablet wall). Record only; no fixing.
-cd "$(dirname "$0")"; M=$(realpath ..); L=/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
-ref=$M/reference/linux-x64; serial=RFCRB0MPHYH; A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"
+cd "$(dirname "$0")"; M=$(realpath ..); L=<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
+ref=$M/reference/linux-x64; serial=RFCRB0MPHYH; A="<home>/Android/Sdk/platform-tools/adb -s $serial"
 lg(){ echo "[$(date +%H:%M:%S)] s20 $*" >> $M/timeline.log; }
 until grep -q "samsung lock released" $M/timeline.log; do sleep 20; done
 python3 s20_timeouts.py > $M/device/s20-timeouts.json || { lg "timeout computation failed"; exit 1; }

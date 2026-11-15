@@ -4,7 +4,7 @@
 # Merge wave 8 part 2: S20 (RFCRB0MPHYH, Adreno 650, fix-or-degrade) A650-2 regression set, principled_svm FIRST. Per-job timeout = s20_timeouts.py
 # (max(600 s, 3 x tablet wall)); principled_bounce gets max(that, 2400 s). Chain cap 3 hours: jobs not started by then are logged as not run.
 cd "$(dirname "$0")"; M=$(realpath ..); source ./lock8.sh
-ref=$M/reference-1b/linux-x64; serial=RFCRB0MPHYH; A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"
+ref=$M/reference-1b/linux-x64; serial=RFCRB0MPHYH; A="<home>/Android/Sdk/platform-tools/adb -s $serial"
 lg(){ echo "[$(date +%H:%M:%S)] s20 $*" >> $M/timeline.log; }
 python3 s20_timeouts.py > $M/device/s20-timeouts.json || { lg "timeout computation failed"; exit 1; }
 acquire s20 "chain8_s20.sh" || exit 2; T0=$(date +%s)

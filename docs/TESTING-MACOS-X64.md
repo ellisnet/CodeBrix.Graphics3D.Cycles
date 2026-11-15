@@ -830,4 +830,3 @@ Backend names on the Intel Mac: `cpu-x64-macos`, `cpu-x64-macos-sse42`,
 - Only the reviewed snapshots in `third_party/` are built; nothing from
   Homebrew is linked or included. No new NuGet packages.
 - The shipped WebGPU runtime is used unchanged.
-- The maintainer makes every commit and push.

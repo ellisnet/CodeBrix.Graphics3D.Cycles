@@ -95,20 +95,28 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
     // renderTimeRejections: every class of scene the backend refuses at render time, in the words of AGENT-README.txt
     // "RENDER-TIME REJECTIONS" (a managed test compares the two): the host's own first (every backend), then the device's.
 #define CBC_HOST_REJECTIONS "\"Catmull-Clark subdivision surfaces (they need OpenSubdiv, which this library does not include)\"," \
-  "\"the dlss denoiser\",\"point clouds rendered as Gaussian splats\",\"a denoiser upscale factor other than 1\"," \
+  "\"bakes of subdivision surfaces diced in pixel space (a bake has no render camera to measure pixels in)\"," \
+  "\"the dlss denoiser\",\"a denoiser upscale factor other than 1\"," \
   "\"curves and points with a Both displacement shader\""
+    // maxImageDimension (PROVISIONAL, per backend): the largest image side the backend's device takes for an image loaded
+    // whole (cbc_host_image_create; a tiled image is loaded in tiles through Cycles' texture cache). The CPU device checks
+    // none: it keeps the side in KernelImageInfo's uint and its kernels read it as int (util/types_image.h,
+    // kernel/util/image.h), so the host's own limit, INT_MAX, holds. The WGSL device refuses a side above INT32_MAX / 2
+    // ("Invalid resident image dimensions", WebGPUDevice::mem_alloc in native/cycles/device.cpp). Cycles' Metal device
+    // refuses one above 16384 ("Texture exceeds maximum allowed size of 16384 x 16384", MetalDevice::image_alloc in
+    // device/metal/device_impl.mm). limits.maxImageDimension stays the largest side cbc_host_image_create accepts.
     out << ",\"backendScope\":{\"cpu\":{\"device\":\"Cycles CPU device (reference)\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\""
 #ifdef WITH_OSL
         << ",\"custom\""
 #endif
-        << "],\"passes\":\"registered pass types written by the Cycles CPU device\",\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "],\"arithmetic\":"
-        << codebrix_cpu_arithmetic_json << "}";
+        << "],\"passes\":\"registered pass types written by the Cycles CPU device\",\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "],\"maxImageDimension\":" << INT_MAX
+        << ",\"arithmetic\":" << codebrix_cpu_arithmetic_json << "}";
 #ifdef WITH_EMBREE
     out << ",\"cpu-embree\":{\"device\":\"Cycles CPU device with Cycles' automatic BVH (Embree); the CPU reference keeps BVH2\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\""
 #ifdef WITH_OSL
         << ",\"custom\""
 #endif
-        << "],\"passes\":\"registered pass types written by the Cycles CPU device\",\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "]}";
+        << "],\"passes\":\"registered pass types written by the Cycles CPU device\",\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "],\"maxImageDimension\":" << INT_MAX << "}";
 #endif
 #ifdef WITH_WEBGPU
     out << ",\"webgpu\":{\"device\":\"CodeBrix WGSL device (native/DEVICE.md)\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\"],\"primitives\":[\"triangle\",\"curve\",\"point\"],"
@@ -117,19 +125,27 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
            "\"cryptomatte\",\"aov_color\",\"aov_value\",\"mist\",\"render_time\",\"sample_count\",\"shadow_catcher\",\"shadow_catcher_sample_count\",\"shadow_catcher_matte\",\"denoising_albedo\",\"denoising_normal\","
            "\"denoising_specular_albedo\",\"denoising_roughness\",\"denoising_depth\",\"denoising_backward_motion\",\"denoising_specular_motion\",\"volume_majorant\",\"volume_majorant_sample_count\",\"volume_direct\",\"volume_indirect\"],\"lightGroups\":true,"
            "\"renderTimeRejections\":[" CBC_HOST_REJECTIONS ","
+           "\"tiled rendering (a tile size other than 0)\","
+           "\"BVH spatial splits\","
+           "\"a texture limit (images reduced when they load)\","
+           "\"progressive results (intermediate films during a render)\","
+           "\"UDIM tiles (several images bound to one Image Texture node)\","
+           "\"point clouds rendered as Gaussian splats\","
+           "\"quaternion and spherical-harmonics attributes read by a shader\","
            "\"dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0)\",\"custom (OSL) cameras\",\"path guiding (the integrator's use_guiding) and its passes\","
            "\"a Radial Tiling node with at most two sides and a roundness strictly between 0 and 1\",\"scenes whose device data does not fit the GPU (there is no host-memory fallback)\","
            "\"BVH time steps\",\"volume velocity motion blur\",\"sparse or tiled images\","
            "\"area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, with an axis of infinities, or reached by the light tree at a transmissive surface\",\"background light portals of zero extent\",\"bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)\","
            "\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\","
            "\"Boolean Math, Integer Math and Get Vector Component shader nodes with a linked input\","
-           "\"shadow catchers with transparent shadows on Adreno 650 GPUs\",\"shadow caustics (manifold next-event estimation) on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
+           "\"shadow catchers with transparent shadows on Adreno 650 GPUs\",\"shadow caustics (manifold next-event estimation) on Adreno 650 GPUs\"],\"maxImageDimension\":" << INT32_MAX / 2
+        << ",\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL
     // Cycles' own Metal device: the full upstream feature set, compiled at run
     // time from the kernel sources staged beside this library.
     out << ",\"metal\":{\"device\":\"Cycles Metal device\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\"],"
-           "\"passes\":\"registered pass types written by the Cycles Metal device\",\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "],"
+           "\"passes\":\"registered pass types written by the Cycles Metal device\",\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "],\"maxImageDimension\":16384,"
            "\"hardwareRayTracing\":\"MetalRT on M3 and later GPUs, BVH2 otherwise (CYCLES_METALRT overrides)\","
            "\"kernels\":\"compiled at first use from codebrix-cycles/source beside the library; cached in the user cache directory\","
            "\"reference\":\"native/host/MACOS_ARM64.md\"}";
@@ -191,7 +207,7 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
     out << ",\"passTypes\":[";
     first = true;
     for (const auto &[name, value] : passes) { out << (first ? "" : ",") << "{\"name\":"; json_text(out, name.c_str()); out << ",\"value\":" << value << '}'; first = false; }
-    out << "],\"events\":[\"status\",\"progress\",\"error\"],\"limits\":{\"maxRenderWidth\":32768,\"maxRenderHeight\":32768,"
+    out << "],\"events\":[\"status\",\"progress\",\"error\",\"film\"],\"limits\":{\"maxRenderWidth\":32768,\"maxRenderHeight\":32768,"
            "\"maxSamples\":" << INT_MAX << ",\"maxImageDimension\":" << INT_MAX << ",\"maxMotionSteps\":" << Geometry::MAX_MOTION_STEPS
         << ",\"maxThreads\":1024,\"errorMessageBytes\":" << sizeof(last_error) << "},\"determinism\":\"native/host/ABI.md#determinism\"";
     bake_capabilities(out);
@@ -240,7 +256,7 @@ extern "C" int cbc_host_delete_node(CBCHost handle, CBCNode id) {
       if (object->get_geometry()) scene.delete_node(object);
       else { scene.objects.erase_by_swap(object); scene.object_manager->tag_update(&scene, ObjectManager::OBJECT_REMOVED); }
     } else if (auto light = dynamic_cast<Light *>(node)) scene.delete_node(light);
-    else if (auto geometry = dynamic_cast<Geometry *>(node)) { host.bakes.erase(geometry); scene.delete_node(geometry); }
+    else if (auto geometry = dynamic_cast<Geometry *>(node)) { host.bakes.erase(geometry); host.splat_radii.erase(geometry); host.displaced.erase(geometry); scene.delete_node(geometry); }
     else if (auto particles = dynamic_cast<ParticleSystem *>(node)) scene.delete_node(particles);
     else scene.delete_node(static_cast<Pass *>(node));
   });
@@ -248,10 +264,23 @@ extern "C" int cbc_host_delete_node(CBCHost handle, CBCNode id) {
 extern "C" int cbc_host_image_update(CBCHost handle, CBCImage image, const CBCImageConfig *config, const void *pixels, uint64_t bytes) {
   return edit(handle, [&](Host &host) {
     auto it = host.images.find(image); require(it != host.images.end(), "Invalid or released image handle");
+    // A tiled image's pixels are its reader's (cbc_host_image_create_tiled, PROVISIONAL).
+    require(!it->second->tiled, "A tiled image cannot be updated: its reader supplies its pixels; create a new tiled image (or bind another image)");
     std::shared_ptr<const MemoryImageData> replacement = image_data(config, pixels, bytes), previous = it->second;
+    // Every tile of a UDIM binding keeps one format (cbc_host_image_bind_tiles): an update that would give a tile another
+    // format than a tile bound to another image is refused before anything changes.
+    if (replacement->type != previous->type)
+      for (auto &[shader, graph] : host.graphs) for (auto &[node, binding] : graph->images) {
+        if (!udim_binding(binding) || std::none_of(binding.begin(), binding.end(), [&](auto &entry) { return entry.second == previous; })) continue;
+        for (auto &[tile, data] : binding)
+          require(data == previous || data->type == replacement->type,
+                  ("The new format would differ from the format of UDIM tile " + std::to_string(tile) + ", which shares a tiles binding "
+                   "with this image; every tile of a binding needs the same format (bind the tiles again with images of one format)").c_str());
+      }
     it->second = replacement;
-    for (auto &[shader, graph] : host.graphs) for (auto &[node, data] : graph->images)
-      if (data == previous) { data = replacement; node->handle.clear(); graph->dirty = true; }
+    // Every binding of the handle, each UDIM tile included (cbc_host_image_bind_tiles).
+    for (auto &[shader, graph] : host.graphs) for (auto &[node, binding] : graph->images)
+      for (auto &[tile, data] : binding) if (data == previous) { data = replacement; node->handle.clear(); graph->dirty = true; }
   });
 }
 extern "C" int cbc_host_motion_positions(CBCHost handle, CBCNode id, uint32_t steps, const float *xyz, uint64_t count) {

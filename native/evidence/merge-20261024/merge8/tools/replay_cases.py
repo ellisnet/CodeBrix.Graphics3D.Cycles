@@ -5,7 +5,7 @@
 case-2 replay, DEVICE.md item 24). usage: replay_cases.py RUN_DIR OUT_DIR PREFIX CASE..."""
 import contextlib, json, sys, time
 from pathlib import Path
-ROOT = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); sys.path.insert(0, str(ROOT/'native/tools'))
+ROOT = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); sys.path.insert(0, str(ROOT/'native/tools'))
 import render_replay
 run, out, prefix, cases = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], [int(c) for c in sys.argv[4:]]
 out.mkdir(parents=True, exist_ok=True); results = {}

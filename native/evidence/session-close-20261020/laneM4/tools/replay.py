@@ -4,7 +4,7 @@
 """M4 copy of the M3 measurement helper (from M1): build the Linux render replay tool and replay one capture."""
 import sys
 from pathlib import Path
-ROOT=Path('/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative')
+ROOT=Path('<home>/ClaudeHome/cycles-worktrees/m4-bump-derivative')
 sys.path.insert(0,str(ROOT/'native/tools'))
 import render_replay
 render_replay.build('linux-x64')

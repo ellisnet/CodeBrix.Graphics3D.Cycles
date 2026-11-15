@@ -26,7 +26,7 @@ namespace CodeBrix.Graphics3D.Cycles.Tests;
 internal static class GpuReferences
 {
     // Set to 1 on an Apple Silicon Mac to (re)write the Metal references from this run's films.
-    // The new films and manifest are then reviewed like any other change before they are committed.
+    // The new films and manifest are then reviewed like any other change.
     internal const string RecordVariable = "CODEBRIX_CYCLES_RECORD_METAL_REFERENCES";
 
     private static readonly object Sync = new();

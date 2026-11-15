@@ -44,7 +44,7 @@ public sealed class BakeMap
     /// </summary>
     /// <param name="x">The column.</param>
     /// <param name="y">The row, 0 being v = 0.</param>
-    /// <returns>The triangle's index in the mesh, or -1 where no triangle covers the pixel centre.</returns>
+    /// <returns>The triangle's index in the mesh (of a subdivision surface: in Cycles' tessellation of its cage), or -1 where no triangle covers the pixel centre.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The pixel is outside the map.</exception>
     public int GetTriangle(int x, int y)
     {

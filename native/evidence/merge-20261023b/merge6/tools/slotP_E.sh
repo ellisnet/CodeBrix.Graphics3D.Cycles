@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 6 part 2, Linux stream E (labels p2-*): the Linux flow (device-scene exchange + judge) for the render_gate jobs that join it
 # at wave 6, the glTF tool, bundles (re-generated into bundles-p2/, compared with the staged ones), oracle runs and the comparator.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge6; V=$M/validation; S=$M/tools/slot.sh; F=$M/tools/linux_flow.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge6; V=$M/validation; S=$M/tools/slot.sh; F=$M/tools/linux_flow.sh
 B=$R/native/work/cycles-build; TOOL=$R/tools/gltf/CycleGltfRender/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.GltfRender
-MODEL=/home/jeremy/GitHome/Oasys/Assets/ForestCommunity/Domes/ForestVillage/CommunityProps/bench_01.gltf
+MODEL=<home>/GitHome/Oasys/Assets/ForestCommunity/Domes/ForestVillage/CommunityProps/bench_01.gltf
 O="--runner $B/bin/codebrix_cycles_oracle --host-library $B/lib/libcodebrix_cycles_host.so --backend cpu-x64-linux --backend wgsl-linux-intel"
 cd $R; mkdir -p $V/p2-gltf $M/bundles-p2
 for j in nodes_render principled_render microfacet_render; do $S p2-s-$j 2400 bash $F $j $V/p2-s-$j/flow; done

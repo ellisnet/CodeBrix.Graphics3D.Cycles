@@ -19,6 +19,9 @@ METAL_SOURCES=[
  'native/host',                                # cycles_host.cpp, host_*.inc, cycles_host.h, metal_recovery.mm, exports.macos, targets.cmake
  'native/cycles/cpu_arithmetic.cpp',           # compiled into cycles_kernel_cpu (inject_cycles_macos.cmake); the only native/cycles file read
  'native/oracle/runner.cpp',                   # the oracle runner (tools/build_macos.py), used by the stager's standalone render
+ 'native/oracle/json.h',                       # the runner's scene reader (included by runner.cpp)
+ 'native/oracle/sha256.h',                     # the runner's film hashes (included by runner.cpp)
+ 'native/oracle/CMakeLists.txt',               # the runner's build (configured by tools/build_macos.py)
  'native/tools/build_cycles_macos.py',         # the host recipe
  'native/tools/cycles_overlay.py',             # the registration overlay
  'native/tools/inject_cycles_macos.cmake',     # CMAKE_PROJECT_Cycles_INCLUDE

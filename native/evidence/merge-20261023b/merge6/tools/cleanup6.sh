@@ -4,7 +4,7 @@
 # Merge wave 6 part 2: cleanup on a device. Usage: cleanup6.sh DEV SERIAL [leftovers]. Removes codebrix-m6* paths (and codebrix-maintained-host-m6-hostgate-*); with
 # "leftovers" also lists (with sizes, to device/DEV-leftovers-listing.txt) and removes codebrix-* scratch last modified before 2026-10-22 that no current lane prefix
 # owns (codebrix-m1o-, codebrix-m6-); codebrix-ncdbg and every com.codebrix.* package are never touched. Caller holds the device lock.
-dev=$1; serial=$2; M=$(realpath "$(dirname "$0")/.."); A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"
+dev=$1; serial=$2; M=$(realpath "$(dirname "$0")/.."); A="<home>/Android/Sdk/platform-tools/adb -s $serial"
 lg(){ echo "[$(date +%H:%M:%S)] $dev $*" >> $M/timeline.log; }
 $A shell 'rm -rf /data/local/tmp/codebrix-m6-* /data/local/tmp/codebrix-maintained-host-m6-hostgate-*'
 if [ "$3" = leftovers ]; then

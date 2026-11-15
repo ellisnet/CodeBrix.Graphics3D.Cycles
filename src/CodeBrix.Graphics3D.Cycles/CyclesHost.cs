@@ -50,11 +50,25 @@ public sealed unsafe class CyclesHost : IDisposable
     /// <param name="threads">The number of native worker threads (CPU reference backend).</param>
     /// <exception cref="PlatformNotSupportedException">The process is not 64-bit, or the operating system is older than the native library supports.</exception>
     /// <exception cref="NativeFailure">The native host could not be created (for example an unsupported backend for this build).</exception>
-    public CyclesHost(Backend backend, uint threads = 1)
+    public CyclesHost(Backend backend, uint threads = 1) : this(backend, threads, HostFlags.None)
+    {
+    }
+
+    /// <summary>
+    /// Creates a native scene host with options fixed for its lifetime (provisional): with
+    /// <see cref="HostFlags.ProgressiveResults"/> its renders send intermediate films to the event callback
+    /// (<c>CBC_EVENT_FILM</c>; <see cref="CyclesScene.IntermediateFilmReceived"/> in the typed facade).
+    /// </summary>
+    /// <param name="backend">The device the host renders with.</param>
+    /// <param name="threads">The number of native worker threads (CPU reference backend).</param>
+    /// <param name="flags">The host options.</param>
+    /// <exception cref="PlatformNotSupportedException">The process is not 64-bit, or the operating system is older than the native library supports.</exception>
+    /// <exception cref="NativeFailure">The native host could not be created, or a flag is unknown (status 1).</exception>
+    public CyclesHost(Backend backend, uint threads, HostFlags flags)
     {
         if (IntPtr.Size != 8) throw new PlatformNotSupportedException("This experimental build requires a 64-bit process.");
         EnsureSupportedOperatingSystem();
-        Native.HostConfig config = new() { Size = 32, Abi = 1, Backend = (uint)backend, Threads = threads };
+        Native.HostConfig config = new() { Size = (uint)sizeof(Native.HostConfig), Abi = 1, Backend = (uint)backend, Threads = threads, Flags = (uint)flags };
         Check(Native.Create(ref config, out ulong value));
         lifetime = new Lifetime(value);
     }
@@ -430,7 +444,8 @@ public sealed unsafe class CyclesHost : IDisposable
 
     /// <summary>
     /// Replaces a mesh's geometry with a subdivision cage: polygon faces that each render tessellates with Cycles'
-    /// adaptive dicing when the mesh's <c>subdivision_type</c> is linear. Every face starts on material 0, flat.
+    /// adaptive dicing when the mesh's <c>subdivision_type</c> is linear, and each bake (provisional; object space only).
+    /// Every face starts on material 0, flat.
     /// </summary>
     /// <param name="node">A node created with type <c>mesh</c>.</param>
     /// <param name="positions">Cage positions as x, y, z triples.</param>
@@ -557,6 +572,38 @@ public sealed unsafe class CyclesHost : IDisposable
     public void SetRenderTimeLimit(double seconds) => Finish(Native.RenderTimeLimit(Handle, seconds));
 
     /// <summary>
+    /// Sets Cycles' texture limit (provisional): an image whose larger side exceeds <paramref name="maxSize"/> is reduced
+    /// when a render or bake loads it, on the host and before any device sees it, by halving until that side fits (a box
+    /// filter). It applies to caller images and to Cycles' own (the Sky Texture's), and brings an image within Metal's
+    /// 16384-pixel texture limit. The same value is always accepted; a different one fails with
+    /// <see cref="NativeStatus.NotReady"/> once a render or bake has loaded images, because Cycles does not load an image
+    /// again. The WebGPU backend refuses a render with a limit by name.
+    /// </summary>
+    /// <param name="maxSize">0 (the default: images keep their size) to <see cref="int.MaxValue"/> pixels.</param>
+    public void SetTextureLimit(uint maxSize) => Finish(Native.TextureLimit(Handle, maxSize));
+
+    /// <summary>
+    /// Switches Cycles' BVH spatial splits (provisional): the BVH2 builder splits primitives between nodes in the BVH of
+    /// each geometry Cycles keeps in object space (one that several objects use, or one with true displacement, subsurface
+    /// scattering or subdivision; never in the scene's top level, for curves or for geometry with motion blur), and
+    /// <see cref="Backend.Cpu"/> builds at Embree's high quality; MetalRT ignores it, as in Cycles. A speed setting that
+    /// by design changes no film. A change has every BVH built again at the next render or bake. The WebGPU backend
+    /// refuses a render with it enabled by name.
+    /// </summary>
+    /// <param name="enabled"><see langword="true"/> to use spatial splits; <see langword="false"/> is the default.</param>
+    public void SetBvhSpatialSplit(bool enabled) => Finish(Native.BvhSpatialSplit(Handle, enabled ? 1u : 0u));
+
+    /// <summary>
+    /// Sets the tile size of the host's later renders and bakes (provisional; Cycles' tiled rendering): tiles of
+    /// <paramref name="tileSize"/> pixels square, rendered one after another; the native library keeps the finished tiles
+    /// in system memory (no file is written) and returns the whole film, every pass included, as an untiled render does.
+    /// With tiles the render time limit applies to each tile. The WebGPU backend refuses a render with tiles by name.
+    /// </summary>
+    /// <param name="tileSize">0 (the default: one tile), 8 to 128, or a multiple of 128 up to 8192; anything else fails
+    /// with <see cref="NativeStatus.Invalid"/>.</param>
+    public void SetTileSize(uint tileSize) => Finish(Native.TileSize(Handle, tileSize));
+
+    /// <summary>
     /// Creates or replaces a float-based geometry attribute. The element count derives from the
     /// current geometry, so establish the topology first.
     /// </summary>
@@ -654,11 +701,72 @@ public sealed unsafe class CyclesHost : IDisposable
     public void BindImage(Node texture, Image image) => Finish(Native.BindImage(Handle, texture.Value, image.Value));
 
     /// <summary>
+    /// Binds images to an image texture node as UDIM tiles (provisional; <c>cbc_host_image_bind_tiles</c>):
+    /// <paramref name="images"/>[i] at tile <paramref name="tiles"/>[i], the tile covering UV [u, u + 1) x [v, v + 1)
+    /// being 1001 + 10 * v + u (u 0 to 9). The tiles are distinct and at least 1001, and every image has the same format.
+    /// Replaces any earlier binding of the node; <see cref="BindImage"/> with <c>new Image(0)</c> removes it.
+    /// </summary>
+    /// <param name="texture">The image texture node (an environment texture node is refused, status 2).</param>
+    /// <param name="tiles">The tile numbers.</param>
+    /// <param name="images">The images, one per tile.</param>
+    /// <exception cref="ArgumentException">The two spans differ in length.</exception>
+    /// <exception cref="NativeFailure">A tile number, image or the node is refused (status 1 or 2); nothing changed.</exception>
+    public void BindImageTiles(Node texture, ReadOnlySpan<uint> tiles, ReadOnlySpan<Image> images)
+    {
+        if (tiles.Length != images.Length) throw new ArgumentException("One image per tile number is required.");
+        fixed (uint* tileData = tiles)
+        fixed (Image* imageData = images)
+            Finish(Native.BindImageTiles(Handle, texture.Value, tileData, (ulong*)imageData, (ulong)tiles.Length));
+    }
+
+    /// <summary>
     /// Releases the caller's image identifier. Existing graph bindings keep their own ownership until
     /// they are replaced or the host is destroyed.
     /// </summary>
     /// <param name="image">The image to release.</param>
     public void ReleaseImage(Image image) => Finish(Native.ReleaseImage(Handle, image.Value));
+
+    /// <summary>
+    /// Creates a tiled image (provisional; <c>cbc_host_image_create_tiled</c>, Cycles' texture cache): a render or bake
+    /// loads only the tiles (<paramref name="tileSize"/> pixels square) and mip levels it samples, through
+    /// <paramref name="read"/>, which writes one rectangle
+    /// of one level (user data, level, x, y, width, height, pixels, row bytes; rows bottom first, in
+    /// <paramref name="format"/>) and returns 0, or nonzero to fail the render. The native host calls it on native
+    /// threads, only during <see cref="Render"/> and <see cref="Bake"/>, one call at a time per host;
+    /// <paramref name="release"/> runs exactly once when the library no longer uses <paramref name="userData"/>, also when
+    /// this call fails (then before it returns, here too when the host was disposed). Bind it with <see cref="BindImage"/>
+    /// or as UDIM tiles of tiled images; <see cref="UpdateImage"/> refuses it. <see cref="CyclesScene.CreateTiledImage"/>
+    /// wraps an <see cref="ITiledImageReader"/>.
+    /// </summary>
+    /// <param name="width">The width of level 0 in pixels.</param>
+    /// <param name="height">The height of level 0 in pixels.</param>
+    /// <param name="format">The pixel layout the reader writes.</param>
+    /// <param name="read">The unmanaged read callback.</param>
+    /// <param name="release">The unmanaged release callback, or null.</param>
+    /// <param name="userData">The value passed to both callbacks.</param>
+    /// <param name="tileSize">Provisional: the tile side, 0 (64, the default) or a power of two from 64 to 128 on the Metal
+    /// backend and to 65536 on the others (<see cref="TiledImage"/>).</param>
+    /// <returns>The image identifier.</returns>
+    /// <exception cref="ObjectDisposedException">The host was disposed (<paramref name="release"/> has run).</exception>
+    /// <exception cref="NativeFailure">The size, format or tile size is invalid, or <paramref name="read"/> is null (status 1).</exception>
+    public Image CreateTiledImage(uint width, uint height, ImageFormat format, delegate* unmanaged[Cdecl]<nint, uint, uint, uint, uint, uint, void*, ulong, int> read,
+        delegate* unmanaged[Cdecl]<nint, void> release, nint userData, uint tileSize = 0)
+    {
+        ulong host;
+        try
+        {
+            host = Handle;
+        }
+        catch (ObjectDisposedException)
+        {
+            // The native call is never made, so its rule (release runs once, also on failure) is kept here.
+            if (release != null) release(userData);
+            throw;
+        }
+        Native.ImageConfig config = new() { Size = 32, Width = width, Height = height, Format = (uint)format, TileSize = tileSize };
+        Finish(Native.CreateTiledImage(host, ref config, read, release, userData, out ulong image));
+        return new(image);
+    }
 
     /// <summary>
     /// Renders the scene synchronously into scene-linear RGBA floats with a lower-left origin. The

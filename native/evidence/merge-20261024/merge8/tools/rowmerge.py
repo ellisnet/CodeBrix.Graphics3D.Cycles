@@ -7,7 +7,7 @@ Also checks the result both ways (theirs' change applied to ours == ours' change
 usage: rowmerge.py <lane> <path>"""
 import re, subprocess, sys, tempfile, os
 from pathlib import Path
-root = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge8'
+root = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge8'
 lane, path = sys.argv[1:3]; D = w / f'merge-{lane}' / path
 rd = lambda s: D.with_name(D.name + '.' + s).read_text().split('\n')
 O, B, T = rd('ours'), rd('base'), rd('theirs')

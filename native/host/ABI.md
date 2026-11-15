@@ -19,6 +19,9 @@ rules below so that bindings written today keep working.
 > renumber existing signatures, enum values, error codes or layouts. A breaking
 > change bumps `CBC_HOST_ABI`.
 
+Items marked **PROVISIONAL** are additions that await the maintainer's approval:
+until it is given, their numbers, names and meaning may still change.
+
 There is no deprecation machinery. On ELF platforms every export carries the
 symbol version `CBC_HOST_EXPERIMENT_1`; `cbc_host_abi_version()` returns the
 ABI integer, and `cbc_host_version()` returns:
@@ -48,7 +51,10 @@ version and this native version.
   library was built with; input structs also carry `abi_version` where shown
   and reserved fields that must be zero. Wrong sizes, versions or nonzero
   reserved words return `CBC_INVALID`. When a trailing field is added, the
-  library will accept every previously published size.
+  library will accept every previously published size. A C initializer that
+  lists the fields by position must list the new trailing fields too (compilers
+  warn about missing fields under `-Wextra`); a designated initializer, or a
+  zeroed struct whose fields are then assigned, leaves them zero.
 - **Outputs** (`*_json`, getters, pass readback): pass `capacity` and a buffer;
   `required` is always set (element count, or bytes including the NUL for text).
   `NULL` with capacity 0 is a size query that returns `CBC_SMALL_BUFFER`. On any
@@ -61,6 +67,27 @@ version and this native version.
 - **Render output** is raw scene-linear float32 RGBA, lower-left origin. The
   library never encodes or decodes image files for the product profile; decode
   textures in the application (for .NET, CodeBrix.Imaging) and pass pixels.
+  The delivered film (**PROVISIONAL**): before it uses a render's or bake's
+  output, the host verifies that Cycles' output driver delivered the film it asked
+  for: one tile of the render's size (the film, or the camera border's region) at
+  offset 0; render buffers of that size, with a full window and at that place in a
+  film of the requested size (the buffers the passes are read with: the full frame
+  of a tiled render, else the path tracer's effective tile, which Cycles scales by
+  its resolution divider; the overlay of `integrator/path_trace.cpp` exposes them,
+  `codebrix_delivered_buffer_params`); Combined with four components and every
+  other pass read with the components the host reads; and every component of every
+  pixel of those passes written (the host fills the destination with a marker NaN no
+  render writes, and none may remain). Otherwise the render or bake fails with
+  `CBC_FAILED` and "The film the output driver delivered is not the one requested:
+  ..." naming what differed, and the output is not written. No accepted scene
+  triggers it on the CPU or Metal backends (measured: the managed tests, the host
+  gate and the whole oracle corpus, tiled renders, camera borders and bakes
+  included). It is the check that would have refused the film of survey row 9, a
+  Metal render with GPU denoising at a denoiser upscale factor, which Cycles renders
+  at the reduced resolution and the film does not upscale (measured with that
+  refusal lifted in a scratch build: "render buffers of 16 x 12 ... for a render of
+  32 x 24"); a bake still accepts the factor, and such a Metal bake with GPU
+  denoising now fails by name in the same way.
 
 ## Error codes
 
@@ -90,8 +117,9 @@ device. The next `cbc_host_render` on that host recovers it:
   `Device recovered`, and renders. The device-tier record and pipeline tier are
   not touched. Remove the cause first; otherwise the render fails again.
 - Cycles' Metal device records the errors a scene causes (for example an
-  image wider or taller than Metal's 16384-pixel texture limit) without losing
-  the Metal device. The host clears the recorded error and re-uploads the whole
+  image wider or taller than Metal's 16384-pixel texture limit, which a texture
+  limit of 16384 or less avoids: "Images" below) without losing the Metal
+  device. The host clears the recorded error and re-uploads the whole
   scene in the same way, with the same `Device recovered` status event, so a
   consumer sees the same behaviour on Apple Silicon as on WebGPU. Remove the
   cause first; otherwise the render fails again.
@@ -113,13 +141,19 @@ same host meets the practical criterion against a fresh CPU render.
 - `cbc_host_cancel`, `cbc_host_is_rendering`, `cbc_host_backend` and
   `cbc_host_destroy` may run concurrently with a render. Cancel makes the render
   return `CBC_CANCELLED`; destroy removes the handle immediately, cancels and
-  waits for cleanup.
+  waits for cleanup. Either, like an event callback's nonzero return, stops the
+  batch of samples being path traced: the render does not finish that batch
+  first.
 - Failed and cancelled renders never write the caller's output buffer.
 - A requested GPU render never falls back to the CPU.
 - `cbc_host_color_config_path`, `cbc_host_tier_config` and
   `cbc_host_pipeline_cache_config` are process-wide; call them before creating
   hosts.
-- Process exit with live hosts is supported (an exit hook closes them).
+- Process exit with live hosts is supported (an exit hook closes them; it runs
+  the release callbacks of their tiled images, "Tiled images").
+- A tiled image's read callback (**PROVISIONAL**) runs on native render threads
+  during `cbc_host_render` and `cbc_host_bake`, never concurrently with the same
+  host's other read and release callbacks ("Tiled images").
 
 ## Events (progress, status, errors)
 
@@ -129,10 +163,11 @@ per host (`NULL` clears it). The callback receives a `CBCEvent`:
 | Field | Meaning |
 | --- | --- |
 | `struct_size` | `sizeof(CBCEvent)` as built; read only fields that fit |
-| `kind` | `CBC_EVENT_STATUS` (status text changed), `CBC_EVENT_PROGRESS` (sample counter changed), `CBC_EVENT_ERROR` (the render is failing; `message` is the error) |
-| `samples_done`, `samples_total` | completed and requested samples per pixel |
+| `kind` | `CBC_EVENT_STATUS` (status text changed), `CBC_EVENT_PROGRESS` (sample counter changed), `CBC_EVENT_ERROR` (the render is failing; `message` is the error), `CBC_EVENT_FILM` (**PROVISIONAL**: an intermediate film of a host created with `CBC_HOST_PROGRESSIVE_RESULTS`, below) |
+| `samples_done`, `samples_total` | completed and requested samples per pixel (for a film, the samples in it) |
 | `elapsed_seconds` | time since the render started |
 | `message` | UTF-8 status or error text, valid only during the call |
+| `film`, `width`, `height` | **PROVISIONAL**, `CBC_EVENT_FILM` only: `width * height * 4` floats, valid only during the call; `NULL` and 0 for the other kinds |
 
 Rules:
 
@@ -141,12 +176,47 @@ Rules:
   concurrently with itself for the same host.
 - It must not call back into the library: every `cbc_host_` function except
   `cbc_host_error` and `cbc_host_version` returns `CBC_NOT_READY` from inside a
-  callback. (`cbc_host_cancel` is also refused there; use the return value.)
+  callback, with a message that names the callback ("Host functions cannot be
+  called from an event callback"; the same for a tiled image's read and release
+  callbacks, "Tiled images" below). (`cbc_host_cancel` is also refused there;
+  use the return value.)
 - Returning nonzero requests cancellation; the render returns `CBC_CANCELLED`.
+- `samples_done` counts only samples that Cycles finished. Cycles counts a batch
+  of samples when it schedules it, and a cancel request stops the batch being
+  rendered, so after a cancel request (`cbc_host_cancel`, `cbc_host_destroy` or
+  a nonzero return) no further progress event is sent and status events carry
+  the `samples_done` of the last progress event (0 if there was none).
 - Registration serializes with rendering. After `cbc_host_set_event_callback`
   or `cbc_host_destroy` returns, the previous callback is never invoked again,
   so `user_data` may then be freed. Events are suppressed while a host closes.
 - Keep callbacks short; they run inside the render loop.
+
+### Progressive results
+
+**PROVISIONAL.** A host created with `CBC_HOST_PROGRESSIVE_RESULTS` in
+`CBCHostConfig.flags` (a trailing field: the configuration is 40 bytes; the
+earlier 32 bytes mean no flags; another bit, or a nonzero `reserved2`, is
+`CBC_INVALID`) sends an intermediate film through its event callback at each of
+Cycles' display updates during `cbc_host_render`: after the first sample, then
+about every 1 to 2 seconds of rendering, and at the end. The choice is fixed per
+host because Cycles schedules a session's work by it: the host's session is not
+headless (`SessionParams::headless` false, still a background render), so it
+renders in smaller batches and the display updates exist at all
+(`RenderScheduler`; a headless session has none). `CBC_EVENT_FILM` carries the
+Combined film so far: scene-linear RGBA, lower-left origin, the whole film with
+zero outside a camera border, normalised by the `samples_done` samples it holds
+(noisy until a denoised result exists: with denoising, only the last film is
+denoised). It follows the progress event of its samples; the last film of a
+completed render is the returned film. With tiles (`cbc_host_tile_size`) a film
+holds the tiles rendered so far ("Tiled rendering"). Films never run concurrently with the
+other events, never after `cbc_host_render` returns, and never for
+`cbc_host_bake`; returning nonzero cancels the render, and no film is sent after
+a cancel request. Each update copies the Combined pass from the device once.
+On the CPU the final film of a progressive host is bit for bit that of a host
+without the flag (measured: a plain, an adaptive-sampling, a volume, a denoised
+and a camera-border scene); on Metal it meets the practical criterion. Refused at
+render and bake on the WebGPU backend (`CBC_UNSUPPORTED`, "WebGPU progressive
+results not implemented").
 
 ## Backends and capability queries
 
@@ -175,7 +245,9 @@ the device. Fields (schemaVersion 1): `abiVersion`, `libraryVersion`,
 `backendScope` (per compiled backend: camera types, primitives, passes and the
 classes of scene features the device rejects at render time; `cpu.arithmetic`
 states the CPU kernels' `isa`, `fpContract` and `reciprocalMath`, from a
-translation unit compiled with their flags), `optionalLibraries`
+translation unit compiled with their flags; `maxImageDimension`, **PROVISIONAL**,
+the largest width or height the backend's device takes for an image loaded whole,
+below), `optionalLibraries`
 (OSL, Embree, OpenImageDenoise, OpenVDB: compiled or not), `denoising`
 (added within schema 1: `available`; when true also `denoiser`,
 `openimagedenoise`, and `denoiseDevice`, the Open Image Denoise device per
@@ -187,7 +259,8 @@ eight formats, origin, whether texture filenames are read), `output`,
 (`backend`, `deviceDescription`, `deviceId`, `deviceReport`: the
 `cbc_host_device_report_json` object with the WebGPU tier decision, adapter
 identity, record/canary status, compile budget, warnings, compiled pipelines and
-the pipeline cache's state). The device report's `warnings` also carries the pipeline-build size
+the pipeline cache's state, and `tiledRendering`, **PROVISIONAL**: the host's tiled-rendering
+counters, "Tiled rendering"). The device report's `warnings` also carries the pipeline-build size
 guard's warnings, and its `sizeGuard` object states the guard's threshold
 (`thresholdBytes`, 0 when disabled), the largest inlined entry compiled so far
 (`largestEntryBytes`, `largestEntry`), its instruction estimate
@@ -199,6 +272,24 @@ states `wgslArithmetic`, the CPU oracle arithmetic the generated WGSL adapters r
 `arm64-scalar` (the Android ARM64 product default and Linux ARM64) or `arm64-sse2neon`; oracle films
 record it and `native/oracle/compare.py` gates them against the CPU gold standard of that ISA family. The report states what this source tree does today; scene features
 it does not list as supported may still fail at render time with `CBC_FAILED`.
+
+Image size per backend (**PROVISIONAL**, `backendScope.<backend>.maxImageDimension`;
+`limits.maxImageDimension` stays the largest side `cbc_host_image_create` accepts,
+`INT_MAX`): Cycles' Metal device refuses an image wider or taller than 16384 pixels
+when it allocates it (`MetalDevice::image_alloc`, `device/metal/device_impl.mm`:
+"Texture exceeds maximum allowed size of 16384 x 16384"; measured: 16384 x 1
+renders, 16385 x 1 fails the render with that message, `GpuRenderTests`), so `metal`
+states 16384 (a texture limit of 16384 or less brings an image within it, "Images"
+below); the WebGPU device refuses a side above `INT32_MAX / 2` (1073741823,
+"Invalid resident image dimensions", `WebGPUDevice::mem_alloc`,
+`native/cycles/device.cpp`; READ, not run here), and its storage binding also bounds
+an image's bytes (AGENT-README.txt, "EXCEEDING THE GPU STORAGE-BINDING LIMIT"); the
+CPU device checks none (it keeps the side in `KernelImageInfo`'s `uint` and its
+kernels read it as `int`, `util/types_image.h`, `kernel/util/image.h`), so `cpu` and
+`cpu-embree` state `INT_MAX`, the host's own limit. The value applies to an image
+loaded whole; a tiled image (`cbc_host_image_create_tiled`) is loaded in tiles
+through Cycles' texture cache (READ: its device images are the tile pool, not the
+image).
 
 Facts measured for the current WebGPU device (Linux host gate): object shadow
 terminator offsets are implemented (geometry offset; shading offset 0 to 1, larger
@@ -279,11 +370,12 @@ socket layer cannot express (lifetime, buffers, callbacks, queries).
 | Sampling | `CBCRenderConfig.samples` is the render's sample count (the integrator's `aa_samples` follows it; a set that would change it is `CBC_INVALID`); the integrator's `use_sample_subset`, `sample_subset_offset`, `sample_subset_length` render a subset of those samples; `cbc_host_render_time_limit` stops a render early. With denoising, a `denoiser_upscale_factor` other than 1 is refused at render on every backend (`CBC_UNSUPPORTED`, "a denoiser upscale factor other than 1": the CPU and WebGPU backends' Open Image Denoise runs on the CPU, which does not upscale, and with GPU denoising on the Metal backend Cycles leaves the render at the reduced resolution, so no backend returns an upscaled film). The film's `display_pass` and `show_active_pixels` are viewport settings with no effect on the returned film, and `use_sample_count` is Cycles' session state (set by every render); a set that would change any of them is `CBC_INVALID` (read the sample count through a `sample_count` pass) |
 | Integrator, film | sockets of the singletons, for example `max_bounce`, `sampling_pattern`, `seed`, `motion_blur`, `exposure`, `filter_type`. The integrator's `filter_glossy` is 1.0 unless the caller sets it (Cycles' default; 0 switches the glossy filter off). `denoiser_type` `dlss` is refused at a denoising render (`CBC_UNSUPPORTED`; the library denoises with `openimagedenoise`). `denoiser_passes` is Cycles' bit set of denoiser guides: albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64 (default albedo and normal); there is no other guide, and a value with any other bit is `CBC_INVALID` at a denoising render |
 | Shader graphs | `cbc_host_shader_output`, `cbc_host_shader_node`, `cbc_host_connect`. A link between different value types (a colour into a float input, a float into a shader input, ...) gets Cycles' own conversion node when the graph is built; a closure output links only into a closure input (`CBC_UNSUPPORTED`). Dispersion: a `principled_bsdf` whose `Transmission Dispersion Scale` and `Transmission Weight` are each linked or not 0 (Cycles' own test for a dispersive material) renders with dispersion on the CPU and Metal backends and is refused at render on the WebGPU backend (`CBC_UNSUPPORTED`, "WebGPU dispersion not implemented"). The Attribute, Image Texture and Environment Texture nodes have `Missing` (colour; default black on the Attribute node, magenta 1, 0, 1 on the texture nodes) and `Missing Alpha` (default 1) inputs: the value the node returns when its attribute or image does not exist. Refused by the WebGPU device (`CBC_FAILED`, the message names the node): `boolean_math`, `integer_math` and `get_vector_component` reached with a linked input (with constant inputs Cycles folds them away and every backend renders them) |
-| Geometry | `cbc_host_mesh` (triangles; every face starts on material 0), the `shader`/`smooth` face sockets, attributes (`cbc_host_attribute_*`; on meshes the standard names `P`, `N`, `uv`, `generated`, `tangent`, `tangent_sign`, and `pointiness` per vertex and `random_per_island` per face, which the Geometry node reads and the caller computes). Lookup order: a shader that asks for an attribute by name (the Attribute and UV Map nodes) gets the attribute of that name first, also when the name is a standard name (`uv`, `color`, `pointiness`, ...) and the attribute was created without `CBC_ATTR_STANDARD`, then the standard attribute of that name; a shader that asks for a standard attribute without a name (the Texture Coordinate node's UV, the Geometry node's Pointiness, tangents) gets the attribute created with `CBC_ATTR_STANDARD`, else an attribute that has the standard's name, value type and domain. A request for a tangent also requests the UV map it is computed from. Subdivision: `cbc_host_subd_mesh` gives a mesh a control cage of polygon faces, tessellated by each render with Cycles' adaptive dicing when `subdivision_type` is `linear` (subdivision attributes with `CBC_ATTR_SUBDIVISION`); subdivision faces with `subdivision_type` none are `CBC_INVALID` at render; Catmull-Clark is refused at render (`CBC_UNSUPPORTED`): it needs OpenSubdiv, which the library does not include |
-| Curves | `cbc_host_curves` (keys, one radius per key, each curve's first key; every curve starts on material 0), `cbc_host_curve_shape` per hair geometry, `cbc_host_curve_subdivisions` for the scene, `cbc_host_curve_motion` (deformation motion, below), the `curve_shader` socket, attributes on `CBC_ATTR_CURVE` and `CBC_ATTR_CURVE_KEY` after the curves (standard names `uv`, `generated`, `curve_intercept` per key, `curve_length` and `curve_random` per curve, which the Hair Info node reads). Curves and points with a Both displacement shader (a `used_shaders` entry whose `displacement_method` is `both` and whose output's `Displacement` input is linked) are refused at render and bake on every backend (`CBC_UNSUPPORTED`, "curves and points with a Both displacement shader": Cycles' bump from displacement reads values it never sets there, so the pinned kernels have no defined result; use `bump` or `true`) |
-| Point clouds | `cbc_host_points` (positions, one radius per point; every point starts on material 0), `cbc_host_point_motion` (deformation motion with one radius per position), the `shader` socket, attributes on `CBC_ATTR_VERTEX`, standard attribute `point_random`. A Both displacement shader is refused as on curves (above). `render_as` must stay `points`: `gaussian_splats` is refused at render on every backend (`CBC_UNSUPPORTED`; the radiance, scale and rotation attributes a splat needs, quaternion and spherical-harmonics values, cannot be created through this ABI) |
+| Geometry | `cbc_host_mesh` (triangles; every face starts on material 0), the `shader`/`smooth` face sockets, attributes (`cbc_host_attribute_*`; on meshes the standard names `P`, `N`, `uv`, `generated`, `tangent`, `tangent_sign`, and `pointiness` per vertex and `random_per_island` per face, which the Geometry node reads and the caller computes). Lookup order: a shader that asks for an attribute by name (the Attribute and UV Map nodes) gets the attribute of that name first, also when the name is a standard name (`uv`, `color`, `pointiness`, ...) and the attribute was created without `CBC_ATTR_STANDARD`, then the standard attribute of that name; a shader that asks for a standard attribute without a name (the Texture Coordinate node's UV, the Geometry node's Pointiness, tangents) gets the attribute created with `CBC_ATTR_STANDARD`, else an attribute that has the standard's name, value type and domain. A request for a tangent also requests the UV map it is computed from. Quaternion and spherical-harmonics attributes (**PROVISIONAL**, value kinds `CBC_VALUE_QUATERNION` 18 and `CBC_VALUE_SPHERICAL_HARMONICS_REST` 19; custom names on `CBC_ATTR_MESH`, `CBC_ATTR_FACE`, `CBC_ATTR_VERTEX` and `CBC_ATTR_CORNER` of a mesh and on `CBC_ATTR_MESH` and `CBC_ATTR_VERTEX` of a point cloud; quaternions also on `CBC_ATTR_MESH`, `CBC_ATTR_CURVE` and `CBC_ATTR_CURVE_KEY` of hair, the curve domains the pinned kernels fetch attributes from (`curve_attribute`, `kernel/geom/curve.h`: per key mixed along each segment, per curve; `primitive_surface_attribute`: the mesh domain); on volume geometry both, and spherical harmonics on hair, are `CBC_UNSUPPORTED` ("... quaternion attributes are accepted on meshes, point clouds and curves only", "... spherical-harmonics attributes are accepted on meshes and point clouds only (the pinned kernels read them only for Gaussian splats, kernel/geom/gsplat.h, and never on curves)"): a quaternion is 4 floats per element in Cycles' order w, x, y, z, stored and read back exactly; the Attribute node returns w, x, y as `Color` and `Vector`, their average as `Fac` and z as `Alpha`, and between vertices (and the keys of a curve segment) the components are interpolated one by one, unnormalized. A spherical-harmonics attribute holds the coefficients of bands 1 to 3 (band 0 is not part of it): 45 floats per element, 15 RGB coefficients in Cycles' order (L1 M-1, L1 M0, L1 M1, L2 M-2, ..., L3 M3), each in [-1, 1]; a value outside that range is `CBC_INVALID` ("Spherical-harmonics coefficients must lie in [-1, 1]"), never clipped. Cycles stores each coefficient at 8 bits over [-1, 1] (`quantize_spherical_harmonics`), so `cbc_host_attribute_get_floats` returns the stored value, as it returns a packed normal: at most 1/255 (half a step) from the value set. The Attribute node finds such an attribute and returns black with `Alpha` 1 (the pinned kernels have no shader reading of it). It cannot be a subdivision attribute (`CBC_UNSUPPORTED`: Cycles does not interpolate it over subdivided faces); a quaternion can. Both render on the CPU and Metal backends; on the WebGPU backend, quaternion and spherical-harmonics attributes read by a shader are refused at render (`CBC_FAILED`, "WebGPU quaternion attributes not implemented", "WebGPU spherical harmonics attributes not implemented"); an attribute that no shader reads is not sent to the device. Subdivision: `cbc_host_subd_mesh` gives a mesh a control cage of polygon faces, tessellated by each render with Cycles' adaptive dicing when `subdivision_type` is `linear` (subdivision attributes with `CBC_ATTR_SUBDIVISION`), and by each bake of it (**PROVISIONAL**, object space only: Baking); subdivision faces with `subdivision_type` none are `CBC_INVALID` at render; Catmull-Clark is refused at render and bake (`CBC_UNSUPPORTED`): it needs OpenSubdiv, which the library does not include |
+| Curves | `cbc_host_curves` (keys, one radius per key, each curve's first key; every curve starts on material 0), `cbc_host_curve_shape` per hair geometry, `cbc_host_curve_subdivisions` for the scene, `cbc_host_curve_motion` (deformation motion, below), the `curve_shader` socket, attributes on `CBC_ATTR_CURVE` and `CBC_ATTR_CURVE_KEY` after the curves (standard names `uv`, `generated`, `curve_intercept` per key, `curve_length` and `curve_random` per curve, which the Hair Info node reads), quaternion attributes (**PROVISIONAL**) as on meshes (Geometry, above). Curves and points with a Both displacement shader (a `used_shaders` entry whose `displacement_method` is `both` and whose output's `Displacement` input is linked) are refused at render and bake on every backend (`CBC_UNSUPPORTED`, "curves and points with a Both displacement shader": Cycles' bump from displacement reads values it never sets there, so the pinned kernels have no defined result; use `bump` or `true`) |
+| Point clouds | `cbc_host_points` (positions, one radius per point; every point starts on material 0), `cbc_host_point_motion` (deformation motion with one radius per position), the `shader` socket, attributes on `CBC_ATTR_VERTEX`, standard attribute `point_random`, quaternion and spherical-harmonics attributes as on meshes (above). A Both displacement shader is refused as on curves (above). Gaussian splats (**PROVISIONAL**: the standard names, the refusals and the radius rule below): with `render_as` `gaussian_splats` each point renders as a 3D Gaussian on the CPU and Metal backends, from the standard point attributes `radiance:base` (`CBC_VALUE_FLOAT4`: the band-0 spherical-harmonics coefficients of red, green and blue, then the opacity), `scale` (`CBC_VALUE_VECTOR`, the Gaussian's standard deviation along its axes), `rotation` (`CBC_VALUE_QUATERNION`, w, x, y, z; Cycles normalizes it) and, optionally, `radiance:sh` (`CBC_VALUE_SPHERICAL_HARMONICS_REST`, bands 1 to 3), each on `CBC_ATTR_VERTEX` and set with `CBC_ATTR_STANDARD` (Cycles finds them by standard only; another value kind or domain is `CBC_INVALID`). `radiance` is not a standard name here. At render a splat cloud without `radiance:base`, `scale` or `rotation` is `CBC_INVALID` ("Gaussian splats need the standard point attributes radiance:base, scale and rotation, set with CBC_ATTR_STANDARD (missing: ...)"): the pinned Cycles would draw plain points with no message, and its defaults (`create_missing_gsplat_attributes`) have no caller in the pinned source, so the host supplies none. A rotation none of whose components has a normal binary32 square (its squared length w*w + x*x + y*y + z*z is then zero or subnormal, and a GPU may flush it to zero) or whose squared length overflows binary32 is `CBC_INVALID` too ("Gaussian splat rotation of point N has zero length ...", "... is too long ..."): Cycles divides by the squared length (`quaternion_to_rotation`). Without a used shader (or for points whose `shader` index is past `used_shaders`) Cycles' default splat shader emits the radiance it evaluates from the coefficients for the view direction in object space; an Attribute node named `radiance` in a caller shader reads the same value. At every device update Cycles replaces a splat cloud's radius (center and motion steps) with each splat's bounding radius, computed from the opacity and `scale` (`PointCloud::update_gsplat_radii`); `cbc_host_attribute_get_*` return the radius given to `cbc_host_points` and `cbc_host_point_motion`, whose center step is compared with it, and the next edit of the cloud restores it before Cycles computes its own again. The bounding radius itself (**PROVISIONAL**): `cbc_host_attribute_get_floats(host, cloud, "radius", CBC_ATTR_SPLAT_BOUNDING_RADIUS, ...)` (the flag, 4, may be combined with `CBC_ATTR_STANDARD`; no other call takes it, "Unknown attribute flags") returns the radius Cycles computed for each splat at the last render or bake, one float per point (the center step): 0 for an opacity below 0.01, else the largest component of `|sqrt(2 ln(opacity / 0.01)) * scale|`, computed on the host for every device. Before the first render, after an edit of the cloud and after a render that stopped before its device update finished it is `CBC_NOT_READY` ("The bounding radius of a Gaussian splat cloud is Cycles' and is read after a render or bake has computed it for the cloud as it is ..."); a geometry other than a point cloud with `render_as` `gaussian_splats`, a name other than `radius` and `CBC_ATTR_SUBDIVISION` are `CBC_INVALID` ("CBC_ATTR_SPLAT_BOUNDING_RADIUS reads the bounding radius of a Gaussian splat cloud only ...", "... reads the standard attribute radius only", "... not a subdivision attribute"); on the WebGPU backend it is `CBC_UNSUPPORTED` ("WebGPU Gaussian splats not implemented"). A splat cloud is never baked with its object transform. Motion: object motion and `cbc_host_point_motion` (positions; Cycles bounds each step itself); the splat attributes' own motion is not exposed. On the WebGPU backend, point clouds rendered as Gaussian splats are refused at render (`CBC_UNSUPPORTED`, "WebGPU Gaussian splats not implemented"), whatever their attributes |
 | Particles | `cbc_host_particles` on a `particle_system`, read by the Particle Info node of objects with `particle_system` and `particle_index` sockets; `CBC_PARTICLE_FLOATS` floats per particle |
-| Images | `cbc_host_image_create` (8 formats), `cbc_host_image_bind`, `cbc_host_image_update`, `cbc_host_image_release` |
+| BVH | Every backend builds Cycles' BVH2 with Cycles' defaults (static BVH, unaligned nodes for curves), except `CBC_HOST_CPU` (Embree) and MetalRT. BVH spatial splits (**PROVISIONAL**): `cbc_host_bvh_spatial_split(host, enabled)` is `SceneParams::use_bvh_spatial_split`; with 1 the BVH2 builder may split a primitive between nodes in the BVH of each geometry Cycles keeps in object space (`Geometry::is_instanced`: one that several objects use, or one with true displacement, subsurface scattering or subdivision; never in the scene's top level, for curves or for geometry with motion blur, `bvh/build.cpp`), and `CBC_HOST_CPU` builds at Embree's high quality (`bvh/embree.cpp`); MetalRT ignores it (`device/metal/bvh.mm`), the Metal backend's BVH2 (GPUs without ray-tracing hardware) honours it. A speed setting that changes no film by design: rays find the same closest hits (measured: the CPU reference and `CBC_HOST_CPU` bit for bit, Metal within its repeat noise, `BvhSpatialSplitTests`). 0, the default, or 1, else `CBC_INVALID`. A change has every BVH built again at the next render or bake (the host has Cycles rebuild each geometry's BVH without touching the geometry, so true displacement is not applied twice, and drop the scene BVH, as when a geometry is added). Rendered on the CPU and Metal backends; with it enabled, refused at render and bake on the WebGPU backend (`CBC_UNSUPPORTED`, "WebGPU BVH spatial splits not implemented") |
+| Images | `cbc_host_image_create` (8 formats), `cbc_host_image_bind`, `cbc_host_image_update`, `cbc_host_image_release`; tiled images read on demand by Cycles' texture cache through a caller callback, `cbc_host_image_create_tiled` (**PROVISIONAL**, "Tiled images" below). UDIM tiles (**PROVISIONAL**): `cbc_host_image_bind_tiles(host, node, tiles, images, count)` binds `images[i]` to an Image Texture node at tile `tiles[i]`, Cycles' multi-loader UDIM texture; the tile covering UV [u, u + 1) x [v, v + 1) is 1001 + 10 * v + u (u 0 to 9), taken from the integer parts of the UV truncated toward zero, and the image is sampled at the UV minus them; a UV outside every bound tile (u of 10 or more, u or v of -1 or less, or an unbound tile) reads the node's `Missing` inputs. Tiles are distinct and 1001 to `INT_MAX`, every image is a live handle of the host and all have one format (Cycles decodes every tile with the first tile's settings, `ImageTextureNode::compile`); each violation, and a count of 0, is `CBC_INVALID` naming the tile, with nothing changed. An Environment Texture node is `CBC_UNSUPPORTED` ("UDIM tiles bind to Image Texture nodes only, as in Cycles"). It replaces the node's binding; `cbc_host_image_bind(node, 0)` removes it. The same image may be bound at several tiles (each is its own device image). The node's `tiles` socket is Cycles' list of UDIM tiles read from image files (the `<UDIM>` token of its file name), which this library does not read, so it has no effect on bound pixels: a set that would change it is `CBC_INVALID` (**PROVISIONAL**: "The Image Texture node's tiles socket is Cycles' list of UDIM tiles read from image files, which this library does not read; bind images as UDIM tiles with cbc_host_image_bind_tiles"); its default, the empty list, reads back and may be set again. Rendered on the CPU and Metal backends; refused at render and bake on the WebGPU backend (`CBC_UNSUPPORTED`, "WebGPU UDIM tiles not implemented"). Texture limit (**PROVISIONAL**): `cbc_host_texture_limit(host, max_size)` is Cycles' texture limit (`SceneParams::texture_limit`): when a render or bake loads an image whose larger side exceeds `max_size`, Cycles reduces it on the host, before any device sees it, by the power-of-two scale that brings that side to `max_size` or below (`ImageManager::device_load_image`, `ImageCache::load_full`: each side times the scale, rounded down, at least 1 pixel, a box filter), so a 64 x 64 image under a limit of 40 loads as 32 x 32. It applies to caller images and to Cycles' own (the Sky Texture's 512 x 256 image), and brings an image within Metal's texture limit (Cycles' Metal device refuses a side above 16384, "Device errors"). 0, the default, keeps every image at its size; above `INT_MAX` is `CBC_INVALID`. The same value is always accepted; a different one is `CBC_NOT_READY` once a render or bake has loaded images, because Cycles does not load an image again (`need_load`) and the images already loaded would keep the old size. Rendered on the CPU and Metal backends; a limit other than 0 is refused at render and bake on the WebGPU backend (`CBC_UNSUPPORTED`, "WebGPU texture limit not implemented") |
 | Passes | `cbc_host_create_node("pass")` with `type` and a unique `name`; read with `cbc_host_pass_floats` |
 
 ### Motion
@@ -319,7 +411,49 @@ objects using the geometry, or a shader edit that may add displacement or
 subsurface scattering) restores them before Cycles' own device update, which
 then bakes or instances the geometry as it would for a new scene. A restored
 geometry rebuilds the BVH; the authored copy costs one extra copy of each such
-geometry's attributes. `cbc_host_attribute_get_*` return the authored values.
+geometry's attributes. `cbc_host_attribute_get_*` return the authored values,
+also the radius of a Gaussian splat cloud, which Cycles replaces at render
+(Point clouds, above): the host keeps the authored radius from a render to the
+next edit of the cloud, which writes it back first; Cycles' own radius reads
+with `CBC_ATTR_SPLAT_BOUNDING_RADIUS` (**PROVISIONAL**) until that edit.
+
+Displaced meshes (**PROVISIONAL**: the rule below). Cycles applies true
+displacement (`displacement_method` `true` or `both`) by adding it to a mesh's
+current positions and recomputing its normals from them whenever it updates the
+mesh (`GeometryManager::displace`), so a second update would displace displaced
+positions. The host keeps the authored attributes of every triangle mesh a render
+displaces, from that render to the next edit of the mesh, and restores them before
+Cycles displaces the mesh again: an edit of the mesh (sockets, attributes,
+`cbc_host_mesh`, deformation motion) restores them first; a render restores them
+when one of the mesh's displacement shaders changed (its graph, a value or image
+in it, its `displacement_method`), when the object the displacement is evaluated
+with (the first object that uses the mesh, as in Cycles) is another one or was
+edited (`tfm`, `motion` or any other socket), when the scene's motion mode changed
+(motion blur switched, a motion pass added or removed), and after a device recovery ("Device errors"), which updates every geometry; then Cycles
+displaces the authored mesh again. A mesh whose shaders no longer displace gets its
+authored attributes back. `cbc_host_attribute_get_*` return the authored values of
+a displaced mesh. Measured on the CPU reference: after an edit of the `smooth`
+flags, the face `shader` indices, a material no geometry used before, an attribute
+the displacement reads, a value of the displacement shader, its method (to `bump`
+and back), the object's `tfm` or a new instance, the film is bit for bit that of a
+new host built with the edit (`DisplacementEditTests`); on Metal, after an edit and
+after a device recovery, within the practical criterion. Subdivision meshes are
+tessellated from their cage before each displacement and need no copy. Cycles
+compiles only the shaders that nodes reference; a shader that becomes referenced
+after a render (a `used_shaders` entry, the background `shader`) is compiled for
+the next render (`Shader::tag_used`), as for a new host.
+
+Subdivision surfaces after a render (**PROVISIONAL**: the two rules below). Cycles
+dices a cage again only when its positions or its dicing settings changed
+(`Mesh::need_tessellation`), so an edit of a subdivision attribute alone
+(`cbc_host_attribute_floats`, `_bytes` or `_remove` with `CBC_ATTR_SUBDIVISION`)
+would reach no later render: the host tags the cage's positions, and the next
+render or bake dices it again with the edit. A new cage (`cbc_host_subd_mesh`)
+after Cycles has diced the mesh starts from no diced vertices (`Mesh::clear_non_sockets`);
+before, the count of vertices the last dicing added survived, sized the new cage's
+attributes wrongly and could end the process. Measured on the CPU reference: after a
+UV layout edit and after a new cage, a render and a bake are bit for bit those of a
+new host built with the edit (`SubdivisionBakingTests`).
 
 Refused: volume geometry with voxel data cannot be restored once baked; an edit
 of such a volume, or of its object's `tfm`, `motion` or `geometry`, returns
@@ -339,8 +473,185 @@ keeps a deleted shader allocated and unused until the host is destroyed.
 Image handles are caller references to copied pixels. Bindings keep their own
 reference, so releasing a handle never invalidates a binding.
 `cbc_host_image_update` replaces the pixels behind a live handle (format and
-size may change) and every texture still bound to that handle uploads the new
-pixels on the next render; bindings made before a release keep their pixels.
+size may change) and every texture still bound to that handle, as an image or
+as a UDIM tile, uploads the new pixels on the next render; bindings made before
+a release keep their pixels. An update that would give a UDIM tile another
+format than a tile of the same binding bound to another image is `CBC_INVALID`,
+with nothing changed. A tiled image (**PROVISIONAL**, below) cannot be updated
+(`CBC_INVALID`); its handle, its bindings and Cycles' image of it each keep its
+reader, and its release callback runs once the last of them lets go.
+
+### Tiled images
+
+**PROVISIONAL.** `cbc_host_image_create_tiled(host, config, read, release,
+user_data, image)` creates an image whose pixels the caller supplies on demand:
+Cycles' texture cache (`scene/image_cache.cpp`) loads only the tiles (64 x 64 by
+default) and the mip levels a render or bake samples, through `read`, which writes one
+rectangle of one level. No file and no image format is involved; decode your
+own files (for .NET, CodeBrix.Imaging) and serve their pixels.
+
+- `config` is that of `cbc_host_image_create` (width, height, one of the eight
+  formats) plus `tile_size`; `read` is required (`CBC_INVALID` without it),
+  `release` may be `NULL`. Bind the handle with `cbc_host_image_bind` (Image and
+  Environment Texture nodes) or as UDIM tiles: a tiles binding holds tiled images
+  only or plain images only (`CBC_INVALID`, naming the tile), because Cycles
+  selects mip levels by the first tile's metadata.
+- **Tile size (PROVISIONAL).** `config->tile_size` is the side of the square tiles
+  Cycles loads: 0 (64, the default) or a power of two from 64 to 128 on the Metal
+  backend and from 64 to 65536 on the others; anything else is `CBC_INVALID`
+  ("Invalid tiled image tile size N: 0 (the default, 64) or a power of two from
+  64 to M ...", and `release` runs before the call returns). These are the sizes
+  the pinned Cycles takes on each device: its texture cache takes square
+  power-of-two tiles (`ImageCache::load_image_tiled`; the kernel maps texels to
+  tiles by shifts) and never uses one below 64 (`ImageMetaData::detect_tiles`
+  loads a file's smaller tiles in blocks of
+  `DebugFlags().texture_cache.min_tile_size`, 64). The tiles of one format and
+  interpolation share pool images of 64 tiles of (size + 4) x (size + 4) pixels in
+  a row (`ImageCache::alloc_tile`), and Cycles' Metal device refuses an image wider
+  than 16384 (`MetalDevice::image_alloc`), so 128 there. The CPU device checks no
+  image size; its kernel addresses the pool by a float pixel coordinate
+  (`kernel_image_tile_map`, `ImageInterpolator`), which holds every texel centre
+  up to a pool width of 2^23, reached by tiles of 65536. Memory: Cycles allocates
+  a pool image whole at the first tile load of its format and interpolation,
+  64 x (size + 4)^2 pixels in its storage type (for byte4 tiles of 64 1.2 MB, of
+  1024 271 MB, of 65536 1.1 TB of address space, of which only the rows of the
+  loaded tiles are written), and a tile of t x t pixels is read and staged whole;
+  an allocation the platform refuses is Cycles' `std::bad_alloc`, which it does
+  not handle. `cbc_host_image_create` and `cbc_host_image_update` need
+  `tile_size` 0 (`CBC_INVALID`, "A tile size applies to tiled images only ...").
+  Measured at every size on the CPU (images 8 rows high) and at 64 and 128 on
+  Metal: Cycles selects the mip levels from the footprint and reads them in tiles
+  of that size, and Closest renders bit for bit like the same pixels bound
+  plainly.
+- **Levels.** Level 0 is the image; level L is `max(1, width >> L)` x
+  `max(1, height >> L)` pixels, and the levels run from 0 to the first one whose
+  sides are both at most the tile size (64 by default). An image smaller than
+  its tile size in both sides is a
+  plain image to Cycles (`ImageMetaData::detect_tiles`): it is read once, whole,
+  as level 0. The levels are the caller's pixels (Cycles' own are 2 x 2 box
+  reductions); Cycles selects a level per sample from the ray footprint
+  (`kernel_image_tile_map`: log2 of the texel footprint, stochastically within
+  half a level), and a texture limit (`cbc_host_texture_limit`) skips the top
+  levels instead of reducing pixels.
+- **The read callback** `int read(user_data, level, x, y, width, height, pixels,
+  row_bytes)` writes `width` x `height` pixels from column `x` and row `y` of
+  the level, rows bottom first (row y at v = y / level height, the order of
+  `cbc_host_image_create`), `row_bytes` apart, in the image's format, and
+  returns 0. Float and half values must be finite, as for
+  `cbc_host_image_create` (a value that is not fails the render: "Tiled image N:
+  the tile reader wrote a nonfinite value (...)", never zeroed). The host asks for a tile with its 2-pixel border (the padding
+  Cycles' Linear and Cubic filtering reads across tile edges) in one call when
+  the tile is inside the image, and for the wrapped strips separately at the
+  image's edges with the Periodic extension; outside the image the border
+  follows the texture's extension with the kernel's own rules (clamp, periodic,
+  mirror, zero for Clip). It runs on native render threads (the CPU device's
+  worker threads on a cache miss, the GPU device's tile loading between kernel
+  steps, the scene update), only during `cbc_host_render` and `cbc_host_bake`,
+  and never concurrently with this host's other read and release callbacks:
+  the host serializes them, so the caller's reader need not be thread-safe. It
+  must not call the library (`CBC_NOT_READY`, "Host functions cannot be called
+  from a tiled image's read callback").
+- **Failure, never a Missing colour.** Cycles samples the texture's `Missing`
+  colour for a tile that did not load (`KERNEL_TILE_LOAD_FAILED`); instead a
+  nonzero return stops every further read, cancels the render and fails it with
+  `CBC_FAILED` and "Tiled image N: the tile reader failed (returned S; level L,
+  x X, y Y, W x H)" (the output is not written); every message of such a
+  failure starts with "Tiled image N:". A cancel request
+  (`cbc_host_cancel`, `cbc_host_destroy`, an event callback's nonzero return)
+  stops further reads too: the threads waiting for the reader give up at once,
+  so a render that waits on slow reads stops after the read in progress. Either
+  way the next render reads the image's tiles anew.
+- **Release.** `release(user_data)` runs exactly once for every call that passed
+  it: when the handle is released, no binding uses the image and Cycles has
+  freed its image (at the next render or bake), at `cbc_host_destroy`, at
+  process exit with the host live (the exit hook), or, when the call fails or is
+  refused, before it returns. It runs in the callback slot (never concurrently
+  with a read of the host) and must not call the library either.
+- **Cycles' behaviour to know.** The cache keeps the tiles it loaded for later
+  renders, so an unchanged scene reads nothing more. Outside the image (UVs
+  beyond [0, 1]) Cycles' tiled path wraps the UV before it filters
+  (`kernel_image_tile_wrap`: Clip returns zero, Extend clamps the UV), whereas a
+  plain image wraps each texel, so Linear with Clip and Cubic with Clip or Extend
+  differ from a plain image there. Measured on the CPU: Closest renders bit for
+  bit like the same pixels bound plainly for every extension, and Linear and
+  Cubic meet the practical criterion inside the image (the tiled path's pixel
+  coordinates round differently); on Metal, where a cache miss restarts the
+  path and the tiles load between kernel steps, the film meets the practical
+  criterion against the CPU's. Inside a tiled render (`cbc_host_tile_size`) and a
+  camera-border render, and both, a tiled image renders bit for bit like the same
+  pixels bound plainly in the same render, on the CPU and on Metal (measured with
+  Closest at mip level 0): a GPU restarts a path after a cache miss with its own
+  state and pixel; only a miss of the camera ray itself, which needs an OSL
+  camera that this library does not include, would rebuild the pixel from the
+  camera width (`kernel/integrator/init_from_camera.h`).
+- Rendered on the CPU and Metal backends; on the WebGPU backend a render or bake
+  of a scene that binds a tiled image is `CBC_UNSUPPORTED` ("WebGPU tiled images
+  not implemented"; the capability report's entry "sparse or tiled images").
+
+### Tiled rendering
+
+**PROVISIONAL.** `cbc_host_tile_size(host, tile_size)` has the host's later
+renders and bakes render in Cycles' tiles of `tile_size` x `tile_size` pixels
+(`SessionParams::use_auto_tile` and `tile_size`), one after another, so the
+device holds the render buffers of one tile at a time.
+
+- **Sizes.** 0, the default, renders the whole film (or its camera border) in
+  one tile. Otherwise 8 to 128, or a multiple of 128 up to 8192: the sizes Cycles
+  uses as given (`TileManager::compute_render_tile_size` rounds a larger size up to
+  a multiple of 128 and stops at 8192). Any other value is `CBC_INVALID` ("Tile size
+  must be 0 (one tile), 8 to 128, or a multiple of 128 up to 8192"). Cycles renders
+  one tile when the tile's area is at least that of the film (or border region)
+  and no side exceeds 8192 (`Session::get_effective_tile_size`).
+- **No file.** Cycles writes the finished tiles of a tiled render to a tile file
+  through OpenImageIO and reads it back for the full frame (`session/tile.cpp`). In
+  this library the shared overlay of `integrator/path_trace.cpp`
+  (`native/tools/cycles_overlay.py`) keeps them in system memory instead, with
+  exactly what that file would hold, on every platform: no file is written and no
+  image format or OpenImageIO plugin is involved. After the last tile, on the
+  thread that called `cbc_host_render` or `cbc_host_bake`, the host reads the full
+  frame back (`Session::process_full_buffer_from_disk`): with denoising Cycles
+  denoises the whole film once, and the film and every pass are returned as for
+  an untiled render (a camera border's region at its place, zero outside). Status
+  events name the steps ("Reading full buffer from memory", "Denoising",
+  "Finishing"). The finished tiles take one copy of the whole film's render
+  buffers (every pass) in system memory, two for a moment while they are read
+  back, freed before the render returns; a cancelled or failed render drops them
+  unread. The device report states `tiledRendering`: `tileSize`, the tiles
+  kept in memory for the host's renders and bakes (`tilesKeptInMemory`), the full
+  frames read back (`framesReadBack`) and the tiles held now (`tilesHeld`, 0
+  outside a render).
+- **What Cycles does differently with tiles.** It adds a sample count pass (the
+  film's `use_sample_count`, which normalises each pixel by its own count), renders
+  4 pixels beyond each tile's edges for adaptive sampling (not when baking), and
+  applies `cbc_host_render_time_limit` to each tile.
+- **Results.** Measured on the CPU reference: a tiled film and every pass are bit
+  for bit the untiled ones (plain, named passes with light groups, Cryptomatte and
+  a sample count pass, camera border, adaptive sampling with its sample counts,
+  bakes; `TiledRenderingTests`, `render-settings/tiles-glass-passes`). With
+  denoising, Open Image Denoise receives the noisy image divided by each pixel's
+  sample count instead of the sums an untiled render without a sample count pass
+  hands it (`integrator/denoiser_oidn.cpp`): the tiled film is bit for bit an
+  untiled render with a `sample_count` pass, and meets the practical criterion
+  against one without (measured `render-settings/tiles-border-denoise`: maximum
+  2.7e-5, 0 practical failures). On Metal a tiled film meets the practical
+  criterion against the untiled Metal film without adaptive sampling. With adaptive
+  sampling, Cycles' Metal device stops pixels of small render buffers (tiles are
+  small buffers) at other samples than the CPU device, which decides identically
+  at every size (measured `render-settings/tiles-glass-passes`: 327 of 3,072
+  pixels stop at 16 of 32 samples in tiles of 16, 806 practical failures against
+  the untiled Metal film; native/DEVICE.md item 172).
+- **Bakes** render in tiles too; each tile reads its region of the bake map.
+- **Progressive results.** On a host created with `CBC_HOST_PROGRESSIVE_RESULTS`
+  each film places the tile being rendered in the film beside the tiles rendered
+  before it (zero where no tile has rendered yet; `samples_done` counts the
+  samples of the tile being rendered), and the last film of a completed render is
+  the returned film.
+- **Cancel.** A cancel request stops the tile being rendered: the render returns
+  `CBC_CANCELLED`, the output is not written and nothing stays in memory.
+- Rendered on the CPU and Metal backends; on the WebGPU backend a render or bake
+  with a tile size other than 0 is `CBC_UNSUPPORTED` ("WebGPU tiled rendering not
+  implemented"; the capability report's entry "tiled rendering (a tile size other
+  than 0)").
 
 ### Passes
 
@@ -407,8 +718,8 @@ cbc_host_bake(host, &config, pixels, required, &required, &components);
 | `samples` | samples per pixel; `CBC_BAKE_POSITION` always takes one |
 | `type` | one `CBC_BAKE_*` value, below |
 | `flags` | `CBC_BAKE_USE_CAMERA`: the view direction points at the scene camera instead of along the normal. `CBC_BAKE_INCLUDE_ALBEDO`: light passes keep the surface colour |
-| `object` | an object whose geometry is a triangle mesh (not a subdivision surface) |
-| `uv_attribute` | `NULL` or empty: the standard `uv` attribute. Otherwise a float2 corner or vertex attribute by name |
+| `object` | an object whose geometry is a triangle mesh, or (**PROVISIONAL**) a linear subdivision cage diced in object space (below) |
+| `uv_attribute` | `NULL` or empty: the standard `uv` attribute. Otherwise a float2 corner or vertex attribute by name; of a subdivision cage, one of its subdivision attributes (`CBC_ATTR_SUBDIVISION`) |
 | `aov_name` | AOV types only: the name of an existing AOV pass node of that type; `NULL` otherwise |
 
 **Output.** `values[(y * width + x) * components]`, raw float32, row 0 at v = 0, the
@@ -449,6 +760,27 @@ belongs to a triangle when its centre is inside or on the triangle's UV image; w
 triangles overlap in UV space the lowest index wins; a triangle with no UV area
 covers nothing. Triangles sharing an edge leave no crack.
 
+**Subdivision surfaces (PROVISIONAL).** A mesh with `subdivision_type` `linear` and a
+cage (`cbc_host_subd_mesh`) is baked through the triangles Cycles dices from the cage
+for the bake (`Mesh::tessellate` in the device update, at the mesh's `subd_dicing_rate`
+and `subd_max_level`). The host dices a copy of the cage the same way before it maps the
+texels, through the diced mesh's UV attribute, which Cycles interpolates over each face
+from the cage's (`subd/interpolation.cpp`); `triangles[i]` then indexes Cycles'
+tessellation, the triangles the bake shades. Then it bakes as any mesh, every type on
+every backend, with true displacement applied to the diced mesh. The UV layout is one of
+the cage's subdivision attributes (`CBC_ATTR_SUBDIVISION`; otherwise `CBC_INVALID`, "The
+bake mesh has no such UV attribute among its subdivision attributes ..."). Measured on the
+CPU reference: every bake type, also with true displacement, is bit for bit the bake of
+an ordinary mesh built from the same tessellation and kept in object space, as Cycles
+keeps every subdivision surface (`SubdivisionBakingTests`); on Metal within the practical
+criterion of it. Refused, `CBC_UNSUPPORTED`, on every backend: dicing in pixel space
+(`subd_adaptive_space` `pixel`, Cycles' default; "Unsupported feature: bakes of
+subdivision surfaces diced in pixel space ...": it measures in the pixels of a render
+camera, which a bake does not have, so the triangles would depend on the scene's last
+render; dice in `object` space) and Catmull-Clark ("Unsupported feature: Catmull-Clark
+subdivision needs OpenSubdiv ..."). A mesh with `subdivision_type` `linear` and
+triangles but no cage is baked as its triangles (Cycles dices nothing).
+
 **What the package does not do.** It fills no margin: pixels no triangle covers stay
 empty, and an application that wants a margin dilates its baked image from
 `cbc_host_bake_map`. It does not project from other meshes (selected-to-active):
@@ -468,7 +800,7 @@ UV layout, so values bleed across island edges and into empty pixels. In a scene
 approximate shadow catcher and an opaque background the film gains a background pass, which
 the kernel reads as a request to bake the world: the bake is the world's, as Cycles writes it.
 
-## Exports (ABI 1, 60 functions)
+## Exports (ABI 1, 65 functions)
 
 | Function | Purpose |
 | --- | --- |
@@ -479,7 +811,7 @@ the kernel reads as a request to bake the world: the bake is the world's, as Cyc
 | `cbc_host_tier_config` | process-wide WebGPU pipeline-tier policy (`CBCTierConfig`) |
 | `cbc_host_pipeline_cache_config` | process-wide switch and directory of the persistent WebGPU pipeline cache (`CBCPipelineCacheConfig`) |
 | `cbc_host_resolve_backend` | map a requested backend (including `CBC_HOST_GPU`) to this binary's concrete backend |
-| `cbc_host_create` | create a host (`CBCHostConfig`) |
+| `cbc_host_create` | create a host (`CBCHostConfig`; `flags` **PROVISIONAL**: `CBC_HOST_PROGRESSIVE_RESULTS`) |
 | `cbc_host_destroy` | remove a host, cancelling and waiting for active work |
 | `cbc_host_backend` | concrete backend of a host |
 | `cbc_host_capabilities_json` | binary or host capability report |
@@ -514,6 +846,8 @@ the kernel reads as a request to bake the world: the bake is the world's, as Cyc
 | `cbc_host_image_create` | copy caller pixels into a new image handle (`CBCImageConfig`) |
 | `cbc_host_image_update` | replace the pixels of an image handle |
 | `cbc_host_image_bind` | bind an image (or 0) to an image/environment texture node |
+| `cbc_host_image_bind_tiles` | **PROVISIONAL**: bind images to an Image Texture node as UDIM tiles |
+| `cbc_host_image_create_tiled` | **PROVISIONAL**: a tiled image whose tiles and mip levels Cycles' texture cache reads through a caller callback ("Tiled images") |
 | `cbc_host_image_release` | release an image handle |
 | `cbc_host_set_event_callback` | register the host's event callback |
 | `cbc_host_render` | render synchronously into caller RGBA (`CBCRenderConfig`) |
@@ -525,29 +859,37 @@ the kernel reads as a request to bake the world: the bake is the world's, as Cyc
 | `cbc_host_bake_map` | the map of a bake: triangle and coordinates per pixel, no rendering |
 | `cbc_host_subd_mesh` | replace a mesh's geometry with a subdivision cage (polygon faces) |
 | `cbc_host_render_time_limit` | wall-clock time limit of the host's later renders and bakes (0 = every sample) |
+| `cbc_host_texture_limit` | **PROVISIONAL**: Cycles' texture limit, the largest image side a render or bake loads (0 = every image at its size) |
+| `cbc_host_bvh_spatial_split` | **PROVISIONAL**: Cycles' BVH spatial splits (0 = off, the default) |
+| `cbc_host_tile_size` | **PROVISIONAL**: Cycles' tile size of later renders and bakes, the finished tiles kept in memory (0 = one tile, the default; "Tiled rendering") |
 
 ## Structs and enums
 
 | Struct | Size | Fields |
 | --- | --- | --- |
-| `CBCHostConfig` | 32 | `struct_size`, `abi_version`, `backend`, `threads` (0 = automatic, at most 1024), 4 reserved |
+| `CBCHostConfig` | 40 (32 accepted) | `struct_size`, `abi_version`, `backend`, `threads` (0 = automatic, at most 1024), 4 reserved, `flags` and `reserved2` (**PROVISIONAL**, trailing; 32 bytes means no flags) |
 | `CBCRenderConfig` | 32 | `struct_size`, `width`, `height` (1..32768), `samples`, 4 reserved |
 | `CBCPropertyInfo` | 32 | `struct_size`, `value_type`, `flags`, `components`, `count`, reserved |
 | `CBCAttributeConfig` | 32 | `struct_size`, `value_type`, `domain`, `flags`, 4 reserved |
-| `CBCImageConfig` | 32 | `struct_size`, `width`, `height`, `format`, 4 reserved |
+| `CBCImageConfig` | 32 | `struct_size`, `width`, `height`, `format`, `tile_size` (**PROVISIONAL**: tiled images only, else 0), 3 reserved |
 | `CBCTierConfig` | 32 | `struct_size`, `abi_version`, `tier`, `flags`, 4 reserved |
 | `CBCPipelineCacheConfig` | 32 | `struct_size`, `abi_version`, `mode`, `flags` (0), 4 reserved |
 | `CBCVersionInfo` | 96 | `struct_size`, `abi_version`, 2 reserved, `library_version[32]`, `cycles_revision[48]` |
-| `CBCEvent` | 40 | `struct_size`, `kind`, `samples_done`, `samples_total`, `elapsed_seconds`, `message` |
+| `CBCEvent` | 56 | `struct_size`, `kind`, `samples_done`, `samples_total`, `elapsed_seconds`, `message`, `film`, `width`, `height` (the last three **PROVISIONAL**, trailing) |
 | `CBCBakeConfig` | 64 | `struct_size`, `width`, `height`, `samples`, `type`, `flags`, 2 reserved, `object`, `uv_attribute`, `aov_name`, reserved |
 
+Callback types: `CBCEventCallback`; `CBCImageTileReadCallback` and
+`CBCReleaseCallback` (**PROVISIONAL**, "Tiled images").
+
 Enums (values are fixed): backends (above); error codes (above); value kinds
-`CBC_VALUE_*` 0..17; property flags `CBC_PROPERTY_*` (1, 2, 4, 8, 16);
+`CBC_VALUE_*` 0..19 (18 `CBC_VALUE_QUATERNION` and 19 `CBC_VALUE_SPHERICAL_HARMONICS_REST` are **PROVISIONAL**,
+geometry attributes only); property flags `CBC_PROPERTY_*` (1, 2, 4, 8, 16);
 attribute domains `CBC_ATTR_MESH`..`CBC_ATTR_CURVE_KEY_NORMAL` (1..10) and flags
-`CBC_ATTR_STANDARD` (1), `CBC_ATTR_SUBDIVISION` (2); curve shapes
+`CBC_ATTR_STANDARD` (1), `CBC_ATTR_SUBDIVISION` (2), `CBC_ATTR_SPLAT_BOUNDING_RADIUS` (4, **PROVISIONAL**, reads only); curve shapes
 `CBC_CURVE_RIBBON/THICK/THICK_LINEAR` (0..2); image formats
 `CBC_IMAGE_FLOAT`..`CBC_IMAGE_USHORT4` (1..8); tiers `CBC_TIER_AUTO/FULL/CONSERVATIVE`
-(0..2) and tier flags (1, 2, 4); pipeline cache `CBC_PIPELINE_CACHE_DEFAULT/OFF` (0, 1); events `CBC_EVENT_STATUS/PROGRESS/ERROR` (1..3);
+(0..2) and tier flags (1, 2, 4); pipeline cache `CBC_PIPELINE_CACHE_DEFAULT/OFF` (0, 1); events `CBC_EVENT_STATUS/PROGRESS/ERROR/FILM` (1..4; 4 **PROVISIONAL**);
+host flags `CBC_HOST_PROGRESSIVE_RESULTS` (1, **PROVISIONAL**);
 bake types `CBC_BAKE_COMBINED`..`CBC_BAKE_AOV_VALUE` (1..26) and bake flags (1, 2).
 
 ## Determinism
@@ -624,7 +966,7 @@ runs on the CPU reference and through `CBC_HOST_GPU`. Its shape:
 CBCVersionInfo version = {sizeof(version)};
 cbc_host_version(&version);                       /* library, ABI, Cycles revision */
 
-CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, CBC_HOST_GPU, 0, {0}};
+CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, CBC_HOST_GPU, 0, {0}, 0, 0};
 CBCHost host = 0;
 if (cbc_host_create(&config, &host) != CBC_OK) { /* cbc_host_error(...) */ }
 

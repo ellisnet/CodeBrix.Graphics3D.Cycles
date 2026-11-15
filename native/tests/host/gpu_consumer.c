@@ -102,6 +102,46 @@ static void save_film(const char *prefix, unsigned round, const float *pixels) {
 static void let_render_progress(void) {
   const struct timespec delay = {0, 100000000}; nanosleep(&delay, NULL);
 }
+/* --progressive (PROVISIONAL CBC_HOST_PROGRESSIVE_RESULTS): counts the film events of each render and keeps the last
+ * film, which must equal the returned film bit for bit (both read the render buffers after the last samples). */
+typedef struct Films { unsigned count, total; int complete; uint64_t samples; float last[FLOAT_COUNT]; } Films;
+static int on_film(void *user_data, const CBCEvent *event) {
+  Films *films = user_data;
+  if (event->struct_size < sizeof(CBCEvent) || event->kind != CBC_EVENT_FILM) return 0;
+  if (!event->film || event->width != 32 || event->height != 24 || event->samples_done < films->samples) films->complete = 0;
+  else memcpy(films->last, event->film, sizeof(films->last));
+  films->samples = event->samples_done; ++films->count; ++films->total;
+  return 0;
+}
+static void begin_films(Films *films) { films->count = 0; films->complete = 1; films->samples = 0; }
+static void check_films(const Films *films, const float *pixels, uint64_t samples) {
+  REQUIRE(films->count >= 2 && films->complete && films->samples == samples);
+  REQUIRE(memcmp(films->last, pixels, sizeof(films->last)) == 0);
+}
+/* --tiles (PROVISIONAL cbc_host_tile_size): the same lifecycle rendered in tiles of 8 pixels (12 tiles of the 32 x 24
+ * film), the finished tiles kept in memory by the library. Sizes Cycles would change are refused; the device report
+ * counts the tiles kept in memory and the full frames read back, and holds none between renders. */
+static uint64_t report_number(CBCHost host, const char *key) {
+  uint64_t required = 0;
+  REQUIRE(cbc_host_device_report_json(host, NULL, 0, &required) == CBC_SMALL_BUFFER && required > 0);
+  char *json = malloc(required); REQUIRE(json);
+  CHECK(cbc_host_device_report_json(host, json, required, &required));
+  char pattern[128]; REQUIRE(snprintf(pattern, sizeof(pattern), "\"%s\":", key) > 0);
+  const char *at = strstr(json, pattern); REQUIRE(at != NULL);
+  const uint64_t value = strtoull(at + strlen(pattern), NULL, 10);
+  free(json); return value;
+}
+static void check_tiles(CBCHost host, uint64_t kept, uint64_t frames) {
+  REQUIRE(report_number(host, "tileSize") == 8 && report_number(host, "tilesKeptInMemory") == kept);
+  REQUIRE(report_number(host, "framesReadBack") == frames && report_number(host, "tilesHeld") == 0);
+}
+static void begin_tiles(CBCHost host) {
+  REQUIRE(cbc_host_tile_size(host, 7) == CBC_INVALID && cbc_host_tile_size(host, 129) == CBC_INVALID);
+  REQUIRE(cbc_host_tile_size(host, 8193) == CBC_INVALID && cbc_host_tile_size(host, 200) == CBC_INVALID);
+  char error[256]; uint64_t required = 0; cbc_host_error(error, sizeof(error), &required);
+  REQUIRE(strcmp(error, "Tile size must be 0 (one tile), 8 to 128, or a multiple of 128 up to 8192") == 0);
+  CHECK(cbc_host_tile_size(host, 8)); check_tiles(host, 0, 0);
+}
 typedef struct RenderThread { CBCHost host; CBCRenderConfig config; float pixels[FLOAT_COUNT]; int status; } RenderThread;
 static void *render_worker(void *data) {
   RenderThread *thread = data;
@@ -115,15 +155,29 @@ static void wait_active(CBCHost host) {
   REQUIRE(0 && "Render did not become active");
 }
 int main(int argc, char **argv) {
-  REQUIRE(argc == 2 || (argc == 3 && strcmp(argv[2], "--exit-live") == 0));
+  REQUIRE(argc == 2 || (argc == 3 && (strcmp(argv[2], "--exit-live") == 0 || strcmp(argv[2], "--progressive") == 0 ||
+                                      strcmp(argv[2], "--tiles") == 0)));
+  const int progressive = argc == 3 && strcmp(argv[2], "--progressive") == 0;
+  const int tiles = argc == 3 && strcmp(argv[2], "--tiles") == 0;
+  static Films films;
   /* Tests keep a known cache state (native/DEVICE.md "Pipeline cache"). */
   CBCPipelineCacheConfig cache = {sizeof(cache), CBC_HOST_ABI, CBC_PIPELINE_CACHE_OFF, 0, {0}};
   CHECK(cbc_host_pipeline_cache_config(&cache, NULL));
-  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, CBC_TEST_GPU_BACKEND, 1, {0}};
+  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, CBC_TEST_GPU_BACKEND, 1, {0}, 0, 0};
   CBCHost host = 99, other = 0;
   config.abi_version++;
   REQUIRE(cbc_host_create(&config, &host) == CBC_INVALID && host == 0);
-  config.abi_version--; CHECK(cbc_host_create(&config, &host)); CHECK(cbc_host_create(&config, &other));
+  config.abi_version--;
+  if (progressive) {
+    /* Unknown flags and a nonzero reserved2 are refused; the 32-byte configuration of earlier consumers is accepted. */
+    config.flags = 2; REQUIRE(cbc_host_create(&config, &host) == CBC_INVALID && host == 0);
+    config.flags = CBC_HOST_PROGRESSIVE_RESULTS; config.reserved2 = 1; REQUIRE(cbc_host_create(&config, &host) == CBC_INVALID && host == 0);
+    config.reserved2 = 0; config.struct_size = 32; CHECK(cbc_host_create(&config, &host)); CHECK(cbc_host_destroy(host));
+    config.struct_size = sizeof(config);
+  }
+  CHECK(cbc_host_create(&config, &host)); CHECK(cbc_host_create(&config, &other));
+  if (progressive) CHECK(cbc_host_set_event_callback(host, on_film, &films));
+  if (tiles) begin_tiles(host);
   CBCNode mesh = 0, value = fixture(host, &mesh);
   CBCNode foreign_camera = singleton(other, "camera"); float fov = 1;
   REQUIRE(cbc_host_set_floats(host, foreign_camera, "fov", &fov, 1) == CBC_INVALID);
@@ -141,7 +195,10 @@ int main(int argc, char **argv) {
     for (unsigned i = 0; i < FLOAT_COUNT; ++i) pixels[i] = -99;
     REQUIRE(cbc_host_render(host, &render, pixels, FLOAT_COUNT-1) == CBC_INVALID);
     for (unsigned i = 0; i < FLOAT_COUNT; ++i) REQUIRE(pixels[i] == -99);
+    begin_films(&films);
     CHECK(cbc_host_render(host, &render, pixels, FLOAT_COUNT));
+    if (progressive) check_films(&films, pixels, render.samples); else REQUIRE(films.count == 0);
+    if (tiles) check_tiles(host, 12 * (round + 1), round + 1);
     for (unsigned i = 0; i < FLOAT_COUNT; ++i) REQUIRE(isfinite(pixels[i]));
     if (round == 0) memcpy(first, pixels, sizeof(pixels));
     if (round == 1) REQUIRE(memcmp(first, pixels, sizeof(pixels)) != 0);
@@ -155,7 +212,8 @@ int main(int argc, char **argv) {
   CHECK(cbc_host_render(host, &render, pixels, FLOAT_COUNT));
   compare_repeat(previous, pixels);
   save_film(argv[1], 4, pixels);
-  if (argc == 3) {
+  if (tiles) check_tiles(host, 60, 5);
+  if (argc == 3 && !progressive && !tiles) {
     puts("{\"passed\":true,\"processExitWithLiveContext\":true}");
     return 0;
   }
@@ -165,9 +223,16 @@ int main(int argc, char **argv) {
   wait_active(host); let_render_progress(); CHECK(cbc_host_cancel(host)); REQUIRE(pthread_join(worker, NULL) == 0);
   REQUIRE(thread.status == CBC_CANCELLED);
   for (unsigned i = 0; i < FLOAT_COUNT; ++i) REQUIRE(thread.pixels[i] == -99);
+  /* A cancelled tiled render reads no frame back and leaves no tile in memory. */
+  uint64_t kept_after_cancel = 0;
+  if (tiles) {
+    REQUIRE(report_number(host, "framesReadBack") == 5 && report_number(host, "tilesHeld") == 0);
+    kept_after_cancel = report_number(host, "tilesKeptInMemory"); REQUIRE(kept_after_cancel >= 60 && kept_after_cancel <= 61);
+  }
   CHECK(cbc_host_render(host, &render, pixels, FLOAT_COUNT));
   compare_repeat(previous, pixels);
   save_film(argv[1], 5, pixels);
+  if (tiles) check_tiles(host, kept_after_cancel + 12, 6);
   REQUIRE(pthread_create(&worker, NULL, render_worker, &thread) == 0);
   wait_active(host); let_render_progress(); CHECK(cbc_host_destroy(host)); REQUIRE(pthread_join(worker, NULL) == 0);
   REQUIRE(thread.status == CBC_CANCELLED);
@@ -179,8 +244,12 @@ int main(int argc, char **argv) {
          "\"renderAfterCancel\":true,\"destroyDuringRender\":true,"
          "\"foreignAndStaleHandlesRejected\":true,\"repeatChecks\":%u,"
          "\"repeatStrictCriterionPassed\":true,\"repeatDifferentComponents\":%u,"
-         "\"repeatMaximumAbsoluteError\":%.17g,\"repeatBitwiseIdentical\":%s}\n",
+         "\"repeatMaximumAbsoluteError\":%.17g,\"repeatBitwiseIdentical\":%s",
          repeat_checks, repeat_differences, repeat_maximum,
          repeat_differences ? "false" : "true");
+  if (progressive) printf(",\"progressiveResults\":true,\"filmEvents\":%u,\"lastFilmEqualsReturnedFilm\":true", films.total);
+  if (tiles) printf(",\"tiledRendering\":true,\"tileSize\":8,\"tilesKeptInMemory\":%llu,\"framesReadBack\":6,\"invalidSizesRefused\":true",
+                    (unsigned long long)(kept_after_cancel + 12));
+  puts("}");
   return 0;
 }

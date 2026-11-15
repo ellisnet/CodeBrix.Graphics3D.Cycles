@@ -7,16 +7,17 @@
     python3 native/tools/stage_macos_binaries.py --gate ... --oracles ... --output DIR   (scratch stage)
 
 Stages the build in native/work/macos/osx-arm64 that the passed host gate and
-oracle run validated, and never rebuilds: a rebuild is not byte-identical (object
-timestamps and absolute paths in the debug map change the host's UUID and
-signature), so only the validated files may be staged. The build itself records
+oracle run validated, and never rebuilds: the validation is evidence for exactly
+those files. (A rebuild of the same sources with the same toolchain gives the same
+bytes at any checkout path, so a fresh build can be checked against a committed
+payload by hash: docs/TESTING-MACOS-ARM64.md, step 9.) The build itself records
 the commit it was made from and the git status of the Cycles-with-Metal sources
 (tools/licensing/metal_sources.py), when it starts (host/invocation.json) and when
 it completes (host/status.json). A real stage refuses unless both records name the
 same commit with a clean status, HEAD descends from that commit with no
 Cycles-with-Metal source change since, and the working tree has none of its own;
-provenance.json then names that commit as sourceCommit. So: commit, build, gate,
-render the oracles, stage.
+provenance.json then names that commit as sourceCommit. So: build from a clean
+commit, gate, render the oracles, stage.
 
 A scratch stage (--output, a folder outside the tracked tree: git-ignored under
 the checkout, such as native/work/staging/osx-arm64, or outside it) leaves
@@ -108,7 +109,7 @@ def build_source(invocation,status,dirty):
 
 def approvable(payload,target):
  """The audit requires every approved file to be a tracked candidate, so a git-ignored path is
- recorded in `binaries` but not approved (none is: osx-arm64 commits all three folders in full)."""
+ recorded in `binaries` but not approved (none is: osx-arm64 tracks all three folders in full)."""
  ignored=subprocess.run(['git','check-ignore','--stdin'],cwd=REPO,input='\n'.join(str(target.relative_to(REPO)/name) for name in payload),capture_output=True,text=True).stdout.split()
  return {name:digest for name,digest in payload.items() if str(target.relative_to(REPO)/name) not in ignored}
 
@@ -177,8 +178,10 @@ def main():
   if uuid(unstripped/leaf)!=entry['uuid']:raise RuntimeError(leaf+' UUID changed between unstripped and runtime copies')
   if leaf==HOST:
    bundle=symbols/(leaf+'.dSYM')
-   # Object paths in the debug map are repository-relative (-oso_prefix).
-   subprocess.run(['dsymutil','--oso-prepend-path',str(REPO),str(source_path),'-o',str(bundle)],check=True,capture_output=True)
+   # Object paths in the debug map are repository-relative (-oso_prefix). The dSYM records
+   # the binary's path as given (Relocations/), so give it relative to the checkout.
+   subprocess.run(['dsymutil','--oso-prepend-path',str(REPO),str(source_path.relative_to(REPO)),'-o',str(bundle)],
+    cwd=REPO,check=True,capture_output=True)
    if uuid(bundle)!=entry['uuid']:raise RuntimeError('dSYM UUID does not match the host library')
    entry['symbols']=f'symbols/{leaf}.dSYM'
   else:entry['symbols']=None

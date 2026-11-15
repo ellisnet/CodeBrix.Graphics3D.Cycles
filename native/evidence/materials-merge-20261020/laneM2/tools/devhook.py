@@ -3,7 +3,7 @@
 # M2 dev only: apply/revert a non-fatal comparison hook (M2DEV=1) in the gate sources.
 import sys,shutil
 from pathlib import Path
-C=Path('/home/jeremy/ClaudeHome/cycles-worktrees/m2-svm-nodes/native/cycles');B=Path('/home/jeremy/ClaudeHome/cycles-worktrees/m2-svm-nodes/native/work/m2/dev/hook-backup');B.mkdir(parents=True,exist_ok=True)
+C=Path('<home>/ClaudeHome/cycles-worktrees/m2-svm-nodes/native/cycles');B=Path('<home>/ClaudeHome/cycles-worktrees/m2-svm-nodes/native/work/m2/dev/hook-backup');B.mkdir(parents=True,exist_ok=True)
 if sys.argv[1]=='apply':
     for n in ['surface_svm_test.h','render_gate.cpp']:shutil.copy2(C/n,B/n)
     t=(C/'surface_svm_test.h').read_text();a='''        require(std::isfinite(av)&&std::isfinite(ev)&&error<=5e-5+2e-4*std::abs(double(ev)),label+" float "+f.name'''

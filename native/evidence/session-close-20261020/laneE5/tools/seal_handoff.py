@@ -6,7 +6,7 @@ sources, validation and device evidence, budgets, timeline)."""
 import hashlib, json, shutil, subprocess, tempfile, datetime
 from pathlib import Path
 E = Path(__file__).resolve().parents[1]; REPO = E.parents[2]; H = E/'handoff'
-MANIFEST = '/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-merge1.json'
+MANIFEST = '<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-merge1.json'
 SEED = json.loads(Path(MANIFEST).read_text())['sourceSha256']
 B = E/'before-source'
 CHANGED = {'native/cycles/emitter_sample_gate.cpp': B/'emitter_sample_gate.cpp',

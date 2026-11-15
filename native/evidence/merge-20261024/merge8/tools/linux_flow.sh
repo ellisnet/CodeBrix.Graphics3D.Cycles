@@ -5,7 +5,7 @@
 # local run, dump, export, exchange run, judge. usage: linux_flow.sh GATE OUT [ARG...]  (job env from the caller's environment)
 set -u
 GATE=$1; OUT=$2; shift 2
-B=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_${GATE}_gate
+B=<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_${GATE}_gate
 mkdir -p $OUT; cd $OUT
 t(){ date +%H:%M:%S; }
 echo "[$(t)] local"; /usr/bin/time -f %e $B $OUT/local "$@" > local.json 2> local.err; echo "local exit $?"

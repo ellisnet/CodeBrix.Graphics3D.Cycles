@@ -56,6 +56,8 @@ public class NativeHeaderConstantMatching
         { "CBC_EVENT_STATUS", (long)RenderEventKind.Status },
         { "CBC_EVENT_PROGRESS", (long)RenderEventKind.Progress },
         { "CBC_EVENT_ERROR", (long)RenderEventKind.Error },
+        { "CBC_EVENT_FILM", (long)RenderEventKind.Film },
+        { "CBC_HOST_PROGRESSIVE_RESULTS", (long)HostFlags.ProgressiveResults },
         { "CBC_VALUE_FLOAT", (long)AttributeValue.Float },
         { "CBC_VALUE_COLOR", (long)AttributeValue.Color },
         { "CBC_VALUE_VECTOR", (long)AttributeValue.Vector },
@@ -65,6 +67,8 @@ public class NativeHeaderConstantMatching
         { "CBC_VALUE_TRANSFORM", (long)AttributeValue.Transform },
         { "CBC_VALUE_FLOAT4", (long)AttributeValue.Float4 },
         { "CBC_VALUE_BYTE4", (long)AttributeValue.Byte4 },
+        { "CBC_VALUE_QUATERNION", (long)AttributeValue.Quaternion },
+        { "CBC_VALUE_SPHERICAL_HARMONICS_REST", (long)AttributeValue.SphericalHarmonicsRest },
         { "CBC_ATTR_MESH", (long)AttributeDomain.Mesh },
         { "CBC_ATTR_FACE", (long)AttributeDomain.Face },
         { "CBC_ATTR_VERTEX", (long)AttributeDomain.Vertex },
@@ -80,6 +84,7 @@ public class NativeHeaderConstantMatching
         { "CBC_CURVE_THICK_LINEAR", (long)CurveShape.ThickLinear },
         { "CBC_ATTR_STANDARD", (long)AttributeFlags.Standard },
         { "CBC_ATTR_SUBDIVISION", (long)AttributeFlags.Subdivision },
+        { "CBC_ATTR_SPLAT_BOUNDING_RADIUS", (long)AttributeFlags.SplatBoundingRadius },
         { "CBC_IMAGE_FLOAT", (long)ImageFormat.Float },
         { "CBC_IMAGE_FLOAT4", (long)ImageFormat.Float4 },
         { "CBC_IMAGE_HALF", (long)ImageFormat.Half },
@@ -121,6 +126,8 @@ public class NativeHeaderConstantMatching
         { "CBC_VALUE_CLOSURE", (long)ValueKind.Closure },
         { "CBC_VALUE_FLOAT4", (long)ValueKind.Float4 },
         { "CBC_VALUE_BYTE4", (long)ValueKind.Byte4 },
+        { "CBC_VALUE_QUATERNION", (long)ValueKind.Quaternion },
+        { "CBC_VALUE_SPHERICAL_HARMONICS_REST", (long)ValueKind.SphericalHarmonicsRest },
         { "CBC_PROPERTY_ARRAY", (long)PropertyFlags.Array },
         { "CBC_PROPERTY_LINKABLE", (long)PropertyFlags.Linkable },
         { "CBC_PROPERTY_INTERNAL", (long)PropertyFlags.Internal },
@@ -147,8 +154,9 @@ public class NativeHeaderConstantMatching
         //Arrange
         Type[] enums = [typeof(Backend), typeof(AttributeValue), typeof(AttributeDomain), typeof(AttributeFlags),
                         typeof(ImageFormat), typeof(PipelineTier), typeof(PipelineTierFlags), typeof(PipelineCacheMode), typeof(NativeStatus),
-                        typeof(ValueKind), typeof(PropertyFlags), typeof(RenderEventKind), typeof(CurveShape), typeof(BakeType), typeof(BakeFlags)];
-        int flagNoneMembers = 4; // AttributeFlags.None, PipelineTierFlags.None, PropertyFlags.None and BakeFlags.None have no header constant.
+                        typeof(ValueKind), typeof(PropertyFlags), typeof(RenderEventKind), typeof(CurveShape), typeof(BakeType), typeof(BakeFlags),
+                        typeof(HostFlags)];
+        int flagNoneMembers = 5; // AttributeFlags.None, PipelineTierFlags.None, PropertyFlags.None, BakeFlags.None and HostFlags.None have no header constant.
         int nonEnumConstants = 1; // CBC_HOST_ABI is checked against CyclesVersion.ExpectedAbi.
 
         //Act
@@ -165,6 +173,7 @@ public class NativeHeaderConstantMatching
         ((uint)AttributeFlags.None).Should().Be(0u);
         ((uint)PipelineTierFlags.None).Should().Be(0u);
         ((uint)PropertyFlags.None).Should().Be(0u);
+        ((uint)HostFlags.None).Should().Be(0u);
     }
 
     private static Dictionary<string, long> ParseHeader()

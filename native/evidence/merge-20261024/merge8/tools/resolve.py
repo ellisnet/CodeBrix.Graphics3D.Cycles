@@ -6,7 +6,7 @@ usage: resolve.py <lane> <path> <spec.py>; spec.py defines blocks = [fn(ours_lin
 (one per conflict block, in order). Helpers available to the spec: OURS, THEIRS, BOTH (ours then theirs), TB (theirs then ours)."""
 import sys, shutil
 from pathlib import Path
-root = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge8'
+root = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge8'
 lane, path, spec = sys.argv[1:4]
 src = w / f'merge-{lane}' / path
 L = src.read_text().split('\n')

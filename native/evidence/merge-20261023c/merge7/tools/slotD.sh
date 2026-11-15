@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 7: gates new in this wave (environment gate, camera gate with per-field ray bit differences) + envelope of the environment entries.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge7; V=$M/validation; S=$M/tools/slot.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge7; V=$M/validation; S=$M/tools/slot.sh
 T=$R/native/tools; B=$R/native/work/cycles-build/bin
 cd $R; mkdir -p $V/d-environment-dump
 CODEBRIX_CYCLES_WGSL_DUMP=$V/d-environment-dump $S d-environment-gate 1200 $B/codebrix_cycles_environment_gate $V/d-environment-gate/out

@@ -19,8 +19,8 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 This recipe produces the Windows product binaries: the pinned Cycles revision
 with the CodeBrix WGSL/WebGPU device and the CPU device, behind the same native C
 API and managed API as every other RID. Both Windows RIDs are built on an x64
-Windows machine; win-arm64 is cross-compiled there and its payload is committed,
-so an ARM64 Windows device only runs the tests. The test procedure is
+Windows machine; win-arm64 is cross-compiled there, so an ARM64 Windows device
+only runs the tests on its staged payload. The test procedure is
 [docs/TESTING-WINDOWS-X64.md](../../docs/TESTING-WINDOWS-X64.md).
 
 ## Decisions
@@ -88,7 +88,7 @@ so an ARM64 Windows device only runs the tests. The test procedure is
   adapter defines the `BOOST_<LIB>_SOURCE`, `BOOST_ALL_DYN_LINK` and
   `BOOST_ALL_NO_LIB` macros that Windows DLLs need (`if(WIN32)` only).
 - Reviewed deliverables go to `native/binaries/<rid>/` (runtime, unstripped and
-  symbols) with provenance. The maintainer makes every commit and push.
+  symbols) with provenance.
 
 ## Files
 

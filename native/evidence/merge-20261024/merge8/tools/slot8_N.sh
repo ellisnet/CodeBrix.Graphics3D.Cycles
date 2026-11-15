@@ -4,7 +4,7 @@
 # Merge wave 8, slot N: the gates new in wave A (light tree 7 cases + replays, shadow catcher 11 cases + 6 replays,
 # AO state 9 (incl. the raytrace-queue section) and AO image 8) with WGSL dumps, their Intel compile envelope, and the
 # lanes' oracle scenes (Linux CPU + WGSL) through the comparator.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh
 T=$R/native/tools; B=$R/native/work/cycles-build
 O="--runner $B/bin/codebrix_cycles_oracle --host-library $B/lib/libcodebrix_cycles_host.so --backend cpu-x64-linux --backend wgsl-linux-intel"
 cd $R; mkdir -p $V/w8-m2-dump/light-tree $V/w8-m2-dump/shadow-catcher $V/w8-m2-dump/ao-state $V/w8-m2-dump/ao-render $V/w8-ao-state $V/w8-ao-render

@@ -2,7 +2,7 @@
 # Merge wave 8 part 2 (wind-down): compact per-run / per-job listing of runs/<device>/*/results.json for the report (no DEVICE.md, no tables applied).
 import json, sys
 from pathlib import Path
-M = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8')
+M = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8')
 for dev in sys.argv[1:]:
     print('###', dev)
     for run in sorted((M/'runs'/dev).iterdir(), key=lambda p: p.stat().st_mtime):

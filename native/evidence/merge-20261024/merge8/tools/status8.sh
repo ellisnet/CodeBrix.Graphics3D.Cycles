@@ -1,14 +1,14 @@
 #!/bin/bash
 # Merge wave 8 part 2 status checkpoint -> checkpoint-2/status.md. usage: status8.sh "<note>"
-M=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8; C=$M/checkpoint-2; mkdir -p $C
+M=<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8; C=$M/checkpoint-2; mkdir -p $C
 { echo "# Part 2 (evidence) status $(date '+%Y-%m-%d %H:%M:%S')  (cap 7 h from launch 10:05, i.e. 17:05)"; echo; echo "$1"; echo
-  echo "## locks held"; ls /home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks/; echo
+  echo "## locks held"; ls <home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks/; echo
   echo "## linux slot ends"; grep -E "END (p8-|p8v-)" $M/timeline.log | sed 's/^/  /'; echo
   echo "## device corpora (passed per run)"
   python3 - <<'P'
 import json
 from pathlib import Path
-M=Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/runs')
+M=Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/runs')
 for d in sorted(M.glob('*/*')):
     s=d/'status.json'
     if not s.exists(): continue

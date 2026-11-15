@@ -2,7 +2,7 @@ Linux x64 FULLY VALIDATED at `f1ed54307` + fixes `b2c803f5f670244b4fa10a42e03a8b
 
 Copyright (c) 2026 Jeremy Ellis and contributors
 
-Lane val35 (Opus 5.5). Worktree `/home/jeremy/ClaudeHome/cycles-worktrees/val35`, branch `val35`, base `f1ed54307`.
+Lane val35 (Opus 5.5). Worktree `<home>/ClaudeHome/cycles-worktrees/val35`, branch `val35`, base `f1ed54307`.
 Lane folder `native/work/val35/` (timeline.log, budgets.txt, validation/, run-A/, checkpoint/, handoff/).
 FACT = measured here. INFERENCE is marked. Nothing committed; main untouched (read-only reads/copies only).
 
@@ -32,12 +32,12 @@ FACT = measured here. INFERENCE is marked. Nothing committed; main untouched (re
   `native/work/dependencies` libraries keep RUNPATH `$ORIGIN:<main>/...install/lib` ($ORIGIN first; every library
   resolves inside the worktree, LD_DEBUG shows no file tried in main). The 3 prototype host probes keep a main RUNPATH;
   nothing here runs them.
-- Size limit: 20 GB (Jeremy 23:20); folder 25 GB at 23:19 -> 3.1 GB after deleting 850 uncited capture `.bin` files
+- Size limit: 20 GB (the maintainer 23:20); folder 25 GB at 23:19 -> 3.1 GB after deleting 850 uncited capture `.bin` files
   over 5 MB (validation/, diag/; sha256 + bytes in `deleted-sha256.txt`).
 
 ## Coordinator rulings (06:55), recorded as given
 1. KEEP FIX-1 (the final run validated the tree with it). It is a change to WebGPU pipeline selection in shared
-   native/cycles files, flagged for Jeremy's review at the merge.
+   native/cycles files, flagged for the maintainer's review at the merge.
 2. ARM64 oracle: the re-render rule targets CPU-kernel and host scene-preparation changes; FIX-1 touches neither, so
    the ARM64 oracle at `f1ed54307` stays valid.
 
@@ -220,7 +220,7 @@ FACT = measured here. INFERENCE is marked. Nothing committed; main untouched (re
 - Processes: none of mine left (checked at the end; only the harness monitors, which I stopped).
 - Git: read-only plus `git add -N` on the two evidence folders. No lock, no device, no adb.
 
-## Decisions for Jeremy
+## Decisions for the maintainer
 - FIX-1 changes which WGSL text `prepare_surface` compiles from in scenes whose world or lamps use SVM node types no
   surface uses (shared native/cycles code, all RIDs). Please review it at the merge; the coordinator ruled the ARM64
   oracle stays valid.

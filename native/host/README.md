@@ -47,8 +47,7 @@ selected with `CBC_HOST_METAL`, and contains no image file readers. Its recipe,
 validation and decisions are in [MACOS_ARM64.md](MACOS_ARM64.md).
 
 The .NET project contains only ownership and marshalling code and has no glTF
-dependency. Its package build carries no native runtime assets yet and is not
-published pending runtime packaging.
+dependency. Its package build carries no native runtime assets.
 Scene compilation, BVH construction, image handling, color management, scheduling
 and rendering remain native. The optional glTF/GLB client uses
 CodeBrix.Graphics3D.Gltf2 and converts its data into this format-neutral API.
@@ -90,7 +89,10 @@ buffers, callbacks and queries.
 | Curve deformation motion | `cbc_host_curve_motion` (position and optional radius attribute motion steps) |
 | Deletion | `cbc_host_delete_node` with a reference scan over every scene node's node sockets; shader deletion drops its graph handles (Cycles keeps the shader allocated, as `Scene::delete_node(Shader)` does) |
 | Image updates | `cbc_host_image_update` swaps the `MemoryImageData` behind a handle and clears every bound slot's `ImageHandle`, so the next render re-adds the image |
-| Callbacks | `cbc_host_set_event_callback`; `Progress::set_update_callback` drives status/progress events under a per-host event mutex; a thread-local flag makes `boundary()` refuse reentry; nonzero return sets the cancellation flag polled by the existing cancel callback |
+| Tiled images (PROVISIONAL) | `cbc_host_image_create_tiled`: a `MemoryImageData` whose `TiledImageSource` holds the caller's read and release callbacks; `prepare_graphs` gives Cycles a `TiledImageLoader` (`host_scene_types.inc`), whose `load_pixels_tile` answers Cycles' texture cache (tiles of `TiledImageSource::tile_size`, 64 by default and checked per backend by `tiled_image_tile_size` in `host_scene.inc`; `use_texture_cache` on for every host). `TiledReads` serializes the callbacks per host (a busy flag and a condition variable; a cancel request stops further reads); a failed read cancels the render, which fails with its message; a read that did not deliver bumps the source's generation so the next render loads the image anew. The source's destructor runs release, in the same slot |
+| Tiled rendering (PROVISIONAL) | `cbc_host_tile_size`: `SessionParams::use_auto_tile` and `tile_size` per render and bake. The overlay of `integrator/path_trace.cpp` keeps the finished tiles in memory in place of Cycles' tile file (`codebrix_memory_*`, `native/tools/cycles_overlay.py`); `Session::full_buffer_written_cb` records the frame's name (`Host::tile_frame`), `Host::read_back_tiles` calls `Session::process_full_buffer_from_disk` after `session.wait()` on the calling thread, and `DropTiles` drops what a cancelled or failed render left (`codebrix_memory_tiles(path tracer, true)`). `HostOutput::read_render_tile` copies a bake tile's region of the bake map; `Host::film_update` places a progressive tile in `tiled_film`. The device report's `tiledRendering` counts the tiles kept and frames read back |
+| Delivered film (PROVISIONAL) | `HostOutput::delivered_layout` and `read_pass`: the tile, the render buffer parameters the passes are read with (`codebrix_delivered_buffer_params`, the overlay of `integrator/path_trace.cpp`, set around `PathTrace::tile_buffer_write`'s call of the output driver) and every component of every pass read (`unwritten_marker`) must match the render or bake requested; otherwise `Result::delivered_error` fails it (`CBC_FAILED`) |
+| Callbacks | `cbc_host_set_event_callback`; `Progress::set_update_callback` drives status/progress events under a per-host event mutex; a thread-local name of the running callback (an event callback, a tiled image's read or release callback) makes `boundary()` refuse reentry by that name. A nonzero return, `cbc_host_cancel`, destroy and a failed tile read call `Host::request_cancel`, which sets the flag the session's cancel callback polls between batches and wakes the render's `CancelWatch` thread: it stops the running batch with `PathTrace::cancel` (`HostSession::cancel_path_trace`; never `Session::cancel`, which also cancels the device, and on Metal its pending kernel compilations) and repeats that every 5 ms until the session has finished. After a request the progress count stops advancing (Cycles counts a batch when it schedules it) |
 | Passes/AOVs | `HostOutput` copies every named caller pass from the same complete tile as Combined; `cbc_host_pass_floats`, `cbc_host_render_passes_json` |
 
 Known limits found while closing them (see ABI.md): the WebGPU device writes
@@ -102,7 +104,9 @@ Phase E3 closed three of the original limits. Edits after a render apply as for
 a scene built with them (`host_edits.inc`: the host keeps the authored
 attributes of geometry the static BVH path may bake and restores them before a
 geometry edit or a render whose bake would differ; baked volumes are refused with
-`CBC_NOT_READY`). A render after a device error recovers an intact WebGPU device
+`CBC_NOT_READY`; for a mesh with true displacement it keeps the authored attributes
+from the render that displaced it and restores them before Cycles displaces it again,
+`reconcile_displacement`, PROVISIONAL). A render after a device error recovers an intact WebGPU device
 (`recover_device` in `cycles_host.cpp`, `WebGPUDevice::recover`); a device that
 cannot recover keeps the host faulted ("Host faulted"). The Intel Mesa 25.0.7
 compiler crash while creating `shade_surface_light` when a scene adds lights in

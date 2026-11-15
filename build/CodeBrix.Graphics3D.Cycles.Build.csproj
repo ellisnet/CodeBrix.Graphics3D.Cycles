@@ -85,7 +85,7 @@
 	<ItemGroup>
 		<_Nuspec Include="$(_NuspecDir)\CodeBrix.Graphics3D.Cycles.LinuxX64.nuspec" />
 		<!-- Packed once its payload is present: the committed native/binaries/osx-arm64/
-		     (staged and committed on an Apple Silicon Mac), or a scratch stage named by
+		     (staged on an Apple Silicon Mac), or a scratch stage named by
 		     MacOSArm64Payload. Until then a run packs the rest of the family without it. -->
 		<_Nuspec Include="$(_NuspecDir)\CodeBrix.Graphics3D.Cycles.MacOSArm64.nuspec" Condition="'$(MacOSArm64Payload)'!='' Or Exists('$(_RepoRoot)native\binaries\osx-arm64\provenance.json')" />
 	</ItemGroup>

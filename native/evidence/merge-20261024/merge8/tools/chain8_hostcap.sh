@@ -6,7 +6,7 @@
 # runs/<dev>/hostcap-*-failed-m6path, the stage is pushed again (hash-verified), the replays run, everything is cleaned.
 cd "$(dirname "$0")"; dev=$1; M=$(realpath ..); V=$M/validation; source ./lock8.sh
 case $dev in hp) serial=192.168.86.225:5555;; samsung) serial=R52W207XQ1V;; esac
-A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"; LOG=$M/device/$dev-chain.log
+A="<home>/Android/Sdk/platform-tools/adb -s $serial"; LOG=$M/device/$dev-chain.log
 lg(){ echo "[$(date +%H:%M:%S)] $dev $*" >> $M/timeline.log; }
 T=$V/c-triangle/out/triangle_lighting/run; S=$V/c-shadow-terminator/out/shadow_terminator/run
 acquire $dev "chain8_hostcap.sh $dev (re-stage, host-capture replays, cleanup)" || exit 2

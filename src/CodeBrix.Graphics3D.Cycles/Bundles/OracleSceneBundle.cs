@@ -154,6 +154,12 @@ public sealed class OracleSceneBundle
         {
             if (Required(document.RootElement, "render").TryGetProperty("curveSubdivisions", out JsonElement subdivisions))
                 scene.Host.SetCurveSubdivisions(subdivisions.GetUInt32());
+            if (Required(document.RootElement, "render").TryGetProperty("textureLimit", out JsonElement textureLimit))
+                scene.TextureLimit = textureLimit.GetUInt32();
+            if (Required(document.RootElement, "render").TryGetProperty("bvhSpatialSplit", out JsonElement spatialSplit))
+                scene.UseBvhSpatialSplit = spatialSplit.GetBoolean();
+            if (Required(document.RootElement, "render").TryGetProperty("tileSize", out JsonElement tileSize))
+                scene.TileSize = tileSize.GetUInt32();
             if (document.RootElement.TryGetProperty("images", out JsonElement images))
                 foreach (JsonElement image in images.EnumerateArray()) builder.Image(image);
             foreach (JsonElement entry in Required(document.RootElement, "nodes").EnumerateArray()) builder.Entry(entry);
@@ -214,6 +220,7 @@ public sealed class OracleSceneBundle
             ["float"] = AttributeValue.Float, ["color"] = AttributeValue.Color, ["vector"] = AttributeValue.Vector,
             ["point"] = AttributeValue.Point, ["normal"] = AttributeValue.Normal, ["point2"] = AttributeValue.Point2,
             ["transform"] = AttributeValue.Transform, ["float4"] = AttributeValue.Float4, ["byte4"] = AttributeValue.Byte4,
+            ["quaternion"] = AttributeValue.Quaternion, ["spherical_harmonics_rest"] = AttributeValue.SphericalHarmonicsRest,
         };
         private static readonly Dictionary<string, AttributeDomain> Domains = new(StringComparer.Ordinal)
         {
@@ -459,6 +466,23 @@ public sealed class OracleSceneBundle
         {
             if (socket == "image")
             {
+                // An object binds UDIM tiles (provisional): tile numbers to image handles, in document order.
+                if (value.ValueKind == JsonValueKind.Object)
+                {
+                    List<uint> tiles = [];
+                    List<Image> bound = [];
+                    foreach (JsonProperty tile in value.EnumerateObject())
+                    {
+                        if (!uint.TryParse(tile.Name, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out uint number))
+                            throw new FormatException($"UDIM tile '{tile.Name}' of socket '{socket}' is not a tile number.");
+                        if (tile.Value.ValueKind != JsonValueKind.String || !images.TryGetValue(tile.Value.GetString(), out Image tileImage))
+                            throw new FormatException($"Unknown image handle for UDIM tile {tile.Name} of socket '{socket}'.");
+                        tiles.Add(number);
+                        bound.Add(tileImage);
+                    }
+                    host.BindImageTiles(target, tiles.ToArray(), bound.ToArray());
+                    return;
+                }
                 if (!images.TryGetValue(value.GetString(), out Image image)) throw new FormatException($"Unknown image handle for socket '{socket}'.");
                 host.BindImage(target, image);
                 return;

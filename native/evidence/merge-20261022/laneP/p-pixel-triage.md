@@ -1,6 +1,6 @@
 # Lane P: Pixel 4 XL triage under the device reference policy (2026-10-22)
 
-Worktree `/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage` (branch p-pixel-triage, base 3392df3d).
+Worktree `<home>/ClaudeHome/cycles-worktrees/p-pixel-triage` (branch p-pixel-triage, base 3392df3d).
 Device: Pixel 4 XL `98271FFBA0048D`, Adreno 640, API 33. Policy: plan section 46. A job is not supported on the
 Adreno 640 if it fails on the Pixel, or if it takes more than 3x its Samsung (Adreno 730) wall time. Nothing in
 product code was changed. The only repository edits are `AGENT-README.txt` and `native/DEVICE.md` (patch sha256 `47602c7698976bc21d2f676225c2d8226589f89538da6340fb9129481c72a023`; `git apply --check -R` OK). Handoff: `native/work/p/handoff/`.
@@ -337,7 +337,7 @@ only during batches, and the device was cleaned and the lock released between th
   `com.codebrix.cycles.hostexperiment`, `com.codebrix.samples.*`) were left alone.
 - The HP was not touched.
 
-## Decisions needed from Jeremy
+## Decisions needed from the maintainer
 
 1. **The 5 s floor** on 3x cutoffs below 5 s (adb latency). It affects three trivially passing jobs.
 2. **Transparent shadows and lighting.** They are newly failing on the Pixel, from one run each. Accept the

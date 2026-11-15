@@ -207,6 +207,181 @@ public class OracleSceneBundleTests
         a.Span.SequenceEqual(b.Span).Should().BeTrue();
     }
 
+    // The committed scene with both provisional attribute kinds (native/oracle/scenes/attributes): the loader passes the
+    // value names "quaternion" and "spherical_harmonics_rest" to the host, which reads the quaternions back exactly and the
+    // coefficients within half an 8-bit step, and the scene renders repeat-identically.
+    [Fact]
+    public void quaternion_and_spherical_harmonics_attributes_of_a_committed_scene_reach_the_host()
+    {
+        //Arrange
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        string path = Path.Combine(RepositoryPaths.Root, "native", "oracle", "scenes", "attributes", "quaternion-and-spherical-harmonics.json");
+        OracleSceneBundle bundle = OracleSceneBundle.Load(path);
+        using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(bundle.Json);
+        System.Text.Json.JsonElement sphere = document.RootElement.GetProperty("nodes").EnumerateArray().First(n => n.GetProperty("handle").GetString() == "sphere");
+        float[] Data(string name) => sphere.GetProperty("mesh").GetProperty("attributes").EnumerateArray()
+            .First(a => a.GetProperty("name").GetString() == name).GetProperty("data").EnumerateArray().Select(v => v.GetSingle()).ToArray();
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        RenderSettings settings = new(16, 12, 2);
+
+        //Act
+        IReadOnlyDictionary<string, Node> nodes = bundle.Apply(scene);
+        GeometryBaseNode mesh = scene.Wrap<GeometryBaseNode>(nodes["sphere"]);
+        FilmBuffer first = scene.Render(settings);
+        FilmBuffer second = scene.Render(settings);
+
+        //Assert
+        mesh.GetAttribute("q").Should().Equal(Data("q"));
+        float[] coefficients = Data("sh");
+        mesh.GetAttribute("sh").Zip(coefficients, (read, set) => MathF.Abs(read - set)).Max().Should().BeLessThanOrEqualTo(1f / 255f + 1e-6f);
+        first.Span.SequenceEqual(second.Span).Should().BeTrue();
+        first.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+    }
+
+    // A committed Gaussian splat scene (native/oracle/scenes/gsplat): the loader passes the standard flag and the render_as
+    // socket to the host, the splats render repeat-identically, and the authored rotation and radius read back after the
+    // render (Cycles bounds the splats with a radius of its own).
+    [Fact]
+    public void a_committed_gaussian_splat_scene_renders_through_the_loader()
+    {
+        //Arrange
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        string path = Path.Combine(RepositoryPaths.Root, "native", "oracle", "scenes", "gsplat", "spherical-harmonics.json");
+        OracleSceneBundle bundle = OracleSceneBundle.Load(path);
+        using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(bundle.Json);
+        System.Text.Json.JsonElement cloud = document.RootElement.GetProperty("nodes").EnumerateArray().First(n => n.GetProperty("handle").GetString() == "splats");
+        float[] Values(System.Text.Json.JsonElement array) => array.EnumerateArray().Select(v => v.GetSingle()).ToArray();
+        float[] Data(string name) => Values(cloud.GetProperty("points").GetProperty("attributes").EnumerateArray()
+            .First(a => a.GetProperty("name").GetString() == name).GetProperty("data"));
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        RenderSettings settings = new(16, 12, 2);
+
+        //Act
+        IReadOnlyDictionary<string, Node> nodes = bundle.Apply(scene);
+        PointCloudNode splats = scene.Wrap<PointCloudNode>(nodes["splats"]);
+        FilmBuffer first = scene.Render(settings);
+        FilmBuffer second = scene.Render(settings);
+
+        //Assert
+        splats.RenderAs.Should().Be(PointCloudRenderAs.GaussianSplats);
+        splats.GetAttribute("rotation", AttributeFlags.Standard).Should().Equal(Data("rotation"));
+        splats.GetAttribute("radius").Should().Equal(Values(cloud.GetProperty("points").GetProperty("radius")));
+        first.Span.SequenceEqual(second.Span).Should().BeTrue();
+        first.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+    }
+
+    // A committed UDIM scene (native/oracle/scenes/images): the image pseudo-socket's object form binds the tiles in document
+    // order through the loader; the scene renders repeat-identically, differs from the same document with one tile
+    // removed, and a tile key that is not a number or names no image is refused by name.
+    [Fact]
+    public void a_committed_udim_scene_binds_its_tiles_through_the_loader()
+    {
+        //Arrange
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        string path = Path.Combine(RepositoryPaths.Root, "native", "oracle", "scenes", "images", "udim-missing-tile.json");
+        OracleSceneBundle bundle = OracleSceneBundle.Load(path);
+        Dictionary<string, byte[]> files = bundle.FileNames.ToDictionary(name => name, bundle.ReadFile);
+        const string tiles = "\"image\": {\n        \"1003\": \"a\",\n        \"1001\": \"a\",";
+        bundle.Json.Should().Contain(tiles);
+        OracleSceneBundle withoutTile = OracleSceneBundle.FromJson(bundle.Json.Replace(tiles, "\"image\": {\n        \"1003\": \"a\","), files);
+        OracleSceneBundle notANumber = OracleSceneBundle.FromJson(bundle.Json.Replace("\"1003\": \"a\"", "\"u1003\": \"a\""), files);
+        OracleSceneBundle unknownImage = OracleSceneBundle.FromJson(bundle.Json.Replace("\"1003\": \"a\"", "\"1003\": \"z\""), files);
+
+        //Act
+        FilmBuffer first = Render(bundle);
+        FilmBuffer second = Render(bundle);
+        FilmBuffer missingTile = Render(withoutTile);
+        Action badKey = () => Render(notANumber);
+        Action badImage = () => Render(unknownImage);
+
+        //Assert
+        first.Span.SequenceEqual(second.Span).Should().BeTrue();
+        first.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        missingTile.Span.SequenceEqual(first.Span).Should().BeFalse();
+        badKey.Should().Throw<FormatException>().Which.Message.Should().Contain("UDIM tile 'u1003'");
+        badImage.Should().Throw<FormatException>().Which.Message.Should().Contain("Unknown image handle for UDIM tile 1003");
+    }
+
+    // The texture limit (provisional render.textureLimit): the loader sets the scene's TextureLimit before it binds the
+    // images, so the committed 64x64 block image under a limit of 32 renders bit for bit like its committed twin, the
+    // 32x32 image of the block colours, and unlike the same document without the key.
+    [Fact]
+    public void a_committed_texture_limit_scene_sets_the_limit_through_the_loader()
+    {
+        //Arrange
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        string folder = Path.Combine(RepositoryPaths.Root, "native", "oracle", "scenes", "images");
+        OracleSceneBundle limited = OracleSceneBundle.Load(Path.Combine(folder, "texture-limit-blocks.json"));
+        OracleSceneBundle halved = OracleSceneBundle.Load(Path.Combine(folder, "texture-limit-blocks-halved.json"));
+        Dictionary<string, byte[]> files = limited.FileNames.ToDictionary(name => name, limited.ReadFile);
+        const string key = ",\n  \"textureLimit\": 32\n";
+        limited.Json.Should().Contain(key);
+        OracleSceneBundle unlimited = OracleSceneBundle.FromJson(limited.Json.Replace(key, "\n"), files);
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+
+        //Act
+        limited.Apply(scene);
+        FilmBuffer film = scene.Render(limited.Render);
+        FilmBuffer twin = Render(halved);
+        FilmBuffer full = Render(unlimited);
+
+        //Assert
+        scene.TextureLimit.Should().Be(32u);
+        film.Span.SequenceEqual(twin.Span).Should().BeTrue();
+        film.Span.SequenceEqual(full.Span).Should().BeFalse();
+    }
+
+    // BVH spatial splits (provisional render.bvhSpatialSplit): the loader switches them on before it builds the scene, the
+    // film is bit for bit the document's film without the key (a speed setting), and a value that is not a boolean is
+    // refused.
+    [Fact]
+    public void the_bvh_spatial_split_key_switches_the_setting_and_changes_no_film()
+    {
+        //Arrange
+        static string Document(string extra) => Triangle.Replace("MESH", InlineMesh).Replace("\"samples\": 8", "\"samples\": 8" + extra);
+        OracleSceneBundle split = OracleSceneBundle.FromJson(Document(", \"bvhSpatialSplit\": true"), new Dictionary<string, byte[]>());
+        OracleSceneBundle plain = OracleSceneBundle.FromJson(Document(string.Empty), new Dictionary<string, byte[]>());
+        OracleSceneBundle number = OracleSceneBundle.FromJson(Document(", \"bvhSpatialSplit\": 1"), new Dictionary<string, byte[]>());
+        split.Json.Should().Contain("\"bvhSpatialSplit\": true");
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+
+        //Act
+        split.Apply(scene);
+        FilmBuffer film = scene.Render(split.Render);
+        Action notBoolean = () => Render(number);
+
+        //Assert
+        scene.UseBvhSpatialSplit.Should().BeTrue();
+        film.Span.SequenceEqual(Render(plain).Span).Should().BeTrue();
+        notBoolean.Should().Throw<InvalidOperationException>();
+    }
+
+    // Tiled rendering (provisional render.tileSize): the loader sets the scene's tile size before it builds the scene, the
+    // film is bit for bit the document's film without the key (the CPU reference renders tiles exactly), the 32 x 24
+    // film rendered in 12 tiles kept in memory, and a size Cycles would change is refused.
+    [Fact]
+    public void the_tile_size_key_renders_in_tiles_and_changes_no_film()
+    {
+        //Arrange
+        static string Document(string extra) => Triangle.Replace("MESH", InlineMesh).Replace("\"samples\": 8", "\"samples\": 8" + extra);
+        OracleSceneBundle tiled = OracleSceneBundle.FromJson(Document(", \"tileSize\": 8"), new Dictionary<string, byte[]>());
+        OracleSceneBundle plain = OracleSceneBundle.FromJson(Document(string.Empty), new Dictionary<string, byte[]>());
+        OracleSceneBundle invalid = OracleSceneBundle.FromJson(Document(", \"tileSize\": 7"), new Dictionary<string, byte[]>());
+        tiled.Json.Should().Contain("\"tileSize\": 8");
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+
+        //Act
+        tiled.Apply(scene);
+        FilmBuffer film = scene.Render(tiled.Render);
+        Action refused = () => Render(invalid);
+
+        //Assert
+        scene.TileSize.Should().Be(8u);
+        TiledRenderingTests.Report(scene).TilesKept.Should().Be(12);
+        film.Span.SequenceEqual(Render(plain).Span).Should().BeTrue();
+        refused.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
     [Fact]
     public void bundle_saves_and_loads_from_a_directory_unchanged()
     {

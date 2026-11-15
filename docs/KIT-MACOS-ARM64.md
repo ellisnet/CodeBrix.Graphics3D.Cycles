@@ -33,10 +33,9 @@ Deliverables, all on the branch:
 
 ## 2. Rules that bind every step
 
-1. **Branch.** Create a branch (for example `macos-arm64-full-functionality`) from the commit of `main` that contains this
-   document and record that commit's hash as the **base commit**. Commit and push only that branch. Never commit to, push
-   to, merge into or rebase onto `main`. The branch is reviewed, merged and validated on the Linux x64 machine later; a
-   merge there is a validation event, because the host is shared by every platform.
+1. **Branch.** The work happens on a branch (for example `macos-arm64-full-functionality`) made from the commit of `main`
+   that contains this document, never on `main`; that commit's hash is recorded as the **base commit**. Integrating the
+   branch is a validation event, because the host is shared by every platform.
 2. **The mandatory test rules** at the top of [TESTING-MACOS-ARM64.md](TESTING-MACOS-ARM64.md) apply: .NET SDK 11.0.100
    only (projects keep targeting `net10.0`), the WebGPU runtime only from its package at the pinned version, ISPC 1.30.0.
    Never `sudo`; install nothing the maintainer has not already installed; a missing tool is reported, not installed.
@@ -57,7 +56,7 @@ Deliverables, all on the branch:
 7. **A feature switched on is switched on for every platform.** The host is shared: when it starts accepting something, it
    accepts it on the CPU and Metal devices everywhere, and the WebGPU backend **keeps refusing it by name** until that
    device is ported. The capability report (`native/host/host_api.inc`), the render-time rejection list of
-   `AGENT-README.txt` and `native/host/ABI.md` change in the same commit and carry the same words (a managed test compares
+   `AGENT-README.txt` and `native/host/ABI.md` change together and carry the same words (a managed test compares
    the first two).
 8. **Old evidence is void.** Every film, reference and hash recorded before the pin moved to v5.3.0 belongs to the previous
    revision. Never compare a v5.3.0 film with one of them as a verdict. No Linux x64 reference of v5.3.0 is committed at
@@ -130,8 +129,7 @@ by this kit.
 ## 5. Part B: the Linux ARM64 CPU oracle
 
 Follow [TESTING-LINUX-ARM64-ORACLE.md](TESTING-LINUX-ARM64-ORACLE.md) at the base commit, including its section 10 (what
-the first run at this pin has to show). It writes a new folder `native/evidence/linux-arm64-cpu-oracle-<date>/`, committed
-on the branch.
+the first run at this pin has to show). It writes a new folder `native/evidence/linux-arm64-cpu-oracle-<date>/`.
 
 ## 6. Part C: the survey
 
@@ -142,7 +140,7 @@ the base commit), render it on CPU-arm64 and on Metal, and record one of: both f
 the Metal compiler).
 
 Where the host refuses a row by name, the refusal is lifted **only in a survey build**: a scratch copy of the change, kept
-as a patch file in the survey's evidence folder, never committed as product code. A row whose Metal render is sound becomes
+as a patch file in the survey's evidence folder, never made product code. A row whose Metal render is sound becomes
 a candidate for part D or for the maintainer's ruling; the survey itself decides nothing.
 
 Find every refusal the host and the devices can raise with:
@@ -175,7 +173,7 @@ simply RENDER on Metal, and the survey shows it.
 
 ## 7. Part D: host work
 
-In this order. Each item is finished (built with 0 warnings, tested, documented, committed on the branch) before the next
+In this order. Each item is finished (built with 0 warnings, tested, documented) before the next
 one starts; an item that cannot be finished is left as a clean, reverted tree and a written account.
 
 **Every new public signature is PROVISIONAL.** New C ABI exports, value kinds, enumeration members and managed API members
@@ -197,7 +195,7 @@ provisional in `native/host/ABI.md`, and prefer the smallest surface that follow
    WebGPU backend, in the three places of rule 7. New scenes go under `native/oracle/scenes/gsplat/`, written by a new
    family author script in the style of the existing ones: static, with motion, with and without spherical harmonics,
    beside meshes, volumes and transparent shadows. Each is rendered on CPU-arm64 twice (bitwise) and on Metal.
-3. **The host-only gaps**, each only after items 1 and 2, each as a separate commit, and each only if Cycles' Metal device
+3. **The host-only gaps**, each only after items 1 and 2, and each only if Cycles' Metal device
    supports it (survey row 15): UDIM tiles; progressive results; tiled rendering; the texture limit and the texture cache;
    BVH spatial split; BVH time steps (only if survey row 11 shows an effect). For each: a short design in the report
    first, then the implementation, a host-gate case, a managed test and the documentation.
@@ -207,7 +205,7 @@ provisional in `native/host/ABI.md`, and prefer the smallest surface that follow
 Counts that fixtures assert and that these items move: the number of C ABI exports, the registry's node-type and socket
 counts in the generated model, and the capability report's lists. Find every literal before changing one
 (`git grep -n` for the current numbers in `native/host`, `native/tools` and `tests/`), and update host fixtures and managed
-tests in the same commit. Gate scripts for platforms that cannot be run here are updated by reading and listed in the
+tests together with them. Gate scripts for platforms that cannot be run here are updated by reading and listed in the
 report as unverified.
 
 What cannot be done on this machine and is listed in the report instead: the Linux x64 build and its gates; the x64 CPU
@@ -223,9 +221,9 @@ that needs the WebGPU device.
 4. `git diff --stat <base commit>` is quoted in the report; nothing appears under `third_party/cycles`, `native/shaders`,
    an existing `native/evidence` folder or another platform's recipe unless the report explains the line.
 
-## 9. The report and what comes back
+## 9. The report
 
-Everything comes back on the branch. The survey's films, patches and comparisons, and the report, go in ONE new folder
+The survey's films, patches and comparisons, and the report, go in ONE new folder
 `native/evidence/macos-arm64-survey-<date>/` with a `README.md` and a `SHA256SUMS.txt`; the base and closing oracle runs
 follow section 7 of `TESTING-MACOS-ARM64.md` (the oracle bundle). Absolute host paths are written as `<repo>` and `<home>`.
 

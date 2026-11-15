@@ -1,6 +1,6 @@
 # Phase E4: triangle image mode 4 (static instanced emitters) on the Adreno 730/640
 
-Agent: E4 (Opus 5.5). Worktree `/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno` (detached at 01eb27b6,
+Agent: E4 (Opus 5.5). Worktree `<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno` (detached at 01eb27b6,
 seeded from `baseline-merge1.json`). Devices: Samsung SM-X700 `R52W207XQ1V` for the lane, Pixel 4 XL
 `98271FFBA0048D` for the final confirmation. Runtime unchanged (CodeBrix.WebGpu.Native.MitLicenseForever
 1.0.290.1433; android-arm64 `libcodebrix_wgpu.so` sha256 `8113cbfa...`, verified on the device before every

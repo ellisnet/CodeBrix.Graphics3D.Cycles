@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
   } else REQUIRE(strcmp(how, "none") == 0);
   const int hosts = argc == 4 ? atoi(argv[3]) : 1;
   for (int i = 0; i < hosts; i++) {
-    CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, strcmp(argv[2], "gpu") == 0 ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE, 1, {0}};
+    CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, strcmp(argv[2], "gpu") == 0 ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE, 1, {0}, 0, 0};
     CBCHost host = 0; CHECK(cbc_host_create(&config, &host));
     uint64_t required = 0;
     REQUIRE(cbc_host_device_report_json(host, NULL, 0, &required) == CBC_SMALL_BUFFER);

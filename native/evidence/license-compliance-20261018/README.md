@@ -3,7 +3,7 @@
 Copyright (c) 2026 Jeremy Ellis and contributors
 
 This checkpoint records the source, attribution, build and rendering review
-under Jeremy's Apache-2.0 compatibility policy. The outcome is recorded in
+under the maintainer's Apache-2.0 compatibility policy. The outcome is recorded in
 `validation.json`; individual reports retain their actual findings and limits.
 It covers the proposed repository and the bounded Linux native rendering proof,
 including Android API 33 GPU command replay. It does not certify unbuilt native
@@ -76,3 +76,9 @@ Run `python3 tools/licensing/audit.py`,
 The saved command/build records identify the binary and rendering invocations.
 Files ending in `.json.gz` or `.log.gz` are ordinary gzip-compressed evidence,
 not compiled artifacts. `manifest.json` hashes every saved checkpoint file.
+
+Personal identifiers were replaced on 2026-11-14 in this folder's text files
+and in the earlier evidence folders (home directories by `<home>`, the e-mail
+address by `<email>`, the maintainer's name in prose by "the maintainer"). The
+compressed `.json.gz` inputs were not edited: they still contain those
+identifiers and record the earlier SHA-256 of 273 of the changed files.

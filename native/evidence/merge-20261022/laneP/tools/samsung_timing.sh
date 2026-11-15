@@ -2,8 +2,8 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Lane P: one Samsung lock session (<= 20 min) to time jobs that have no Samsung wall in any record.
-cd "$(dirname "$0")"; P=$(realpath ..); L=/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks; serial=R52W207XQ1V
-A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"; ref=$P/reference/linux-x64
+cd "$(dirname "$0")"; P=$(realpath ..); L=<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks; serial=R52W207XQ1V
+A="<home>/Android/Sdk/platform-tools/adb -s $serial"; ref=$P/reference/linux-x64
 lg(){ echo "[$(date +%H:%M:%S)] samsung-timing $*" >> $P/timeline.log; }
 for x in samsung $serial; do [ -e $L/$x ] && { lg "lock $x HELD by another lane; deferred"; exit 2; }; done
 mkdir $L/samsung 2>/dev/null || { lg "lock HELD; deferred"; exit 2; }

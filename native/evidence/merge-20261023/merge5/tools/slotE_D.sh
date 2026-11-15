@@ -4,7 +4,7 @@
 # Merge wave 5 part 2, Linux stream D: the ledger's cited Linux gates re-run on the final tree (as lane z0 did: plain gates and
 # render --attributes/--images/--normals, nodes_svm, nodes_world; nodes_render comes from e-nodes-render-superset), then the two
 # Linux command replays (Principled and node render) with the part-1 render_replay binary (no rebuild).
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge5; V=$M/validation; S=$M/tools/slot.sh; B=$R/native/work/cycles-build/bin
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge5; V=$M/validation; S=$M/tools/slot.sh; B=$R/native/work/cycles-build/bin
 cd $R
 run(){ g=$1; $S ev-$g 1200 env -u OCIO $B/codebrix_cycles_${g}_gate $V/ev-$g/run; }
 for g in render device camera background closest svm_world svm_surface attribute image image_file normal; do run $g; done

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Merge wave 8 (copied from merge wave 7) part 2: build comparator roots (Linux CPU + Linux WGSL from oracles-p2, plus the device WGSL films of the managed bundle-mode runs) and run compare.py.
-M=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8; R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; C=$M/validation/p2-cmp-root; rm -rf $C; mkdir -p $M/validation/p2-comparator-all
+M=<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8; R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; C=$M/validation/p2-cmp-root; rm -rf $C; mkdir -p $M/validation/p2-comparator-all
 cd $R
 mk(){ name=$1; scenepath=$2; src=$3   # name: control|bench|hdri ; scenepath e.g. gltf/textured-plane ; src: oracles-p2 dir
   mkdir -p $C/$name/oracle/$scenepath; cp -r $M/oracles-p2/$src/oracle/$scenepath/. $C/$name/oracle/$scenepath/

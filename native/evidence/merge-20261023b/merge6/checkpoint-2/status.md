@@ -152,7 +152,7 @@ all device chains and Linux streams finished 14:02; ledger rewritten; freezing c
 [14:01:20] hp cleaned (left: '')
 [14:01:20] hp lock released
 [14:01:45] hp lock taken (chain6_device.sh hp batch F (cleanup, leftovers), waited 240s)
-[14:01:46] hp leftovers listed: 59 folders, 5807936 KB, listing /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/device/hp-leftovers-listing.txt; kept: codebrix-ncdbg (2026-09-08) 
+[14:01:46] hp leftovers listed: 59 folders, 5807936 KB, listing <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/device/hp-leftovers-listing.txt; kept: codebrix-ncdbg (2026-09-08) 
 [14:01:47] hp leftovers removed; remaining codebrix-*: /data/local/tmp/codebrix-ncdbg 
 [14:01:47] hp cleaned (left: '')
 [14:01:47] hp lock released

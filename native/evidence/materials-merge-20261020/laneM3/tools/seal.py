@@ -5,9 +5,9 @@
 Read-only on git (no index/ref changes): new files are diffed with --no-index."""
 import hashlib,json,shutil,subprocess,sys
 from pathlib import Path
-ROOT=Path('/home/jeremy/ClaudeHome/cycles-worktrees/m3-procedural')
+ROOT=Path('<home>/ClaudeHome/cycles-worktrees/m3-procedural')
 OUT=ROOT/'native/work/m3/handoff'
-BASE=json.loads(Path('/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-materials.json').read_text())
+BASE=json.loads(Path('<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-materials.json').read_text())
 sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest()
 status=subprocess.run(['git','status','--porcelain','--untracked-files=all'],cwd=ROOT,capture_output=True,text=True,check=True).stdout.splitlines()
 paths=sorted(l[3:] for l in status if not l[3:].startswith('native/work/'))
@@ -26,10 +26,10 @@ for p in paths:
     patch+=r.stdout
     dest=OUT/'source'/p;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(ROOT/p,dest)
 (OUT/'changes.patch').write_text(patch)
-json.dump({'baselineManifest':'/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-materials.json','baselineHead':BASE['head'],
+json.dump({'baselineManifest':'<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-materials.json','baselineHead':BASE['head'],
            'worktree':str(ROOT),'changes':changes},open(OUT/'changes.json','w'),indent=1)
 extra=json.loads(sys.argv[1]) if len(sys.argv)>1 else {}
-handoff={'lane':'M3 materials: M1+M2 reconciliation and procedural opcodes (Gabor, wavelength, wireframe)','worktree':str(ROOT),'baselineManifest':'/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-materials.json',
+handoff={'lane':'M3 materials: M1+M2 reconciliation and procedural opcodes (Gabor, wavelength, wireframe)','worktree':str(ROOT),'baselineManifest':'<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-materials.json',
          'baselineHead':BASE['head'],'patchSha256':sha(OUT/'changes.patch'),'changedPaths':len(paths),
          'runtime':'CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433 (unchanged)',**extra}
 json.dump(handoff,open(OUT/'handoff.json','w'),indent=1)

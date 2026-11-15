@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 2, Linux slot 2 (sequential): material gates (M1/M2/M3), spec on/off identities, replays, SVM gates,
 # and the Linux reference export for the device runs (X1 policy).
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge2; V=$M/validation; S=$M/tools/slot.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge2; V=$M/validation; S=$M/tools/slot.sh
 T=$R/native/tools; B=$R/native/work/cycles-build/bin
 cd $R
 pl(){ echo "CODEBRIX_CYCLES_PIPELINE_LOG=$V/$1/pipelines.jsonl"; }
