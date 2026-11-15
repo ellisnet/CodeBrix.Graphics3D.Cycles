@@ -269,19 +269,10 @@ public class TiledImageTests(ITestOutputHelper output)
 
     // ---- Tile sizes (provisional) -------------------------------------------------------------------------------------
 
-    // Every tile size a tiled image may choose on the CPU backends: the powers of two from 64 to 65536.
-    public static TheoryData<int> CpuTileSizes => [.. Enumerable.Range(6, 11).Select(shift => 1 << shift)];
-
-    // Cycles allocates the tile pool of a format whole at its first tile load: 64 tiles of (size + 4)^2 pixels, 1.1 TB of
-    // address space for byte4 tiles of 65536. macOS reserves it without memory until a page is written (only the rows of
-    // the tiles loaded are), while Linux and Windows refuse or commit such allocations, which Cycles does not survive
-    // (device_memory::host_alloc throws std::bad_alloc). The images below are 8 rows high, so a tile is t x 8 texels at
-    // every size; above 1024 (a 271 MB pool) the cases run on macOS only.
-    private static void RequirePoolAddressSpace(int tileSize)
-    {
-        if (tileSize > 1024 && !OperatingSystem.IsMacOS())
-            Assert.Skip($"A tile pool of {tileSize}-pixel tiles needs {64L * (tileSize + 4) * (tileSize + 4) * 4} bytes of address space, reserved lazily only on macOS.");
-    }
+    // Every tile size a tiled image may choose on the CPU backends: the powers of two from 64 to 1024 (TiledImage.MaxTileSize;
+    // Cycles allocates the tile pool of a format whole at its first tile load, 64 tiles of (size + 4)^2 pixels, 271 MB for
+    // byte4 tiles of 1024). The images below are 8 rows high, so a tile is t x 8 texels at every size.
+    public static TheoryData<int> CpuTileSizes => [.. Enumerable.Range(6, 5).Select(shift => 1 << shift)];
 
     // The strip's UV extents for an 8t x 8 image at tile size t: Cycles limits the footprint's anisotropy to 16
     // (kernel_image_tile_map), so with 8 rows the u footprint decides, e * 8t / 64 texels per pixel over 16, and
@@ -323,7 +314,6 @@ public class TiledImageTests(ITestOutputHelper output)
     public void at_every_tile_size_mip_levels_are_selected_by_the_footprint_and_read_in_tiles_of_that_size(int tileSize)
     {
         //Arrange
-        RequirePoolAddressSpace(tileSize);
         using CyclesScene scene = TestScenes.CreateCpuScene();
         LevelReader reader = TileSizeStrip(scene, tileSize);
 
@@ -348,7 +338,6 @@ public class TiledImageTests(ITestOutputHelper output)
     public void at_every_tile_size_a_tiled_image_renders_like_the_same_pixels_bound_plainly(int tileSize)
     {
         //Arrange
-        RequirePoolAddressSpace(tileSize);
         using CyclesScene plainScene = TestScenes.CreateCpuScene();
         using CyclesScene tiledScene = TestScenes.CreateCpuScene();
 
@@ -365,14 +354,14 @@ public class TiledImageTests(ITestOutputHelper output)
         reader.Reads.Max(r => r.Width).Should().BeInRange(tileSize + 1, tileSize + 4);
     }
 
-    // Provisional tile sizes: 0 and 64 are the default; any size Cycles' texture cache does not take on the backend is
-    // refused by name when the image is created, and the level helpers follow the tile size.
+    // Provisional tile sizes: 0 and 64 are the default; any size the CPU backends do not take (not a power of two, below 64,
+    // or above 1024, the CPU's cap) is refused by name when the image is created, and the level helpers follow the tile size.
     [Fact]
     public void tile_sizes_the_cpu_backends_do_not_take_are_refused_by_name()
     {
         //Arrange
         using CyclesScene scene = TestScenes.CreateCpuScene();
-        uint[] refused = [1, 8, 32, 63, 65, 96, 100, 1000, 65535, 65537, 131072, 1u << 20, 1u << 31, uint.MaxValue];
+        uint[] refused = [1, 8, 32, 63, 65, 96, 100, 1000, 1025, 2048, 4096, 65535, 65536, 65537, 131072, 1u << 20, 1u << 31, uint.MaxValue];
         LevelReader reader = Reader(256, 256, SolidLevels(256, 256));
 
         //Act / Assert
@@ -381,15 +370,16 @@ public class TiledImageTests(ITestOutputHelper output)
             Action create = () => scene.CreateTiledImage(256, 256, ImageFormat.Byte4, reader, size);
             NativeFailure error = create.Should().Throw<NativeFailure>().Which;
             error.NativeStatus.Should().Be(NativeStatus.Invalid);
-            error.Message.Should().Contain($"Invalid tiled image tile size {size}: 0 (the default, 64) or a power of two from 64 to 65536");
+            error.Message.Should().Contain($"Invalid tiled image tile size {size}: 0 (the default, 64) or a power of two from 64 to 1024");
         }
         using (CyclesImage image = scene.CreateTiledImage(256, 256, ImageFormat.Byte4, reader)) image.IsTiled.Should().BeTrue();
         TiledImage.LevelCount(512, 512, 128).Should().Be(3);
         TiledImage.LevelCount(512, 512, 512).Should().Be(1);
         TiledImage.LevelCount(200, 100, 256).Should().Be(1);
-        TiledImage.LevelCount(1u << 20, 8, 65536).Should().Be(5);
+        TiledImage.LevelCount(1u << 20, 8, 1024).Should().Be(11);
+        using (CyclesImage largest = scene.CreateTiledImage(256, 256, ImageFormat.Byte4, reader, 1024)) largest.IsTiled.Should().BeTrue();
         TiledImage.LevelSize(1000, 600, 2, 128).Should().Be((250u, 150u));
-        foreach (int size in new[] { 32, 63, 96, 131072 })
+        foreach (int size in new[] { 32, 63, 96, 2048, 65536, 131072 })
             ((Action)(() => TiledImage.LevelCount(512, 512, size))).Should().Throw<ArgumentOutOfRangeException>();
         ((Action)(() => TiledImage.LevelSize(512, 512, 3, 128))).Should().Throw<ArgumentOutOfRangeException>();
     }

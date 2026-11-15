@@ -3657,7 +3657,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     below 1e-5 not implemented": `area_light_valid_ray_segment`'s `angle_almost_zero` branch maps a volume ray into the light's
     frame with the NaN axis, so the segment depends on how each `min` and `max` drops a NaN lane; a probe with a spread of 1e-6
     in the world volume differed in 1,892 practical values before the refusal); an axis of infinities without a NaN (a rotated object scaled below about 1e-23:
-    its CPU comparisons depend on the signs of each ray's components); the light tree at a transmissive point (error bit 131072:
+    its CPU comparisons depend on the signs of each ray's components; since the maintainer's ruling of 2026-11-15 the host
+    refuses it on every backend, "Unsupported feature: area lights with an axis of infinities", before any device, so the
+    device's own refusal is no longer reached; provisional); the light tree at a transmissive point (error bit 131072:
     `is_visible |= has_transmission` takes the CPU into the importance with `cos_theta_u = FLT_MAX`, whose weights overflow);
     and a background light portal of zero extent ("WebGPU degenerate background light portal not implemented": the pinned portal
     sampler returns NaN directions, which the world shader and the closures evaluate). Covered by `emitter_sample` (an area
@@ -3756,7 +3758,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     full-size film, zeros after it (INFERENCE of that report: the host's output driver read the reduced-size render, which
     nothing upscaled). Ruling: the host refuses the factor on every backend when denoising (`cbc_host_render`,
     `CBC_UNSUPPORTED`, "Unsupported feature: a denoiser upscale factor other than 1 (no backend of this library returns an
-    upscaled film)"; AGENT-README.txt "RENDER-TIME REJECTIONS", every backend).
+    upscaled film)"; AGENT-README.txt "RENDER-TIME REJECTIONS", every backend), and, by the ruling of 2026-11-15, at bake
+    before anything bakes (`cbc_host_bake`; provisional), with the delivered-film check (native/host/ABI.md, Conventions)
+    behind both.
 170. **Linear subdivision surfaces: RESOLVED (implemented, every backend); Catmull-Clark stays refused under (b).** FACT
     (diagnosis): `Mesh::num_subd_faces` (`scene/mesh.h`) is a plain member that only `Mesh::resize_subd_faces` sets; the
     `subd_*` sockets the generic socket layer writes leave it at 0, so `Mesh::tessellate` returned at once
@@ -3779,7 +3783,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     true displacement, bit for bit the bake of an ordinary mesh built from the same tessellation and kept in object space;
     Metal within the practical criterion (`SubdivisionBakingTests`, `GpuRenderTests`, scenes `bake/subdivision-*`).
     Pixel-space dicing is refused by name on every backend at bake time (it measures in the dicing camera, which a bake
-    does not set: "Unsupported feature: bakes of subdivision surfaces diced in pixel space"). Two host fixes came with it
+    does not set: "Unsupported feature: bakes of subdivision surfaces diced in pixel space"), for the bake target and, since
+    2026-11-15 (provisional), for any other object's subdivision surface in the baked scene, which the bake's device update
+    would dice in the camera of the last render. Two host fixes came with it
     (provisional): an edit of a subdivision attribute tags the cage's positions, since Cycles dices again only when the
     positions or the dicing settings change (`Mesh::need_tessellation`), and before the edit reached no later render; and
     `cbc_host_subd_mesh` resets the count of vertices the last dicing added (`Mesh::clear_non_sockets`), which before sized
@@ -3857,7 +3863,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
       ("WebGPU progressive results not implemented").
     - Texture cache (tiled, mip-mapped images): RESOLVED on the CPU and Metal backends (provisional). Cycles' cache
       (`scene/image_cache.cpp`) loads tiles (64 x 64 by default; provisional, the consumer's choice of a power of two from
-      64 to 128 on Metal and to 65536 on the CPU, `CBCImageConfig::tile_size`) and mip levels on demand through the virtual
+      64 to 128 on Metal and to 1024 on the CPU, `CBCImageConfig::tile_size`) and mip levels on demand through the virtual
       `ImageLoader::load_pixels_tile` (`scene/image_loader.h`), which the host's `TiledImageLoader`
       (`native/host/host_scene_types.inc`) answers from the consumer's read callback (`cbc_host_image_create_tiled`); no file
       and no OIIO reader is involved, and the consumer decodes its own files (CodeBrix.Imaging). `use_texture_cache` is on
@@ -4137,6 +4143,17 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     changed in 892 values with the release's closures, so the chain at that sample is another one. Same class as items
     47, 180 and 182. The scene, the comparator and the criterion are unchanged; the corpus reports the scene as failing
     by this one pixel.
+191. **Displaced meshes edited after a render: two inputs the host does not track, KNOWN LIMITATION (deferred by the
+    maintainer's ruling, 2026-11-15; every device).** The host keeps a displaced mesh's authored attributes from a render to
+    the next edit and restores them before Cycles displaces the mesh again (native/host/ABI.md, "Edits after a render";
+    provisional). Not covered: (a) a displacement shader that reads a scene value the host does not watch, such as the
+    Scene Time node (`scene_attributes` `time` and `frame`): Cycles does not displace the mesh again when only that value
+    changes, so the mesh keeps the earlier displacement until the mesh, its shaders or its object are edited; (b) on the
+    Metal backend with MetalRT, when the scene grows beyond MetalRT's default limits (16,777,216 instances or 268,435,456
+    primitives), `MetalDevice::set_bvh_limits` (`device/metal/device_impl.mm`, called by `Scene::update_kernel_features`,
+    `scene/scene.cpp`) switches to its extended limits and tags every geometry modified inside the render's scene update,
+    without the host restoring the authored positions first, so a displaced mesh could be displaced twice. (b) is known
+    from reading the source only; no film shows it.
 
 Resolved, or closed under the device reference policy:
 - [34 and 18 of this list] **AO, Bevel and Raycast `only_local` from a transform-applied object beside instances: RESOLVED.**

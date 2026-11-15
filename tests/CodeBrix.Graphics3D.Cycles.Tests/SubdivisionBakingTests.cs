@@ -236,6 +236,56 @@ public class SubdivisionBakingTests
         film.Span.ToArray().Where((value, index) => index % 4 == 3).Count(alpha => alpha == 1).Should().BeGreaterThan(Width * Height / 2);
     }
 
+    // Another subdivision surface of the baked scene diced in pixel space (provisional): Cycles' device update would dice it in
+    // the scene's dicing camera, which a bake does not set (the camera of the last render, or Cycles' default before any), so
+    // a bake of any object is refused by name while one is in the scene, also of an ordinary mesh, before and after a render;
+    // the bake map (the target alone) is not, a cage without an object is not diced into anything a ray meets, and in object
+    // space the bake is bit for bit that of the same scene built with it so.
+    [Fact]
+    public void a_bake_is_refused_by_name_while_another_subdivision_surface_is_diced_in_pixel_space()
+    {
+        //Arrange
+        BakeSettings settings = Settings(BakeType.Combined);
+        MeshNode Other(CyclesScene scene, MeshSubdAdaptiveSpace space)
+        {
+            MeshNode other = scene.CreateMesh([], []);
+            other.SetSubdivisionCage([.. Cage.Select((value, i) => i % 3 == 2 ? value - 3f : value)], FaceCorners, Corners);
+            other.SubdivisionType = MeshSubdivisionType.Linear;
+            other.SubdAdaptiveSpace = space;
+            return other;
+        }
+        using CyclesScene reference = TestScenes.CreateCpuScene();
+        (ObjectNode referenceTarget, _) = Build(reference, false);
+        reference.CreateObject(Other(reference, MeshSubdAdaptiveSpace.Object));
+        FilmBuffer expected = reference.Bake(referenceTarget, settings);
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        (ObjectNode target, _) = Build(scene, false);
+        MeshNode other = Other(scene, MeshSubdAdaptiveSpace.Pixel);
+        FilmBuffer withoutObject = scene.Bake(target, settings);
+        scene.CreateObject(other);
+        MeshNode plain = scene.CreateMesh([-1f, -3f, 1f, 1f, -3f, 1f, 1f, -2f, 1f], [0, 1, 2]);
+        plain.SetAttribute("uv", AttributeValue.Point2, AttributeDomain.Corner, AttributeFlags.Standard, [0f, 0f, 1f, 0f, 1f, 1f]);
+        ObjectNode plainTarget = scene.CreateObject(plain);
+        void Refused(ObjectNode baked)
+        {
+            NativeFailure error = Assert.Throws<NativeFailure>(() => scene.Bake(baked, settings));
+            error.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            error.Message.Should().Contain("Unsupported feature: bakes of subdivision surfaces diced in pixel space");
+            error.Message.Should().Contain("another subdivision surface of the baked scene");
+        }
+
+        //Act / Assert
+        withoutObject.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        Refused(target);
+        Refused(plainTarget);
+        scene.ReadBakeMap(target, settings).Triangles.ToArray().Count(triangle => triangle >= 0).Should().BeGreaterThan(Width * Height / 2);
+        scene.Render(new RenderSettings(32, 24, 4));
+        Refused(target);
+        other.SubdAdaptiveSpace = MeshSubdAdaptiveSpace.Object;
+        scene.Remove(plainTarget);
+        scene.Bake(target, settings).Span.SequenceEqual(expected.Span).Should().BeTrue();
+    }
+
     [Fact]
     public void a_triangle_mesh_with_linear_subdivision_and_no_cage_bakes_its_triangles()
     {

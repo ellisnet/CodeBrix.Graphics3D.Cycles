@@ -1865,7 +1865,8 @@ Host library `239c4895d4a956a620a755c2a963905ca01003eeb73c803b1722096596eef9c4`,
 
 The maintainer's answers to the questions of sections 5.3 and 7 in `<repo>/native/work/macos-arm64-kit-20261113-design/decisions.md`:
 the first batch (A2, C26, B8 and B11, and decision 22, C22) below, then C27 (reproducible builds) and the second batch
-(B12, B19, B20, D30 and 28(b)) after its verification, then C24 (subdivision-surface baking, decision 26). The first batch
+(B12, B19, B20, D30 and 28(b)) after its verification, then C24 (subdivision-surface baking, decision 26), and last the
+final ruling batch (decision 34, "Final rulings"). The first batch
 was made in that order on top of the uncommitted Part D tree (D1, D2, the D3 gaps and the cancel fix) at
 `f2586fc17028b62b6e4702a59a401b8d3f230492`. Each item's
 cumulative state is saved as `<repo>/native/work/partD-20261114/batch1-<item>.*` (scratch: `git diff --binary HEAD`, the
@@ -2480,6 +2481,206 @@ subdivision cases set the cage's attributes before the first render or edit the 
   gate scripts were read: none asserts that list or the old bake refusal, so none changed (unverified on those platforms).
 - `python3 tools/licensing/audit.py`: passed. `git diff --check`: clean.
 
+#### Final rulings (2026-11-15)
+
+Decision 34, the last ruling batch of Part D, made on top of the committed Part D tree
+(`49cd3a4a4def9eca2d122cfb7d8d749b881c6869`) in the order 1, 4, 5, 7, 8, 10, 6, 3, 16. Each item's cumulative state is saved
+as `<repo>/native/work/partD-20261114/final-<item>.*` with its targeted test output in `final-<item>/` (scratch); the
+closing checks are in `final/`. Kept as they were (decision 34): the two A2 fixes, no WebGPU refusal of subdivision bakes
+(unverified until Linux), and the two C24 fixes. Every new or changed public behaviour is **PROVISIONAL**. No export,
+enumeration value or struct size moved (65 exports); the capability report gained one every-backend rejection, a narrower
+WebGPU area-light entry, `maxImageDimension` 1073741823 for `cpu` and `cpu-embree`, and `maxImageTileSize` per backend; one
+managed member was added and one constant changed.
+
+**1. Area lights with an axis of infinities (decision 22, narrowed).** `validate_unavailable` (`native/host/host_scene.inc`,
+reached by `cbc_host_render`, `cbc_host_bake` and `cbc_host_bake_map`) computes, with Cycles' own `transform_get_column`
+and `normalize_len`, each axis `AreaLight::copy_to_kernel` (`scene/light.cpp`) gives the kernels, and refuses on every
+backend an area light whose u or v axis has no NaN and is not finite: a column of the object transform times the size with
+no zero component whose squared length underflows to zero, so the axis is all infinities (`CBC_UNSUPPORTED`,
+"Unsupported feature: area lights with an axis of infinities (the light's u axis (its object transform's first column times
+sizeu) has no zero component but a length that underflows to zero, so Cycles divides it by zero; give the light a larger size
+or object scale)"). An axis that underflows with a zero component holds a NaN and stays accepted (the six base-run scenes of
+section 5.4, C22, and the survey's degenerate lights), as do portals (zero-extent portals stay accepted, decision 22) and
+lights `Light::has_contribution` disables by their strength, size or a zero transform column (its test of the emission
+shader needs the compiled shader and is not made). Kit rule 7, together: the every-backend entry "area lights with an axis
+of infinities (an axis with no zero component whose length underflows to zero)" in `native/host/host_api.inc` and
+`AGENT-README.txt` (RENDER-TIME REJECTIONS, with its reason under "Why."), and the WebGPU entry "area lights whose axis
+length underflows to zero, with a spread of zero or below 1e-5, or reached by the light tree at a transmissive surface"
+without "with an axis of infinities" (the precedent of ruling 15; the WGSL device's own refusal in `native/cycles` is
+unchanged and is no longer reached through the host); `native/host/ABI.md` (Lights row), `native/DEVICE.md` item 148.
+**The moved scene.** `lamps/area-degenerate-infinite-axis.json` left the committed corpus (deleted from
+`native/oracle/scenes/lamps/`); `author_degenerate_lights.py` writes it only with `--scratch DIR` (as `DIR/lamps/<name>`),
+refuses to run while a scratch document is in the committed folder, and `--check` passes for the 11 committed documents. The
+scratch copy, byte for byte the removed file (SHA-256 `eb2365b8ab13ecbf...`), is
+`<repo>/native/work/partD-20261114/final-1/scratch-scenes/lamps/area-degenerate-infinite-axis.json`; `native/oracle/README.md`
+says so. Tests: `SceneSettingsTests.Area_lights_with_an_axis_of_infinities_are_refused_by_name_and_other_degenerate_area_lights_render`
+(CPU reference and Embree: the skewed light of the scene refused at render and bake naming the u axis, the v axis alone named,
+an unrotated 1e-23 scale and a 1e-23 size render finite, render and bake, the portal and the zero-strength light render, and
+the light restored renders bit for bit its first film), `GpuRenderTests.gpu_area_lights_with_an_axis_of_infinities_are_refused_by_name_and_a_nan_axis_renders`
+(Metal), `CapabilityReportTests.area_lights_with_an_axis_of_infinities_are_a_rejection_of_every_backend` and the word-for-word
+list comparison; 15 targeted tests passed.
+
+**4. The denoiser upscale factor at bake (ruling 14 extended).** `cbc_host_bake` refuses it after `validate_geometry`, before
+the bake map, any restore or the session (`validate_upscale_factor`, `native/host/cycles_host.cpp`, which `cbc_host_render`
+now calls in place of its inline check, unchanged in place and words): with denoising, a factor other than 1 is
+`CBC_UNSUPPORTED`, "Unsupported feature: a denoiser upscale factor other than 1 (no backend of this library returns an
+upscaled film)", on every backend and whatever the denoise device. The size query (capacity 0) still answers, and
+`cbc_host_bake_map`, which renders nothing, is not refused. The C26 delivered-film check stays behind both refusals.
+Documents: `native/host/ABI.md` (Conventions, Sampling row, Baking), `AGENT-README.txt` (BAKING TEXTURES, "Why."),
+`native/DEVICE.md` item 169. Tests: `DeliveredFilmTests.a_bake_with_a_denoiser_upscale_factor_is_refused_by_name_before_it_bakes_as_a_render_is`
+(untiled and in tiles of 16: the bake and the render refused by name with no render event, the bake map equal to a plain
+scene's, a bake at 2 without denoising bit for bit the bake at 1 without denoising, and after the refusal the bake at 1 bit
+for bit a new scene's; it replaces the test that expected a CPU bake at 2 to equal the bake at 1) and
+`GpuRenderTests.a_gpu_bake_with_a_denoiser_upscale_factor_is_refused_by_name_before_it_bakes` (Metal, GPU and CPU denoising
+refused, the factor 1 bakes; it replaces the test that expected the delivered-film failure); 23 targeted tests passed.
+
+**5. The largest image side of the CPU backends.** Cycles' CPU kernels compute `2 * width` and `2 * height` in `int` for the
+Mirror extension (`wrap_mirror`, `kernel/util/image.h`). At render, bake and bake map on `CBC_HOST_CPU_REFERENCE` and
+`CBC_HOST_CPU` the host refuses every image bound whole (each UDIM tile too) whose loaded size exceeds 1073741823 in
+either side (`images_within_cpu_limit`, `CBC_UNSUPPORTED`, "Unsupported feature: an image wider or taller than 1073741823
+pixels on the CPU backends (...); this image loads at W x H[ with the texture limit]: ..."). The loaded size is the one Cycles
+computes from the texture limit (`loaded_image_size`: `ImageManager::device_load_image`, `ImageCache::load_full`,
+`util_image_resize_pixels`, in binary32, in which a limit of 1073741823 is 2^30 and leaves an image of 2^30 whole). Tiled
+images are not bound by it. `backendScope.cpu.maxImageDimension` and `cpu-embree`'s are 1073741823 (were `INT_MAX`);
+`limits.maxImageDimension` stays `INT_MAX`. Documents: `native/host/ABI.md` (Backends and capability queries),
+`AGENT-README.txt` (BackendScope, TEXTURE LIMIT), the `BackendScope.MaxImageDimension` XML documentation. Tests:
+`TextureLimitTests.an_image_wider_or_taller_than_1073741823_pixels_is_refused_by_name_on_the_cpu_backends` (a 2^30 x 1
+and a 1 x 2^30 byte image on the CPU reference, 2^30 x 1 on Embree: refused by name, also under a texture limit of
+1073741823) and `CapabilityReportTests.the_report_states_the_largest_image_side_and_tile_size_of_every_backend`; 12
+targeted tests passed. Not run: an image above the limit reduced by a smaller texture limit (Cycles' resize of a 1 GiB
+image stages 4 GiB).
+
+**7. The CPU tile size of a tiled image.** `tiled_image_largest_tile_size` (`native/host/host_scene.inc`): 128 on Metal,
+1024 on every other backend (was 65536); the Metal reason is unchanged, the CPU one is the pool's memory (Cycles allocates
+64 tiles of (t + 4)^2 pixels whole: 271 MB for byte4 tiles of 1024, 1.1 GB for float4, four times as much at 2048, 1.1 TB of
+address space at 65536). The refusal keeps its words with "from 64 to 1024". The capability report states each backend's
+largest as `backendScope.<backend>.maxImageTileSize` (**PROVISIONAL**: `cpu` and `cpu-embree` 1024, `metal` 128, `webgpu`
+1024, which refuses tiled images at render). Managed (**PROVISIONAL**): `long? BackendScope.MaxImageTileSize` (null when a
+report does not state it) and `TiledImage.MaxTileSize` 1024 (was 65536). Documents: `native/host/ABI.md` (Backends, Tiled
+images), `native/host/cycles_host.h`, `AGENT-README.txt` (TiledImage, BackendScope, TILED IMAGES), `native/DEVICE.md` item
+172, the XML documentation of `CyclesScene.CreateTiledImage` and `CyclesHost.CreateTiledImage`. The macOS host gate's
+contract now expects 32, 96, 2048 and 65536 refused and released at once, 128 and 1024 created and released once by the
+destroy. Tests: `TiledImageTests` at every CPU size from 64 to 1024 (the macOS-only cases above 1024 are gone), the refusal
+list with 1025, 2048, 4096, 65536 and above, a tiled image of tile size 1024 created, the level helpers refusing 2048 and
+65536; `GpuRenderTests` reads 128 on Metal; 48 targeted tests passed.
+
+| Signature | Reason | Alternative considered |
+| --- | --- | --- |
+| `backendScope.<backend>.maxImageTileSize` (JSON); `long? BackendScope.MaxImageTileSize` | decision 34: each backend's largest tile in the report, beside `maxImageDimension` (B8) | a `limits` entry (one value for every backend) |
+| `TiledImage.MaxTileSize` 1024 | the largest tile of any backend | keeping 65536 (no backend takes it now) |
+
+**8. A refused attribute call changes nothing.** `cbc_host_attribute_floats`, `cbc_host_attribute_bytes` and
+`cbc_host_attribute_remove` called `before_edit` (which writes a splat cloud's authored radius back, restores a baked or
+displaced geometry and tags it) before they checked their arguments; the three now check every argument and stage the value
+first, then prepare the edit and apply it. The checks look at the attributes the edit applies to (`edited_attribute`: the
+authored copy of a displaced mesh or of a geometry the static BVH path baked, else the live set), so a call is accepted or
+refused exactly as before; `cbc_host_attribute_remove` looks the attribute up again after the preparation. The other
+attribute calls (`cbc_host_attribute_get_floats`, `_get_bytes`) prepare no edit. Documents: `native/host/ABI.md` (Edits
+after a render), `AGENT-README.txt` (EDITS AFTER A RENDER). Test: `GaussianSplatTests.Refused_attribute_calls_change_nothing_and_the_bounding_radius_stays_readable`
+(after a render, ten refused calls of the three exports, each by name, leave `CBC_ATTR_SPLAT_BOUNDING_RADIUS` reading Cycles'
+radii and plain reads the authored ones, the next render is bit for bit the first, and an accepted removal makes the radius
+not ready). Control (the three calls with the preparation first again, in a scratch build of the same tree, then restored
+and rebuilt; `final-8/control.patch`, `control-test.txt`): the test fails at the first refused call with "The bounding
+radius of a Gaussian splat cloud is Cycles' and is read after a render ...". 82 targeted tests passed (splats, geometry
+attributes, displacement edits, the host and ABI tiers, subdivision baking).
+
+**10. Another subdivision surface diced in pixel space in a baked scene.** `validate_bake_dicing`
+(`native/host/host_bake.inc`), called by `cbc_host_bake` after the upscale check: a bake of any object is refused while an
+object of the scene uses another mesh with `subdivision_type` linear, subdivision faces and `subd_adaptive_space` pixel
+(`CBC_UNSUPPORTED`, "Unsupported feature: bakes of subdivision surfaces diced in pixel space (another subdivision surface of
+the baked scene has subd_adaptive_space pixel, which a bake would dice in the camera of the scene's last render, ...)"). The
+source: `GeometryManager::device_update` (`scene/geometry.cpp`) dices each modified cage whose positions or dicing settings
+changed (`Mesh::need_tessellation`, `scene/mesh.cpp`) and hands `Mesh::tessellate` the scene's dicing camera for pixel
+space, in whose pixels `DiagSplit::T` (`subd/split.cpp`) measures every edge; `cbc_host_render` keeps the dicing camera
+equal to the render camera and a bake sets neither, so the surface is diced in the last render's camera (Cycles' default
+before any render), or keeps the last render's dicing when it was not modified since. `cbc_host_bake_map` maps the target
+alone and is not refused for another surface; a cage no object uses is diced into nothing a ray meets and is not refused. The
+capability entry "bakes of subdivision surfaces diced in pixel space (a bake has no render camera to measure pixels in)" is
+unchanged and now covers every surface of the baked scene (`AGENT-README.txt` "Why." and BAKING TEXTURES, `native/host/ABI.md`
+Baking, `native/DEVICE.md` item 170). Tests: `SubdivisionBakingTests.a_bake_is_refused_by_name_while_another_subdivision_surface_is_diced_in_pixel_space`
+(the bake of the cage and of an ordinary mesh refused, before and after a render, the map not, the second cage without an
+object not; switched to object space the bake is bit for bit that of a new scene built so) and the host gate's contract
+(`otherPixelSpaceBakeStatus` 2, `otherPixelSpaceMapStatus` 0); 22 targeted tests passed (the GPU subdivision bakes
+included).
+
+**6. CMake 4.2 or newer for the osx-arm64 recipe.** `native/tools/inject_cycles_macos.cmake` refuses an older CMake when it
+configures the host build (`FATAL_ERROR`, "The osx-arm64 recipe requires CMake 4.2 or newer (this is CMake <version>): it
+names the host's objects with the OBJECT_NAME source property (CMake 4.2) for a build that is the same at every checkout
+path and a dSYM with the line tables of every object"; it replaces the check for 3.24) instead of warning in
+`codebrix_checkout_independent_objects`, which no longer has a fallback. `build_cycles_macos.py` checks no version itself.
+Documents: `docs/TESTING-MACOS-ARM64.md` section 2, `native/host/MACOS_ARM64.md` (twice), `MAINTAINER-README.txt`. Checked
+with `cmake -P` of the injection under a shadowed `CMAKE_VERSION` (`final-6/version-check.txt`): 3.31.6 and 4.1.2 refused
+with that message, 4.2.0 and the installed 4.4.5 past it (to the next check, the profile's, which script mode does not
+meet); the build itself configured with 4.4.5.
+
+**3. Displaced meshes: two inputs the host does not track (deferred, documented).** A displacement shader that reads a scene
+value (Scene Time) is not displaced again when only that value changes; on Metal with MetalRT, Cycles' switch to its extended
+limits (`MetalDevice::set_bvh_limits`, from `Scene::update_kernel_features`) tags every geometry modified inside the render's
+scene update without the host's restore, so a displaced mesh could be displaced twice (known from reading only; no film
+shows it). Documented as a known limitation in `native/host/ABI.md` ("Edits after a render"), `AGENT-README.txt` (EDITS
+AFTER A RENDER), `native/DEVICE.md` (new item 191) and section 7.
+
+**16. `git diff --check` against the base commit.** Run against `828f6c2f9ee2c57dd379d472a0252edaf3caa87a` it reported 546
+lines in 33 files, not only the 25 known lines (**INFERENCE**: the earlier "clean" results of this report ran `git diff --check`
+without the base commit, against the index). The 25 known: 18 lines with CRLF in `windows-arm64-device-20261025/f1-smooth-normal/**` JSON, 2 + 2 lines with
+trailing spaces in the two `ldd.txt` and 2 + 1 in `merge-20261023b/merge6/timeline.log` and `checkpoint-2/status.md`. The
+others, in evidence folders added on this branch: 488 CRLF lines of apt output in `linux-arm64-cpu-oracle-20261113`
+(`environment/step2-apt.txt` 483, `first-attempt/02-apt.txt` 5) and 33 lines with trailing spaces in
+`device-macos-arm64-20261113` (`build/cycles-registration.patch` 13, `build/platform.patch` 2,
+`build/host-configure.output.txt` 1, `build/refused-attempts/1-skip-dependencies.stdout.txt` 1,
+`managed/3-test-release.output.txt` 5, `6-test-debug.output.txt` 5, `7-record-metal-references.output.txt` 2,
+`8-test-release-after-recording.output.txt` 2, `9-test-debug-after-recording.output.txt` 2). Each of the 33 files has
+only one kind. `.gitattributes` gained one line per file, after the hash-pinned trees, in the style of its entries:
+`whitespace=cr-at-eol` for the 20 CRLF files and `whitespace=-trailing-space` for the 13 others; no byte of them changed.
+The check against the base commit is then clean (`final-16/diff-check-before.txt`, `diff-check-after.txt`).
+
+#### Verification of the final rulings
+
+- Build: `python3 tools/build_macos.py --jobs 8 --skip-dependencies` passed, 0 warnings in the host build log (a compile of
+  `cycles_host.cpp`) and the build output (18 s). Host library `b804223deae0afce07ad33440b312d3ea907b1f528839b375db628e3a1916e5e`,
+  runner `1f90b7df1bac4910b08ddae6a78de82246df3d87f07a75f9ff248f4899e692d2` (unchanged since C27), 65 exports.
+- macOS host gate (`<repo>/native/work/macos-validation-20261115a/`), with the new contract cases (tile sizes 32, 96, 2048 and
+  65536 refused and released at once, 128 and 1024 accepted; a bake refused beside a second cage in pixel space, its map
+  not): passed, 3,102 films compared, 0 same-host bitwise failures, Metal 0 practical failures, maximum 4.5e-8; 28 s.
+- Testing document step 7 with .NET SDK 11.0.100: restore, both builds, pack and the tests exit 0. Release: 525 tests, 519
+  passed, 6 skipped (the WebGPU-only tests: `BakingTests.the_webgpu_device_bakes_...`, `SceneSettingsTests.Dispersion_is_refused_by_name_on_the_webgpu_backend`,
+  `WebGpuAmbientOcclusionTests.gpu_ao_pass_...` and the three cases of `GpuRenderTests.webgpu_refuses_the_integer_and_component_nodes_...`),
+  0 failed, in each of three full runs (82 to 87 s). Debug: the same counts (85 s). C24's 528 tests gained 9 and lost the 12
+  CPU tile-size cases above 1024. The Release build's one warning is the pack driver's ("linux-x64: payload is STALE", now
+  437 files); Debug has 0 warnings. The pack folders were deleted.
+- Rule 9: the whole committed corpus (791 documents: C24's 792 without `lamps/area-degenerate-infinite-axis`) and the 2
+  bench documents on `cpu-arm64-macos` alone into `<repo>/native/work/oracles/macos-arm64-final-corpus-20261115/` (793
+  scenes, 0 failures, every film repeat-identical; 133 s). By scene path and film index: all 1,452 films of the 726 base-run
+  scenes (`<repo>/native/evidence/cycles-oracles-macos-20261113/`), the six with a NaN axis and `lamps/area-zero-size`
+  among them, all 66 films of the 33 survey scenes that stay committed, and all 1,586 films of the 793 scenes the C24 corpus
+  run (`macos-arm64-c24-corpus-20261114`, the newest) shares with this one (every D1, D2, D3, batch and C24 scene) are
+  bitwise identical. The one scene that left the run is the moved `lamps/area-degenerate-infinite-axis` (its two survey
+  films and two C24-run films have no counterpart); no film moved and no scene was added. SHA-256 over every film:
+  `024d03fd12e67f176900fdec6cd852409ebbe0e00f261b690a15b884afcc6a68`. Pass films: 2,870 of the base run's 2,872, all 24 of
+  the survey's and 2,934 of the C24 run's 2,936; the two that differ are again `passes/data-passes` pass 8, `RenderTime`.
+- The consumer test of the MacOSArm64 package as before: a scratch stage (`<repo>/native/work/staging/osx-arm64-final`, never
+  approved; its standalone CPU film equals the oracle run's and has the CPU film hash of C24's stage), packed as 1.0.319.1097
+  (323 files match, "NOT APPROVED, NOT PUBLISHABLE"); `dotnet build`, `run`, `publish`, `publish -r osx-arm64 --self-contained
+  false` and `--self-contained` each rendered on the CPU, on Metal and on Metal with GPU denoising, with no build
+  diagnostics, the 292 kernel sources beside the library and none flattened, the library reporting 1.0.20261115.0 (the date
+  of the newest commit that changed a Cycles-with-Metal source, now `49cd3a4a4`); without `codebrix-cycles/` Metal failed with
+  "Metal kernel sources are missing beside the native library" and the CPU rendered; the cached runtime pack
+  `Microsoft.NETCore.App.Runtime.osx-arm64` 10.0.15. The stage, the feed, the restored packages of that version, the pack
+  folder and the app copies were deleted.
+- Count literals: the export count (65) and the struct sizes did not move; the every-backend rejection list gained one entry
+  and one WebGPU entry was narrowed, which `CapabilityReportTests` compares with `AGENT-README.txt` for every backend and
+  `GpuRenderTests.gpu_capability_report_describes_the_platform_gpu_backend` reads on Metal (both pass). The other platforms'
+  gate scripts and C consumers were read: none asserts the rejection lists, `maxImageDimension`, a tile size above 1024, a
+  bake with an upscale factor or with a second cage, so none changed (unverified on those platforms; the Linux
+  `emitter_sample` gate drives the WGSL device's own infinite-axis refusal directly and is unaffected).
+- `python3 tools/licensing/audit.py`: passed. `python3 -m unittest tools/licensing/tests/test_guards.py`: 11 passed.
+  `git diff --check 828f6c2f9ee2c57dd379d472a0252edaf3caa87a`: clean.
+
+**Unverified on other platforms.** The WebGPU branches of the changed GPU tests (the area light, the bake upscale and the
+report's `maxImageTileSize` read 1024 there); the Linux, Windows and Android compilers of the host change; the CPU image
+limit and the tile-size cap on Linux and Windows (the same host code); the CMake refusal with a real CMake older than 4.2
+(the check was run in script mode with a shadowed version).
+
 ## 6. Part E: closing checks
 
 In progress (not part of this folder yet).
@@ -2609,41 +2810,41 @@ an axis of NaN and infinities in Cycles' kernel data, and six base-run scenes th
 degenerate light and the three zero-extent portals the same decision keeps accepted. Only the survey scene
 `lamps/area-degenerate-infinite-axis` has an axis of infinities without a NaN, the WebGPU device's "infinite axis" case.
 Should the rule be read as refusing that case only (the survey scene moves to scratch, no base-run film moves), or is
-another reading meant, such as a transform or size that is not finite as authored (which no committed scene has)?
+another reading meant, such as a transform or size that is not finite as authored (which no committed scene has)? (Answered by decision 34: section 5.4, final rulings.)
 
 A2 brought two general fixes with it, because the displaced-mesh tests met them: a change of a shader's displacement method
 after a render now gives Cycles a new graph to finalize, and a shader first referenced after a render is compiled
 (`Shader::tag_used`), each of which rendered unlike a new scene before, also without displacement. Are they wanted in this
 form? Two inputs of a displacement are not tracked: scene attributes a displacement shader reads (Scene Time), and Cycles'
 own re-tag of every geometry when MetalRT switches to extended limits (above 16,777,216 instances or 268,435,456
-primitives), which displaces again without the host's restore. Should the host track them, or document them?
+primitives), which displaces again without the host's restore. Should the host track them, or document them? (Answered by decision 34: section 5.4, final rulings.)
 
 C26: bakes accept the denoiser upscale factor, which ruling 14 refuses for renders. A CPU bake ignores it (bit for bit the
 bake at 1), and a Metal bake with GPU denoising now fails through the delivered-film check ("render buffers of 16 x 16 ...
-for a render of 32 x 32"). Should ruling 14's named refusal cover bakes too, so the request fails before anything renders?
+for a render of 32 x 32"). Should ruling 14's named refusal cover bakes too, so the request fails before anything renders? (Answered by decision 34: section 5.4, final rulings.)
 The check needed a hook in the overlay of `integrator/path_trace.cpp`, because no public interface of the pinned path
 tracer gives the resolution its passes are read at; the Linux-side overlay records must be regenerated on the Linux x64
 machine.
 
 B8: Cycles' CPU device checks no image size, and the report states `INT_MAX` for it; but its kernels compute `2 * width` in
 `int` for the Mirror extension (`wrap_mirror`, `kernel/util/image.h`), which is defined only up to 1073741823, the WGSL
-device's own limit. Should the CPU backends refuse a larger side by name and report 1073741823, as WebGPU does?
+device's own limit. Should the CPU backends refuse a larger side by name and report 1073741823, as WebGPU does? (Answered by decision 34: section 5.4, final rulings.)
 
 C27 and batch 2 (section 5.4). With a CMake older than 4.2 the recipe only warns and builds a host library that differs
 with the checkout path, and whose dSYM now lacks the line tables of the objects whose file names repeat in one Cycles static
 library (without the modification times that `ZERO_AR_DATE` removes, `dsymutil` cannot tell those archive members apart).
-Should the osx-arm64 recipe refuse a CMake older than 4.2 instead of warning?
+Should the osx-arm64 recipe refuse a CMake older than 4.2 instead of warning? (Answered by decision 34: section 5.4, final rulings.)
 
 B12: the CPU's largest tile, 65536, is where the CPU kernel's float pool coordinates stop holding every texel centre; the
 pinned Cycles' own int arithmetic would allow 2^24. Larger tiles cost memory out of proportion: Cycles allocates each pool of
 64 tiles whole (1.1 TB of address space for byte4 tiles of 65536, which macOS reserves lazily and Linux or Windows would
 refuse, ending the process through Cycles' unhandled `std::bad_alloc`), and every tile is read and staged whole. Is that the
 wanted bound, or should the CPU stop lower (Metal's 128 for parity, or 1024, whose pool stays within a few hundred MB)? And
-should the capability report state the largest tile size per backend, as it states `maxImageDimension`?
+should the capability report state the largest tile size per backend, as it states `maxImageDimension`? (Answered by decision 34: section 5.4, final rulings.)
 
 B19: the bounding radius is `CBC_NOT_READY` after any edit of the cloud until the next render (the value would describe the
 cloud as it was), and a refused `cbc_host_attribute_remove` already counts as an edit, because the host prepares the edit before
-it checks the arguments. Is that the wanted reading, and should a refused call leave the cloud untouched?
+it checks the arguments. Is that the wanted reading, and should a refused call leave the cloud untouched? (Answered by decision 34: section 5.4, final rulings.)
 
 28(b) needed no change: a tiled image renders bit for bit like the plain image in tiled and bordered renders on the CPU and
 Metal, and the camera-width reconstruction is reachable only with an OSL camera. B20 left spherical harmonics on curves
@@ -2658,7 +2859,17 @@ only: another subdivision surface in the scene diced in pixel space is diced, in
 camera of the scene's last render (Cycles' default before any render), which a bake does not set; that predates C24 and
 applies to every bake. Should such a scene be refused at bake as well? The two fixes the tests met (an edit of a
 subdivision attribute re-dices the cage; a new cage after a render starts from no diced vertices, where it used to end the
-process) change render behaviour too: are they wanted in this form?
+process) change render behaviour too: are they wanted in this form? (Answered by decision 34: section 5.4, final rulings.)
+
+Known limitation (decision 34, deferred; section 5.4, final rulings, item 3). Two inputs of a displaced mesh's
+displacement are not tracked by the host: a displacement shader that reads a scene value the host does not watch (the Scene
+Time node: `scene_attributes` `time` and `frame`) is not displaced again when only that value changes, so the mesh keeps the
+displacement of the earlier time until the mesh, its shaders or its object are edited; and on the Metal backend with
+MetalRT, when the scene grows beyond MetalRT's default limits (16,777,216 instances or 268,435,456 primitives), Cycles
+switches to its extended limits and tags every geometry modified (`MetalDevice::set_bvh_limits`, from
+`Scene::update_kernel_features`) inside the render's scene update, without the host's restore, so a displaced mesh could be
+displaced twice. The second is known only from reading the source; no film shows it. Both are documented in
+`native/host/ABI.md` ("Edits after a render"), `AGENT-README.txt` (EDITS AFTER A RENDER) and `native/DEVICE.md` item 191.
 
 ## Contents
 

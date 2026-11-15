@@ -126,21 +126,23 @@ def main():
   tiled['createStatus']=api.cbc_host_image_create_tiled(handle,tiled_config,read_callback,release_callback,ctypes.c_void_p(12),ctypes.byref(tiled_image))
   tiled['bindStatus']=api.cbc_host_image_bind(handle,environment,tiled_image)
   tiled['releasesBeforeDestroy']=released.count(12)
-  # Tile sizes (PROVISIONAL CBCImageConfig.tile_size): on this CPU host a power of two from 64 to 65536; 32, 96 and 131072
-  # refused (1) and released at once, 128 and 65536 created (0) and released once by the destroy; a plain image with a
+  # Tile sizes (PROVISIONAL CBCImageConfig.tile_size): on this CPU host a power of two from 64 to 1024; 32, 96, 2048 and
+  # 65536 refused (1) and released at once, 128 and 1024 created (0) and released once by the destroy; a plain image with a
   # tile size refused (1).
   def sized(size,user):
    created=ctypes.c_uint64(0);return api.cbc_host_image_create_tiled(handle,(ctypes.c_uint32*8)(32,256,256,6,size,0,0,0),read_callback,release_callback,ctypes.c_void_p(user),ctypes.byref(created))
-  tiled.update(tileSize32Status=sized(32,13),tileSize96Status=sized(96,14),tileSize131072Status=sized(131072,15),tileSize128Status=sized(128,16),
-   tileSize65536Status=sized(65536,17))
-  tiled['refusedSizeReleases']=[released.count(user) for user in (13,14,15)];tiled['acceptedSizeReleasesBeforeDestroy']=[released.count(user) for user in (16,17)]
+  tiled.update(tileSize32Status=sized(32,13),tileSize96Status=sized(96,14),tileSize2048Status=sized(2048,15),tileSize65536Status=sized(65536,18),
+   tileSize128Status=sized(128,16),tileSize1024Status=sized(1024,17))
+  tiled['refusedSizeReleases']=[released.count(user) for user in (13,14,15,18)];tiled['acceptedSizeReleasesBeforeDestroy']=[released.count(user) for user in (16,17)]
   plain=ctypes.c_uint64(0);tiled['plainTileSizeStatus']=api.cbc_host_image_create(handle,(ctypes.c_uint32*8)(32,1,1,6,64,0,0,0),bytes([1,2,3,255]),ctypes.c_uint64(4),ctypes.byref(plain))
   assert api.cbc_host_destroy(handle)==0
   tiled['releasesAfterDestroy']=released.count(12);tiled['acceptedSizeReleasesAfterDestroy']=[released.count(user) for user in (16,17)]
   # Subdivision-surface bakes (PROVISIONAL), on a CPU host of their own: a linear cage of a quad and a pentagon with a corner
   # UV layout among its subdivision attributes. With Cycles' default pixel-space dicing the bake map and the bake are refused
   # (2); diced in object space the map renders nothing and covers texels with indices into Cycles' tessellation (far more
-  # triangles than the cage's two faces), and a Combined bake succeeds with a finite film (0); Catmull-Clark is refused (2).
+  # triangles than the cage's two faces), and a Combined bake succeeds with a finite film (0); with a second cage in pixel
+  # space and an object using it the bake is refused (2) and the map, of the target alone, is not (0); Catmull-Clark is
+  # refused (2).
   class Bake(ctypes.Structure):_fields_=[('size',ctypes.c_uint32),('width',ctypes.c_uint32),('height',ctypes.c_uint32),('samples',ctypes.c_uint32),
    ('type',ctypes.c_uint32),('flags',ctypes.c_uint32),('reserved',ctypes.c_uint32*2),('object',ctypes.c_uint64),('uv',ctypes.c_char_p),('aov',ctypes.c_char_p),
    ('reserved2',ctypes.c_uint64)]
@@ -160,6 +162,11 @@ def main():
   assert api.cbc_host_set_string(subd,cage,b'subd_adaptive_space',b'object')==0
   subdivision.update(mapStatus=bake_map(),coveredTexels=sum(1 for i in triangles if i>=0)>128,trianglesBeyondTheCage=max(triangles)>=2,bakeStatus=bake_film())
   subdivision['bakeFinite']=all(math.isfinite(v) for v in film)
+  other=ctypes.c_uint64(0);holder=ctypes.c_uint64(0);assert api.cbc_host_create_node(subd,b'mesh',ctypes.byref(other))==0
+  assert api.cbc_host_subd_mesh(subd,other,(ctypes.c_float*27)(*[v-3 if i%3==2 else v for i,v in enumerate(xyz)]),ctypes.c_uint64(9),(ctypes.c_uint32*2)(4,5),ctypes.c_uint64(2),(ctypes.c_uint32*9)(*corners),ctypes.c_uint64(9))==0
+  assert api.cbc_host_set_string(subd,other,b'subdivision_type',b'linear')==0
+  assert api.cbc_host_create_node(subd,b'object',ctypes.byref(holder))==0 and api.cbc_host_set_nodes(subd,holder,b'geometry',(ctypes.c_uint64*1)(other.value),ctypes.c_uint64(1))==0
+  subdivision.update(otherPixelSpaceBakeStatus=bake_film(),otherPixelSpaceMapStatus=bake_map())
   assert api.cbc_host_set_string(subd,cage,b'subdivision_type',b'catmull_clark')==0
   subdivision['catmullClarkStatus']=bake_map();assert api.cbc_host_destroy(subd)==0
   contract=dict(webgpuCreateStatus=webgpu,filenameSetStatus=rejected,emptyFilenameStatus=cleared,udimTiles=udim,textureLimit=texture,bvhSpatialSplit=spatial,
@@ -167,12 +174,12 @@ def main():
   assert contract==dict(webgpuCreateStatus=2,filenameSetStatus=2,emptyFilenameStatus=0,udimTiles=dict(environmentStatus=2,tile1000Status=1,duplicateStatus=1,
    mixedFormatStatus=1,boundStatus=0,renderStatus=0),textureLimit=dict(aboveIntMaxStatus=1,zeroStatus=0,setStatus=0,sameAfterRenderStatus=0,
    changedAfterRenderStatus=5),bvhSpatialSplit=dict(twoStatus=1,onStatus=0,renderStatus=0,offStatus=0),tiledImages=dict(noReaderStatus=1,
-   noReaderReleases=1,createStatus=0,bindStatus=0,releasesBeforeDestroy=0,tileSize32Status=1,tileSize96Status=1,tileSize131072Status=1,
-   tileSize128Status=0,tileSize65536Status=0,refusedSizeReleases=[1,1,1],acceptedSizeReleasesBeforeDestroy=[0,0],plainTileSizeStatus=1,
+   noReaderReleases=1,createStatus=0,bindStatus=0,releasesBeforeDestroy=0,tileSize32Status=1,tileSize96Status=1,tileSize2048Status=1,
+   tileSize65536Status=1,tileSize128Status=0,tileSize1024Status=0,refusedSizeReleases=[1,1,1,1],acceptedSizeReleasesBeforeDestroy=[0,0],plainTileSizeStatus=1,
    releasesAfterDestroy=1,acceptedSizeReleasesAfterDestroy=[1,1]),tileSize=dict(sevenStatus=1,status129=1,
    status8193=1,status256=0,eightStatus=0,renderStatus=0,deviceReport=dict(tileSize=8,tilesKeptInMemory=4,framesReadBack=1,tilesHeld=0),zeroStatus=0),
    subdivisionBakes=dict(pixelSpaceMapStatus=2,pixelSpaceBakeStatus=2,mapStatus=0,coveredTexels=True,trianglesBeyondTheCage=True,bakeStatus=0,bakeFinite=True,
-   catmullClarkStatus=2)),contract
+   otherPixelSpaceBakeStatus=2,otherPixelSpaceMapStatus=0,catmullClarkStatus=2)),contract
   results['contract']=contract;save(out/'results.json',results)
 
   for name,kind in [('cpu','session'),('cpu64','session64')]:

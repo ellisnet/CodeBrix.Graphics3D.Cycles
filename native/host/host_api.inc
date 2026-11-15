@@ -97,26 +97,31 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
 #define CBC_HOST_REJECTIONS "\"Catmull-Clark subdivision surfaces (they need OpenSubdiv, which this library does not include)\"," \
   "\"bakes of subdivision surfaces diced in pixel space (a bake has no render camera to measure pixels in)\"," \
   "\"the dlss denoiser\",\"a denoiser upscale factor other than 1\"," \
-  "\"curves and points with a Both displacement shader\""
+  "\"curves and points with a Both displacement shader\"," \
+  "\"area lights with an axis of infinities (an axis with no zero component whose length underflows to zero)\""
     // maxImageDimension (PROVISIONAL, per backend): the largest image side the backend's device takes for an image loaded
-    // whole (cbc_host_image_create; a tiled image is loaded in tiles through Cycles' texture cache). The CPU device checks
-    // none: it keeps the side in KernelImageInfo's uint and its kernels read it as int (util/types_image.h,
-    // kernel/util/image.h), so the host's own limit, INT_MAX, holds. The WGSL device refuses a side above INT32_MAX / 2
-    // ("Invalid resident image dimensions", WebGPUDevice::mem_alloc in native/cycles/device.cpp). Cycles' Metal device
-    // refuses one above 16384 ("Texture exceeds maximum allowed size of 16384 x 16384", MetalDevice::image_alloc in
-    // device/metal/device_impl.mm). limits.maxImageDimension stays the largest side cbc_host_image_create accepts.
+    // whole (cbc_host_image_create; a tiled image is loaded in tiles through Cycles' texture cache). Cycles' CPU kernels
+    // compute twice the side in int for the Mirror extension (wrap_mirror, kernel/util/image.h), so the host refuses a
+    // larger side than INT32_MAX / 2 on the CPU backends by name (cpu_max_image_dimension, host_scene.inc; the CPU device
+    // checks none itself). The WGSL device refuses a side above INT32_MAX / 2 ("Invalid resident image dimensions",
+    // WebGPUDevice::mem_alloc in native/cycles/device.cpp). Cycles' Metal device refuses one above 16384 ("Texture exceeds
+    // maximum allowed size of 16384 x 16384", MetalDevice::image_alloc in device/metal/device_impl.mm).
+    // limits.maxImageDimension stays the largest side cbc_host_image_create accepts. maxImageTileSize (PROVISIONAL, per
+    // backend): the largest tile side of a tiled image (CBCImageConfig.tile_size) cbc_host_image_create_tiled takes on the
+    // backend (tiled_image_largest_tile_size, host_scene.inc).
     out << ",\"backendScope\":{\"cpu\":{\"device\":\"Cycles CPU device (reference)\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\""
 #ifdef WITH_OSL
         << ",\"custom\""
 #endif
-        << "],\"passes\":\"registered pass types written by the Cycles CPU device\",\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "],\"maxImageDimension\":" << INT_MAX
-        << ",\"arithmetic\":" << codebrix_cpu_arithmetic_json << "}";
+        << "],\"passes\":\"registered pass types written by the Cycles CPU device\",\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "],\"maxImageDimension\":" << cpu_max_image_dimension
+        << ",\"maxImageTileSize\":" << tiled_image_largest_tile_size(CBC_HOST_CPU_REFERENCE) << ",\"arithmetic\":" << codebrix_cpu_arithmetic_json << "}";
 #ifdef WITH_EMBREE
     out << ",\"cpu-embree\":{\"device\":\"Cycles CPU device with Cycles' automatic BVH (Embree); the CPU reference keeps BVH2\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\""
 #ifdef WITH_OSL
         << ",\"custom\""
 #endif
-        << "],\"passes\":\"registered pass types written by the Cycles CPU device\",\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "],\"maxImageDimension\":" << INT_MAX << "}";
+        << "],\"passes\":\"registered pass types written by the Cycles CPU device\",\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "],\"maxImageDimension\":" << cpu_max_image_dimension
+        << ",\"maxImageTileSize\":" << tiled_image_largest_tile_size(CBC_HOST_CPU) << "}";
 #endif
 #ifdef WITH_WEBGPU
     out << ",\"webgpu\":{\"device\":\"CodeBrix WGSL device (native/DEVICE.md)\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\"],\"primitives\":[\"triangle\",\"curve\",\"point\"],"
@@ -135,17 +140,18 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
            "\"dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0)\",\"custom (OSL) cameras\",\"path guiding (the integrator's use_guiding) and its passes\","
            "\"a Radial Tiling node with at most two sides and a roundness strictly between 0 and 1\",\"scenes whose device data does not fit the GPU (there is no host-memory fallback)\","
            "\"BVH time steps\",\"volume velocity motion blur\",\"sparse or tiled images\","
-           "\"area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, with an axis of infinities, or reached by the light tree at a transmissive surface\",\"background light portals of zero extent\",\"bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)\","
+           "\"area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, or reached by the light tree at a transmissive surface\",\"background light portals of zero extent\",\"bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)\","
            "\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\","
            "\"Boolean Math, Integer Math and Get Vector Component shader nodes with a linked input\","
            "\"shadow catchers with transparent shadows on Adreno 650 GPUs\",\"shadow caustics (manifold next-event estimation) on Adreno 650 GPUs\"],\"maxImageDimension\":" << INT32_MAX / 2
-        << ",\"reference\":\"native/DEVICE.md\"}";
+        << ",\"maxImageTileSize\":" << tiled_image_largest_tile_size(CBC_HOST_WEBGPU) << ",\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL
     // Cycles' own Metal device: the full upstream feature set, compiled at run
     // time from the kernel sources staged beside this library.
     out << ",\"metal\":{\"device\":\"Cycles Metal device\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\"],"
            "\"passes\":\"registered pass types written by the Cycles Metal device\",\"renderTimeRejections\":[" CBC_HOST_REJECTIONS "],\"maxImageDimension\":16384,"
+           "\"maxImageTileSize\":" << tiled_image_largest_tile_size(CBC_HOST_METAL) << ","
            "\"hardwareRayTracing\":\"MetalRT on M3 and later GPUs, BVH2 otherwise (CYCLES_METALRT overrides)\","
            "\"kernels\":\"compiled at first use from codebrix-cycles/source beside the library; cached in the user cache directory\","
            "\"reference\":\"native/host/MACOS_ARM64.md\"}";

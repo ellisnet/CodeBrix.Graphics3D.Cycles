@@ -457,7 +457,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// <param name="format">The pixel layout the reader writes.</param>
     /// <param name="reader">The reader; kept alive until the image is no longer used.</param>
     /// <param name="tileSize">Provisional: the tile side, a power of two from 64 to 128 on the Metal backend and to
-    /// 65536 on the CPU backends (and on WebGPU, which refuses the render); 64 by default (<see cref="TiledImage"/>).</param>
+    /// 1024 on the CPU backends (and on WebGPU, which refuses the render); 64 by default (<see cref="TiledImage"/>).</param>
     /// <returns>The image; dispose it once it is bound (bindings keep the reader).</returns>
     /// <exception cref="ArgumentNullException"><paramref name="reader"/> is <see langword="null"/>.</exception>
     /// <exception cref="NativeFailure">The size, format or tile size is invalid (status 1).</exception>

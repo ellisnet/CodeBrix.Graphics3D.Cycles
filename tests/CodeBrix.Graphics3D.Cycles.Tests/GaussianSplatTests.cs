@@ -373,6 +373,58 @@ public class GaussianSplatTests
         splats.GetAttribute("radius").Should().Equal(Radii());
     }
 
+    // A refused attribute call is no edit (provisional): SetAttribute, SetAttributeBytes and RemoveAttribute check every
+    // argument before the host prepares the edit (which writes the authored radius back and makes the bounding radius not
+    // ready), so after each refusal the bounding radius still reads Cycles' value, the authored radius reads back, and the
+    // next render is bit for bit the one before; an accepted removal is an edit.
+    [Fact]
+    public void Refused_attribute_calls_change_nothing_and_the_bounding_radius_stays_readable()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        PointCloudNode splats = BuildSplats(scene);
+        splats.SetAttribute("weight", AttributeValue.Float, AttributeDomain.Vertex, AttributeFlags.None, new float[Count]);
+        scene.CreateObject(splats);
+        FilmBuffer first = scene.Render(Small);
+        float[] computed = splats.GetAttribute("radius", AttributeFlags.SplatBoundingRadius);
+        float[] outOfRange = Harmonics();
+        outOfRange[7] = 1.5f;
+        (Action Call, NativeStatus Status, string Words)[] refused =
+        [
+            (() => splats.SetAttribute("scale", AttributeValue.Vector, AttributeDomain.Vertex, AttributeFlags.Standard, new float[3 * Count - 3]),
+                NativeStatus.Invalid, "Attribute count does not match geometry"),
+            (() => splats.SetAttribute("radius", AttributeValue.Float, AttributeDomain.Vertex, AttributeFlags.None, Radii()),
+                NativeStatus.Invalid, "Use standard mode to replace a standard attribute"),
+            (() => splats.SetAttribute("weight", AttributeValue.Float, AttributeDomain.Corner, AttributeFlags.None, new float[Count]),
+                NativeStatus.Invalid, "Corner attributes require a mesh"),
+            (() => splats.SetAttribute("radiance:sh", AttributeValue.SphericalHarmonicsRest, AttributeDomain.Vertex, AttributeFlags.Standard, outOfRange),
+                NativeStatus.Invalid, "Spherical-harmonics coefficients must lie in [-1, 1]"),
+            (() => splats.SetAttribute("radius", AttributeValue.Float, AttributeDomain.Vertex, AttributeFlags.Standard, [.. Radii().Select(r => float.NaN)]),
+                NativeStatus.Invalid, "Attribute contains a nonfinite value"),
+            (() => splats.SetAttributeBytes("tint", AttributeDomain.CornerByte, AttributeFlags.None, new byte[4 * Count]),
+                NativeStatus.Invalid, "Byte corner colors require a mesh"),
+            (() => splats.RemoveAttribute("radius", AttributeFlags.Standard), NativeStatus.Invalid, "Cannot remove required geometry storage"),
+            (() => splats.RemoveAttribute("missing"), NativeStatus.Invalid, "Unknown attribute"),
+            (() => splats.RemoveAttribute("weight", AttributeFlags.Standard), NativeStatus.Invalid, "Attribute is not standard"),
+            (() => scene.Host.RemoveAttribute(splats.Handle, "weight", AttributeFlags.SplatBoundingRadius), NativeStatus.Invalid, "Unknown attribute flags"),
+        ];
+
+        //Act / Assert
+        foreach ((Action call, NativeStatus status, string words) in refused)
+        {
+            NativeFailure error = call.Should().Throw<NativeFailure>().Which;
+            error.NativeStatus.Should().Be(status, words);
+            error.Message.Should().Contain(words);
+            splats.GetAttribute("radius", AttributeFlags.SplatBoundingRadius).Should().Equal(computed, words);
+            splats.GetAttribute("radius").Should().Equal(Radii(), words);
+        }
+        scene.Render(Small).Span.SequenceEqual(first.Span).Should().BeTrue();
+        splats.GetAttribute("radius", AttributeFlags.SplatBoundingRadius).Should().Equal(computed);
+        splats.RemoveAttribute("weight");
+        NativeFailure edited = ((Func<float[]>)(() => splats.GetAttribute("radius", AttributeFlags.SplatBoundingRadius))).Should().Throw<NativeFailure>().Which;
+        edited.NativeStatus.Should().Be(NativeStatus.NotReady);
+    }
+
     // The flag reads a splat cloud's radius only: any other geometry, name or flag is refused by name, through the facade
     // and through CyclesHost, and a cloud switched to points after a render is no longer a splat cloud.
     [Fact]

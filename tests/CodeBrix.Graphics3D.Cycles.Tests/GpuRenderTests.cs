@@ -451,13 +451,12 @@ public class GpuRenderTests(ITestOutputHelper output)
         refused.Message.Should().Contain("Texture exceeds maximum allowed size of 16384 x 16384 (requested: 16385 x 1)");
     }
 
-    // The delivered film (provisional; DeliveredFilmTests): with GPU denoising and a denoiser upscale factor of 2, Cycles'
-    // Metal device bakes at half the resolution (survey row 9 showed the same for renders, which the host refuses before
-    // rendering), and the host refuses that output by name instead of returning it as the requested bake; with the factor
-    // at 1, or denoising on the CPU, the bake delivers the requested film. The WebGPU backend denoises on the CPU, whose Open
-    // Image Denoise resets the factor to 1, so its bake succeeds.
+    // A denoiser upscale factor other than 1 (provisional for bakes; DeliveredFilmTests): refused by name before the bake
+    // starts on the GPU backend as on every backend, with GPU denoising and with denoising on the CPU (with GPU denoising
+    // Cycles' Metal device would bake at half the resolution, which the delivered-film check stays behind to refuse); at a
+    // factor of 1 the GPU bakes.
     [Fact]
-    public void a_gpu_bake_rendered_at_a_reduced_resolution_fails_by_name()
+    public void a_gpu_bake_with_a_denoiser_upscale_factor_is_refused_by_name_before_it_bakes()
     {
         //Arrange
         BakeSettings settings = new(32, 32, 8, BakeType.Combined);
@@ -470,30 +469,48 @@ public class GpuRenderTests(ITestOutputHelper output)
             scene.Integrator.DenoiserUpscaleFactor = factor;
             return scene.Bake(target, settings);
         }
-        using CyclesScene probe = CreateGpuScene();
-        Backend backend = probe.Backend;
 
         //Act
         FilmBuffer plain = Bake(1, true);
-        FilmBuffer cpuDenoised = Bake(2, false);
-        Func<FilmBuffer> upscaled = () => Bake(2, true);
+        Func<FilmBuffer> gpuUpscaled = () => Bake(2, true);
+        Func<FilmBuffer> cpuUpscaled = () => Bake(2, false);
 
         //Assert
         plain.Span.ToArray().All(float.IsFinite).Should().BeTrue();
-        cpuDenoised.Span.ToArray().All(float.IsFinite).Should().BeTrue();
-        if (backend == Backend.Metal)
+        foreach (Func<FilmBuffer> upscaled in new[] { gpuUpscaled, cpuUpscaled })
         {
             NativeFailure refused = upscaled.Should().Throw<NativeFailure>().Which;
-            refused.NativeStatus.Should().Be(NativeStatus.Failed);
-            refused.Message.Should().Contain("The film the output driver delivered is not the one requested");
-            refused.Message.Should().Contain("render buffers of 16 x 16");
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("Unsupported feature: a denoiser upscale factor other than 1");
         }
-        else
-        {
-            FilmComparison comparison = FilmComparison.Compare(upscaled().Span, plain.Span);
-            output.WriteLine($"WebGPU bake at an upscale factor of 2 vs 1: {comparison}");
-            comparison.PracticalFailures.Should().Be(0);
-        }
+    }
+
+    // Area lights with an axis of infinities (provisional; SceneSettingsTests): the host refuses them by name before the GPU
+    // device sees the scene, on Metal as on every backend (survey row 7: the CPU and Metal films of such a light differ in
+    // 879 practical values, up to 1.1e3); a degenerate area light whose axis holds a NaN renders on the GPU, as on the CPU.
+    [Fact]
+    public void gpu_area_lights_with_an_axis_of_infinities_are_refused_by_name_and_a_nan_axis_renders()
+    {
+        //Arrange
+        using CyclesScene gpu = CreateGpuScene();
+        TestScenes.BuildTyped(gpu);
+        AreaLightNode light = gpu.CreateLight<AreaLightNode>();
+        light.Strength = new System.Numerics.Vector3(6, 6, 6);
+        light.Sizeu = 1;
+        light.Sizev = 1;
+        ObjectNode holder = gpu.CreateObject(light, SceneSettingsTests.AreaLightTransform(1e-23f, 1e-23f, true));
+        RenderSettings settings = new(32, 24, 8);
+
+        //Act
+        Action infinite = () => gpu.Render(settings);
+
+        //Assert
+        CyclesException error = infinite.Should().Throw<CyclesException>().Which;
+        error.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        error.Message.Should().Contain("Unsupported feature: area lights with an axis of infinities");
+        holder.Tfm = SceneSettingsTests.AreaLightTransform(1e-23f, 1, false);
+        gpu.Render(settings).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        gpu.IsFaulted.Should().BeFalse();
     }
 
     // A shadow catcher plane over the diffuse-sun scene: the GPU writes Combined and the three shadow
@@ -1076,14 +1093,17 @@ public class GpuRenderTests(ITestOutputHelper output)
             report.PipelineTier.Should().BeNull();
             report.Scope.CameraTypes.Should().Contain(["perspective", "orthograph", "panorama"]);
             report.Scope.RenderTimeRejections.Should().Equal(report.BackendScopes["metal"].RenderTimeRejections);
-            report.Scope.RenderTimeRejections.Should().Contain(["a denoiser upscale factor other than 1", "curves and points with a Both displacement shader"]);
+            report.Scope.RenderTimeRejections.Should().Contain(["a denoiser upscale factor other than 1", "curves and points with a Both displacement shader",
+                "area lights with an axis of infinities (an axis with no zero component whose length underflows to zero)"]);
             report.Scope.PassesNote.Should().NotBeNullOrEmpty();
+            report.Scope.MaxImageTileSize.Should().Be(128L);
         }
         else
         {
             report.BackendName.Should().Be("webgpu");
             report.PipelineTier.Should().BeOneOf("full", "conservative");
             report.Scope.WrittenPasses.Should().Contain("combined");
+            report.Scope.MaxImageTileSize.Should().Be(1024L);
         }
     }
 

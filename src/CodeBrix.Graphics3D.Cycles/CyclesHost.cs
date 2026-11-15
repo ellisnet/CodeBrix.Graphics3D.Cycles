@@ -745,7 +745,7 @@ public sealed unsafe class CyclesHost : IDisposable
     /// <param name="release">The unmanaged release callback, or null.</param>
     /// <param name="userData">The value passed to both callbacks.</param>
     /// <param name="tileSize">Provisional: the tile side, 0 (64, the default) or a power of two from 64 to 128 on the Metal
-    /// backend and to 65536 on the others (<see cref="TiledImage"/>).</param>
+    /// backend and to 1024 on the others (<see cref="TiledImage"/>).</param>
     /// <returns>The image identifier.</returns>
     /// <exception cref="ObjectDisposedException">The host was disposed (<paramref name="release"/> has run).</exception>
     /// <exception cref="NativeFailure">The size, format or tile size is invalid, or <paramref name="read"/> is null (status 1).</exception>

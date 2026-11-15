@@ -106,10 +106,13 @@ public class CapabilityReportTests
 
     // The largest image side per backend (provisional backendScope.<backend>.maxImageDimension): Cycles' Metal device refuses a
     // side above 16384 (MetalDevice::image_alloc), the WGSL device one above INT32_MAX / 2 (WebGPUDevice::mem_alloc), and the
-    // CPU device checks none beyond the host's own limit; limits.maxImageDimension stays the largest side the API accepts.
-    // On Metal the limit is measured: 16384 x 1 renders, 16385 x 1 fails with Cycles' message.
+    // host refuses one above INT32_MAX / 2 on the CPU backends, whose kernels compute twice the side in int for the Mirror
+    // extension; limits.maxImageDimension stays the largest side the API accepts. The largest tile side of a tiled image per
+    // backend (provisional backendScope.<backend>.maxImageTileSize): 128 on Metal, 1024 elsewhere (TiledImageTests). On Metal
+    // the image limit is measured: 16384 x 1 renders, 16385 x 1 fails with Cycles' message (GpuRenderTests); on the CPU
+    // 1073741824 x 1 is refused by name (TextureLimitTests).
     [Fact]
-    public void the_report_states_the_largest_image_side_of_every_backend()
+    public void the_report_states_the_largest_image_side_and_tile_size_of_every_backend()
     {
         //Arrange
         TestScenes.RequireNativeHost();
@@ -121,13 +124,27 @@ public class CapabilityReportTests
 
         //Assert
         report.Limits["maxImageDimension"].Should().Be(int.MaxValue);
-        report.BackendScopes["cpu"].MaxImageDimension.Should().Be(int.MaxValue);
-        report.BackendScopes["cpu-embree"].MaxImageDimension.Should().Be(int.MaxValue);
-        device.Scope.MaxImageDimension.Should().Be(int.MaxValue);
-        if (report.CompiledBackends.Contains("metal")) report.BackendScopes["metal"].MaxImageDimension.Should().Be(16384L);
-        if (report.CompiledBackends.Contains("webgpu")) report.BackendScopes["webgpu"].MaxImageDimension.Should().Be(1073741823L);
-        report.BackendScopes.Values.All(scope => scope.MaxImageDimension.HasValue).Should().BeTrue();
-        CapabilityReport.Parse("{\"schemaVersion\":1,\"backendScope\":{\"cpu\":{\"device\":\"x\"}}}").BackendScopes["cpu"].MaxImageDimension.Should().BeNull();
+        report.BackendScopes["cpu"].MaxImageDimension.Should().Be(1073741823L);
+        report.BackendScopes["cpu-embree"].MaxImageDimension.Should().Be(1073741823L);
+        device.Scope.MaxImageDimension.Should().Be(1073741823L);
+        report.BackendScopes["cpu"].MaxImageTileSize.Should().Be(1024L);
+        report.BackendScopes["cpu-embree"].MaxImageTileSize.Should().Be(1024L);
+        device.Scope.MaxImageTileSize.Should().Be(TiledImage.MaxTileSize);
+        if (report.CompiledBackends.Contains("metal"))
+        {
+            report.BackendScopes["metal"].MaxImageDimension.Should().Be(16384L);
+            report.BackendScopes["metal"].MaxImageTileSize.Should().Be(128L);
+        }
+        if (report.CompiledBackends.Contains("webgpu"))
+        {
+            report.BackendScopes["webgpu"].MaxImageDimension.Should().Be(1073741823L);
+            report.BackendScopes["webgpu"].MaxImageTileSize.Should().Be(1024L);
+        }
+        report.BackendScopes.Values.All(scope => scope.MaxImageDimension.HasValue && scope.MaxImageTileSize.HasValue).Should().BeTrue();
+        report.BackendScopes.Values.Max(scope => scope.MaxImageTileSize).Should().Be(TiledImage.MaxTileSize);
+        BackendScope bare = CapabilityReport.Parse("{\"schemaVersion\":1,\"backendScope\":{\"cpu\":{\"device\":\"x\"}}}").BackendScopes["cpu"];
+        bare.MaxImageDimension.Should().BeNull();
+        bare.MaxImageTileSize.Should().BeNull();
     }
 
     // AGENT-README.txt, RENDER-TIME REJECTIONS: the "  - " entries under each group heading, in order.
@@ -215,6 +232,29 @@ public class CapabilityReportTests
         groups[RejectionGroups[0]].Should().NotContain(entry);
         foreach (string backend in report.CompiledBackends)
             report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+    }
+
+    // Area lights with an axis of infinities (provisional): the host refuses them on every backend, so the entry is in the
+    // every-backend group and in every backend's scope, and the WebGPU device's own entry for degenerate area lights no
+    // longer names that case.
+    [Fact]
+    public void area_lights_with_an_axis_of_infinities_are_a_rejection_of_every_backend()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        const string entry = "area lights with an axis of infinities (an axis with no zero component whose length underflows to zero)";
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+
+        //Assert
+        groups[RejectionGroups[0]].Should().Contain(entry);
+        groups[RejectionGroups[1]].Should().NotContain(entry);
+        groups[RejectionGroups[1]].Any(other => other.Contains("infinities")).Should().BeFalse();
+        foreach (string backend in report.CompiledBackends)
+            report.BackendScopes[backend].RenderTimeRejections.Should().Contain(entry, backend);
     }
 
     // UDIM tiles (provisional cbc_host_image_bind_tiles) render on the CPU and Metal backends; the host refuses a tiles

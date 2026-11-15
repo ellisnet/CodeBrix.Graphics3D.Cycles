@@ -375,7 +375,7 @@ ITiledImageReader                                       (provisional interface)
                                TILED IMAGES)
 TiledImage (static)                                     (provisional)
     const int TileSize = 64    the default tile size
-    const int MinTileSize = 64, MaxTileSize = 65536
+    const int MinTileSize = 64, MaxTileSize = 1024
     int LevelCount(uint width, uint height, int tileSize = 64)
     (uint Width, uint Height) LevelSize(uint width, uint height, int level,
                                int tileSize = 64)
@@ -425,7 +425,12 @@ BackendScope: Device, CameraTypes, Primitives, WrittenPasses, PassesNote,
     backend's device renders for an image from CreateImage: 16384 on Metal
     (Cycles' Metal device fails a render with a larger one; see DEVICE ERRORS and
     TEXTURE LIMIT), 1073741823 on WebGPU (whose storage binding also bounds an
-    image's bytes), int.MaxValue on the CPU backends
+    image's bytes) and on the CPU backends (Cycles' CPU kernels compute twice
+    the side in int for the Mirror extension; a render or bake with a larger
+    image fails with NativeStatus.Unsupported, "Unsupported feature: an image
+    wider or taller than 1073741823 pixels on the CPU backends ..."),
+    long? MaxImageTileSize (provisional): the largest tile side of a tiled
+    image (TILED IMAGES): 128 on Metal, 1024 on the CPU backends and WebGPU
 Warnings also carries a notice when a scene compiles to an unusually large GPU
 program that some older Intel graphics drivers may fail to compile; the notice
 never changes the rendered result.
@@ -1052,7 +1057,10 @@ at least 1). A 64 x 64 image under a limit of 40 loads as 32 x 32.
   - It brings an image within Metal's texture limit: Cycles' Metal device
     refuses an image wider or taller than 16384 pixels (DEVICE ERRORS;
     GetCapabilities().Scope.MaxImageDimension states each backend's limit); a
-    limit of 16384 or less halves it until it fits.
+    limit of 16384 or less halves it until it fits. Likewise on the CPU
+    backends, whose limit is 1073741823 (Cycles computes the reduction in
+    binary32, in which a limit of 1073741823 is 2^30 and may leave a side of
+    2^30; a limit of 536870912 or less always brings an image within it).
   - 0, the default, keeps every image at its size; the largest limit is
     int.MaxValue (ArgumentOutOfRangeException above it).
   - Set it before the first render or bake that loads images. Cycles never
@@ -1076,19 +1084,19 @@ large texture seen small costs a few tiles of its small levels). Bind it with
 Bind (ImageTextureNode, EnvironmentTextureNode) or as UDIM tiles of tiled
 images only.
   - Tile size (provisional): CreateTiledImage(..., tileSize) chooses the side of
-    the square tiles: a power of two from 64 to 128 on the Metal backend and
-    from 64 to 65536 on the CPU backends, the sizes Cycles' texture cache takes
-    there (Cycles' Metal tile pool, 64 tiles of tileSize + 4 pixels in a row, is
-    at most 16384 wide); anything else throws (NativeFailure,
-    NativeStatus.Invalid, "Invalid tiled image tile size N: 0 (the default, 64)
-    or a power of two from 64 to M ..."). Larger tiles mean fewer, larger reads,
-    and memory: Cycles allocates the tiles of one format and interpolation in
-    pools of 64 tiles of (tileSize + 4)^2 pixels (271 MB of address space for
-    byte4 tiles of 1024), and each tile is read whole (tileSize x tileSize
-    pixels of a level that large). An allocation the platform refuses ends the
-    process (Cycles does not handle it). Measured at every size: the mip levels
-    are selected and read in tiles of that size, and Closest renders bit for bit
-    like the same pixels from CreateImage.
+    the square tiles: a power of two from 64 to 128 on the Metal backend
+    (Cycles' Metal tile pool, 64 tiles of tileSize + 4 pixels in a row, is at
+    most 16384 wide) and from 64 to 1024 on the CPU backends;
+    GetCapabilities().Scope.MaxImageTileSize states the backend's largest.
+    Anything else throws (NativeFailure, NativeStatus.Invalid, "Invalid tiled
+    image tile size N: 0 (the default, 64) or a power of two from 64 to M ...").
+    Larger tiles mean fewer, larger reads, and memory: Cycles allocates the
+    tiles of one format and interpolation in pools of 64 tiles of
+    (tileSize + 4)^2 pixels, whole (271 MB for byte4 tiles of 1024, 1.1 GB for
+    float4; the CPU limit keeps the pool within that), and each tile is read
+    whole (tileSize x tileSize pixels of a level that large). Measured at every
+    size: the mip levels are selected and read in tiles of that size, and
+    Closest renders bit for bit like the same pixels from CreateImage.
   - Levels: level 0 is the image; level L has TiledImage.LevelSize(width,
     height, L, tileSize) (each side shifted right by L, at least 1), and there
     are TiledImage.LevelCount(width, height, tileSize) of them, down to the
@@ -1235,9 +1243,22 @@ Both) gets its authored positions back before Cycles displaces it again
 object it is displaced with (the first object that uses it), and after a device
 recovery (DEVICE ERRORS); GetAttribute returns the authored values, not the
 displaced ones. A material assigned after a render that no node used before
-renders as in a new scene too. The one refused edit: a baked volume (voxel
-data), its object's Tfm, Motion or Geometry; that throws
+renders as in a new scene too. A call that throws is no edit (provisional):
+SetAttribute, SetAttributeBytes and RemoveAttribute check every argument
+before they restore anything, so a refused one changes nothing (a Gaussian
+splat cloud's AttributeFlags.SplatBoundingRadius read keeps working). The one
+refused edit: a baked volume (voxel data), its object's Tfm, Motion or
+Geometry; that throws
 (NativeStatus.NotReady): remove and recreate the object and volume.
+Known limitations of displaced meshes: a displacement shader that reads a scene
+value (scene.SceneAttributes.Time or Frame, read by a Scene Time node) is not
+displaced again when only that value changes; the mesh keeps the earlier
+displacement until the mesh, its shaders or its object are edited (create a new
+scene for another time). And on Metal with MetalRT, a scene that grows beyond
+16,777,216 instances or 268,435,456 primitives makes Cycles rebuild every
+geometry with MetalRT's extended limits, which could displace a displaced mesh a
+second time; this is known from reading Cycles' source only, no render has shown
+it.
 
 SHADOW CATCHER
 --------------
@@ -1281,8 +1302,10 @@ then as any mesh, every BakeType on every backend, true displacement included.
 Its UV layout is a subdivision attribute (AttributeFlags.Subdivision with
 Standard for "uv"). Set SubdAdaptiveSpace Object: Pixel, the default, measures
 the dicing in pixels of a render camera, which a bake does not have, so it is
-refused (RENDER-TIME REJECTIONS), as is Catmull-Clark. ReadBakeMap's triangle
-indices are those of Cycles' tessellation.
+refused (RENDER-TIME REJECTIONS), as is Catmull-Clark; a bake of any object is
+refused the same way while another subdivision surface of the scene is diced
+in Pixel space. ReadBakeMap's triangle indices are those of Cycles'
+tessellation.
 
     // The mesh needs a UV layout: a "uv" corner attribute (standard), or any
     // float2 corner or vertex attribute named by BakeSettings.UvAttribute.
@@ -1324,7 +1347,8 @@ clears the last render's passes (ReadPass throws InvalidOperationException until
 render succeeds), and a later render is unaffected. Pass nodes other than AOVs take no
 part in a bake. With UseDenoise the Combined bake is denoised as an image of the UV
 layout, so values bleed across island edges and into empty pixels: for bakes
-you will sample, denoise with care. In a scene with an approximate shadow catcher and an
+you will sample, denoise with care; a DenoiserUpscaleFactor other than 1 throws
+before the bake starts, as for a render (RENDER-TIME REJECTIONS). In a scene with an approximate shadow catcher and an
 opaque background a Combined bake is the world's, not the object's, as Cycles bakes it: each
 covered texel holds the background in the direction of its surface point seen from the origin,
 and every alpha is 1. Baked normals are world space; tangent or object
@@ -1797,6 +1821,7 @@ Every backend:
   - the dlss denoiser
   - a denoiser upscale factor other than 1
   - curves and points with a Both displacement shader
+  - area lights with an axis of infinities (an axis with no zero component whose length underflows to zero)
 The WebGPU backend:
   - tiled rendering (a tile size other than 0)
   - BVH spatial splits
@@ -1813,7 +1838,7 @@ The WebGPU backend:
   - BVH time steps
   - volume velocity motion blur
   - sparse or tiled images
-  - area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, with an axis of infinities, or reached by the light tree at a transmissive surface
+  - area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, or reached by the light tree at a transmissive surface
   - background light portals of zero extent
   - bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)
   - texture, colour and utility shader nodes on Adreno 650 GPUs
@@ -1828,7 +1853,11 @@ a subdivision surface whose SubdAdaptiveSpace is Pixel (the default) fails
 with "Unsupported feature: bakes of subdivision surfaces diced in pixel
 space": pixel-space dicing measures in the render camera, so the diced
 triangles would depend on the scene's last render; set it to Object for the
-bake. Dispersion
+bake. The same holds for every other subdivision surface of the scene you
+bake (provisional): a bake of any object fails with those words while another
+object's subdivision surface is diced in Pixel space, which the bake would see
+diced in the camera of the last render; give every subdivision surface of a
+scene you bake SubdAdaptiveSpace Object (ReadBakeMap is not affected). Dispersion
 (a Principled BSDF with TransmissionDispersionScale and TransmissionWeight
 each linked or not 0) renders on the CPU and Metal backends and is not
 implemented by the WebGPU device, whose message is "WebGPU dispersion not
@@ -1885,7 +1914,18 @@ STORAGE-BINDING LIMIT) instead of moving device data to host memory, as on
 Cycles' Metal device. Open Image Denoise on the CPU, which the CPU and WebGPU
 backends use, does not upscale, and with GPU denoising on the Metal backend
 Cycles leaves the render at the reduced resolution: no backend returns an
-upscaled film. For the area light, portal and bake entries
+upscaled film; a bake with the factor fails the same way before it starts
+(provisional). An area light with an axis of infinities fails on every
+backend with "Unsupported feature: area lights with an axis of infinities"
+(provisional): when a column of the light object's Tfm times Sizeu or Sizev
+has no zero component but a length that underflows to zero (a rotated light
+scaled down to about 1e-23), Cycles divides it by that zero length, and the
+kernels' comparisons with the resulting infinities depend on the signs of each
+ray's components, so the CPU and Metal films disagree widely; give the light a
+larger size or scale. An axis that underflows with a zero component (for
+example Sizeu 1e-23 on an unrotated light) holds a NaN instead and renders as
+Cycles renders it, an unlit strip or an emitting plane that casts no light, on
+the CPU and Metal backends; portals are not refused. For the area light, portal and bake entries
 Cycles' own kernels evaluate the light or the texel at a direction that is not
 a number, and the CPU result depends on how each comparison and minimum drops
 that value, which WGSL does not define. The Adreno 650 entries (for example the

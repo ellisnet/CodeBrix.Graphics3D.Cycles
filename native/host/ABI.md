@@ -86,8 +86,10 @@ version and this native version.
   Metal render with GPU denoising at a denoiser upscale factor, which Cycles renders
   at the reduced resolution and the film does not upscale (measured with that
   refusal lifted in a scratch build: "render buffers of 16 x 12 ... for a render of
-  32 x 24"); a bake still accepts the factor, and such a Metal bake with GPU
-  denoising now fails by name in the same way.
+  32 x 24"); a bake refuses the factor up front as a render does (Sampling,
+  Baking), and such a Metal bake with the up-front refusal lifted fails here in
+  the same way ("render buffers of 16 x 16 ... for a render of 32 x 32"), so the
+  check stays behind both refusals as a second line of defence.
 
 ## Error codes
 
@@ -247,7 +249,8 @@ classes of scene features the device rejects at render time; `cpu.arithmetic`
 states the CPU kernels' `isa`, `fpContract` and `reciprocalMath`, from a
 translation unit compiled with their flags; `maxImageDimension`, **PROVISIONAL**,
 the largest width or height the backend's device takes for an image loaded whole,
-below), `optionalLibraries`
+below; `maxImageTileSize`, **PROVISIONAL**, the largest tile side of a tiled image,
+"Tiled images"), `optionalLibraries`
 (OSL, Embree, OpenImageDenoise, OpenVDB: compiled or not), `denoising`
 (added within schema 1: `available`; when true also `denoiser`,
 `openimagedenoise`, and `denoiseDevice`, the Open Image Denoise device per
@@ -284,12 +287,20 @@ below); the WebGPU device refuses a side above `INT32_MAX / 2` (1073741823,
 "Invalid resident image dimensions", `WebGPUDevice::mem_alloc`,
 `native/cycles/device.cpp`; READ, not run here), and its storage binding also bounds
 an image's bytes (AGENT-README.txt, "EXCEEDING THE GPU STORAGE-BINDING LIMIT"); the
-CPU device checks none (it keeps the side in `KernelImageInfo`'s `uint` and its
-kernels read it as `int`, `util/types_image.h`, `kernel/util/image.h`), so `cpu` and
-`cpu-embree` state `INT_MAX`, the host's own limit. The value applies to an image
-loaded whole; a tiled image (`cbc_host_image_create_tiled`) is loaded in tiles
-through Cycles' texture cache (READ: its device images are the tile pool, not the
-image).
+CPU device checks none itself, but its kernels compute `2 * width` and `2 * height`
+in `int` for the Mirror extension (`wrap_mirror`, `kernel/util/image.h`), defined
+only up to 1073741823, so `cpu` and `cpu-embree` state 1073741823 and the host
+refuses at render and bake, on those backends, an image bound whole that loads
+wider or taller (`CBC_UNSUPPORTED`, "Unsupported feature: an image wider or taller
+than 1073741823 pixels on the CPU backends ..."; measured with an image of
+1073741824 x 1). The size it loads at is the one Cycles computes from the texture
+limit ("Images" below: `ImageManager::device_load_image` and
+`ImageCache::load_full`, in binary32, in which a limit of 1073741823 is 2^30 and
+leaves a side of 2^30 whole; a limit of 536870912 or less brings any image within
+it). The value applies to an image loaded whole; a tiled image
+(`cbc_host_image_create_tiled`) is loaded in tiles through Cycles' texture cache
+(READ: its device images are the tile pool, not the image) and is bounded by its
+tile size instead (`maxImageTileSize`, "Tiled images").
 
 Facts measured for the current WebGPU device (Linux host gate): object shadow
 terminator offsets are implemented (geometry offset; shading offset 0 to 1, larger
@@ -365,9 +376,9 @@ socket layer cannot express (lifetime, buffers, callbacks, queries).
 | --- | --- |
 | Singletons | `cbc_host_scene_node`: `camera`, `background`, `film`, `integrator`, `scene_attributes` (`time` in seconds and `frame`, which the Scene Time node reads) |
 | Scene nodes | `cbc_host_create_node`: `mesh`, `hair`, `pointcloud`, `volume`, `object`, `particle_system`, `pass`, `shader`, `pointlight`, `spotlight`, `arealight`, `sunlight`, `backgroundlight` |
-| Lights | create the light, set `strength`, `used_shaders` (an emission shader), type-specific sockets (`radius`/`is_sphere`, `angle`/`smooth`, `sizeu`/`sizev`/`ellipse`/`spread`, sun `angle`), then an `object` whose `geometry` is the light and whose `tfm` places it. Area and sun lights emit along the object's -Z. |
+| Lights | create the light, set `strength`, `used_shaders` (an emission shader), type-specific sockets (`radius`/`is_sphere`, `angle`/`smooth`, `sizeu`/`sizev`/`ellipse`/`spread`, sun `angle`), then an `object` whose `geometry` is the light and whose `tfm` places it. Area and sun lights emit along the object's -Z. An area light whose axis (a column of the object's `tfm` times `sizeu` or `sizev`) has no zero component but a length that underflows to zero is refused at render and bake on every backend (**PROVISIONAL**; `CBC_UNSUPPORTED`, "area lights with an axis of infinities": Cycles' kernel axis, `normalize_len` in `AreaLight::copy_to_kernel`, is then all infinities, whose comparisons depend on the signs of each ray's components, and the CPU and Metal films differ widely); a portal, and a light Cycles disables by its strength, its size or a zero transform column, is not refused. An axis that underflows with a zero component (for example a size of 1e-23 on an unrotated light) holds a NaN instead and renders as Cycles renders it: no light sample, an unlit strip or an emitting plane for camera rays (native/DEVICE.md item 148). |
 | Cameras | `camera_type` (`perspective`, `orthograph`, `panorama`; `custom` needs OSL, not compiled), `panorama_type`, `fov`, `matrix`, clipping, `shuttertime`, `motion` (transform array). The orthographic view size follows the scale of `matrix`. `viewplane.*` set by the caller (lens shift, sensor fit) is kept for every render (left below right, bottom below top); all four zero restores the automatic viewplane, which the render otherwise computes from the film's aspect. `full_width`, `full_height` come from each render's `CBCRenderConfig` (a set that would change them is `CBC_INVALID`). `viewplane_pre.*`, `viewplane_post.*`, `border_pre_left` and `border_pre_bottom` are Cycles' inputs for the motion pass of a camera whose viewplane or border moved since the previous frame (the previous and next viewplane, empty when all four are zero: the current one is used; the previous border origin, used when both are 0 or more, default -1); they change the motion pass and the denoising motion guides only. `border.*` (fractions of the film, lower-left origin; the default 0..1 or all zero is the whole film) renders only that region: the film and every pass come back at full size with zero outside it; the region's pixel edges are the fractions times the film size rounded to the nearest pixel; a border with left >= right or bottom >= top, outside 0..1, or covering no whole pixel is `CBC_INVALID` |
-| Sampling | `CBCRenderConfig.samples` is the render's sample count (the integrator's `aa_samples` follows it; a set that would change it is `CBC_INVALID`); the integrator's `use_sample_subset`, `sample_subset_offset`, `sample_subset_length` render a subset of those samples; `cbc_host_render_time_limit` stops a render early. With denoising, a `denoiser_upscale_factor` other than 1 is refused at render on every backend (`CBC_UNSUPPORTED`, "a denoiser upscale factor other than 1": the CPU and WebGPU backends' Open Image Denoise runs on the CPU, which does not upscale, and with GPU denoising on the Metal backend Cycles leaves the render at the reduced resolution, so no backend returns an upscaled film). The film's `display_pass` and `show_active_pixels` are viewport settings with no effect on the returned film, and `use_sample_count` is Cycles' session state (set by every render); a set that would change any of them is `CBC_INVALID` (read the sample count through a `sample_count` pass) |
+| Sampling | `CBCRenderConfig.samples` is the render's sample count (the integrator's `aa_samples` follows it; a set that would change it is `CBC_INVALID`); the integrator's `use_sample_subset`, `sample_subset_offset`, `sample_subset_length` render a subset of those samples; `cbc_host_render_time_limit` stops a render early. With denoising, a `denoiser_upscale_factor` other than 1 is refused at render and bake on every backend (`CBC_UNSUPPORTED`, "a denoiser upscale factor other than 1": the CPU and WebGPU backends' Open Image Denoise runs on the CPU, which does not upscale, and with GPU denoising on the Metal backend Cycles leaves the render at the reduced resolution, so no backend returns an upscaled film; a bake refuses it before anything bakes, **PROVISIONAL**). The film's `display_pass` and `show_active_pixels` are viewport settings with no effect on the returned film, and `use_sample_count` is Cycles' session state (set by every render); a set that would change any of them is `CBC_INVALID` (read the sample count through a `sample_count` pass) |
 | Integrator, film | sockets of the singletons, for example `max_bounce`, `sampling_pattern`, `seed`, `motion_blur`, `exposure`, `filter_type`. The integrator's `filter_glossy` is 1.0 unless the caller sets it (Cycles' default; 0 switches the glossy filter off). `denoiser_type` `dlss` is refused at a denoising render (`CBC_UNSUPPORTED`; the library denoises with `openimagedenoise`). `denoiser_passes` is Cycles' bit set of denoiser guides: albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64 (default albedo and normal); there is no other guide, and a value with any other bit is `CBC_INVALID` at a denoising render |
 | Shader graphs | `cbc_host_shader_output`, `cbc_host_shader_node`, `cbc_host_connect`. A link between different value types (a colour into a float input, a float into a shader input, ...) gets Cycles' own conversion node when the graph is built; a closure output links only into a closure input (`CBC_UNSUPPORTED`). Dispersion: a `principled_bsdf` whose `Transmission Dispersion Scale` and `Transmission Weight` are each linked or not 0 (Cycles' own test for a dispersive material) renders with dispersion on the CPU and Metal backends and is refused at render on the WebGPU backend (`CBC_UNSUPPORTED`, "WebGPU dispersion not implemented"). The Attribute, Image Texture and Environment Texture nodes have `Missing` (colour; default black on the Attribute node, magenta 1, 0, 1 on the texture nodes) and `Missing Alpha` (default 1) inputs: the value the node returns when its attribute or image does not exist. Refused by the WebGPU device (`CBC_FAILED`, the message names the node): `boolean_math`, `integer_math` and `get_vector_component` reached with a linked input (with constant inputs Cycles folds them away and every backend renders them) |
 | Geometry | `cbc_host_mesh` (triangles; every face starts on material 0), the `shader`/`smooth` face sockets, attributes (`cbc_host_attribute_*`; on meshes the standard names `P`, `N`, `uv`, `generated`, `tangent`, `tangent_sign`, and `pointiness` per vertex and `random_per_island` per face, which the Geometry node reads and the caller computes). Lookup order: a shader that asks for an attribute by name (the Attribute and UV Map nodes) gets the attribute of that name first, also when the name is a standard name (`uv`, `color`, `pointiness`, ...) and the attribute was created without `CBC_ATTR_STANDARD`, then the standard attribute of that name; a shader that asks for a standard attribute without a name (the Texture Coordinate node's UV, the Geometry node's Pointiness, tangents) gets the attribute created with `CBC_ATTR_STANDARD`, else an attribute that has the standard's name, value type and domain. A request for a tangent also requests the UV map it is computed from. Quaternion and spherical-harmonics attributes (**PROVISIONAL**, value kinds `CBC_VALUE_QUATERNION` 18 and `CBC_VALUE_SPHERICAL_HARMONICS_REST` 19; custom names on `CBC_ATTR_MESH`, `CBC_ATTR_FACE`, `CBC_ATTR_VERTEX` and `CBC_ATTR_CORNER` of a mesh and on `CBC_ATTR_MESH` and `CBC_ATTR_VERTEX` of a point cloud; quaternions also on `CBC_ATTR_MESH`, `CBC_ATTR_CURVE` and `CBC_ATTR_CURVE_KEY` of hair, the curve domains the pinned kernels fetch attributes from (`curve_attribute`, `kernel/geom/curve.h`: per key mixed along each segment, per curve; `primitive_surface_attribute`: the mesh domain); on volume geometry both, and spherical harmonics on hair, are `CBC_UNSUPPORTED` ("... quaternion attributes are accepted on meshes, point clouds and curves only", "... spherical-harmonics attributes are accepted on meshes and point clouds only (the pinned kernels read them only for Gaussian splats, kernel/geom/gsplat.h, and never on curves)"): a quaternion is 4 floats per element in Cycles' order w, x, y, z, stored and read back exactly; the Attribute node returns w, x, y as `Color` and `Vector`, their average as `Fac` and z as `Alpha`, and between vertices (and the keys of a curve segment) the components are interpolated one by one, unnormalized. A spherical-harmonics attribute holds the coefficients of bands 1 to 3 (band 0 is not part of it): 45 floats per element, 15 RGB coefficients in Cycles' order (L1 M-1, L1 M0, L1 M1, L2 M-2, ..., L3 M3), each in [-1, 1]; a value outside that range is `CBC_INVALID` ("Spherical-harmonics coefficients must lie in [-1, 1]"), never clipped. Cycles stores each coefficient at 8 bits over [-1, 1] (`quantize_spherical_harmonics`), so `cbc_host_attribute_get_floats` returns the stored value, as it returns a packed normal: at most 1/255 (half a step) from the value set. The Attribute node finds such an attribute and returns black with `Alpha` 1 (the pinned kernels have no shader reading of it). It cannot be a subdivision attribute (`CBC_UNSUPPORTED`: Cycles does not interpolate it over subdivided faces); a quaternion can. Both render on the CPU and Metal backends; on the WebGPU backend, quaternion and spherical-harmonics attributes read by a shader are refused at render (`CBC_FAILED`, "WebGPU quaternion attributes not implemented", "WebGPU spherical harmonics attributes not implemented"); an attribute that no shader reads is not sent to the device. Subdivision: `cbc_host_subd_mesh` gives a mesh a control cage of polygon faces, tessellated by each render with Cycles' adaptive dicing when `subdivision_type` is `linear` (subdivision attributes with `CBC_ATTR_SUBDIVISION`), and by each bake of it (**PROVISIONAL**, object space only: Baking); subdivision faces with `subdivision_type` none are `CBC_INVALID` at render; Catmull-Clark is refused at render and bake (`CBC_UNSUPPORTED`): it needs OpenSubdiv, which the library does not include |
@@ -415,7 +426,11 @@ geometry's attributes. `cbc_host_attribute_get_*` return the authored values,
 also the radius of a Gaussian splat cloud, which Cycles replaces at render
 (Point clouds, above): the host keeps the authored radius from a render to the
 next edit of the cloud, which writes it back first; Cycles' own radius reads
-with `CBC_ATTR_SPLAT_BOUNDING_RADIUS` (**PROVISIONAL**) until that edit.
+with `CBC_ATTR_SPLAT_BOUNDING_RADIUS` (**PROVISIONAL**) until that edit. A refused
+attribute call is no edit (**PROVISIONAL**): `cbc_host_attribute_floats`, `_bytes`
+and `_remove` check every argument against the authored attributes they would edit
+before they restore anything, so one that fails changes nothing (no restore, no
+re-render of the geometry; a splat cloud's bounding radius stays readable).
 
 Displaced meshes (**PROVISIONAL**: the rule below). Cycles applies true
 displacement (`displacement_method` `true` or `both`) by adding it to a mesh's
@@ -441,7 +456,18 @@ after a device recovery, within the practical criterion. Subdivision meshes are
 tessellated from their cage before each displacement and need no copy. Cycles
 compiles only the shaders that nodes reference; a shader that becomes referenced
 after a render (a `used_shaders` entry, the background `shader`) is compiled for
-the next render (`Shader::tag_used`), as for a new host.
+the next render (`Shader::tag_used`), as for a new host. Known limitations of the
+rule (not tracked by the host): a displacement shader that reads a scene value the
+host does not watch, such as the Scene Time node (`scene_attributes` `time` and
+`frame`), is not displaced again when that value changes, so a displaced mesh keeps
+the displacement of the earlier time until the mesh, its shaders or its object are
+edited; and on the Metal backend with MetalRT, when the scene grows beyond MetalRT's
+default limits (more than 16,777,216 instances or 268,435,456 primitives), Cycles
+switches to its extended limits and tags every geometry modified
+(`MetalDevice::set_bvh_limits`, called by `Scene::update_kernel_features`,
+`scene/scene.cpp`) inside the render's own scene update, without the host restoring
+the authored positions first, so a displaced mesh could be displaced twice. The second is known only from
+reading the source; no film shows it.
 
 Subdivision surfaces after a render (**PROVISIONAL**: the two rules below). Cycles
 dices a cage again only when its positions or its dicing settings changed
@@ -498,26 +524,29 @@ own files (for .NET, CodeBrix.Imaging) and serve their pixels.
   selects mip levels by the first tile's metadata.
 - **Tile size (PROVISIONAL).** `config->tile_size` is the side of the square tiles
   Cycles loads: 0 (64, the default) or a power of two from 64 to 128 on the Metal
-  backend and from 64 to 65536 on the others; anything else is `CBC_INVALID`
+  backend and from 64 to 1024 on the others; anything else is `CBC_INVALID`
   ("Invalid tiled image tile size N: 0 (the default, 64) or a power of two from
-  64 to M ...", and `release` runs before the call returns). These are the sizes
-  the pinned Cycles takes on each device: its texture cache takes square
+  64 to M ...", and `release` runs before the call returns). The capability report
+  states each backend's largest size (`backendScope.<backend>.maxImageTileSize`,
+  **PROVISIONAL**: 128 on `metal`, 1024 on `cpu`, `cpu-embree` and `webgpu`, which
+  refuses tiled images at render). The pinned Cycles' texture cache takes square
   power-of-two tiles (`ImageCache::load_image_tiled`; the kernel maps texels to
   tiles by shifts) and never uses one below 64 (`ImageMetaData::detect_tiles`
   loads a file's smaller tiles in blocks of
   `DebugFlags().texture_cache.min_tile_size`, 64). The tiles of one format and
   interpolation share pool images of 64 tiles of (size + 4) x (size + 4) pixels in
   a row (`ImageCache::alloc_tile`), and Cycles' Metal device refuses an image wider
-  than 16384 (`MetalDevice::image_alloc`), so 128 there. The CPU device checks no
-  image size; its kernel addresses the pool by a float pixel coordinate
-  (`kernel_image_tile_map`, `ImageInterpolator`), which holds every texel centre
-  up to a pool width of 2^23, reached by tiles of 65536. Memory: Cycles allocates
-  a pool image whole at the first tile load of its format and interpolation,
-  64 x (size + 4)^2 pixels in its storage type (for byte4 tiles of 64 1.2 MB, of
-  1024 271 MB, of 65536 1.1 TB of address space, of which only the rows of the
-  loaded tiles are written), and a tile of t x t pixels is read and staged whole;
-  an allocation the platform refuses is Cycles' `std::bad_alloc`, which it does
-  not handle. `cbc_host_image_create` and `cbc_host_image_update` need
+  than 16384 (`MetalDevice::image_alloc`), so 128 there. On the CPU the bound is
+  the library's, for memory: Cycles allocates a pool image whole at the first
+  tile load of its format and interpolation, 64 x (size + 4)^2 pixels in its
+  storage type (for byte4 tiles of 64 1.2 MB, of 1024 271 MB, 1.1 GB for float4;
+  of 2048 four times as much, of 65536 1.1 TB of address space), and a tile of
+  t x t pixels is read and staged whole; an allocation the platform refuses is
+  Cycles' `std::bad_alloc`, which it does not handle. So the CPU backends stop at
+  1024, below what Cycles' CPU kernel would address (it finds a texel of the pool
+  by a float pixel coordinate, `kernel_image_tile_map`, `ImageInterpolator`, which
+  holds every texel centre up to a pool width of 2^23, reached by tiles of 65536).
+  `cbc_host_image_create` and `cbc_host_image_update` need
   `tile_size` 0 (`CBC_INVALID`, "A tile size applies to tiled images only ...").
   Measured at every size on the CPU (images 8 rows high) and at 64 and 128 on
   Metal: Cycles selects the mip levels from the footprint and reads them in tiles
@@ -778,7 +807,17 @@ criterion of it. Refused, `CBC_UNSUPPORTED`, on every backend: dicing in pixel s
 subdivision surfaces diced in pixel space ...": it measures in the pixels of a render
 camera, which a bake does not have, so the triangles would depend on the scene's last
 render; dice in `object` space) and Catmull-Clark ("Unsupported feature: Catmull-Clark
-subdivision needs OpenSubdiv ..."). A mesh with `subdivision_type` `linear` and
+subdivision needs OpenSubdiv ..."). The pixel-space refusal covers every subdivision
+surface of the baked scene, not only the bake target (**PROVISIONAL**): a bake of any
+object is refused when another object's mesh is a linear cage diced in pixel space
+(the same words, "... another subdivision surface of the baked scene has
+subd_adaptive_space pixel ..."), because Cycles' device update dices such a surface in
+the scene's dicing camera (`GeometryManager::device_update`, `scene/geometry.cpp`),
+which the host keeps equal to the render camera at a render and which a bake does not
+set: the bake would see it diced in the camera of the scene's last render (Cycles'
+default before any render), or as the last render left it when it was not modified
+since (`Mesh::need_tessellation`). `cbc_host_bake_map` maps the target alone and is not
+refused for another surface. A mesh with `subdivision_type` `linear` and
 triangles but no cage is baked as its triangles (Cycles dices nothing).
 
 **What the package does not do.** It fills no margin: pixels no triangle covers stay
@@ -796,7 +835,10 @@ A bake clears the last render's results (`cbc_host_pass_floats` and
 results of its own to them. Failed and cancelled bakes never write the output buffer.
 Events, `cbc_host_cancel` and threading are those of `cbc_host_render`. The integrator's
 settings apply: adaptive sampling works; with denoising the Combined output is denoised as an image of the
-UV layout, so values bleed across island edges and into empty pixels. In a scene with an
+UV layout, so values bleed across island edges and into empty pixels. A denoiser upscale factor
+other than 1 is refused, as at render, before anything bakes (**PROVISIONAL** for bakes;
+`CBC_UNSUPPORTED`, "Unsupported feature: a denoiser upscale factor other than 1 ...", every
+backend). In a scene with an
 approximate shadow catcher and an opaque background the film gains a background pass, which
 the kernel reads as a request to bake the world: the bake is the world's, as Cycles writes it.
 

@@ -1102,10 +1102,10 @@ validated. A rebuild of the same Cycles-with-Metal sources with the same toolcha
 gives the same bytes at any checkout path (native/host/MACOS_ARM64.md,
 "Reproducible builds"), so a fresh build can be checked against a committed payload
 by hash (docs/TESTING-MACOS-ARM64.md, step 9). That needs CMake 4.2 or newer for the
-osx-arm64 recipe (OBJECT_NAME); with an older CMake inject_cycles_macos.cmake warns,
-and the host library, its executables and its dSYM then differ with the checkout
-path and the dSYM lacks the line tables of objects whose file names repeat within a
-Cycles static library. To tie a build to a commit, native/tools/build_cycles_macos.py
+osx-arm64 recipe (OBJECT_NAME), and inject_cycles_macos.cmake refuses an older CMake
+when it configures the host build: the host library, its executables and its dSYM
+would otherwise differ with the checkout path, and the dSYM would lack the line
+tables of objects whose file names repeat within a Cycles static library. To tie a build to a commit, native/tools/build_cycles_macos.py
 records the commit it builds from and the git status of the Cycles-with-Metal
 sources when it starts and when it completes (sourceCommit and metalSourceStatus in
 host/invocation.json, sourceAtEnd in host/status.json; a --target build records

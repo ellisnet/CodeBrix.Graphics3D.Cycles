@@ -80,6 +80,18 @@ AttributeStandard standard_attribute(Geometry &geometry,const char *name,Attribu
   if(key=="random_per_island" && mesh)return ATTR_STD_RANDOM_PER_ISLAND;
   throw Failure(CBC_UNSUPPORTED,"Standard attribute is not exposed for this geometry");
 }
+// The attribute of that name an edit of the geometry applies to. Every edit restores the authored attributes first
+// (before_edit, host_edits.inc): of a displaced mesh (undisplace) or of a geometry the static BVH path baked (unbake; a
+// displaced copy, taken after it, wins). An attribute call checks its arguments against those, before the edit
+// preparation, so that a refused call changes nothing (no restore, no tag; a splat cloud keeps its bounding radius).
+const Attribute *edited_attribute(Host &host,Geometry &geom,uint32_t flags,const char *name){
+  const AttributeSet &set=attribute_set(geom,flags);
+  if(!(flags&CBC_ATTR_SUBDIVISION)){
+    if(auto kept=host.displaced.find(&geom);kept!=host.displaced.end())return kept->second.attributes->find(ustring(name));
+    if(geom.transform_applied&&bake_restorable(&geom))if(auto record=host.bakes.find(&geom);record!=host.bakes.end())return record->second.attributes->find(ustring(name));
+  }
+  return set.find(ustring(name));
+}
 struct AttributeTarget {Geometry &geom;AttributeSet &set;AttributeElement element;TypeDesc type;AttributeStandard standard;uint64_t count;};
 AttributeTarget attribute_target(Host &host,CBCNode id,const char *name,const CBCAttributeConfig *config,uint64_t count) {
   require(name&&*name&&config&&config->struct_size==sizeof(*config),"Invalid attribute configuration");
@@ -107,7 +119,7 @@ AttributeTarget attribute_target(Host &host,CBCNode id,const char *name,const CB
   require(!harmonics||!(config->flags&CBC_ATTR_SUBDIVISION),
           "Unsupported feature: spherical-harmonics attributes cannot be subdivision attributes (Cycles does not interpolate them over subdivided faces)",CBC_UNSUPPORTED);
   auto standard=config->flags&CBC_ATTR_STANDARD?standard_attribute(geom,name,element):ATTR_STD_NONE;
-  auto existing=set.find(ustring(name));require(!existing||existing->std==ATTR_STD_NONE||standard!=ATTR_STD_NONE,"Use standard mode to replace a standard attribute");
+  auto existing=edited_attribute(host,geom,config->flags,name);require(!existing||existing->std==ATTR_STD_NONE||standard!=ATTR_STD_NONE,"Use standard mode to replace a standard attribute");
   const auto elements=Attribute::element_size(&geom,element,set.prim);
   require(elements<=INT_MAX && count==uint64_t(elements)*attribute_components(type,element),"Attribute count does not match geometry");
   return {geom,set,element,type,standard,elements};
@@ -121,6 +133,39 @@ Attribute &find_attribute(Host &host,CBCNode id,const char *name,uint32_t flags)
   require(name&&*name,"Attribute name is required");auto &geom=geometry(host,id);auto &set=attribute_set(geom,flags);
   auto value=set.find(ustring(name));require(value,"Unknown attribute");
   require(!(flags&CBC_ATTR_STANDARD)||value->std!=ATTR_STD_NONE,"Attribute is not standard");return *value;
+}
+// The largest image side Cycles' CPU kernels address (PROVISIONAL; the capability report's maxImageDimension of the cpu and
+// cpu-embree backends): ImageInterpolator's wrap_mirror (kernel/util/image.h), the Mirror extension, computes 2 * width and
+// 2 * height in int, defined only up to INT_MAX / 2, 1073741823 (also the WebGPU device's limit). The CPU device itself
+// checks no image size.
+constexpr int64_t cpu_max_image_dimension=INT32_MAX/2;
+// The size at which Cycles loads an image bound whole: ImageManager::device_load_image (scene/image.cpp) reduces an image
+// whose larger side exceeds the texture limit (cbc_host_texture_limit) by texture_resolution = min(SceneParams'
+// texture_resolution, limit / side), ImageCache::load_full (scene/image_cache.cpp) scales it by that factor rounded down to
+// a power of two when below 1, and util_image_resize_pixels (util/image_impl.h) makes each side max(1, int64(side * factor));
+// in binary32 as there (a limit of 1073741823 is 2^30 as a float, so it leaves an image of 2^30 whole).
+std::pair<int64_t,int64_t> loaded_image_size(const SceneParams &params,int64_t width,int64_t height){
+  const int max_dim=int(std::max(width,height));
+  float texture_resolution=params.texture_resolution;
+  if(params.texture_limit>0&&max_dim>params.texture_limit)texture_resolution=std::min(texture_resolution,float(params.texture_limit)/float(max_dim));
+  float scale_factor=1.0f;
+  if(texture_resolution<1.0f)scale_factor=powf(2.0f,floorf(log2f(texture_resolution)));
+  if(!(scale_factor>0.0f&&scale_factor<1.0f))return {width,height};
+  return {std::max(int64_t(float(width)*scale_factor),int64_t(1)),std::max(int64_t(float(height)*scale_factor),int64_t(1))};
+}
+// Every image bound whole in an authoring graph (each UDIM tile too) loads within cpu_max_image_dimension; a tiled image
+// (cbc_host_image_create_tiled) is loaded in tiles through Cycles' texture cache and is not bound by it.
+void images_within_cpu_limit(Host &host){
+  const SceneParams &params=host.session->scene->params;
+  for(auto &[shader,stored]:host.graphs)for(auto &[node,binding]:stored->images)for(auto &[tile,data]:binding){
+    if(data->tiled)continue;
+    const auto [width,height]=loaded_image_size(params,data->width,data->height);
+    require(width<=cpu_max_image_dimension&&height<=cpu_max_image_dimension,
+            ("Unsupported feature: an image wider or taller than 1073741823 pixels on the CPU backends (Cycles' CPU kernels compute twice its "
+             "width and height in int for the Mirror extension, kernel/util/image.h); this image loads at "+std::to_string(width)+" x "+
+             std::to_string(height)+(params.texture_limit?" with the texture limit":"")+": pass a smaller image or set a texture limit that reduces it").c_str(),
+            CBC_UNSUPPORTED);
+  }
 }
 // Requests the pinned Cycles accepts but this library cannot honour: refused by name, never ignored (on every backend
 // unless the test names one).
@@ -181,6 +226,34 @@ void validate_unavailable(Host &host) {
               "Unsupported feature: curves and points with a Both displacement shader (Cycles' bump from displacement reads values it never sets there; "
               "use displacement method bump or true)",CBC_UNSUPPORTED);
     }
+  // An area light with an axis of infinities (PROVISIONAL), on every backend. AreaLight::copy_to_kernel (scene/light.cpp)
+  // gives the kernels each axis as normalize_len (util/math_float3.h) of the object transform's column times the light's
+  // size: the vector times one over its length. A vector with no zero component whose squared length underflows to zero
+  // becomes an axis of infinities without a NaN, whose comparisons in the kernels depend on the signs of each ray's
+  // components (native/DEVICE.md item 148): the CPU and Metal films of such a light differ in 879 practical values, up to
+  // 1.1e3 (the survey's lamps/area-degenerate-infinite-axis). A vector with a zero component gets a NaN there instead, and
+  // that degenerate light stays accepted (no sample; a strip or a plane for camera rays), as do portals of zero extent.
+  // Computed with Cycles' own functions from the light's own values. A light that Light::has_contribution disables by its
+  // strength, its size or a zero transform column never reaches the kernels and is not refused (its test of the emission
+  // shader needs the compiled shader, which the render compiles later, and is not made here).
+  for(auto object:host.session->scene->objects){
+    auto light=dynamic_cast<AreaLight *>(object->get_geometry());
+    if(!light||light->is_portal_light()||light->get_strength()==zero_float3()||light->get_sizeu()*light->get_sizev()==0.0f)continue;
+    const Transform &tfm=object->get_tfm();
+    const float3 u=transform_get_column(&tfm,0),v=transform_get_column(&tfm,1);
+    if(is_zero(u)||is_zero(v))continue;
+    for(const auto &[extent,axis_name]:{std::pair{u*light->get_sizeu(),"u axis (its object transform's first column times sizeu)"},
+                                        std::pair{v*light->get_sizev(),"v axis (its object transform's second column times sizev)"}}){
+      float length;const float3 axis=normalize_len(extent,&length);
+      const bool nan=std::isnan(axis.x)||std::isnan(axis.y)||std::isnan(axis.z);
+      require(nan||(std::isfinite(axis.x)&&std::isfinite(axis.y)&&std::isfinite(axis.z)),
+              (std::string("Unsupported feature: area lights with an axis of infinities (the light's ")+axis_name+" has no zero component "
+               "but a length that underflows to zero, so Cycles divides it by zero; give the light a larger size or object scale)").c_str(),CBC_UNSUPPORTED);
+    }
+  }
+  // The largest image side of the CPU backends (PROVISIONAL, the capability report's maxImageDimension of cpu and
+  // cpu-embree): an image bound whole and loaded wider or taller than that is refused by name (images_within_cpu_limit).
+  if(host.backend==CBC_HOST_CPU_REFERENCE||host.backend==CBC_HOST_CPU)images_within_cpu_limit(host);
   // The DLSS denoiser is not part of this library; the pinned Cycles would fall back to another denoiser with no message.
   auto integrator=host.session->scene->integrator;
   require(!integrator->get_use_denoise()||integrator->get_denoiser_type()!=DENOISER_DLSS,
@@ -303,8 +376,10 @@ void subdivision_attribute_edited(Geometry &geom,uint32_t flags){if(flags&CBC_AT
 }
 extern "C" int cbc_host_attribute_floats(CBCHost handle,CBCNode id,const char *name,const CBCAttributeConfig *config,const float *values,uint64_t count) {
   return edit(handle,[&](Host &host) {
+    // Every argument is checked and the value staged before the edit preparation (edited_attribute), so a refused call
+    // changes nothing; the target's geometry, set, domain and count are those the edit applies to.
     count_ok(values,count);for(size_t i=0;i<count;++i)require(std::isfinite(values[i]),"Attribute contains a nonfinite value");
-    before_edit(host,host.entry(id),nullptr);auto target=attribute_target(host,id,name,config,count);require(!(target.element&ATTR_ELEMENT_IS_BYTE),"Use byte attribute input");
+    auto &entry=host.entry(id);auto target=attribute_target(host,id,name,config,count);require(!(target.element&ATTR_ELEMENT_IS_BYTE),"Use byte attribute input");
     // Cycles quantizes spherical-harmonics coefficients from [-1, 1] to 8 bits and clips anything outside
     // (quantize_spherical_harmonics); a clipped value would be an approximation, so it is refused instead.
     if(target.type==TypePackedSphericalHarmonicsRest)for(size_t i=0;i<count;++i)
@@ -325,14 +400,17 @@ extern "C" int cbc_host_attribute_floats(CBCHost handle,CBCNode id,const char *n
       }
       else value->data_for_write<packed_float3>()[i]=make_float3(v[0],v[1],v[2]);
     }
+    before_edit(host,entry,nullptr);
     target.set.add_from(std::move(*value));target.geom.tag_update(host.session->scene.get(),true);subdivision_attribute_edited(target.geom,config->flags);
   });
 }
 extern "C" int cbc_host_attribute_bytes(CBCHost handle,CBCNode id,const char *name,const CBCAttributeConfig *config,const uint8_t *values,uint64_t count) {
   return edit(handle,[&](Host &host) {
-    count_ok(values,count);before_edit(host,host.entry(id),nullptr);auto target=attribute_target(host,id,name,config,count);require(target.element&ATTR_ELEMENT_IS_BYTE,"Expected byte corner colors");
+    // Checked and staged before the edit preparation, as cbc_host_attribute_floats.
+    count_ok(values,count);auto &entry=host.entry(id);auto target=attribute_target(host,id,name,config,count);require(target.element&ATTR_ELEMENT_IS_BYTE,"Expected byte corner colors");
     AttributeSet staged(&target.geom,target.set.prim);auto value=stage_attribute(staged,target,name);
     if(count)std::memcpy(value->data_for_write<uchar4>(),values,size_t(count));
+    before_edit(host,entry,nullptr);
     target.set.add_from(std::move(*value));target.geom.tag_update(host.session->scene.get(),true);subdivision_attribute_edited(target.geom,config->flags);
   });
 }
@@ -408,8 +486,14 @@ extern "C" int cbc_host_attribute_get_bytes(CBCHost handle,CBCNode id,const char
 }
 extern "C" int cbc_host_attribute_remove(CBCHost handle,CBCNode id,const char *name,uint32_t flags) {
   return edit(handle,[&](Host &host) {
-    before_edit(host,host.entry(id),nullptr);auto &attr=find_attribute(host,id,name,flags);require(attr.std!=ATTR_STD_POSITION&&attr.std!=ATTR_STD_RADIUS,"Cannot remove required geometry storage");
-    auto &geom=geometry(host,id);attribute_set(geom,flags).remove(&attr);geom.tag_update(host.session->scene.get(),true);subdivision_attribute_edited(geom,flags);
+    // Checked against the attribute the removal applies to before the edit preparation (edited_attribute), so a refused
+    // call changes nothing; the attribute is looked up again after it, in the restored set.
+    require(name&&*name,"Attribute name is required");auto &entry=host.entry(id);auto &geom=geometry(host,id);
+    const Attribute *edited=edited_attribute(host,geom,flags,name);require(edited,"Unknown attribute");
+    require(!(flags&CBC_ATTR_STANDARD)||edited->std!=ATTR_STD_NONE,"Attribute is not standard");
+    require(edited->std!=ATTR_STD_POSITION&&edited->std!=ATTR_STD_RADIUS,"Cannot remove required geometry storage");
+    before_edit(host,entry,nullptr);auto &attr=find_attribute(host,id,name,flags);
+    attribute_set(geom,flags).remove(&attr);geom.tag_update(host.session->scene.get(),true);subdivision_attribute_edited(geom,flags);
   });
 }
 // Validates and copies caller pixels; shared by image creation and update.
@@ -501,20 +585,25 @@ extern "C" int cbc_host_image_bind_tiles(CBCHost handle,CBCNode id,const uint32_
 // smaller one. The largest is the device's. The tiles of one format and interpolation share pool images of 64 tiles of
 // (size + 4) x (size + 4) pixels in a row (ImageCache::alloc_tile, scene/image_cache.cpp: a border of
 // KERNEL_IMAGE_TEX_PADDING on each side), allocated whole at the first tile load. Cycles' Metal device refuses an image
-// wider than 16384 (MetalDevice::image_alloc), so 128 there. The CPU device checks no image size (the capability report's
-// maxImageDimension); its kernel finds a texel of the pool by a float pixel coordinate, the level coordinate plus the
-// tile's place in the pool (kernel_image_tile_map), which ImageInterpolator floors (kernel/util/image.h), and binary32
-// holds every texel centre (n + 0.5) only up to 2^23: the pool of 65536-pixel tiles is 64 * 65540 = 4194560 pixels wide,
-// that of 131072-pixel tiles beyond 2^23, so 65536 there (and on the WebGPU backend, which refuses tiled images at
-// render). Cycles' own int arithmetic would go to 2^24 (the pool width in ImageCache::alloc_tile).
+// wider than 16384 (MetalDevice::image_alloc), so 128 there. On the CPU device the bound is the memory of the pool: Cycles
+// allocates each pool whole at its first tile load and reads and stages every tile whole, so the pool of 64 tiles of 1024
+// takes 271 MB for byte4 and 1.1 GB for float4, that of 2048 four times as much, and that of 65536 1.1 TB of address space
+// for byte4 (which Linux and Windows would refuse, ending the process through Cycles' unhandled std::bad_alloc from
+// device_memory::host_alloc). So 1024 there (and on the WebGPU backend, which refuses tiled images at render), the
+// library's cap: Cycles' CPU kernel would address tiles up to 65536 (it finds a texel of the pool by a float pixel
+// coordinate, kernel_image_tile_map, which ImageInterpolator floors, kernel/util/image.h, and binary32 holds every texel
+// centre only up to 2^23, a pool of 64 * 65540 pixels), and its int arithmetic up to 2^24 (ImageCache::alloc_tile). The
+// largest size per backend is also the capability report's backendScope.<backend>.maxImageTileSize (PROVISIONAL).
 constexpr uint32_t tiled_image_default_tile_size=64;
+uint32_t tiled_image_largest_tile_size(uint32_t backend){return backend==CBC_HOST_METAL?128u:1024u;}
 uint32_t tiled_image_tile_size(uint32_t backend,uint32_t requested) {
-  const uint32_t largest=backend==CBC_HOST_METAL?128u:65536u;
+  const uint32_t largest=tiled_image_largest_tile_size(backend);
   if(requested==0)return tiled_image_default_tile_size;
   require(requested>=tiled_image_default_tile_size&&requested<=largest&&(requested&(requested-1))==0,
           ("Invalid tiled image tile size "+std::to_string(requested)+": 0 (the default, 64) or a power of two from 64 to "+std::to_string(largest)+
            (backend==CBC_HOST_METAL?" on the Metal backend (Cycles' Metal tile pool of 64 tiles of size + 4 pixels may be at most 16384 wide)"
-                                    :" (Cycles' texture cache: square power-of-two tiles of at least 64; on the CPU its float pool coordinates)")).c_str());
+                                    :" (Cycles' texture cache takes square power-of-two tiles of at least 64 and allocates a pool of 64 tiles whole: "
+                                     "1.1 GB for float4 tiles of 1024)")).c_str());
   return requested;
 }
 extern "C" int cbc_host_image_create_tiled(CBCHost handle,const CBCImageConfig *config,CBCImageTileReadCallback read,

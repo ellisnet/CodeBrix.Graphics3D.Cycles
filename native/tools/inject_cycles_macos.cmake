@@ -2,8 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # osx-arm64 product profile: pinned Cycles with its own Metal device, the
 # CodeBrix C host and no WebGPU device. Linux/Android use inject_cycles.cmake.
-if(CMAKE_VERSION VERSION_LESS 3.24)
-  message(FATAL_ERROR "The CodeBrix native host requires CMake 3.24 or newer")
+# CMake 4.2 or newer: OBJECT_NAME (codebrix_checkout_independent_objects below) is what makes the host library, its
+# executables and its dSYM the same at every checkout path and gives dsymutil the line tables of every object.
+if(CMAKE_VERSION VERSION_LESS 4.2)
+  message(FATAL_ERROR "The osx-arm64 recipe requires CMake 4.2 or newer (this is CMake ${CMAKE_VERSION}): it names the host's "
+    "objects with the OBJECT_NAME source property (CMake 4.2) for a build that is the same at every checkout path and a dSYM "
+    "with the line tables of every object")
 endif()
 if(NOT APPLE OR NOT CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
   message(FATAL_ERROR "inject_cycles_macos.cmake builds only the osx-arm64 Metal profile")
@@ -40,10 +44,6 @@ endif()
 #   object of a repeated name is named after its path relative to its target's source
 #   directory (or to the repository), with '_' for '/'.
 function(codebrix_checkout_independent_objects existing_targets)
-  if(CMAKE_VERSION VERSION_LESS 4.2)
-    message(WARNING "CMake ${CMAKE_VERSION} has no OBJECT_NAME: the debug map names the checkout path and repeats archive member names")
-    return()
-  endif()
   cmake_path(SET repository NORMALIZE "${CODEBRIX_NATIVE_ROOT}/..")
   get_property(host_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
   list(REMOVE_ITEM host_targets ${existing_targets})

@@ -117,13 +117,12 @@ Machine and toolchain:
 - CMake 4.2 or newer (the recipes pass `CMAKE_POLICY_VERSION_MINIMUM=3.5` for
   the old snapshot minimums). The reproducible build (`native/host/MACOS_ARM64.md`,
   "Reproducible builds") names objects with CMake's `OBJECT_NAME`, which CMake 4.2
-  added. With an older CMake (3.24 to 4.1) the build still runs, but
-  `inject_cycles_macos.cmake` warns ("CMake <version> has no OBJECT_NAME: the debug
-  map names the checkout path and repeats archive member names"): the host
-  library, the executables and the dSYM then differ with the checkout path, and the
-  dSYM lacks the line tables of the objects whose file names repeat within one
-  Cycles static library, so such a build cannot be compared with a payload by hash
-  (step 9).
+  added: without it the host library, the executables and the dSYM would differ
+  with the checkout path, and the dSYM would lack the line tables of the objects
+  whose file names repeat within one Cycles static library. So
+  `inject_cycles_macos.cmake` refuses an older CMake when the host build is
+  configured ("The osx-arm64 recipe requires CMake 4.2 or newer (this is CMake
+  <version>) ..."), and nothing of the host is built.
 - Python 3.
 - zstd (`render_oracles.py --bundle` runs `zstd -19`).
 - The .NET 11 SDK, **version 11.0.100 only** (no earlier version; `dotnet
@@ -222,12 +221,14 @@ and rendered on the CPU; the texture limit refused above `INT_MAX`, accepted
 before that render and, after it, accepted unchanged and refused when changed
 with `CBC_NOT_READY`; BVH spatial splits accepted as 0 and 1 and refused as 2,
 then rendered on the CPU with them; a tiled image without a reader refused and
-released at once, then created, bound and released once by the destroy; tile
-sizes Cycles would change refused, then a render in four tiles of 8 whose device
+released at once, then created, bound and released once by the destroy, and
+its tile sizes 32, 96, 2048 and 65536 refused and 128 and 1024 accepted on the
+CPU host; render tile sizes Cycles would change refused, then a render in four tiles of 8 whose device
 report counts the four tiles kept in memory and the frame read back; on a CPU
 host of its own, a linear subdivision cage whose bake map and bake are refused
 with pixel-space dicing, whose map covers texels with indices into Cycles'
-tessellation and whose Combined bake is finite in object space, and whose
+tessellation and whose Combined bake is finite in object space, whose bake is
+refused (and bake map not) beside a second cage diced in pixel space, and whose
 Catmull-Clark bake map is refused); the
 native Session references (`session` and
 `session64`, CPU); the C lifecycle and process-exit consumers, bitwise

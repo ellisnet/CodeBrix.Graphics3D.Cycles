@@ -85,6 +85,24 @@ BakeRequest bake_request(Host &host, const CBCBakeConfig *config) {
   require(aov ? config->aov_name && *config->aov_name : !config->aov_name, aov ? "An AOV bake needs the AOV pass name" : "Only an AOV bake takes an AOV pass name");
   return request;
 }
+// Every other subdivision surface of a baked scene (PROVISIONAL): GeometryManager::device_update (scene/geometry.cpp) dices
+// each modified linear cage whose positions or dicing settings changed (Mesh::need_tessellation, scene/mesh.cpp), and for
+// subd_adaptive_space pixel it hands Mesh::tessellate the scene's dicing camera, in whose pixels DiagSplit::T
+// (subd/split.cpp) measures every edge (Camera::world_to_raster_size). cbc_host_render keeps the dicing camera equal to the
+// render camera; a bake sets neither, so such a surface is diced in the camera of the scene's last render (Cycles' default
+// before any render), or keeps the dicing of the last render when it was not modified since. Either way what the bake sees
+// of it depends on the scene's history: refused by name, as for the bake target (bake_request). Only geometry an object
+// uses is diced into what rays meet.
+void validate_bake_dicing(Host &host, const BakeRequest &request) {
+  for (Object *object : host.session->scene->objects) {
+    auto mesh = dynamic_cast<Mesh *>(object->get_geometry());
+    if (!mesh || mesh == request.mesh || !mesh->get_num_subd_faces() || mesh->get_subdivision_type() == Mesh::SUBDIVISION_NONE) continue;
+    require(mesh->get_subd_adaptive_space() == Mesh::SUBDIVISION_ADAPTIVE_SPACE_OBJECT,
+            "Unsupported feature: bakes of subdivision surfaces diced in pixel space (another subdivision surface of the baked scene has "
+            "subd_adaptive_space pixel, which a bake would dice in the camera of the scene's last render, so the bake would depend on the "
+            "scene's history; use subd_adaptive_space object for every subdivision surface of a scene you bake)", CBC_UNSUPPORTED);
+  }
+}
 // Twice the signed area of (a, b, p). A pair of points is always taken in the
 // same order, whichever triangle it comes from, so two triangles sharing an edge
 // compute the same value for that edge: a pixel centre near a shared edge is never
@@ -221,6 +239,9 @@ extern "C" int cbc_host_bake(CBCHost handle, const CBCBakeConfig *config, float 
     // kernel (integrator_init_from_bake) takes any background pass as a request to bake the world: the bake is the
     // world's, as Cycles writes it on every device.
     validate_geometry(host);
+    // Refused before anything renders, as at render (cycles_host.cpp).
+    validate_upscale_factor(scene);
+    validate_bake_dicing(host, request);
     TextureBakeMap map = bake_map(request, int(config->width), int(config->height));
     struct Prune { Host &host; ~Prune() { prune_bakes(host); } } prune{host};
     reconcile_bakes(host);

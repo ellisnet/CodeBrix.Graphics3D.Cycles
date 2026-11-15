@@ -1527,6 +1527,18 @@ void render_pass_modes(Host &host, ParkedPasses &parking) {
   }
   if (changed) scene.film->tag_modified();
 }
+namespace {
+// Cycles upscales only in its GPU denoisers; the Open Image Denoise CPU denoiser that the CPU and WebGPU backends use resets
+// the factor to 1 (integrator/denoiser.cpp), so the setting would be lost, and with GPU denoising on the Metal backend the
+// output driver receives the reduced-resolution render, which the film does not upscale. Refused on every backend, at
+// render and, before anything renders, at bake (PROVISIONAL for bakes; the delivered-film check of HostOutput stays behind
+// it, survey row 9 and C26).
+void validate_upscale_factor(const Scene &scene) {
+  require(!scene.integrator->get_use_denoise() || scene.integrator->get_denoiser_upscale_factor() == 1.0f,
+          "Unsupported feature: a denoiser upscale factor other than 1 (no backend of this library returns an upscaled film)",
+          CBC_UNSUPPORTED);
+}
+}
 extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, float *rgba, uint64_t count) {
   return edit(handle, [&](Host &host) {
     require(config && config->struct_size == sizeof(*config), "Invalid render configuration");
@@ -1563,13 +1575,7 @@ extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, fl
       region_height = int(std::lround(double(border.top) * config->height)) - region_y;
       require(region_width > 0 && region_height > 0, "Camera border covers no whole pixel of this film");
     }
-    // Cycles upscales only in its GPU denoisers; the Open Image Denoise CPU denoiser that the CPU and WebGPU backends
-    // use resets the factor to 1 (integrator/denoiser.cpp), so the setting would be lost, and with GPU denoising on the
-    // Metal backend the output driver receives the reduced-resolution render, which the film does not upscale. Refused
-    // on every backend.
-    require(!scene.integrator->get_use_denoise() || scene.integrator->get_denoiser_upscale_factor() == 1.0f,
-            "Unsupported feature: a denoiser upscale factor other than 1 (no backend of this library returns an upscaled film)",
-            CBC_UNSUPPORTED);
+    validate_upscale_factor(scene);
     // Adaptive dicing of subdivision surfaces measures in the dicing camera's pixels: with subdivision faces in the scene
     // the host keeps it equal to the render camera (Cycles' own scene leaves it at its defaults).
     if (std::any_of(scene.geometry.begin(), scene.geometry.end(), [](Geometry *g) {

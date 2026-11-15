@@ -223,4 +223,40 @@ public class TextureLimitTests
         scene.TextureLimit = (uint)int.MaxValue;
         scene.TextureLimit.Should().Be((uint)int.MaxValue);
     }
+
+    // The largest image side of the CPU backends (provisional; BackendScope.MaxImageDimension, 1073741823): Cycles' CPU
+    // kernels compute twice the width and height in int for the Mirror extension (wrap_mirror, kernel/util/image.h), so the
+    // host refuses at render, by name, an image bound whole that loads wider or taller. A texture limit of 1073741823 does
+    // not bring an image of 2^30 within it: Cycles computes the reduction in binary32, in which the limit is 2^30 and the
+    // scale 1. (Under a limit that halves it the image would load at 2^29; Cycles' resize of a 1 GiB image is not run here.)
+    [Theory]
+    [InlineData(CyclesBackend.CpuReference, true)]
+    [InlineData(CyclesBackend.CpuReference, false)]
+    [InlineData(CyclesBackend.Cpu, true)]
+    public void an_image_wider_or_taller_than_1073741823_pixels_is_refused_by_name_on_the_cpu_backends(CyclesBackend backend, bool wide)
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        const uint side = 1u << 30;
+        using CyclesScene scene = new(backend);
+        Configure(scene);
+        ImageTextureNode texture = TexturedQuad(scene);
+        using (CyclesImage image = scene.CreateImage<byte>(wide ? side : 1, wide ? 1 : side, ImageFormat.Byte, new byte[side]))
+            texture.Bind(image);
+        string size = wide ? $"{side} x 1" : $"1 x {side}";
+        void Refused(string loads)
+        {
+            Action render = () => scene.Render(Settings);
+            CyclesException error = render.Should().Throw<CyclesException>().Which;
+            error.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            error.Message.Should().Contain("Unsupported feature: an image wider or taller than 1073741823 pixels on the CPU backends");
+            error.Message.Should().Contain(loads);
+        }
+
+        //Act / Assert
+        scene.GetCapabilities().Scope.MaxImageDimension.Should().Be(1073741823L);
+        Refused($"this image loads at {size}:");
+        scene.TextureLimit = 1073741823;
+        Refused($"this image loads at {size} with the texture limit");
+    }
 }

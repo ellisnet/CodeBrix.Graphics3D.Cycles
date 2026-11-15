@@ -70,8 +70,8 @@ same build also produces CPU-arm64 and Metal oracle films for validating WGSL.
 
 Agreed external inputs on the build machine: Xcode command-line tools (Apple
 Clang, the Metal framework and its runtime compiler, the macOS SDK and libc++),
-CMake 4.2 or newer (for `OBJECT_NAME`, "Reproducible builds" below; an older CMake
-warns and builds a library that is not reproducible) and Python 3. Exact versions are
+CMake 4.2 or newer (for `OBJECT_NAME`, "Reproducible builds" below; the injection
+refuses an older CMake when it configures the host build) and Python 3. Exact versions are
 recorded with each build.
 Dependency source comes only from the verified snapshots in `third_party/`.
 
@@ -229,9 +229,9 @@ neither a source nor a tool:
   library (`device.cpp` of the CPU, multi and dummy devices and of the overlay, for
   example) after their paths: without times, `dsymutil` would take the first
   archive member of a name for every entry of that name and leave the others out
-  of the dSYM. Both use CMake's `OBJECT_NAME` (CMake 4.2 or newer; an older CMake
-  warns, and its builds then differ by checkout path and lose those objects' line
-  tables).
+  of the dSYM. Both use CMake's `OBJECT_NAME` (CMake 4.2 or newer; the injection
+  refuses an older CMake, whose builds would differ by checkout path and lose those
+  objects' line tables).
 - Link-time rpaths: OpenEXR's and OIIO's own CMake code overrides the recipe's
   rpath settings and linked their libraries with absolute build-tree and prefix
   rpaths, which size the Mach-O header and so moved every section with the checkout

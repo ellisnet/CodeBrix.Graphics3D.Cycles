@@ -24,10 +24,11 @@ public static class TiledImage
     public const int MinTileSize = 64;
 
     /// <summary>
-    /// The largest tile side on any backend (provisional): 65536 on the CPU backends, where the tile pool must stay
-    /// within the float pixel coordinates of Cycles' CPU kernel; 128 on the Metal backend.
+    /// The largest tile side on any backend (provisional): 1024 on the CPU backends (Cycles allocates a pool of 64 tiles
+    /// whole: 271 MB for byte4 tiles of 1024, 1.1 GB for float4); 128 on the Metal backend. The capability report states
+    /// each backend's (<see cref="Diagnostics.BackendScope.MaxImageTileSize"/>).
     /// </summary>
-    public const int MaxTileSize = 65536;
+    public const int MaxTileSize = 1024;
 
     /// <summary>
     /// Returns the number of mip levels of a tiled image: from level 0 to the first level whose sides are both at most

@@ -15,9 +15,9 @@ namespace CodeBrix.Graphics3D.Cycles.Tests;
 // The delivered film (provisional; native/host/ABI.md "Conventions"): the host verifies that the film Cycles' output driver
 // delivers is the one requested (its size, its render buffers, its passes, every value written) and otherwise fails the
 // render or bake by name. No accepted scene triggers it: these cases are the ones whose delivery differs from a plain
-// render (named passes of every component count, a camera border, tiles, bakes, a bake with a denoiser upscale factor,
-// which the CPU's Open Image Denoise resets to 1). A film rendered at another resolution is refused (GpuRenderTests: a Metal
-// bake with GPU denoising at an upscale factor).
+// render (named passes of every component count, a camera border, tiles, bakes). A film rendered at another resolution
+// would be refused; the one known cause, a denoiser upscale factor, is refused by name before a render or bake starts
+// (provisional for bakes), and the check stays behind that refusal.
 public class DeliveredFilmTests
 {
     private static readonly RenderSettings Settings = new(40, 30, 4);
@@ -87,35 +87,52 @@ public class DeliveredFilmTests
         scene.ReadPass("Noisy").Span.SequenceEqual(film.Span).Should().BeTrue();
     }
 
+    // A denoiser upscale factor other than 1 (provisional for bakes): refused by name at bake as at render, before anything
+    // bakes, untiled and in tiles; the bake map, which renders nothing, and a bake without denoising are not affected, and
+    // after the refusal the scene bakes at a factor of 1 as a new scene does.
     [Theory]
     [InlineData(0u)]
     [InlineData(16u)]
-    public void a_cpu_bake_with_a_denoiser_upscale_factor_delivers_the_film_of_factor_1_and_a_render_stays_refused(uint tileSize)
+    public void a_bake_with_a_denoiser_upscale_factor_is_refused_by_name_before_it_bakes_as_a_render_is(uint tileSize)
     {
         //Arrange
-        FilmBuffer Bake(float factor)
+        BakeSettings settings = new(32, 32, 8, BakeType.Combined);
+        (CyclesScene Scene, Generated.Scene.ObjectNode Target) Build(float factor, bool denoise)
         {
-            using CyclesScene scene = TestScenes.CreateCpuScene();
+            CyclesScene scene = TestScenes.CreateCpuScene();
             (_, Generated.Scene.ObjectNode target) = BuildBake(scene);
             scene.TileSize = tileSize;
-            scene.Integrator.UseDenoise = true;
+            scene.Integrator.UseDenoise = denoise;
             scene.Integrator.DenoiserUpscaleFactor = factor;
-            return scene.Bake(target, new BakeSettings(32, 32, 8, BakeType.Combined));
+            return (scene, target);
         }
-        using CyclesScene rendered = TestScenes.CreateCpuScene();
-        BuildBake(rendered);
-        rendered.Integrator.UseDenoise = true;
-        rendered.Integrator.DenoiserUpscaleFactor = 2;
+        (CyclesScene plainScene, Generated.Scene.ObjectNode plainTarget) = Build(1, true);
+        (CyclesScene noisyScene, Generated.Scene.ObjectNode noisyTarget) = Build(1, false);
+        (CyclesScene noisyUpscaledScene, Generated.Scene.ObjectNode noisyUpscaledTarget) = Build(2, false);
+        (CyclesScene upscaledScene, Generated.Scene.ObjectNode upscaledTarget) = Build(2, true);
+        using CyclesScene plainOwner = plainScene, noisyOwner = noisyScene, noisyUpscaledOwner = noisyUpscaledScene, upscaledOwner = upscaledScene;
+        int events = 0;
+        upscaledScene.RenderEventReceived += (_, _) => events++;
 
         //Act
-        FilmBuffer plain = Bake(1);
-        FilmBuffer upscaled = Bake(2);
-        Action render = () => rendered.Render(Settings);
+        FilmBuffer plain = plainScene.Bake(plainTarget, settings);
+        FilmBuffer noisy = noisyScene.Bake(noisyTarget, settings);
+        FilmBuffer noisyUpscaled = noisyUpscaledScene.Bake(noisyUpscaledTarget, settings);
+        Action bake = () => upscaledScene.Bake(upscaledTarget, settings);
+        Action render = () => upscaledScene.Render(Settings);
+        BakeMap map = upscaledScene.ReadBakeMap(upscaledTarget, settings);
 
         //Assert
-        upscaled.Span.SequenceEqual(plain.Span).Should().BeTrue();
-        NativeFailure refused = render.Should().Throw<NativeFailure>().Which;
-        refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
-        refused.Message.Should().Contain("a denoiser upscale factor other than 1");
+        foreach (Action refusedCall in new[] { bake, render })
+        {
+            NativeFailure refused = refusedCall.Should().Throw<NativeFailure>().Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("Unsupported feature: a denoiser upscale factor other than 1");
+        }
+        events.Should().Be(0);
+        map.Triangles.SequenceEqual(plainScene.ReadBakeMap(plainTarget, settings).Triangles).Should().BeTrue();
+        noisyUpscaled.Span.SequenceEqual(noisy.Span).Should().BeTrue();
+        upscaledScene.Integrator.DenoiserUpscaleFactor = 1;
+        upscaledScene.Bake(upscaledTarget, settings).Span.SequenceEqual(plain.Span).Should().BeTrue();
     }
 }

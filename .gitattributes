@@ -87,3 +87,44 @@ native/evidence/**        -text
 parity/evidence/**        -text
 prototype/evidence/**     -text
 research/evidence/**      -text
+
+# ------------------------------------------------------------------------------
+# Evidence records whose committed bytes keep the line ends and trailing spaces
+# of the tool output they captured (a Windows device's CRLF JSON, apt output,
+# ldd, test and build logs). Their bytes stay as recorded; these lines only stop
+# `git diff --check` from reporting those lines as whitespace errors.
+# cr-at-eol: CRLF line ends. -trailing-space: spaces at the end of a line.
+# ------------------------------------------------------------------------------
+native/evidence/linux-arm64-cpu-oracle-20261113/environment/step2-apt.txt                             whitespace=cr-at-eol
+native/evidence/linux-arm64-cpu-oracle-20261113/first-attempt/02-apt.txt                              whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/base/film.cpu.bin.json                 whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/base/film.gpu.bin.json                 whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-N-flat/film.cpu.bin.json           whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-N-flat/film.gpu.bin.json           whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-flat/film.cpu.bin.json             whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-flat/film.gpu.bin.json             whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-smooth-emission/film.cpu.bin.json  whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-smooth-emission/film.gpu.bin.json  whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-smooth-glossy/film.cpu.bin.json    whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-smooth-glossy/film.gpu.bin.json    whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-smooth-noN/film.cpu.bin.json       whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-smooth-noN/film.gpu.bin.json       whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-smooth-term0/film.cpu.bin.json     whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-smooth-term0/film.gpu.bin.json     whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-superset0.cpu.bin.json             whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/gns-superset0.gpu.bin.json             whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/ground-only-no-sun/film.cpu.bin.json   whitespace=cr-at-eol
+native/evidence/windows-arm64-device-20261025/f1-smooth-normal/ground-only-no-sun/film.gpu.bin.json   whitespace=cr-at-eol
+native/evidence/device-macos-arm64-20261113/build/cycles-registration.patch                           whitespace=-trailing-space
+native/evidence/device-macos-arm64-20261113/build/host-configure.output.txt                           whitespace=-trailing-space
+native/evidence/device-macos-arm64-20261113/build/platform.patch                                      whitespace=-trailing-space
+native/evidence/device-macos-arm64-20261113/build/refused-attempts/1-skip-dependencies.stdout.txt     whitespace=-trailing-space
+native/evidence/device-macos-arm64-20261113/managed/3-test-release.output.txt                         whitespace=-trailing-space
+native/evidence/device-macos-arm64-20261113/managed/6-test-debug.output.txt                           whitespace=-trailing-space
+native/evidence/device-macos-arm64-20261113/managed/7-record-metal-references.output.txt              whitespace=-trailing-space
+native/evidence/device-macos-arm64-20261113/managed/8-test-release-after-recording.output.txt         whitespace=-trailing-space
+native/evidence/device-macos-arm64-20261113/managed/9-test-debug-after-recording.output.txt           whitespace=-trailing-space
+native/evidence/linux-x64-reference-20261030/environment/ldd.txt                                      whitespace=-trailing-space
+native/evidence/linux-x64-reference-20261101/environment/ldd.txt                                      whitespace=-trailing-space
+native/evidence/merge-20261023b/merge6/checkpoint-2/status.md                                         whitespace=-trailing-space
+native/evidence/merge-20261023b/merge6/timeline.log                                                   whitespace=-trailing-space

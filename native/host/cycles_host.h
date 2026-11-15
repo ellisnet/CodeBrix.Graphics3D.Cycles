@@ -71,7 +71,7 @@ enum { CBC_IMAGE_FLOAT = 1, CBC_IMAGE_FLOAT4 = 2, CBC_IMAGE_HALF = 3,
        CBC_IMAGE_HALF4 = 4, CBC_IMAGE_BYTE = 5, CBC_IMAGE_BYTE4 = 6,
        CBC_IMAGE_USHORT = 7, CBC_IMAGE_USHORT4 = 8 };
 /* tile_size (PROVISIONAL): cbc_host_image_create_tiled only, the side of the square tiles Cycles' texture cache loads:
- * 0 (64, the default) or a power of two from 64 to 128 on the Metal backend and to 65536 on the others (ABI.md "Tiled
+ * 0 (64, the default) or a power of two from 64 to 128 on the Metal backend and to 1024 on the others (ABI.md "Tiled
  * images"); 0 for cbc_host_image_create and cbc_host_image_update. */
 typedef struct CBCImageConfig {
   uint32_t struct_size, width, height, format;

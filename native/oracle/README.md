@@ -301,8 +301,10 @@ pinned result is defined. Each is written by its family's script, whose `--check
 - `author_points.py`: `points/geometry-tangent` and `points/geometry-tangent-bump` (the Geometry node's Tangent output on
   points, as a colour and as a Bump height).
 - `author_degenerate_lights.py`: `lamps/area-degenerate-spread-zero`, `-ellipse-spread-zero` (with the Glossy Direct pass),
-  `-spread-tiny`, `-spread-tiny-volume`, `-infinite-axis` and `-tree-transmissive` (the degenerate area light cases the
-  WebGPU device refuses by name, native/DEVICE.md item 148).
+  `-spread-tiny`, `-spread-tiny-volume` and `-tree-transmissive` (the degenerate area light cases the WebGPU device refuses
+  by name, native/DEVICE.md item 148). The axes of infinities without a NaN (`lamps/area-degenerate-infinite-axis`) are
+  refused by the host on every backend and have no committed scene; `--scratch DIR` writes that document outside the
+  corpus, for a survey build that lifts the refusal.
 - `author_world.py`: `world/portal-zero-u`, `world/portal-zero` and `world/portal-underflow` (the window portal of zero
   extent).
 - `author_bake_motion.py`: `bake/zero-area-<type>` (the shading bake types that are finite on the sphere whose zero-area
