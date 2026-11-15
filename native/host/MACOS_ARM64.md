@@ -4,19 +4,20 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 
 > **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
 > Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
-> `third_party/cycles-import.json`). This platform has not been built or run on it (NOT BUILT).
-> Its payload (`native/binaries/osx-arm64/`), built from the previous revision, was
-> removed; it comes back when the platform is rebuilt, validated and restaged
-> on an Apple Silicon Mac (`native/binaries/README.md`). Wherever the text below
-> says the payload is committed or staged, read "after it has been restaged".
-> Every result, film, hash, file count and payload statement in this document
-> was recorded at the previous pinned revision
-> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
-> evidence for the current source. Films and references recorded at the
-> previous revision cannot be compared with the current source: the CPU
-> oracle's films changed with the pin, and the Metal references in
-> `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64` are void
-> until they are recorded again from a v5.3.0 build.
+> `third_party/cycles-import.json`). This platform is built and validated on it
+> (VALIDATED, 2026-11-15, commit `24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c`, Mac mini M2 Pro,
+> macOS 27.2.1, Xcode 27.2, Apple clang 21.0.0, CMake 4.4.5): clean build, macOS host gate,
+> managed tests and the whole oracle corpus on CPU-arm64, Metal and MetalRT
+> (`native/evidence/device-macos-arm64-20261115/`, `native/evidence/cycles-oracles-macos-20261115/`;
+> the first build at this pin, 2026-11-13: `device-macos-arm64-20261113/` and
+> `cycles-oracles-macos-20261113/`). Its payload is staged in `native/binaries/osx-arm64/`
+> (2026-11-15, `provenance.json` `sourceCommit` `24b74e09...`, 335 files). The Metal reference films in
+> `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64` were recorded again from v5.3.0
+> builds (2026-11-14). The dated "Results and findings" and "Session record" sections of 2026-10-19 and
+> 2026-10-23 below were recorded at the previous pinned revision
+> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`): their results, films, hashes, file counts and payload
+> statements are historical records, not evidence for the current source, and films of that revision
+> are never compared with the current source.
 
 This recipe produces the osx-arm64 product binary: the pinned Cycles revision
 with its own Metal backend, behind the same native C API as the WGSL builds.
@@ -130,8 +131,8 @@ Adaptations, all recorded by the recipes:
   `CXX_HAS_SSE42`, `CXX_HAS_AVX2` and `CXX_HAS_F16C` as absent, and rejects any
   x86 or host-specific CPU flag. `WITH_CYCLES_NATIVE_ONLY` is off, so the CPU
   kernels run on every M-series chip.
-- Overlay files in the Metal kernel closure (NOT BUILT on a Mac at the current
-  pin). The shared overlay (`native/tools/cycles_overlay.py`) comes first on the
+- Overlay files in the Metal kernel closure (built and validated on a Mac at the
+  current pin, 2026-11-13 and 2026-11-15). The shared overlay (`native/tools/cycles_overlay.py`) comes first on the
   include path of every host translation unit, and at the current pin one of its
   files is also a header of the Metal kernel closure:
   `util/types_gpu_compressed.h` (the WebGPU device's full-precision integrator
@@ -380,9 +381,11 @@ uncommitted changes.
 
 `cbc_host_bake` (`host_bake.inc`, `exports.macos`) has no Metal-specific code: Cycles' Metal
 device runs its own `integrator_init_from_bake` kernel, staged with the other kernel
-sources, and the map reaches it through the render buffers. Not built or run on a Mac
-yet, so the capability report states `unvalidated` for Metal. To validate it, run
-`native/tools/bake_gate.py` against the Metal backend and change that report.
+sources, and the map reaches it through the render buffers. At the current pin the 60
+`bake/` scenes of the oracle corpus render on both Metal backends (2026-11-15,
+`native/evidence/cycles-oracles-macos-20261115/`), but `native/tools/bake_gate.py` has not
+been run against Metal, so the capability report states `unvalidated` for Metal. To
+validate it, run that gate against the Metal backend and change that report.
 
 ## Results and findings (2026-10-23)
 

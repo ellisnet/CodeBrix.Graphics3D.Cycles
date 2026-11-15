@@ -17,9 +17,12 @@ linux-arm64, linux-riscv64, android-arm64 and android-x64. An empty or absent
 directory does not imply a completed port. A payload is built from the pinned
 Cycles source of the commit that carries it: a payload built from another
 revision is removed, not kept, and comes back when its platform is rebuilt and
-reviewed on that platform's own machine. Only `linux-x64` is present. The
-`osx-arm64` payload (Cycles with its Metal device; see
-[MACOS_ARM64.md](../host/MACOS_ARM64.md)), the `win-x64` and `win-arm64`
+reviewed on that platform's own machine. Two payloads are present: `linux-x64`
+and `osx-arm64` (Cycles with its Metal device; see
+[MACOS_ARM64.md](../host/MACOS_ARM64.md)), staged on 2026-11-15 from the Cycles
+v5.3.0 build of commit `24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c` that its host
+gate, managed tests and oracle corpus validated on an Apple Silicon Mac
+(`native/evidence/device-macos-arm64-20261115/`). The `win-x64` and `win-arm64`
 payloads (the WGSL/WebGPU device on Direct3D 12 with the pinned DXC compiler, or
 Vulkan; see [WINDOWS_X64.md](../host/WINDOWS_X64.md)) and the `osx-x64` payload
 (the WGSL/WebGPU device through the runtime's Metal route; see
@@ -34,15 +37,14 @@ is no `symbols/` folder. Its `unstripped/` folder is git-ignored while the
 library is a work in progress, and is added with the final payload (remove
 the line from `.gitignore` and stage again, which also approves it for the
 audit); until then `provenance.json` records its hashes under `binaries` only,
-and staging recreates it. `osx-arm64`, once staged
-(`native/tools/stage_macos_binaries.py`, on an Apple Silicon Mac, from the
-build that its host gate and oracle run validated), keeps `runtime/`,
+and staging recreates it. `osx-arm64`, staged by
+`native/tools/stage_macos_binaries.py` on an Apple Silicon Mac from the build
+that its host gate and oracle run validated, keeps `runtime/`,
 `unstripped/` and `symbols/` in Git in full, with no `.gitignore` line; the Metal
 kernel sources in `runtime/codebrix-cycles/source` are `snapshotCopies` of
 `third_party/cycles/src`. Its `provenance.json` names as `sourceCommit` the
 commit that build was made from, which the stager requires to be clean and
 current for the Cycles-with-Metal sources (MAINTAINER-README.txt, "PACKAGING").
-No NuGet release has been made.
 
 Each delivery must carry source/dependency manifest hashes, toolchain and build
 options, binary hashes, a passing dependency/license audit and the applicable

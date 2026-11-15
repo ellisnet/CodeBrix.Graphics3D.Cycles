@@ -44,25 +44,34 @@ host, and for the Linux ARM64 and Android builds, before the next build:
      (build trees, generated overlays and any copied Cycles source). The
      dependency snapshots (third_party/deps) did not change with the re-pin, so
      a dependency prefix built after step 3 above stays valid.
-  5. The payloads native/binaries/osx-arm64, osx-x64, win-x64 and win-arm64 were
-     REMOVED: they were built from the previous pinned revision. Only linux-x64
-     is present. A platform's payload comes back when that platform has been
-     rebuilt, validated and restaged on its own machine (native/binaries/README.md;
+  5. The payloads native/binaries/osx-x64, win-x64 and win-arm64 were
+     REMOVED: they were built from the previous pinned revision. linux-x64 is
+     present, and osx-arm64 is present again: restaged on 2026-11-15 from the
+     v5.3.0 build of commit 24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c, validated on
+     an Apple Silicon Mac (native/evidence/device-macos-arm64-20261115/). A
+     platform's payload comes back when that platform has been rebuilt,
+     validated and restaged on its own machine (native/binaries/README.md;
      PACKAGING, "Adding a platform").
-  6. None of these recipes has been built or run on v5.3.0 (Linux x64 is the only
-     platform built on it). Every film, reference, hash and result recorded for
-     another platform belongs to the previous revision and is void as evidence:
-     the Metal reference films of the managed tests
-     (tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64), the
-     oracle films under native/evidence/ and the device-gate exchange records
-     are recorded again as part of the first run. The CPU oracle's films
+  6. Built and validated on v5.3.0: Linux x64, osx-arm64 (2026-11-13 and
+     2026-11-15: host gate, managed tests, oracle corpus on CPU-arm64, Metal and
+     MetalRT; native/evidence/device-macos-arm64-20261115/ and
+     cycles-oracles-macos-20261115/) and the Linux ARM64 CPU oracle (Debian arm64
+     container; native/evidence/linux-arm64-cpu-oracle-20261113/ and -20261115/).
+     The Metal reference films of the managed tests
+     (tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64) were
+     recorded again from v5.3.0 builds. None of the other recipes has been built
+     or run on v5.3.0: every film, reference, hash and result recorded for those
+     platforms belongs to the previous revision and is void as evidence, and
+     their oracle films under native/evidence/ and device-gate exchange records
+     are recorded again as part of their first run. The CPU oracle's films
      changed with the pin, so old and new films must never be compared.
   7. osx-arm64 only: the overlay now holds one header that is also in the
      Metal kernel include closure (util/types_gpu_compressed.h). The recipe
      accepts it only after proving that it is the pinned text plus one
      recorded addition that is inert in this profile (native/host/MACOS_ARM64.md, "Overlay files in the Metal kernel
      closure"); the Metal kernels are still compiled from the pinned files.
-     UNTESTED on a Mac.
+     Built and validated on a Mac (2026-11-13 and 2026-11-15): kernel-sources.json
+     lists exactly that header under overlaidInClosure.
 ********************************************************************************
 
 
@@ -485,9 +494,11 @@ put ispc on PATH; tools/dependencies/build.py refuses any other version. Windows
 machine with Visual Studio's clang-cl) is described in native/host/WINDOWS_X64.md:
 `python -I -X utf8 tools/dependencies/build_windows.py --rid <rid>`, then
 `python -I -X utf8 native/tools/build_cycles_windows.py --rid <rid>`.
-The Windows, osx-x64 and osx-arm64 payloads are NOT in native/binaries/ at
-present: they were built from the previous pinned Cycles revision and were
-removed with the re-pin to Cycles v5.3.0 (see the note at the top of this file).
+The Windows and osx-x64 payloads are NOT in native/binaries/ at present: they
+were built from the previous pinned Cycles revision and were removed with the
+re-pin to Cycles v5.3.0 (see the note at the top of this file). The osx-arm64
+payload is staged again (2026-11-15, from the validated v5.3.0 build of commit
+24b74e09; native/host/MACOS_ARM64.md).
 The rest of this paragraph is each platform's last validated state at the
 previous revision, and what its payload looks like once it is staged again.
 Both reviewed Windows payloads are staged in native/binaries/<rid>/ with the

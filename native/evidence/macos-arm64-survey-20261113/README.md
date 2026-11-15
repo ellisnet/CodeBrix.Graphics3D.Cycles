@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 This is the report of [docs/KIT-MACOS-ARM64.md](../../../docs/KIT-MACOS-ARM64.md) (its section 9) and the ONE evidence
 folder of its Part C, the feature survey: the survey's films, its patches, its scratch scene documents, its comparisons,
 the section 9 repeat of [docs/TESTING-MACOS-ARM64.md](../../../docs/TESTING-MACOS-ARM64.md) (Velvet and Radial Tiling) with
-the Metal compute probe, and the row 15 reading table. Parts D and E are still in progress (sections 5 and 6). Facts
+the Metal compute probe, and the row 15 reading table, and the account of Parts D and E (sections 5 and 6). Facts
 first; lines marked **INFERENCE** are conclusions no run confirmed. Absolute host paths in prose are written as `<repo>`
 and `<home>`; copied tool output (`run.json`, `meta.json`, comparison JSON, console records) keeps the paths it was written
 with, which are under `<repo>` = `/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles`. Every comparison is reported,
@@ -49,6 +49,26 @@ never judged: CPU-arm64 and Metal are both gold standards (testing document sect
 
 Start and end times of every run: `environment/walls.txt`; console output: `environment/run-<run>.output.txt`.
 
+Part E (the closing checks, section 6) ran on 2026-11-15 at `24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c`, the final code
+state of the branch, clean, on the same machine and toolchain: Mac mini (Mac14,12), Apple M2 Pro, 16 GB, macOS 27.2.1
+(26B131), Xcode 27.2 (27B52), macOS SDK 27.2, Apple clang 21.0.0 (clang-2100.4.1.1), CMake 4.4.5, Python 3.15.2, zstd
+1.5.7, .NET SDK 11.0.100, ISPC 1.30.0 (identity: `native/evidence/device-macos-arm64-20261115/identity/identity.txt`). The
+Linux ARM64 re-render of section 3 ran in its container on the same Mac during the build, gate, managed and corpus steps,
+so those walls are inflated:
+
+| Part E step (2026-11-15, UTC start) | Wall (real) |
+| --- | --- |
+| Clean build with the dependencies (20:39:43) | 367.09 s |
+| macOS host gate (20:46:53) | 38.74 s |
+| Managed restore, Release build, Release tests, pack, Debug build, Debug tests (20:48:20) | 1.11, 10.07, 156.53, 1.91, 4.61, 150.13 s |
+| Corpus, three backends, 793 scenes (20:54:45) | 2,344.73 s |
+| Oracle bundle (21:37:23) / payload stage (21:39:10) | 30.31 s / 15.20 s |
+| Final pack (21:40:06) / `package_check.py` (21:40:31) / consumer test (21:40:53) | 12.89 s / 0.84 s / 60.34 s |
+| Linux ARM64 container: dependencies, Cycles build, render (20:36:17, 20:37:11, 21:25:06) | 54 s, 2,564 s, 290 s |
+
+Every Part E command, its start, wall and exit status: `native/evidence/device-macos-arm64-20261115/closing/steps.md` and
+`walls.txt`.
+
 ## 2. Part A: the base
 
 Recorded in [`native/evidence/device-macos-arm64-20261113/`](../device-macos-arm64-20261113/) (steps 1 to 8 of the testing
@@ -85,6 +105,20 @@ section 10 answers, copied:
    WGSL assumption holds.
 5. **Repeat identity.** True for every scene. Only the `RenderTime` pass (a wall-clock measurement) of
    `passes/data-passes` differs between the two renders, by design.
+
+**The re-render at the final commit (2026-11-15).** The host work of Part D and the 67 scene documents it and the survey
+added since `0b19d875` made section 9 of the ARM64 oracle document apply, so the corpus was rendered again in the same
+container (`cbc-arm64-oracle-20261113b`, the same `debian:trixie` image digest and toolchain) at
+`24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c`, clean: [`native/evidence/linux-arm64-cpu-oracle-20261115/`](../linux-arm64-cpu-oracle-20261115/),
+the ARM64 gold standard for that commit. 793 scenes (791 committed documents and the 2 bench documents), no refusal, no
+failure, every scene repeat-identical (only the wall-clock `RenderTime` pass of `passes/data-passes` differs between two
+renders). All 726 scenes it shares with `linux-arm64-cpu-oracle-20261113` are bitwise identical to it (1,452 films and
+2,870 pass films); the 67 new scenes are the same list as the macOS closing run's. 0 compiler warnings in the host build;
+`translated.wgsl` and `translation.json` unchanged (`b047c969...`, `da63a194...`). The section 6 comparison with Linux x64
+is skipped again (no v5.3.0 x64 reference is committed), and the section 10 probe was not repeated (the CPU kernels, their
+compile line and the toolchain are unchanged). Two render invocations failed before the passing one, both invocation
+errors: the documented command's variables were not exported into the inner `bash -c` (the runner received empty paths),
+and then the run folder that attempt had created was not empty. The document's section 5 now exports them.
 
 ## 4. Part C: the feature survey
 
@@ -2683,9 +2717,253 @@ limit and the tile-size cap on Linux and Windows (the same host code); the CMake
 
 ## 6. Part E: closing checks
 
-In progress (not part of this folder yet).
+Kit section 8, run on 2026-11-15 at `24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c` (the final code state, clean; walls in
+section 1). The device records are [`native/evidence/device-macos-arm64-20261115/`](../device-macos-arm64-20261115/) (its
+README gives every step, verbatim messages and the consumer matrix), the oracle bundle is
+[`native/evidence/cycles-oracles-macos-20261115/`](../cycles-oracles-macos-20261115/), and the Linux ARM64 re-render at the
+same commit is [`native/evidence/linux-arm64-cpu-oracle-20261115/`](../linux-arm64-cpu-oracle-20261115/) (section 3).
+`git status --porcelain` was empty at the start, before and after the corpus render and after the managed sequence;
+every tracked write of this part came after the render.
+
+### 6.1 Item 1: clean build, host gate, managed build and tests
+
+- **Clean build.** `native/work/macos/osx-arm64/host/`, `oracle-build/` and `dependencies/` deleted (the
+  `dependencies-old-*` prefixes kept), then `CODEBRIX_ISPC=<repo>/native/work/tools/ispc-v1.30.0-macOS.arm64/bin/ispc
+  python3 tools/build_macos.py --jobs 8`, which rebuilt every dependency component: passed, 65 exports, 292 kernel files.
+  **0 warnings in this repository's code.** Counted only: 1 in pinned Cycles (`device/metal/device_impl.mm:559:13`,
+  `'fastMathEnabled' is deprecated`), 120 `warning:` lines (11 distinct) in the dependency logs, and the host configure's
+  two `CMake Warning` blocks (the pinned `src/cmake/external_libs.cmake:443` CMP0167 and an unused `CMAKE_OBJCXX_FLAGS`).
+  Every watch-point of kit section 4 holds (no `WITH_DLSS` or `WITH_WEBGPU` in the 176 compile commands, `-DWITH_EMBREE`
+  on `bvh/embree.cpp`, `overlaidInClosure` = `["util/types_gpu_compressed.h"]`, 292 staged kernel files byte-identical to
+  `third_party/cycles/src`, `tables_d65_codebrix.h` among them). Commit record: `invocation.json` `sourceCommit` and
+  `status.json` `sourceAtEnd` both 24b74e09 with an empty `metalSourceStatus`. Host library
+  `b804223deae0afce07ad33440b312d3ea907b1f528839b375db628e3a1916e5e`, runner
+  `1f90b7df1bac4910b08ddae6a78de82246df3d87f07a75f9ff248f4899e692d2`: byte-identical to the final ruling batch's build, and
+  every artifact of the deleted tree is reproduced except libjpeg and the prefix record (C27's documented exceptions).
+- **macOS host gate** (`<repo>/native/work/macos-validation-20261115b`, copied to the device folder without
+  `managed-bin/`): passed, 3,102 films compared, 0 same-host bitwise failures, 0 Metal practical failures and strict
+  differences, Metal maximum 4.47e-8, 65 exports in the binary review.
+- **Managed build and tests** (testing document step 7, .NET SDK 11.0.100): restore, Release build, Release tests, pack,
+  Debug build, Debug tests, every command exit 0. Release and Debug: 525 tests, 519 passed, 0 failed, 6 skipped, the
+  WebGPU-only six (`BakingTests.the_webgpu_device_bakes_...`, `WebGpuAmbientOcclusionTests.gpu_ao_pass_...`,
+  `SceneSettingsTests.Dispersion_is_refused_by_name_on_the_webgpu_backend` and the three cases of
+  `GpuRenderTests.webgpu_refuses_the_integer_and_component_nodes_...`). The Release build's one warning is the pack
+  driver's `linux-x64: payload is STALE: 437 Cycles-with-WGSL source files changed since its source commit
+  d861e1589d1a9572558d4529c36a81f6920cc92a`; Debug has none. The pack folder it wrote was deleted.
+
+### 6.2 Item 2: the corpus again, and kit rule 9
+
+- 793 scenes, the whole committed corpus by the kit's find command (791 documents) and the 2 bench documents, on
+  `cpu-arm64-macos`, `metal-m2pro` and `metal-m2pro-metalrt`: 1,586 films per backend, **0 failures**,
+  `comparisonsPassed` 793/793, every `meta.json` recording 24b74e09 and a clean tree. `kernelCompileSeconds` 2.36 s and
+  1.32 s (the macOS shader cache is not cleared; Part A: 124 s and 115 s). Warnings: the three closure-count lines of
+  Part A, nothing from the Metal compiler.
+- **Rule 9: PASS.** For every scene of the base run (`native/evidence/cycles-oracles-macos-20261113/`, 726 scenes),
+  every `cpu-arm64-macos` film was compared by `filmSha256`, index by index, with the closing run: **1,452 of 1,452 films
+  bitwise identical, no film moved**; 2,870 of 2,870 base pass films identical too (the wall-clock `RenderTime` pass of
+  `passes/data-passes` is reported, not compared). The films' bytes match their `meta.json` in both runs. The scene that
+  ruling 34 removed from the corpus, `lamps/area-degenerate-infinite-axis`, was never in the base run (it was a survey
+  scene, section 4), so no base film is excluded; it is absent from the closing run. Every closing CPU film is
+  repeat-identical, and all 1,586 equal the CPU-only corpus run of the final ruling batch.
+- **New scenes since the base run, 67** (each with its two films on all three backends): attributes 6, bake 24, bsdf 1,
+  gsplat 11, images 6, lamps 5, points 2, render-settings 4, surface-nodes 5, world 3 (the list:
+  `native/evidence/device-macos-arm64-20261115/closing/rule9.json`, `newScenes`; and the Linux ARM64 README, which renders
+  the same 67).
+- Metal repeats, information: 36 of 793 scenes repeat-identical on each Metal backend; the largest
+  `repeatMaxAbsDifference` is 1.220703125e-04 on both (`lamps/area-degenerate-rect`).
+
+CPU against Metal, information only (reported, never judged: both are gold standards), scenes with a pair beyond the
+practical criterion:
+
+| Pair | Closing run, 793 scenes | On the 726 base scenes | Part A, 726 scenes | Largest difference (closing) |
+| --- | --- | --- | --- | --- |
+| `cpu-arm64-macos` vs `metal-m2pro` | 365 | 335 | 335 (the same scenes) | 1117.11, `lamps/area-degenerate-rect` |
+| `cpu-arm64-macos` vs `metal-m2pro-metalrt` | 418 | 388 | 388 (the same scenes) | 1117.11, `lamps/area-degenerate-rect` |
+| `metal-m2pro` vs `metal-m2pro-metalrt` | 259 | 242 | 242 (the same scenes) | 5.98, `curves/lights-area-sun` |
+| CPU vs either Metal backend | 421 | 391 | 391 | - |
+
+### 6.3 The bundle, the payload, the final pack and the consumer test
+
+- Oracle bundle: `bundle/cycles-oracles-macos-20261115.tar.zst`, SHA-256
+  `b8fe9ecb61eb8db7c396cebadc6210f23451c9512c4af6d6403644f4222b88af`, 19,126 files verified, published as
+  `native/evidence/cycles-oracles-macos-20261115/`.
+- The osx-arm64 payload (decision 4): `python3 native/tools/stage_macos_binaries.py --gate
+  native/work/macos-validation-20261115b --oracles native/work/oracles/macos-arm64-closing-20261115` staged
+  `native/binaries/osx-arm64/` with `sourceCommit` 24b74e09, `approved: true`, 20 binaries and 335 payload files
+  (`runtime/`, `unstripped/` and `symbols/` in full, decision 5), and no refusal (`realStageRefusals` `[]`: both build
+  records name one clean commit, HEAD is that commit, and the tree had no Cycles-with-Metal change). Its standalone render
+  of `starter/diffuse-triangle` from a copy of `runtime/` alone gave the oracle run's CPU film
+  (`d429a1117596b964...`) and a Metal film.
+- Final pack: `dotnet build build/CodeBrix.Graphics3D.Cycles.Build.csproj -c Release` packed the family at 1.0.319.1300,
+  Core (12 files), LinuxX64 (31) and MacOSArm64 (323, from the committed payload), each "match the reviewed payload;
+  audit passed"; `package_check.py` warns only `linux-x64: payload is STALE`, so the osx-arm64 payload is the approved
+  one and current.
+- Consumer test of that MacOSArm64 package, from a local feed with its own package cache: `dotnet build` (then `dotnet
+  Consumer.dll`), `dotnet run`, `dotnet publish`, `dotnet publish -r osx-arm64 --self-contained false` and `--self-contained`
+  each built with no diagnostic and rendered on the CPU, on Metal and on Metal with GPU denoising, finite, with the 292
+  kernel sources beside the host library (under `runtimes/osx-arm64/native/` without a runtime identifier, beside the app
+  with one) and none flattened; the CPU film is bit for bit the same in every mode, Metal within 7.45e-8 of it. Without
+  `codebrix-cycles/`, Metal failed with "Metal kernel sources are missing beside the native library" and the CPU rendered.
+  The runtime pack of the self-contained publish (`Microsoft.NETCore.App.Runtime.osx-arm64` 10.0.15) came from the
+  package cache.
+
+### 6.4 Item 3: licence audit and `git diff --check`
+
+- `python3 tools/licensing/audit.py`: passed (`"passed": true`, `"errors": []`), with the staged `native/binaries/osx-arm64/` payload (its `approvedPayload` of 335 files and the 292 kernel sources as `snapshotCopies`), the three new evidence folders and every document change of this part in place (the audit covers tracked and untracked files).
+- `python3 -m unittest tools/licensing/tests/test_guards.py`: 11 tests, OK.
+- `git diff --check 828f6c2f9ee2c57dd379d472a0252edaf3caa87a`: clean: no output, exit 0, with the tracked changes of this part in place. The untracked files of this part, which `git diff` does not see, were checked one by one with `git diff --no-index --check /dev/null <file>` (29,631 files): three files of `device-macos-arm64-20261115/build/` keep the trailing spaces of the tool output they captured and have `whitespace=-trailing-space` in `.gitattributes` (as decision 34, item 16, did for Part A's folder); after that none reports a whitespace error.
+
+### 6.5 Item 4: `git diff --stat 828f6c2f9ee2c57dd379d472a0252edaf3caa87a`
+
+Its last line, verbatim:
+
+```
+ 67089 files changed, 1682971 insertions(+), 363631 deletions(-)
+```
+
+`git diff` compares the working tree's tracked files with the base commit; the new, still untracked files of this part
+(the three new evidence folders above and `native/binaries/osx-arm64/`) are not in it. The list is too long to quote
+(one line per file); per directory, with `native/evidence` split into the folders that existed at the base commit and
+those added on the branch:
+
+| Path | Files | Added / modified / deleted | Lines + / - (text) |
+| --- | ---: | --- | --- |
+| (repository root files) | 5 | 0 / 5 / 0 | +797 / -96 |
+| `build/` (files directly in it) | 1 | 0 / 1 / 0 | +15 / -2 |
+| `build/nuget-pack-shim/` | 1 | 0 / 1 / 0 | +6 / -2 |
+| `build/nuget/` | 2 | 2 / 0 / 0 | +76 / -0 |
+| `docs/` | 9 | 0 / 9 / 0 | +251 / -111 |
+| `native/` (files directly in it) | 2 | 0 / 2 / 0 | +145 / -45 |
+| `native/binaries/` | 2 | 0 / 2 / 0 | +25 / -12 |
+| `native/cycles/` | 2 | 0 / 2 / 0 | +2 / -2 |
+| `native/evidence/` folders added on the branch (4 folders) | 30,064 | 30,064 / 0 / 0 | +1,025,758 / -0 |
+| `native/evidence/` folders existing at the base commit (38 folders) | 36,749 | 1 / 36,748 / 0 | +362,720 / -362,711 |
+| `native/host/` | 15 | 0 / 15 / 0 | +2,152 / -216 |
+| `native/oracle/` | 95 | 87 / 8 / 0 | +282,258 / -18 |
+| `native/tests/` | 10 | 0 / 10 / 0 | +301 / -20 |
+| `native/tools/` | 11 | 0 / 11 / 0 | +691 / -68 |
+| `parity/` | 35 | 0 / 35 / 0 | +138 / -138 |
+| `prototype/` | 8 | 0 / 8 / 0 | +61 / -61 |
+| `research/` | 7 | 0 / 7 / 0 | +26 / -24 |
+| `src/CodeBrix.Graphics3D.Cycles/` | 21 | 5 / 16 / 0 | +807 / -34 |
+| `tests/CodeBrix.Graphics3D.Cycles.Tests/` | 43 | 29 / 14 / 0 | +6,520 / -50 |
+| `tools/` (files directly in it) | 1 | 0 / 1 / 0 | +4 / -0 |
+| `tools/dependencies/` | 1 | 0 / 1 / 0 | +64 / -0 |
+| `tools/licensing/` | 4 | 1 / 3 / 0 | +134 / -18 |
+| `tools/managed/` | 1 | 0 / 1 / 0 | +20 / -3 |
+
+What kit section 8 item 4 asks about, line by line:
+
+- `third_party/cycles`: nothing (and nothing else under `third_party/`).
+- `native/shaders`: nothing.
+- Existing `native/evidence` folders: 36,749 files in 38 folders (36,748 modified, 1 added, 0 deleted). The maintainer-approved name scrub (decision 25, an exception to the
+  immutability rule for that purpose): recorded home-directory paths replaced by `<home>`, host names, the e-mail address
+  and prose mentions of the maintainer's name replaced, legal attribution kept, each touched folder's `SHA256SUMS.txt`
+  or `manifest.json` regenerated and the cross-references to changed hashes fixed. The one added file,
+  `native/evidence/cycles-oracles-macos-x64-20261027/README.md`, states that its folder no longer equals its bundle byte
+  for byte because of the scrub. The same scrub covers `parity/evidence/`, `prototype/evidence/` and
+  `research/evidence/` (records outside `native/evidence`) and the two home-directory paths of
+  `native/binaries/linux-x64/provenance.json`. `.gitattributes` gives whitespace attributes to the evidence files with
+  pre-existing CRLF or trailing spaces (decision 34, item 16, and the new folders of this part); no byte of them changed.
+- Other platforms' gate scripts: `native/tools/android_host_gate.py`, `host_gate.py`, `linux_arm64_host_gate.py`,
+  `macos_x64_host_gate.py` and `windows_host_gate.py`, one line each, the export count 60 to 65 (Part D's five new exports;
+  updated by reading, unverified on those platforms); `native/tools/render_gate.py` and the WebGPU gate sources
+  `native/cycles/render_gate.cpp` and `surface_gate.cpp`, one comment line each, the documentation pass (decision 19: a
+  personal name as authority replaced by "the maintainer"). The C consumers under `native/tests/host/` (built on every
+  platform) list the trailing `CBCHostConfig` fields (B3) and gained the D3 modes (`--progressive`, `--tiles`, `--tiled`).
+- Other platforms' recipes and shared build tools: `tools/dependencies/build_macos.py` (C27; shared with the osx-x64 and
+  Windows recipes, which use its definitions, unchanged; the new reproducibility settings apply in its own `main()`
+  only). Its SHA-256 is part of the osx-x64 prefix identity (`macosProfileRecipeSha256`), so the Intel Mac rebuilds its
+  dependency prefix at its next build (**INFERENCE** from reading `build_macos_x64.py`; not run). `native/tools/cycles_overlay.py`
+  (the shared overlay, kit section 3's sanctioned route): the in-memory tile store and the delivered-film hook in
+  `integrator/path_trace.cpp` (A1, C26), which every platform's injection swaps in. `research/translate.py`: the approved
+  `-U__ARM_NEON` fix (decision 7). The macOS ARM64 recipe (`native/tools/build_cycles_macos.py`,
+  `inject_cycles_macos.cmake`, `stage_macos_binaries.py`, `tools/build_macos.py`) is this platform's.
+- Documentation of other platforms: `docs/TESTING-LINUX-ARM64.md`, `TESTING-MACOS-X64.md`, `TESTING-WINDOWS-ARM64.md`,
+  `TESTING-WINDOWS-X64.md`, `native/host/MACOS_X64.md`, `WINDOWS_X64.md`, `native/host/README.md`, `native/README.md`,
+  `research/FEASIBILITY.md`, `parity/README.md` and `prototype/README.md`: the documentation pass (decision 19: names and
+  repository-workflow statements). `docs/TESTING-LINUX-ARM64-ORACLE.md`: the same pass, the status banner of this part,
+  and section 5's render command, which now exports its variables (section 3).
+- Everything else is this kit's product work and its records: `native/host` (Part D), `src/` and `tests/` (the managed
+  API, its tests and the re-recorded Metal references), `native/oracle` (the new scenes, their author scripts and the
+  runner), `build/` and `tools/licensing` (the MacOSArm64 package groundwork and the per-profile staleness, decisions 3, 6, 8, 13 and D30), `tools/managed`
+  (the generated model), and the documents (`AGENT-README.txt`, `MAINTAINER-README.txt`, `README.md`, `native/DEVICE.md`,
+  `native/host/ABI.md`, `MACOS_ARM64.md`, `native/binaries/README.md`, `docs/KIT-MACOS-ARM64.md` decision 10,
+  `docs/PARITY.md`, `docs/RELEASE-LICENSE-PLAN.md`, `docs/TESTING-MACOS-ARM64.md`, `tools/licensing/ATOMIC-CONTRACT.md`).
 
 ## 7. Questions for the maintainer
+
+### Open at the end of the kit (2026-11-15)
+
+**The four questions the final ruling batch left open.** First, the whitespace attributes: `git diff --check` against
+the base found pre-existing CRLF endings and trailing spaces in more evidence files than the 25 lines first known
+(most of them in the two evidence folders this branch added); every one was given a `.gitattributes` whitespace entry
+with its bytes unchanged. Is that acceptable for evidence files? Second, a refused call must change nothing: the
+attribute calls now check every argument before they prepare an edit, but the socket setters and the three motion calls
+still check some arguments after preparing it, so a refused one can mark a splat cloud's bounding radius "not ready".
+Should they get the same fix? Third, the refusal of an area light whose axis is infinite also refuses a light that Cycles
+would switch off only because its shader emits nothing, since the shader is not compiled when the check runs. Is that
+acceptable? Fourth, the capability report gives WebGPU a `maxImageTileSize` of 1024, the size its create call accepts,
+although the WebGPU backend refuses tiled images at render. Should the report state 1024 there, or nothing?
+
+**Deferred by the maintainer (decision 33).** The name and attribution concerns were set aside for a later pass: the
+one non-legal personal wording in `NOTICE` (a prepared change, `<repo>/native/work/docs-pass-20261114/notice-reword-proposed.patch`,
+would change one `conditions` string in `third_party/dependencies.json`, regenerate `NOTICE` and `THIRD-PARTY-NOTICES.txt`
+with `tools/licensing/notices.py` and update the two hashes pinned in `third_party/license-review-exceptions.json`); the
+statements of authorship in the notices files, kept as legal attribution; and the files the scrub of decision 25 could
+not reach (the 81 files pinned by `third_party/license-review-exceptions.json` and the 11 files hashed by them, the
+100 home-directory paths in the licence-review records under `third_party/`, and the 2,891 `.gz` files and 9 tar
+archives). The documentation pass also removed a standing workflow instruction for coding agents from
+`MAINTAINER-README.txt`; it belongs in each build machine's private agent configuration, outside the repository.
+
+**What the Linux x64 machine still has to do.** Nothing below can be done on this Mac, and each is a follow-up of this
+kit rather than a question:
+
+- Regenerate the overlay records after the overlay of `integrator/path_trace.cpp` (the in-memory tile store and the
+  delivered-film check): the Android gate's overlay hashes (`android_host_gate.py`, the pin's `overlaySha256`) and the
+  macOS x64 and Windows comparisons against a Linux-written overlay (`--reference-overlay`).
+- Run the other platforms' host gates with the export count 65 (`android_host_gate.py`, `host_gate.py`,
+  `linux_arm64_host_gate.py`, `macos_x64_host_gate.py`, `windows_host_gate.py` were changed by reading only), and the C
+  consumers' new modes under GCC 14, clang-cl and the Android NDK.
+- Record the x64 CPU references of the corpus at v5.3.0, the 67 scenes new since the base among them (the x64 CPU kernel
+  on that machine is the reference for every WGSL judgement), then the section 6 comparison of both
+  `linux-arm64-cpu-oracle-2026111{3,5}` folders, which is skipped until then.
+- Run the WebGPU refusal branches that this kit added under kit rule 7 and the WebGPU branches of the changed GPU tests
+  (Gaussian splats, quaternion and spherical-harmonics attributes, UDIM tiles, progressive results, the texture limit,
+  BVH spatial splits, tiled images and tiled rendering, the narrowed area-light entry, the report's per-backend
+  `maxImageDimension` and `maxImageTileSize`), and decide where a refusal may be lifted after a Linux WebGPU run
+  (decision C29); subdivision bakes were kept without a WebGPU refusal and are unverified there (decision 34, item 9).
+- Restage `native/binaries/linux-x64/` (its payload is STALE: 437 Cycles-with-WGSL source files changed since
+  `d861e1589d1a9572558d4529c36a81f6920cc92a`).
+- Re-record `compatibility/evidence.json`, whose hashed sources moved with the re-pin and the documentation pass
+  (`tools/compatibility/inventory.py check` fails until then).
+- Establish what the x86-64 CPU kernel does with Integer Math's `INT_MIN / -1` (whether it traps) before any host refusal
+  of undefined Integer Math is considered (decision C25).
+- Correct the comment above `vh_expected_steps` in `native/shaders/wavefront_volume_octree.wgsl`, which names NaN among
+  the step counts whose conversion saturates: on ARM64 a NaN converts to 0, which the clamp makes one step
+  (`linux-arm64-cpu-oracle-20261113`, section 10, item 3). The kit never edits `native/shaders`.
+
+**The PROVISIONAL API surface.** Every new public signature of Part D is marked provisional in `native/host/ABI.md` and
+listed with its reason and the alternative considered in the signature tables of sections 5.1 to 5.4: five new C exports
+(60 to 65: `cbc_host_image_bind_tiles`, `cbc_host_texture_limit`, `cbc_host_bvh_spatial_split`,
+`cbc_host_image_create_tiled`, `cbc_host_tile_size`), the value kinds `CBC_VALUE_QUATERNION` and
+`CBC_VALUE_SPHERICAL_HARMONICS_REST`, `CBC_ATTR_SPLAT_BOUNDING_RADIUS`, `CBCHostConfig.flags` with
+`CBC_HOST_PROGRESSIVE_RESULTS` and `CBC_EVENT_FILM` with the grown `CBCEvent`, the tile-read and release callbacks and
+`CBCImageConfig.tile_size`, the capability report's per-backend `maxImageDimension` and `maxImageTileSize`, the managed
+members that mirror them, the scene-document names, and the behaviour rules that go with them (the refusals by name, the
+splat attributes' rules, "fixed once images have loaded", the in-memory tiles). Are they approved as they stand, or
+which should change before the ABI is released?
+
+**The deferred A2 edge cases (decision 34, item 3).** Two inputs of a displaced mesh's displacement are not tracked by
+the host and are documented as a known limitation (details at the end of this section): a displacement shader that
+reads a scene value the host does not watch (Scene Time) is not displaced again when only that value changes, and on
+Metal with MetalRT Cycles' switch to its extended limits could displace a mesh twice (known only from reading). Should
+the host track them later, or do they stay documented limitations?
+
+### The session's questions, with their answers
+
+The questions below were asked while the kit ran. Most are answered by the decisions and rulings that section 5.4 cites,
+which also records what was done with each; any that no ruling names stays open as asked.
 
 The survey's control build did not reproduce the validated build byte for byte, although every Mach-O section is
 identical. The debug map of every artifact records each object's modification time, and the two host objects built from

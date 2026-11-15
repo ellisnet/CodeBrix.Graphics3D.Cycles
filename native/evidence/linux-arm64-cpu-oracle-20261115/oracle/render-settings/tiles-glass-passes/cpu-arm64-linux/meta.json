@@ -1,0 +1,158 @@
+{
+  "sceneId": "render-settings/tiles-glass-passes",
+  "sceneSha256": "961069f2a2e6afdd4b80e9b983efef2933897577c109bd665d72e68b5317c37f",
+  "backend": "cpu-arm64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-arm64",
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 32,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0273427,
+    0.0189278
+  ],
+  "filmSha256": [
+    "83907edbe60d1b287e3c0226b0682da43057b2d58bf49c969d1b90d72282530e",
+    "83907edbe60d1b287e3c0226b0682da43057b2d58bf49c969d1b90d72282530e"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "98d352c6ca03c51df2084326706a9945f5aae1ff379e6136eac45d54fcfe0579",
+        "98d352c6ca03c51df2084326706a9945f5aae1ff379e6136eac45d54fcfe0579"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Normal",
+      "type": "normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "ea2b085f29767880946af95d5f46c9934570425299234166c1ad0435a8e2ca64",
+        "ea2b085f29767880946af95d5f46c9934570425299234166c1ad0435a8e2ca64"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "DiffCol",
+      "type": "diffuse_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "87c1f3ac3ede9364385c85f9c7b004ba26de8ad478e784c8a0a24fcc6f8a7bd8",
+        "87c1f3ac3ede9364385c85f9c7b004ba26de8ad478e784c8a0a24fcc6f8a7bd8"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "TransDir",
+      "type": "transmission_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75",
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "GlossInd",
+      "type": "glossy_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "db9f48aafb576ed9b0eef5545d085e785cee1caf54a4b60c9a6802ad6c2c0d4e",
+        "db9f48aafb576ed9b0eef5545d085e785cee1caf54a4b60c9a6802ad6c2c0d4e"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "Sample Count",
+      "type": "sample_count",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "88e239ef42800d74d822739e1e907848f05eaec39860481e7a5ae8abc4cc11e3",
+        "88e239ef42800d74d822739e1e907848f05eaec39860481e7a5ae8abc4cc11e3"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "LG key",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "dbae748978c43b8fd6dc451e1410cc48b6e66061630c472e4bb2a794ce4b0ac2",
+        "dbae748978c43b8fd6dc451e1410cc48b6e66061630c472e4bb2a794ce4b0ac2"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux e5c18b8d0f24 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 30 13:45:20 UTC 2026 aarch64 GNU/Linux",
+    "cpu": "",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981",
+    "deviceModel": "unavailable: no /proc/device-tree/model (no device tree, for example in a container)",
+    "vulkan": "unavailable: [Errno 2] No such file or directory: 'vulkaninfo'"
+  },
+  "hostLibrarySha256": "e744ce15338739e8e54edd37492aff0e571ed4fcfb94f54093d9a8f26104f67b",
+  "runnerSha256": "426c1c9eeb9df5f102ca7c00f47017ba8d782967b045da8b20bd372ce76038db",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/linux/linux-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/render-settings/tiles-glass-passes.json",
+  "backendDescription": "Cycles CPU device, GCC 14 aarch64 (glibc), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.093,
+  "runnerCommand": [
+    "native/work/linux/linux-arm64/host/build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/work/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/render-settings/tiles-glass-passes.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-linux",
+    "--output",
+    "/work/CodeBrix.Graphics3D.Cycles/native/work/oracles/linux-arm64-20261115/oracle/render-settings/tiles-glass-passes/cpu-arm64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": " (the C API does not expose Cycles' DeviceInfo)"
+}

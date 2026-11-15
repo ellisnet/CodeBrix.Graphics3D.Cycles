@@ -5,19 +5,18 @@ SPDX-License-Identifier: Apache-2.0
 
 > **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
 > Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
-> `third_party/cycles-import.json`). The Linux ARM64 CPU oracle has not been built or rendered on it (NOT BUILT);
-> the committed `native/evidence/linux-arm64-cpu-oracle-<date>/` films are films of the previous revision.
-> Every result, film, hash, file count and payload statement in this document
-> was recorded at the previous pinned revision
-> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
-> evidence for the current source. Films and references recorded at the
-> previous revision cannot be compared with the current source: the CPU
-> oracle's films changed with the pin.
+> `third_party/cycles-import.json`). The Linux ARM64 CPU oracle is built and rendered on it (VALIDATED):
+> `native/evidence/linux-arm64-cpu-oracle-20261113/` (2026-11-13, commit `0b19d8750`, 726 scenes, the first run at
+> this pin, with the answers of section 10) and `native/evidence/linux-arm64-cpu-oracle-20261115/` (2026-11-15, commit
+> `24b74e095`, 793 scenes, no refusal, no failure, every scene repeat-identical; the 726 scenes it shares with
+> 20261113 are bitwise identical to it). The films of the earlier `linux-arm64-cpu-oracle-20261031`, `-20261101` and
+> `-20261105` folders, and every result, film, hash and file count recorded in this document before 2026-11-13,
+> belong to the previous pinned revision (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`): historical records, not
+> evidence for the current source, and never compared with it (the CPU oracle's films changed with the pin).
 >
-> The procedure below is the procedure for the current pin. The first run on it also answers the questions of
-> section 10. A `native/evidence/linux-x64-reference-<date>/` folder counts as "of the current pin" only if its
+> A `native/evidence/linux-x64-reference-<date>/` folder counts as "of the current pin" only if its
 > README names Cycles v5.3.0; until one exists, the comparison of section 6 is skipped and the README of the
-> new folder says so.
+> new folder says so (none is committed yet).
 
 > **MANDATORY TEST RULES** (the same as every TESTING document):
 >
@@ -157,8 +156,15 @@ echo "$RUNNER"; ls -l "$HOSTLIB"
 ## 5. Render the corpus (inside the container)
 
 ```sh
-RUN=native/work/oracles/linux-arm64-<date>
+export RUN=native/work/oracles/linux-arm64-<date>
+export RUNNER=native/work/linux/linux-arm64/host/build/bin/codebrix_cycles_oracle   # the RUNNER path section 4 printed
+export HOSTLIB=native/work/linux/linux-arm64/host/build/lib/libcodebrix_cycles_host.so
 ```
+
+Set and export the three variables in the shell that runs the loop below, and check that `"$RUNNER"` and `"$HOSTLIB"`
+exist. Every `docker exec` starts a new shell, and a command wrapped in `bash -c '...'` sees only exported variables:
+without `export`, the runner receives empty paths and stops with `IsADirectoryError: [Errno 21] Is a directory: '.'`
+after creating the run folder, which must then be removed before the next attempt (the runner refuses a non-empty one).
 
 - Without `--scene`, the runner renders every scene under `native/oracle/scenes/`.
   The two `assets/bench_01*` documents read raw files that are generated, not
@@ -265,9 +271,9 @@ Steps (sections 3 to 7, with these requirements):
 
 ## 10. The first run at the current pin: what it has to show
 
-Nothing of this pin has been built for Linux ARM64. `build_cycles_linux_arm64.py` and the dependency recipe were
-brought to the pin by reading only; a build failure is recorded verbatim (the compiler's text, the file, the line) and
-is never corrected by editing a file under `third_party/cycles`.
+The first run at this pin is `native/evidence/linux-arm64-cpu-oracle-20261113/` (2026-11-13); its README answers
+each item below. A build failure is recorded verbatim (the compiler's text, the file, the line) and is never corrected
+by editing a file under `third_party/cycles`.
 
 Beyond sections 3 to 9, record these in the README of the new folder. Each is something only an ARM64 CPU run can show;
 the shared WGSL carries a scalar (ARM64) branch for each that was written from the source and never run.

@@ -1,0 +1,25 @@
+{
+  "sceneId": "hair/chiang-denoising-features",
+  "sceneSha256": "d183aedd0c1576fc41272026ca01b112f1a52f2d52c2fd959f88df12e790243a",
+  "backend": "metal-m2pro-metalrt",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 5.9604644775390625e-08,
+  "renderSeconds": [0.462451,0.0993242],
+  "filmSha256": ["559238b25b0afe8ac64e4e3a2aee851ca52aa9478a531b2b9120e175bdbccda3","81375b6e8877a7110a88bdd729428ff2d368e74fd90699b573ff50e20a225b40"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Denoising Normal", "type": "denoising_normal", "components": 3, "written": true, "filmSha256": ["228b01c52ffdd0139cb0599b7b95def82e599b929671018499165bd02c1781a6","c5b0b0b600ae38a020d7127e9be0db23bb2667a5e986b8c2f477dc1b23c3a584"]},
+    {"index": 1, "name": "Denoising Albedo", "type": "denoising_albedo", "components": 3, "written": true, "filmSha256": ["5d9b653524e8542cfa464e0f40dbd749f2911ee78e2f658922e5aa8f0136ea83","b91ba124968368988c0ce8be017b6023b6004c8d6b85967ce76c8848112d379c"]},
+    {"index": 2, "name": "Denoising Depth", "type": "denoising_depth", "components": 1, "written": true, "filmSha256": ["f38b066c201f617ea7f0c7c3a815b02d42b721c6844afc7850ea0d371ae342ae","50e07c7e5c080b1c76866884ce9b05a84773ff14432c1ba426a144618edec84b"]}
+  ],
+  "warnings": []
+}
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)

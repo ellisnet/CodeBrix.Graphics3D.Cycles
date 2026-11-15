@@ -1,0 +1,448 @@
+{
+  "sceneId": "hair/chiang-denoising-features",
+  "sceneSha256": "d183aedd0c1576fc41272026ca01b112f1a52f2d52c2fd959f88df12e790243a",
+  "width": 64,
+  "height": 48,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-closing-20261115/oracle/hair/chiang-denoising-features/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Denoising Normal",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Denoising Albedo",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Denoising Depth",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00995737,
+        0.0202352
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "arm64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-closing-20261115/oracle/hair/chiang-denoising-features/metal-m2pro",
+      "backend": "metal-m2pro",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Denoising Normal",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        },
+        {
+          "name": "Denoising Albedo",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "Denoising Depth",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.015625
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 5.960464477539063e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 5.960464477539063e-08,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.748637,
+        0.114015
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-closing-20261115/oracle/hair/chiang-denoising-features/metal-m2pro-metalrt",
+      "backend": "metal-m2pro-metalrt",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Denoising Normal",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        },
+        {
+          "name": "Denoising Albedo",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        },
+        {
+          "name": "Denoising Depth",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.015625
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 5.960464477539063e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 5.960464477539063e-08,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.462451,
+        0.0993242
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    }
+  ],
+  "goldStandards": [
+    "cpu-arm64-macos",
+    "metal-m2pro",
+    "metal-m2pro-metalrt"
+  ],
+  "candidates": [],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.014706432819366455,
+      "maxRelativeError": 0.07531850207048572,
+      "rms": 0.00015464809411330045,
+      "practicalFailures": 16,
+      "strictDifferences": 2360,
+      "worstPixel": {
+        "x": 37,
+        "y": 13,
+        "channel": "B",
+        "reference": 0.1952565759420395,
+        "candidate": 0.18055014312267303,
+        "absoluteDifference": 0.014706432819366455,
+        "criterionRatio": 165.1455993463063
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Denoising Normal",
+          "type": "denoising_normal",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.384185791015625e-07,
+          "maxRelativeError": 1.5599607875119938e-05,
+          "rms": 1.578346274564071e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 20,
+          "worstPixel": {
+            "x": 41,
+            "y": 12,
+            "channel": 1,
+            "reference": -0.0381062775850296,
+            "candidate": -0.038106489926576614,
+            "absoluteDifference": 2.123415470123291e-07,
+            "criterionRatio": 0.0036851253084837794
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Denoising Albedo",
+          "type": "denoising_albedo",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 9.119510650634766e-06,
+          "maxRelativeError": 1.642528521373132e-05,
+          "rms": 3.5117146173011375e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 397,
+          "worstPixel": {
+            "x": 32,
+            "y": 21,
+            "channel": 2,
+            "reference": 0.5515828728675842,
+            "candidate": 0.5515738129615784,
+            "absoluteDifference": 9.059906005859375e-06,
+            "criterionRatio": 0.05651259721560946
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Denoising Depth",
+          "type": "denoising_depth",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.0234375,
+          "maxRelativeError": 2.8218527664456876e-07,
+          "rms": 0.004336145891285063,
+          "practicalFailures": 0,
+          "strictDifferences": 245,
+          "worstPixel": {
+            "x": 54,
+            "y": 12,
+            "channel": 0,
+            "reference": 14038.173828125,
+            "candidate": 14038.169921875,
+            "absoluteDifference": 0.00390625,
+            "criterionRatio": 0.001391270860541374
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.014185264706611633,
+      "maxRelativeError": 0.08452991783889148,
+      "rms": 0.00026374485411510677,
+      "practicalFailures": 32,
+      "strictDifferences": 2408,
+      "worstPixel": {
+        "x": 24,
+        "y": 23,
+        "channel": "R",
+        "reference": 0.16781353950500488,
+        "candidate": 0.18199880421161652,
+        "absoluteDifference": 0.014185264706611633,
+        "criterionRatio": 169.7559241787294
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Denoising Normal",
+          "type": "denoising_normal",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.3560056686401367e-06,
+          "maxRelativeError": 2.5274094006402142e-05,
+          "rms": 2.2176589763386636e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 23,
+          "worstPixel": {
+            "x": 28,
+            "y": 18,
+            "channel": 1,
+            "reference": -0.14563921093940735,
+            "candidate": -0.145640566945076,
+            "absoluteDifference": 1.3560056686401367e-06,
+            "criterionRatio": 0.01713689683866813
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Denoising Albedo",
+          "type": "denoising_albedo",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.0016309618949890137,
+          "maxRelativeError": 0.0027314042005047536,
+          "rms": 3.251171985940495e-05,
+          "practicalFailures": 12,
+          "strictDifferences": 496,
+          "worstPixel": {
+            "x": 28,
+            "y": 18,
+            "channel": 2,
+            "reference": 0.5970929861068726,
+            "candidate": 0.5954620838165283,
+            "absoluteDifference": 0.0016309022903442383,
+            "criterionRatio": 9.626465553915454
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "Denoising Depth",
+          "type": "denoising_depth",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.0234375,
+          "maxRelativeError": 2.1147260002389642e-06,
+          "rms": 0.0043384363139756564,
+          "practicalFailures": 0,
+          "strictDifferences": 306,
+          "worstPixel": {
+            "x": 28,
+            "y": 18,
+            "channel": 0,
+            "reference": 8.11742877960205,
+            "candidate": 8.117411613464355,
+            "absoluteDifference": 1.71661376953125e-05,
+            "criterionRatio": 0.010257713658202723
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.014631584286689758,
+      "maxRelativeError": 0.08466186743177821,
+      "rms": 0.0003005793472380604,
+      "practicalFailures": 33,
+      "strictDifferences": 767,
+      "worstPixel": {
+        "x": 24,
+        "y": 23,
+        "channel": "R",
+        "reference": 0.1677931249141693,
+        "candidate": 0.18199880421161652,
+        "absoluteDifference": 0.014205679297447205,
+        "criterionRatio": 170.008533533978
+      },
+      "reference": "metal-m2pro",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Denoising Normal",
+          "type": "denoising_normal",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.3113021850585938e-06,
+          "maxRelativeError": 2.456545714071779e-05,
+          "rms": 1.882025321860391e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 11,
+          "worstPixel": {
+            "x": 28,
+            "y": 18,
+            "channel": 1,
+            "reference": -0.14563925564289093,
+            "candidate": -0.145640566945076,
+            "absoluteDifference": 1.3113021850585938e-06,
+            "criterionRatio": 0.01657194232316259
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Denoising Albedo",
+          "type": "denoising_albedo",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.00163346529006958,
+          "maxRelativeError": 0.0027355853697492412,
+          "rms": 3.259600516550229e-05,
+          "practicalFailures": 12,
+          "strictDifferences": 449,
+          "worstPixel": {
+            "x": 28,
+            "y": 18,
+            "channel": 2,
+            "reference": 0.5970954895019531,
+            "candidate": 0.5954620838165283,
+            "absoluteDifference": 0.0016334056854248047,
+            "criterionRatio": 9.641213450358233
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "Denoising Depth",
+          "type": "denoising_depth",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.015625,
+          "maxRelativeError": 2.232210515779261e-06,
+          "rms": 0.0019275260286501263,
+          "practicalFailures": 0,
+          "strictDifferences": 154,
+          "worstPixel": {
+            "x": 28,
+            "y": 18,
+            "channel": 0,
+            "reference": 8.117429733276367,
+            "candidate": 8.117411613464355,
+            "absoluteDifference": 1.811981201171875e-05,
+            "criterionRatio": 0.010827585405144311
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 0,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

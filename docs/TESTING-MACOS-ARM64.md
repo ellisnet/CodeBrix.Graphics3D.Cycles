@@ -2,19 +2,25 @@
 
 > **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
 > Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
-> `third_party/cycles-import.json`). This platform has not been built or run on it (NOT BUILT).
-> Its payload (`native/binaries/osx-arm64/`), built from the previous revision, was
-> removed; it comes back when the platform is rebuilt, validated and restaged
-> on an Apple Silicon Mac (`native/binaries/README.md`). Wherever the text below
-> says the payload is committed or staged, read "after it has been restaged".
-> Every result, film, hash, file count and payload statement in this document
-> was recorded at the previous pinned revision
-> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
-> evidence for the current source. Films and references recorded at the
-> previous revision cannot be compared with the current source: the CPU
-> oracle's films changed with the pin, and the Metal references in
-> `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64` are void
-> until they are recorded again from a v5.3.0 build (step 7).
+> `third_party/cycles-import.json`). This platform is built and validated on it
+> (VALIDATED, 2026-11-15, commit `24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c`, on an
+> Apple Silicon Mac mini, M2 Pro, macOS 27.2.1, Xcode 27.2): a clean build with 0
+> warnings in this repository's code, the macOS host gate (passed, 3,102 films
+> compared), the managed build and tests (525 tests: 519 passed, the 6 WebGPU-only
+> tests skipped) and the whole oracle corpus on `cpu-arm64-macos`, `metal-m2pro` and
+> `metal-m2pro-metalrt` (793 scenes, no failure,
+> `native/evidence/cycles-oracles-macos-20261115/`), with the records in
+> `native/evidence/device-macos-arm64-20261115/`. That build is the payload staged
+> in `native/binaries/osx-arm64/` (`provenance.json` `sourceCommit` `24b74e09...`),
+> and the MacOSArm64 package is packed from it. The first build at this pin is
+> recorded in `native/evidence/device-macos-arm64-20261113/` and
+> `native/evidence/cycles-oracles-macos-20261113/`. The Metal reference films in
+> `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64` were recorded
+> again from v5.3.0 builds (2026-11-14). Results, films, hashes and file counts
+> recorded in this document before 2026-11-13 belong to the previous pinned revision
+> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and are historical records, not
+> evidence for the current source: films of the previous revision are never
+> compared with the current source.
 
 > **MANDATORY TEST RULES (from 2026-10-29; they apply to every run of this
 > procedure and override anything below, including the historical records).**
@@ -84,9 +90,9 @@ procedure produces:
 - the managed build, test and pack results on macOS, including the managed
   GPU render tests on Cycles' Metal device, judged against the recorded Metal
   references (section 5);
-- a restaged osx-arm64 payload under `native/binaries/osx-arm64` (the folder is
-  absent until the first build on the current pin has been validated; only on
-  the maintainer's decision; see step 9).
+- a restaged osx-arm64 payload under `native/binaries/osx-arm64` (only on the
+  maintainer's decision; see step 9). The payload there was staged on 2026-11-15
+  from the build of commit `24b74e09`.
 
 ## 2. Prerequisites and pins
 
@@ -363,7 +369,8 @@ the passed, skipped and failed counts, and any skip reasons.
 
 A Release build of the solution also runs the pack driver (MAINTAINER-README.txt,
 PACKAGING). It packs the MacOSArm64 package only when
-`native/binaries/osx-arm64/provenance.json` exists, so without that payload it
+`native/binaries/osx-arm64/provenance.json` exists (it does since the stage of
+2026-11-15), so it packs Core, LinuxX64 and MacOSArm64; without that payload it
 packs Core and LinuxX64 alone. Delete the `nugets/Release/<version>/`
 folders it writes.
 
@@ -453,7 +460,7 @@ commit). The stager refuses unless both records name one commit with a clean
 status, HEAD descends from that commit with no Cycles-with-Metal source change
 since, and the working tree has none. It also refuses while
 `native/binaries/osx-arm64/` already holds a payload ("review and remove it
-first"); at the current pin the folder is absent, so the first stage creates it. A
+first"); it holds the payload staged on 2026-11-15, which a new stage replaces only after that review. A
 committed payload is a reviewed deliverable: replace it only when the maintainer
 decides to, after reviewing what changed. When it runs, it copies the host and its
 dependency closure (OIDN's core and its CPU and Metal device modules included) into
