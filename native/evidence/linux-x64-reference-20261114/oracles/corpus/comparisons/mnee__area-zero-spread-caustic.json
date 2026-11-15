@@ -1,0 +1,103 @@
+{
+  "sceneId": "mnee/area-zero-spread-caustic",
+  "sceneSha256": "2da710e78ecd1245bab4204da48439597287038b4ac591450870ecc22a21990c",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "<run>/linux/linux/s04/20261113-215503/judge/oracle/mnee/area-zero-spread-caustic/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": null,
+      "renderSeconds": [
+        0.0102348,
+        0.00581714
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "<run>/linux/linux/s04/20261113-215503/judge/oracle/mnee/area-zero-spread-caustic/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 2.9802322387695312e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.9802322387695312e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 2.9802322387695312e-08,
+      "deviceName": null,
+      "renderSeconds": [
+        1.46009,
+        0.800557
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": "x64-sse4.2",
+      "isaFamily": "x64",
+      "isaSource": "wgslArithmetic x64-sse4.2"
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux"
+  ],
+  "candidates": [
+    "wgsl-linux-intel"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 9.5367431640625e-07,
+      "maxRelativeError": 3.2795995543352166e-07,
+      "rms": 4.11440188265171e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 6,
+      "worstPixel": {
+        "x": 11,
+        "y": 17,
+        "channel": "B",
+        "reference": 0.3634873330593109,
+        "candidate": 0.36348745226860046,
+        "absoluteDifference": 1.1920928955078125e-07,
+        "criterionRatio": 0.0009715709121190305
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 1,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

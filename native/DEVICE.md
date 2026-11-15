@@ -21,7 +21,9 @@ Status in brief (each line points to where it is kept current):
 - Judging: WGSL films and states against the pinned Cycles CPU kernels on
   Linux x64, the practical criterion required and strict differences
   reported ("Validation reference policy"); the full passes are recorded under
-  `native/evidence/` ("Device checkpoint 1" describes the last one).
+  `native/evidence/` ("First full pass on Cycles v5.3.0", at the end of the
+  last section, describes the last one; "Device checkpoint 1" the last one at
+  the previous pinned revision).
 - The pinned Cycles source is the released Cycles v5.3.0. What that changed in
   the pinned kernels and what the device does about each change: "Re-pin to
   Cycles v5.3.0", the last section. Sections written before it describe the
@@ -2007,13 +2009,17 @@ Debian 13, GCC 14.2.0, clang 19.1.7, CMake 3.31.6, glibc 2.41), with
 `native/tools/macos_x64_reference_exchange.py` running the exchanges against the
 container of `native/tools/linux_reference/`.
 
-**Linux x64 reference rule (Jeremy, 2026-10-29).** Linux x64 and Android testing
+**Linux x64 reference rule (the maintainer, 2026-10-29).** Linux x64 and Android testing
 and validation are done on the dedicated Linux x64 machine only, and every Linux
 x64 reference other platforms compare against comes from that machine and is
 committed: the newest `native/evidence/linux-x64-reference-<date>/` (now
-`linux-x64-reference-20261107` for the oracle and bench films and the host gate, with
-`linux-x64-reference-20261101` still supplying the overlay hashes, libm record, managed reference films and
-host-gate reload rounds, which 20261107 did not re-make; 20261101 supersedes `linux-x64-reference-20261030`,
+`linux-x64-reference-20261114`, recorded on Cycles v5.3.0, for the oracle and bench films and the host gate; see
+"First full pass on Cycles v5.3.0". Four further items are either supplied by 20261114 or have NOT been re-made on
+Cycles v5.3.0:
+overlay hashes: supplied by 20261114; libm record: supplied by 20261114; host-gate reload rounds: supplied by 20261114 as a list of file hashes; managed reference films: NOT re-made.
+Where an item is not re-made, its copy in `linux-x64-reference-20261101` is of the previous pinned Cycles revision and
+is no reference for the current source. `linux-x64-reference-20261107` and 20261101 are records of the previous pinned
+revision; 20261101 supersedes `linux-x64-reference-20261030`,
 `linux-x64-reference-20261029` and the Docker set; its CPU films are bitwise identical to
 theirs for every scene they share, apart from the wall-clock render-time pass), with the Android counterpart
 `native/evidence/android-reference-20261029/` (made at commit `686f79282`; the
@@ -2327,9 +2333,11 @@ completes on Intel Mesa 25.0.7 (see "Session close: specialization-off status").
 For cost, by a compile-only smoke step that records size and cold compile time, warns
 and never fails a gate:
 `python3 native/tools/unspecialized_compile_smoke.py --wgsl SURFACE.wgsl --output
-native/work/<new-folder>`, where SURFACE.wgsl is the `surface.wgsl` written by a render
+native/work/<new-folder>`, where SURFACE.wgsl is the unspecialized surface module: the `surface.wgsl` written by a render
 gate run with `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` (for example
-`nodes_gate.py --unspecialized nodes_render`). Measurements are in that section.
+`nodes_gate.py --unspecialized nodes_render`), or, when that run does not finish its compiles (the case on Cycles
+v5.3.0, see "First full pass on Cycles v5.3.0"), the surface module text the same run writes into the folder named by
+`CODEBRIX_CYCLES_WGSL_DUMP` before it compiles. Measurements are in that section.
 
 **Device runs of the materials gates.** Runtime unchanged; the shipped
 `libcodebrix_wgpu.so` was hash-verified before every corpus.
@@ -3211,8 +3219,11 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
 50. (resolved, see "Resolved" below) Was: **`volumes/scatter-world` and `volumes/world-volume-point` have no box medium.**
 51. (replaced by item 53) Was: **Volumes with a finite spherical lamp inside the medium.** The cause is now known; item 53 carries it.
 52. **Heterogeneous medium: an intermittent wrong path on Intel (Linux). Not our WGSL or host code: the Intel driver or
-   hardware, determined 2026-11-06; the gates are not relaxed. Not observed since the heterogeneous integration was split
-   into a step entry and an evaluation entry (see "Split", the last point of this item); the driver fault itself is not fixed.**
+   hardware, determined 2026-11-06; the gates are not relaxed. Mitigated twice: the heterogeneous integration is split into
+   a step entry and an evaluation entry (see "Split"), and the transparent shadow entry of a heterogeneous scene is declared
+   with 64 invocations per workgroup (see "Cycles v5.3.0: back in the transparent shadow entry", the last point of this
+   item). Observed again between the two (on Cycles v5.3.0, at a high rate in two scenes) and not in the measurements made
+   after the second; the driver fault itself is not fixed.**
    `codebrix_cycles_volume_gate` cases 35 and 55 (equiangular sampling without MIS) sometimes fail with
    `shadow_path.throughput` NaN or a `path.bounce` integer mismatch, so a `volume_gate.py` or `volume_boundary_gate.py` run
    can fail on a good tree. Rate on the UHD Graphics 770 (ADL-S GT1, Mesa 25.0.7, i915, kernel 6.12): case 55 evaluated 20
@@ -3294,6 +3305,43 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
      path delayed in `shade_shadow_transparent`) was not measured here.
      With the split, the heterogeneous world scenes of item 140 (`volumes/heterogeneous-world-volume`,
      `volumes/heterogeneous-in-heterogeneous-world`): 0 of 16 direct renders wrong each.
+   - **Cycles v5.3.0: back in the transparent shadow entry (2026-11-13).** FACT. On the v5.3.0 tree the fault showed again
+     in `volumes/light-path-heterogeneous-equiangular` and `volumes/light-path-heterogeneous-point` (32x24, 16 samples, two
+     repeats, every repeat judged practical against the CPU film): single wrong paths, finite, on different pixels from film
+     to film, the same paths recurring across processes, and every film without one bitwise one of two films one unit in
+     the last place apart. Rate before, UHD Graphics 770, Mesa 25.0.7, the GPU shared with other renders: 10 of 14
+     renders of the first scene failed at least one repeat and 4 of 6 of the second (single renders with a cold driver
+     cache); in direct renders alternated with the variants below, 30 of 60 films of the first scene held at least one wrong
+     path. What was measured on that scene, as temporary texts loaded into one binary (`CODEBRIX_CYCLES_WGSL_LOAD`),
+     alternated with the unchanged text in the same rounds, films with a wrong path of 16:
+     | text | films with a wrong path | unchanged text, same rounds |
+     | --- | --- | --- |
+     | `vh_expected_steps` written inline at its two call sites (step entry and shadow entry) | 1 | 9 |
+     | the same in the volume module only; in the shadow module only | 8; 6 | 7 |
+     | `surface_differentials` without its ordering barriers | 11 | 9 |
+     | the tail of the step entry (after the loop) run by the evaluation entry: step entry 667,308 -> 540,676 bytes | 7 | 7 |
+     | `shade_volume_heterogeneous` with one invocation per workgroup; the evaluation entry too | 11; 9 | 5 |
+     | `shade_shadow_transparent` with 64 invocations per workgroup | 0 | 5 |
+     So the rate follows the shape of the compiled text and not its size alone (a helper call of 169 bytes moves it; a step
+     entry of the size the split had left does not lower it). Inference from the last row: the wrong paths of these scenes
+     are computed in `shade_shadow_transparent`, the "second face" above; with that entry at 64 invocations per workgroup
+     all 16 films are one film, bitwise. The entry is 762,268 inlined bytes in these scenes and 19,271 backend instructions declared 64
+     (18,426 declared 1; `intel_compile_envelope.py`), smaller than the step entry, so the entry's size is not what the
+     fault needs. Inference, not shown: with one invocation per workgroup the driver runs many more concurrent threads of
+     the entry, and the fault needs that concurrency (the plain Vulkan measurements above: none alone, more with more
+     concurrent workgroups).
+     Change: in a module with a heterogeneous medium `shade_shadow_transparent` is declared `@workgroup_size(64)`
+     (`wavefront_shadow.wgsl`); every other module's text is unchanged (one invocation), Intel through Metal and the
+     conservative tier build the entry with one invocation as before (`pipelines.cpp`). The entry's code, arithmetic and
+     order are unchanged; the film of a heterogeneous scene can differ from the earlier one in the last place of a few
+     values (the order of the per-word film additions: 2 values of 3,072 by at most 2 units in the first scene). Rate
+     after, same device, same day, the GPU shared in the same way: 24 of 24 single renders of the first scene and 12 of 12
+     of the second passed every repeat (48 and 24 films, each scene one film bitwise throughout); at the rates before, that has
+     probability under 1e-9. One render each of `volumes/heterogeneous-point`, `volumes/motion-moving-heterogeneous`,
+     `volumes/ray-marching-heterogeneous-point`, `volumes/catcher-heterogeneous`, `curves-b/volume-heterogeneous` and
+     `volumes/heterogeneous-in-heterogeneous-world`: perfect. Not measured: the step entry's own rate on this tree apart from
+     the shadow entry's (no film of the measurements after the change held a wrong path), other Intel generations, any
+     other platform (the declaration is shared WGSL: unverified elsewhere), an idle GPU.
 53. **A finite sphere lamp inside a medium: a last-bit branch on the lamp's surface (accepted by the maintainer as a documented deviation, like item 47; the two reproducer scenes are not in the corpus).** A path that hits
    the lamp from the medium continues through it, and its next segment starts on the sphere, one float past the hit.
    `point_light_sample` branches there on `d_sq > r_sq`, within rounding: the two sides give different points for
@@ -3965,8 +4013,8 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     node's bump offset (`svm_attribute`) and the Wireframe node's bump offset; and the triangle surface differentials
     (`surface_differentials`), whose reciprocal of the determinant is one correctly rounded division as in the kernel.
     Both scratch scenes are perfect; `surface-nodes/bump-strong-noise` and `surface-nodes/bump-strong-noise-attribute`
-    cover the first three sites (no film distinguishes the Wireframe reordering). Not yet run on the whole corpus or the
-    gates. Still plain, reached by no scene: the Wireframe node's pixel size and the Attribute node's Generated
+    cover the first three sites (no film distinguishes the Wireframe reordering). The whole corpus and every gate ran with these
+    changes in the first full pass on Cycles v5.3.0 (2026-11-13/14, the last section): no job failed for them. Still plain, reached by no scene: the Wireframe node's pixel size and the Attribute node's Generated
     derivatives.
 185. **Boolean Math, Integer Math and Get Vector Component nodes: refused by name on the WebGPU device, OPEN (new in
     Cycles v5.3.0, not ported).** "WebGPU Boolean Math node not implemented", "WebGPU Integer Math node not
@@ -3998,7 +4046,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     and the host refuses `denoiser_type` dlss at a denoising render ("Unsupported feature: the dlss denoiser is not
     available in this library (use openimagedenoise)"). Both are on the render-time rejection list of AGENT-README.txt.
 188. **Recorded while re-porting to Cycles v5.3.0; each is older than the re-pin. (a), (g) and the density factor of (d)
-    are FIXED (2026-11-13, not yet run on the whole corpus or the gates); (b), (c), (e), (f) and the rest of (d) are open.**
+    are FIXED (2026-11-13; the whole corpus and every gate ran with the fixes in the first full pass on Cycles v5.3.0,
+    the last section, and (g)'s helper call is what item 52's last point measures); (b), (c), (e), (f) and the rest of
+    (d) are open.**
     FACT unless marked. Fixed: the Attribute node gives a lamp's uv in a lamp's shader (`lamps/lamp-area-uv`); an Emission
     closure of a volume shader is multiplied by the object's volume density (proven only with a temporary density on both
     devices, since no scene can set one); an unbounded expected step count gives one sample on x86-64 as in the kernel
@@ -4500,8 +4550,9 @@ corpus): the mixed-phase combination adds 16,246 bytes to `shade_volume_light` a
 (`volumes/linking-tree-lamps`, which is not in the table, 1,044,853 bytes before and 1,061,099 after, 53,367 Intel
 instructions; `shadow-linking/volume` 989,727 and 1,005,973; the new scene `volumes/mixed-phase-world` 989,447 and 1,005,693,
 50,174 instructions; `volumes/catcher-tree` 1,056,954 after). Every entry probed stays under 60,000 instructions. The
-tables are re-measured with the next full pass on the new pin; whether `volumes/mixed-phase-world` joins the accepted
-false warnings is the maintainer's decision.
+size guard and the compile envelope over the corpus dump of the first full pass on Cycles v5.3.0 are recorded in
+"First full pass on Cycles v5.3.0" (the last section), which replaces these two tables for this pin; whether
+`volumes/mixed-phase-world` joins the accepted false warnings is the maintainer's decision.
 
 Nine of these rows grew 10,242 bytes with the normalize of item 54: the eight `shade_volume_light` rows and
 `volumes/principled-volume`. On the HP (Mesa 24.0.8, before that normalize), 20 of the 27 rows compiled and rendered perfect,
@@ -8195,9 +8246,10 @@ The pinned Cycles source (`third_party/cycles`) was replaced by the released Cyc
 corpus scenes rendered on the CPU at both revisions, 601 differ beyond the practical criterion, 11 differ within it and 94
 are bit-identical. Every film, state record, fingerprint, replay capture and size table recorded before this section
 (`native/evidence/` included) belongs to the previous revision. This section says what the release changed in the kernels
-the device mirrors and what the device does now. It was written before a full gate and corpus pass on the new pin had been
-recorded: each statement of proof below names the single scenes or gate cases it rests on (Linux x64, Intel UHD, against the
-v5.3.0 CPU kernels), and the full passes belong to the next device checkpoint.
+the device mirrors and what the device does now. Its paragraphs were written before a full gate and corpus pass on the new
+pin: each statement of proof in them names the single scenes or gate cases it rests on (Linux x64, Intel UHD, against the
+v5.3.0 CPU kernels). The first full pass on this pin (the whole corpus, every gate, the replays, the host gate and the
+managed tests; Linux x64 only) is recorded at the end of this section, "First full pass on Cycles v5.3.0".
 
 **Layouts and constants.**
 
@@ -8371,7 +8423,8 @@ against the v5.3.0 CPU films, each at one pixel, each with its cause established
 `combinations/cov-camera-motion-heterogeneous-linking-catcher` (item 190). No tolerance, scene or comparator changed
 for them.
 
-**Size-guard rows known above 940,000 bytes at this release: warning rows, not ruled on.** Measured in single runs;
+**Size-guard rows known above 940,000 bytes at this release: warning rows, not ruled on.** Measured in single runs,
+before the first full pass on this pin (its size paragraph, below, is the measurement over the whole corpus);
 every Intel instruction count given is under the 60,000 envelope.
 
 - `shade_volume_light`: `volumes/linking-tree-lamps` 1,061,099 bytes (53,367 instructions); `volumes/mixed-phase-world`
@@ -8389,3 +8442,171 @@ source and the same overlay and have not been built or run on it. Cycles' Metal 
 unchanged: half-precision integrator state, the generic `CYCLES_CONCURRENT_STATES_*` controls in place of the Metal-only
 ones, a minimum of macOS 13.0, and dispersion compiled in from the same imported headers
 ([host/MACOS_ARM64.md](host/MACOS_ARM64.md)).
+
+### First full pass on Cycles v5.3.0 (Linux x64, 2026-11-13/14)
+
+The first full corpus and gate pass on this pin: Linux x64 only (Intel UHD Graphics 770, Mesa 25.0.7-2+deb13u1); no
+other platform and no Android device was run. Evidence: `native/evidence/linux-x64-reference-20261114/`, which is the
+current Linux x64 reference ("Linux x64 reference rule"). Job names below are the validation queue's. Judging as in
+"Device checkpoint 1": practical `abs(a-e) <= 5e-5 + 2e-4*abs(e)` must pass, strict `1e-7 + 1e-7*abs(e)` is reported,
+integers exact, NaN or Inf fail; every repeat of a scene is judged; verdicts come from each job's status file and the
+judge, never from an exit code.
+
+**The tree.** The binaries were built at commit `90f3bbdbc445806f2b0e5eb9b1b86d3cb1f6ed2b`. During the pass a commit that
+changes documents only moved the head to `828f6c2f9ee2c57dd379d472a0252edaf3caa87a` (the binaries are the same), and one fix
+was applied, uncommitted at the time: item 52's workgroup declaration of `shade_shadow_transparent` in a module with a
+heterogeneous medium (`native/shaders/wavefront_shadow.wgsl`, `native/cycles/pipelines.cpp` and this file; `git diff
+--binary` SHA-256 `1381e65fc781ae7907463bf3bfaaca7b814c683e62eb22705217d67d90e5eb18`). Every job's fingerprint (the WGSL
+compiled, the scene data uploaded and the command sequence) was recorded in the same run as its verdict and collected
+again after the fix: of the jobs already judged, 556 kept their verdict by an identical fingerprint and 62 ran again on
+the fixed tree (the failed scene, the jobs whose modules changed, the always-run set and the CPU films); every job not
+yet judged at that point, every gate job among them, ran on the fixed tree.
+
+**Identity.** Kernel `6.12.117+deb13-amd64`; Vulkan driver `Intel open-source Mesa driver`, Mesa 25.0.7-2+deb13u1;
+runtime CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210, `linux-x64` `libcodebrix_wgpu.so` SHA-256
+`5a61096ef092ae3fb6638189f1ea9fe7a99350f21376f5ea1ce9b22afce35b2b`; host library SHA-256
+`78d8042e87f57e29f1ae1498bff2edc9b6fa3b62fb65407b36554ab6b71aa660` (the fixed tree); judge SHA-256
+`4649232eee126ca8cac97a1e0dc67e1f3eecaa6cc04ad6e6781575ac65848239`; arithmetic `x64-sse4.2`; .NET SDK 11.0.100.
+
+**Results.**
+
+- CPU reference: this build's own CPU films, rendered twice: 726 of 726 scenes bitwise identical between the two renders,
+  the wall-clock render-time pass of `passes/data-passes` excepted. No film of an earlier evidence folder was compared
+  (they belong to the previous pinned revision). The fix did not move the oracle: rendered again on the fixed tree,
+  4,322 of 4,324 CPU film files are bitwise the files rendered before it, and the two that differ are that wall-clock
+  pass.
+- Oracle corpus: 726 scene jobs (724 committed scene documents and the 2 bench bundle scenes) on the WGSL device against
+  those CPU films: **722 perfect and the four expected results**, each exactly as expected and nothing else in those
+  scenes: `passes/cryptomatte` (item 44), `hair/chiang-absorption-thick` (item 189, 1 practical failure) and
+  `combinations/cov-camera-motion-heterogeneous-linking-catcher` (item 190, 3 practical failures), each at its one
+  recorded pixel, and `bsdf/principled-dispersion`, refused by the WebGPU device with "WebGPU dispersion not implemented"
+  (item 187). Among the 722 the largest tolerance ratio is 0.746 (`volumes/heterogeneous-in-heterogeneous-world`); the
+  scene records sum to 31,065 strict differences, and 163 scene jobs have none.
+- The one failure of the pass, fixed during it: `volumes/light-path-heterogeneous-equiangular` failed one repeat in each
+  of two attempts (3 practical failures at one pixel, ratios 2.26 and 1.58, a different pixel each time): item 52's
+  intermittent wrong path, at a high rate on this tree. Item 52's last point has the measurements and the change; after
+  it the scene and `volumes/light-path-heterogeneous-point` are perfect in every repeat.
+- Gate, replay, host and tool jobs: **53 of 53 judged jobs perfect** (table below): the 6 gates that execute the latest
+  changes first, 41 further gate jobs (the WebGPU bake gate, the Linux halves of the attribute, image, file-image,
+  normal and packed state gates, the Linux render gate, the pipeline cache gate and the two specialization
+  checks among them), the oracle replays (21 of 21), the host gate (60 exports, 786 independent reference films, 3,147
+  comparisons), the managed tests in Debug, the CPU films job, the size guard and compile envelope job and the unspecialized
+  compile smoke.
+- `dotnet build` and `dotnet test`, Debug, with the GPU test classes: 0 warnings, **332 of 332** tests. Release:
+  recorded, not judged. It is pending the restage of the `linux-x64` payload against this pass's reference: until then
+  the Release build carries the build's own warning that the staged payload is stale (it was staged at the previous
+  pinned revision).
+- Not run in this pass: the specialization check of the ambient-occlusion render gate (not queued); any other platform.
+
+**Size guard and compile envelope at this pin.** Measured over the corpus dump of this pass (every module text the
+device compiled for the 726 scenes: 1,661 distinct modules, 10,126 entry points, of which the device builds 5,503), with
+`native/tools/intel_compile_envelope.py`, and over the three superset groups.
+- Compile envelope (60,000 backend instructions): **every built entry is within it.** The largest built entry is
+  `intersect_subsurface`, 847,144 inlined bytes, 58,006 instructions. Twelve rows measure above the limit (the largest
+  `shade_surface_light`, 1,432,569 bytes, 81,937 instructions; also `shade_volume_light` 80,468 and
+  `shade_volume_segment` 65,284); all twelve are entry points of module variants from which the device never builds
+  that entry, so they do not count (the rule of "Step zero": the envelope counts the entries the device builds).
+- Superset groups: within the limit throughout (principled_render 129 entries, largest `shade_surface_light` 950,736
+  bytes, 55,850 instructions; glass_render 58 entries, largest `prepare_surface` 997,457 bytes, 46,983; nodes_render 83
+  entries, largest `prepare_surface` 997,082 bytes, 46,322).
+- Ratio rule: the densest entry at or above 100,000 bytes is `intersect_subsurface`, 830,426 bytes for 57,339
+  instructions, 14.483 bytes per instruction; that is not below 14.34, so the 940,000-byte guard stands.
+- Size guard (940,000 bytes, a warning): 37 built rows of the corpus are at or above it, 26 distinct by entry and
+  size, 7 rows at or above 1,110,000 bytes. Each is measured and within the envelope; they are warning rows awaiting
+  the maintainer's ruling under the standing rule. This table replaces the two tables of "Step zero: feature mask
+  widened, pipeline size guard" and the single-run rows under "Size-guard rows known above 940,000 bytes" as the
+  current record:
+
+| Entry | Scenes | Inlined bytes | Backend instructions |
+| --- | --- | --- | --- |
+| `prepare_surface` | `displacement/stateful-nodes` | 1,323,265 | 49,124 |
+| `prepare_surface_raytrace` | `curves-b/raycast-beside` | 1,280,079 | 50,805 |
+| `prepare_surface` | `subsurface/aov-principled-bump` | 1,236,844 | 56,527 |
+| `shade_background` | `displacement/stateful-nodes` | 1,166,645 | 14,081 |
+| `shade_light_nee` | `bench_01-hdri` | 1,125,547 | 45,029 |
+| `shade_background` | `light-motion/moving-lamps-object-shader` | 1,118,026 | 44,945 |
+| `prepare_surface` | `bench_01`, `bench_01-hdri` | 1,070,938 | 49,188 |
+| `shade_volume_light` | `volumes/sobol-burley-tree-lamps` | 1,062,357 | 53,544 |
+| `shade_volume_light` | `volumes/linking-tree-lamps` | 1,061,099 | 53,367 |
+| `shade_volume_light` | `volumes/linking-lamps` | 1,058,725 | 53,285 |
+| `shade_volume_light` | `volumes/catcher-tree` | 1,056,954 | 53,261 |
+| `shade_volume_light` | `shadow-linking/volume-light-tree` | 1,056,612 | 53,237 |
+| `shade_volume_light` | `volumes/passes-tree`, `volumes/tree-lamps`, `volumes/tree-lamps-equiangular`, `volumes/tree-mesh` | 1,056,141 | 53,216 |
+| `shade_volume_light` | `shadow-linking/volume-emission-passes`, `shadow-linking/volume-light-passes`, `shadow-linking/volume-spot-area` | 1,053,004 | 53,152 |
+| `shade_volume_light` | `lamps/area-degenerate-volume` | 1,036,914 | 52,341 |
+| `shade_volume_light` | `volumes/scatter-area`, `volumes/scatter-area-ellipse` | 1,033,531 | 52,294 |
+| `prepare_surface` | `displacement/both`, `passes/with-displacement-both` | 1,031,824 | 42,701 |
+| `shader_eval_displace` | `displacement/stateful-nodes` | 1,016,168 | 25,922 |
+| `shade_volume_light` | `shadow-linking/volume` | 1,005,973 | 50,180 |
+| `shade_volume_light` | `volumes/mixed-phase-world` | 1,005,693 | 50,174 |
+| `mnee_contribute` | `mnee/anisotropic-principled-caustic` | 992,990 | 48,465 |
+| `shade_light_forward` | `light-motion/moving-lamps-object-shader` | 991,845 | 44,484 |
+| `mnee_solve` | `mnee/glass-sphere-moving-caster`, `mnee/glass-sphere-object-motion`, `passes/with-mnee-glass-sphere-object-motion` | 964,054 | 55,186 |
+| `prepare_surface` | `hair/huang-mix-principled` | 957,292 | 44,590 |
+| `shade_surface` | `subsurface/burley-sobol` | 942,076 | 52,062 |
+| `prepare_light_nee` | `light-motion/moving-lamps-object-shader` | 940,603 | 54,520 |
+
+- Unspecialized compile smoke (every feature in one module, which the device never builds; it warns and never fails a
+  gate): `prepare_surface` is 8,392,517 inlined bytes and its compile did not complete in 900 s; `shade_surface_light`
+  is 1,695,359 bytes and compiled in 36.8 s. The module text for this step is taken from the device's module dump
+  (`CODEBRIX_CYCLES_WGSL_DUMP`), which is written before the pipelines are compiled: a specialization-off render no
+  longer reaches the point where it would write its own `surface.wgsl` within that time.
+
+The judged jobs other than scenes, in the order the queue ran them:
+
+| Job | Batch | Wall s | Result | Judged by |
+| --- | --- | --- | --- | --- |
+| `attribute_gate` | t01 | 51 | perfect | `status.json` |
+| `normal_gate` | t01 | 58 | perfect | `status.json` |
+| `mnee_gate` | t02 | 1,594 | perfect | `status.json` |
+| `volume_boundary_gate` | t02 | 434 | perfect | `status.json` |
+| `volume_gate` | t02 | 844 | perfect | `status.json` |
+| `nodes_gate` | t03 | 2,462 | perfect | `status.json` |
+| `background_queue_gate` | g01 | 32 | perfect | `status.json` |
+| `bake_gate` | g01 | 63 | perfect | `status.json` |
+| `bsdf_gate` | g01 | 473 | perfect | `status.json` |
+| `camera_queue_gate` | g01 | 24 | perfect | `status.json` |
+| `closest_queue_gate` | g01 | 30 | perfect | `status.json` |
+| `curve_gate` | g01 | 451 | perfect | `results.json` |
+| `device_gate` | g01 | 22 | perfect | `status.json` |
+| `glass_gate` | g01 | 320 | perfect | `status.json` |
+| `hair_gate` | g01 | 474 | perfect | `results.json` |
+| `hair_huang_gate` | g01 | 211 | perfect | `results.json` |
+| `point_gate` | g01 | 386 | perfect | `results.json` |
+| `principled_gate` | g01 | 775 | perfect | `status.json` |
+| `scene_edit_gate` | g01 | 92 | perfect | `status.json` |
+| `shader_data_gate` | g01 | 72 | perfect | `status.json` |
+| `shadow_gate` | g01 | 52 | perfect | `status.json` |
+| `svm_surface_gate` | g01 | 63 | perfect | `status.json` |
+| `svm_world_gate` | g01 | 45 | perfect | `status.json` |
+| `tier_gate` | g01 | 25 | perfect | `status.json` |
+| `transparent_shadow_gate` | g01 | 192 | perfect | `status.json` |
+| `broad_lighting_gate` | g02 | 153 | perfect | `status.json` |
+| `feature_combination_gate` | g02 | 33 | perfect | `status.json` |
+| `light_tree_gate` | g02 | 372 | perfect | `status.json` |
+| `lighting_gate` | g02 | 73 | perfect | `status.json` |
+| `lighting_mis_gate` | g02 | 88 | perfect | `status.json` |
+| `shadow_catcher_gate` | g02 | 600 | perfect | `status.json` |
+| `shadow_linking_gate` | g02 | 952 | perfect | `status.json` |
+| `shadow_terminator_gate` | g02 | 128 | perfect | `status.json` |
+| `camera_motion_gate` | g03 | 198 | perfect | `status.json` |
+| `deforming_motion_gate` | g03 | 201 | perfect | `status.json` |
+| `object_motion_gate` | g03 | 219 | perfect | `status.json` |
+| `triangle_lighting_gate` | g03 | 113 | perfect | `status.json` |
+| `curve_mixed_gate` | g04 | 2,362 | perfect | `results.json` |
+| `bake_gate_webgpu` | g05 | 223 | perfect | `status.json` |
+| `image_file_gate` | g05 | 3 | perfect | `status.json` |
+| `image_gate` | g05 | 58 | perfect | `status.json` |
+| `microfacet_gate` | g05 | 104 | perfect | `status.json` |
+| `packed_state_gate` | g05 | 2 | perfect | `status.json` |
+| `pipeline_cache_gate` | g05 | 518 | perfect | `status.json` |
+| `render_gate_linux` | g05 | 42 | perfect | `status.json` |
+| `specialization_glass_render` | g05 | 215 | perfect | `status.json` |
+| `specialization_principled_render` | g05 | 626 | perfect | `status.json` |
+| `host_gate` | r01 | 204 | perfect | `status.json` |
+| `oracle_replays_linux` | r01 | 914 | perfect | `status.json` |
+| `dotnet_debug` | r01 | 476 | perfect | `status.json` |
+| `cpu-films` | c01 | 53 | perfect | `status.json` |
+| `size_envelope` | m01 | 8168 | perfect (second run: in the first, the four envelope shards ran out of their step time before finishing; the measurement was then split into eight shards, with the limit and the method unchanged) | `status.json` |
+| `unspecialized_compile_smoke` | m01 | 970 | perfect; 2 warnings recorded as data (second run: the first waited for a module file that is no longer written in time; see the paragraph above) | `status.json` |
+| `dotnet_release` | r01 | 31 | recorded, not judged (pending the restage) | `status.json` |

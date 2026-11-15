@@ -1,0 +1,217 @@
+{
+  "sceneId": "combinations/cov-camera-motion-heterogeneous-linking-catcher",
+  "sceneSha256": "b5ca666e81f12eadead0c8a967f0ba83be06e846af11e08f43b0107432ca89b5",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "<run>/linux/linux/s01/20261114-003748/judge/oracle/combinations/cov-camera-motion-heterogeneous-linking-catcher/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Shadow Catcher",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Shadow Catcher Matte",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Shadow Catcher Sample Count",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": null,
+      "renderSeconds": [
+        3.26825,
+        0.01522
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "<run>/linux/linux/s01/20261114-003748/judge/oracle/combinations/cov-camera-motion-heterogeneous-linking-catcher/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Shadow Catcher",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Shadow Catcher Matte",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Shadow Catcher Sample Count",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": null,
+      "renderSeconds": [
+        81.791,
+        6.84837
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": "x64-sse4.2",
+      "isaFamily": "x64",
+      "isaSource": "wgslArithmetic x64-sse4.2"
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux"
+  ],
+  "candidates": [
+    "wgsl-linux-intel"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.06294038891792297,
+      "maxRelativeError": 0.20179604780345148,
+      "rms": 0.0017637001344373514,
+      "practicalFailures": 3,
+      "strictDifferences": 5,
+      "worstPixel": {
+        "x": 24,
+        "y": 13,
+        "channel": "B",
+        "reference": 0.33536627888679504,
+        "candidate": 0.27242588996887207,
+        "absoluteDifference": 0.06294038891792297,
+        "criterionRatio": 537.6154314664162
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "role": "gating",
+      "practicalPassed": false,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Shadow Catcher",
+          "type": "shadow_catcher",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.8849968910217285e-06,
+          "maxRelativeError": 0.00012209325016756154,
+          "rms": 1.0523853696141981e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 29,
+          "worstPixel": {
+            "x": 20,
+            "y": 7,
+            "channel": 2,
+            "reference": 0.015438993461430073,
+            "candidate": 0.015437108464539051,
+            "absoluteDifference": 1.8849968910217285e-06,
+            "criterionRatio": 0.03550715865895623
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Shadow Catcher Matte",
+          "type": "shadow_catcher_matte",
+          "components": 4,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.06294038891792297,
+          "maxRelativeError": 0.20179604780345148,
+          "rms": 0.0017637001344373514,
+          "practicalFailures": 3,
+          "strictDifferences": 5,
+          "worstPixel": {
+            "x": 24,
+            "y": 13,
+            "channel": "B",
+            "reference": 0.33536627888679504,
+            "candidate": 0.27242588996887207,
+            "absoluteDifference": 0.06294038891792297,
+            "criterionRatio": 537.6154314664162
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "Shadow Catcher Sample Count",
+          "type": "shadow_catcher_sample_count",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.0,
+            "candidate": 0.0,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 1,
+  "problems": [
+    "wgsl-linux-intel vs cpu-x64-linux: 3 practical failures",
+    "wgsl-linux-intel vs cpu-x64-linux: pass Shadow Catcher Matte 3 practical failures"
+  ],
+  "passed": false,
+  "verdict": "not perfect"
+}

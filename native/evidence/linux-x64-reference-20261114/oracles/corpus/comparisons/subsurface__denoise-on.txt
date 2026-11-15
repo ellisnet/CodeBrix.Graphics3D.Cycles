@@ -1,0 +1,7 @@
+subsurface/denoise-on (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=5.91e-05 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             7.25e-05   6.54e-06   3.44e-06             0       1446
+      worst x=29 y=23 R: ref 3.79375196 got 3.79377604 (0.0298x tolerance)
+  verdict: perfect

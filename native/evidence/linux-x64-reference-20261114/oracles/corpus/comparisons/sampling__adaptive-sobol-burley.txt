@@ -1,0 +1,8 @@
+sampling/adaptive-sobol-burley (32x24)
+  cpu-x64-linux              cpu       samples 64    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 64    repeats 2 bitwise=False repeatMaxAbs=5.96e-08 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             4.77e-06   9.87e-07   3.63e-07             0         36
+      worst x=9 y=9 R: ref 0.784914374 got 0.784915149 (0.00374x tolerance)
+      pass Sample Count             sample_count           maxAbs=         0 practicalFail=0 strictDiff=0
+  verdict: perfect

@@ -1,0 +1,7 @@
+combinations/tree-glass-render (64x48)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=1.14e-05 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             5.72e-06   1.37e-06   1.46e-07             0         45
+      worst x=31 y=3 B: ref 0.95424217 got 0.954243481 (0.00544x tolerance)
+  verdict: perfect

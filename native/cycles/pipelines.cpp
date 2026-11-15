@@ -1135,6 +1135,10 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
       // The integration's shader evaluations run in shade_volume_heterogeneous_eval (native/DEVICE.md 52), so it is built so too.
       if(override_code.empty()&&(std::strcmp(entry,"shade_volume_heterogeneous")==0||std::strcmp(entry,"shade_volume_heterogeneous_eval")==0)&&intel_metal_surface_workgroup(gpu))
         single_invocation_entry(code,entry);
+      // The transparent shadow entry is declared with 64 invocations per workgroup for a heterogeneous medium
+      // (wavefront_shadow.wgsl, native/DEVICE.md 52); Intel through Metal keeps the one invocation it was validated with.
+      if(override_code.empty()&&std::strcmp(entry,"shade_shadow_transparent")==0&&intel_metal_surface_workgroup(gpu))
+        single_invocation_entry(code,entry);
       if(fingerprint&&!fingerprint_module(module,entry,features,code,out))break;
       const auto t0=clock::now();
       WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={code.data(),code.size()};

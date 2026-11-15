@@ -1,0 +1,335 @@
+{
+  "sceneId": "subsurface/aov-principled-bump",
+  "sceneSha256": "d405242844b01919246ca6aeeaf702ea2a1749242c7546edf8dbc7532409fd3d",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "<run>/linux/linux/s05/20261114-005504/judge/oracle/subsurface/aov-principled-bump/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "CryptoObject00",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "CryptoObject01",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "CryptoMaterial00",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "CryptoMaterial01",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "CryptoAsset00",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "CryptoAsset01",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Coords",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Height",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": null,
+      "renderSeconds": [
+        0.0160008,
+        0.0073634
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "<run>/linux/linux/s05/20261114-005504/judge/oracle/subsurface/aov-principled-bump/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "CryptoObject00",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "CryptoObject01",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "CryptoMaterial00",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "CryptoMaterial01",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "CryptoAsset00",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "CryptoAsset01",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Coords",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "Height",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 8.940696716308594e-08
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.1920928955078125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 1.1920928955078125e-07,
+      "deviceName": null,
+      "renderSeconds": [
+        60.0295,
+        0.455959
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": "x64-sse4.2",
+      "isaFamily": "x64",
+      "isaSource": "wgslArithmetic x64-sse4.2"
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux"
+  ],
+  "candidates": [
+    "wgsl-linux-intel"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 4.76837158203125e-06,
+      "maxRelativeError": 9.800394576762092e-06,
+      "rms": 3.379370082291161e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 20,
+      "worstPixel": {
+        "x": 14,
+        "y": 8,
+        "channel": "G",
+        "reference": 0.416607528924942,
+        "candidate": 0.41661161184310913,
+        "absoluteDifference": 4.082918167114258e-06,
+        "criterionRatio": 0.0306246028581383
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "CryptoObject00",
+          "type": "cryptomatte",
+          "components": 4,
+          "kind": "cryptomatte",
+          "bitwiseEqual": true,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "maxAbsoluteDifference": 0.0,
+          "slotOrderDifferences": 0,
+          "firstDifference": null,
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "CryptoObject01",
+          "type": "cryptomatte",
+          "components": 4,
+          "kind": "cryptomatte",
+          "bitwiseEqual": true,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "maxAbsoluteDifference": 0.0,
+          "slotOrderDifferences": 0,
+          "firstDifference": null,
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "CryptoMaterial00",
+          "type": "cryptomatte",
+          "components": 4,
+          "kind": "cryptomatte",
+          "bitwiseEqual": true,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "maxAbsoluteDifference": 0.0,
+          "slotOrderDifferences": 0,
+          "firstDifference": null,
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "CryptoMaterial01",
+          "type": "cryptomatte",
+          "components": 4,
+          "kind": "cryptomatte",
+          "bitwiseEqual": true,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "maxAbsoluteDifference": 0.0,
+          "slotOrderDifferences": 0,
+          "firstDifference": null,
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "CryptoAsset00",
+          "type": "cryptomatte",
+          "components": 4,
+          "kind": "cryptomatte",
+          "bitwiseEqual": true,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "maxAbsoluteDifference": 0.0,
+          "slotOrderDifferences": 0,
+          "firstDifference": null,
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "CryptoAsset01",
+          "type": "cryptomatte",
+          "components": 4,
+          "kind": "cryptomatte",
+          "bitwiseEqual": true,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "maxAbsoluteDifference": 0.0,
+          "slotOrderDifferences": 0,
+          "firstDifference": null,
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Coords",
+          "type": "aov_color",
+          "components": 4,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07,
+          "maxRelativeError": 2.3733942504524282e-07,
+          "rms": 9.719575571798576e-09,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 21,
+            "y": 7,
+            "channel": "B",
+            "reference": 0.502273440361023,
+            "candidate": 0.5022733211517334,
+            "absoluteDifference": 1.1920928955078125e-07,
+            "criterionRatio": 0.0007923268532089316
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Height",
+          "type": "aov_value",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07,
+          "maxRelativeError": 2.1661344233706842e-07,
+          "rms": 1.1663242798403652e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 23,
+            "y": 7,
+            "channel": 0,
+            "reference": 0.5910264253616333,
+            "candidate": 0.5910263061523438,
+            "absoluteDifference": 1.1920928955078125e-07,
+            "criterionRatio": 0.0007087131031556018
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 1,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

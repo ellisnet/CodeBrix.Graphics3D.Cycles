@@ -1,0 +1,319 @@
+{
+  "sceneId": "shadow-linking/volume-light-passes",
+  "sceneSha256": "5bd8af208fd3976251b2abcbb230a6d6f7fa91ff8cf47b4570fe1ffd611ecb92",
+  "width": 64,
+  "height": 48,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "<run>/linux/linux/s05/20261114-005504/judge/oracle/shadow-linking/volume-light-passes/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "volume_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "volume_indirect",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "diffuse_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "diffuse_indirect",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "glossy_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "glossy_indirect",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": null,
+      "renderSeconds": [
+        0.131651,
+        0.125649
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "<run>/linux/linux/s05/20261114-005504/judge/oracle/shadow-linking/volume-light-passes/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "volume_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "volume_indirect",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        },
+        {
+          "name": "diffuse_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "diffuse_indirect",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "glossy_direct",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "glossy_indirect",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.450580596923828e-09
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 5.960464477539063e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 5.960464477539063e-08,
+      "deviceName": null,
+      "renderSeconds": [
+        53.8302,
+        10.1464
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": "x64-sse4.2",
+      "isaFamily": "x64",
+      "isaSource": "wgslArithmetic x64-sse4.2"
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux"
+  ],
+  "candidates": [
+    "wgsl-linux-intel"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 4.279613494873047e-05,
+      "maxRelativeError": 0.0002910924102081189,
+      "rms": 6.470858866977932e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 131,
+      "worstPixel": {
+        "x": 28,
+        "y": 8,
+        "channel": "R",
+        "reference": 0.15503932535648346,
+        "candidate": 0.1550821214914322,
+        "absoluteDifference": 4.279613494873047e-05,
+        "criterionRatio": 0.5282960476870328
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "volume_direct",
+          "type": "volume_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.8014183044433594e-06,
+          "maxRelativeError": 8.579183410049715e-05,
+          "rms": 4.479993802706649e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 10,
+          "worstPixel": {
+            "x": 28,
+            "y": 9,
+            "channel": 0,
+            "reference": 0.03265367075800896,
+            "candidate": 0.0326564721763134,
+            "absoluteDifference": 2.8014183044433594e-06,
+            "criterionRatio": 0.04955566819512075
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "volume_indirect",
+          "type": "volume_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.05056232213974e-06,
+          "maxRelativeError": 0.0013986989985894302,
+          "rms": 1.0491957762286243e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 26,
+          "worstPixel": {
+            "x": 28,
+            "y": 9,
+            "channel": 0,
+            "reference": 0.012480243109166622,
+            "candidate": 0.012485293671488762,
+            "absoluteDifference": 5.05056232213974e-06,
+            "criterionRatio": 0.09620842815280367
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "diffuse_direct",
+          "type": "diffuse_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.0876526832580566e-05,
+          "maxRelativeError": 9.127087754938225e-05,
+          "rms": 3.576768459083096e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 270,
+          "worstPixel": {
+            "x": 28,
+            "y": 8,
+            "channel": 0,
+            "reference": 0.23966889083385468,
+            "candidate": 0.23968976736068726,
+            "absoluteDifference": 2.0876526832580566e-05,
+            "criterionRatio": 0.21316982989291022
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "diffuse_indirect",
+          "type": "diffuse_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.82310962677002e-06,
+          "maxRelativeError": 6.494992415657591e-05,
+          "rms": 1.3988957403269333e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 109,
+          "worstPixel": {
+            "x": 28,
+            "y": 6,
+            "channel": 0,
+            "reference": 0.12781120836734772,
+            "candidate": 0.1278190314769745,
+            "absoluteDifference": 7.82310962677002e-06,
+            "criterionRatio": 0.10353199499528308
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "glossy_direct",
+          "type": "glossy_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.76837158203125e-07,
+          "maxRelativeError": 4.162741548281766e-07,
+          "rms": 1.45087156228839e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 6,
+          "worstPixel": {
+            "x": 27,
+            "y": 21,
+            "channel": 0,
+            "reference": 0.6115677952766418,
+            "candidate": 0.6115679740905762,
+            "absoluteDifference": 1.7881393432617188e-07,
+            "criterionRatio": 0.0010377241077630826
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "glossy_indirect",
+          "type": "glossy_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.76837158203125e-07,
+          "maxRelativeError": 7.69638751772935e-07,
+          "rms": 1.2519646262407747e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 13,
+          "worstPixel": {
+            "x": 31,
+            "y": 15,
+            "channel": 2,
+            "reference": 0.8751572966575623,
+            "candidate": 0.8751569390296936,
+            "absoluteDifference": 3.5762786865234375e-07,
+            "criterionRatio": 0.001589234988364416
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 1,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

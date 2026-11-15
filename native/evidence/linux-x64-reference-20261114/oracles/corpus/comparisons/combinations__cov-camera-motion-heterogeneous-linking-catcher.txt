@@ -1,0 +1,10 @@
+combinations/cov-camera-motion-heterogeneous-linking-catcher (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]               0.0629      0.202    0.00176             3          5
+      worst x=24 y=13 B: ref 0.335366279 got 0.27242589 (538x tolerance)
+      pass Shadow Catcher           shadow_catcher         maxAbs=  1.88e-06 practicalFail=0 strictDiff=29
+      pass Shadow Catcher Matte     shadow_catcher_matte   maxAbs=    0.0629 practicalFail=3 strictDiff=5
+      pass Shadow Catcher Sample Count shadow_catcher_sample_count maxAbs=         0 practicalFail=0 strictDiff=0
+  verdict: not perfect; FAILED: wgsl-linux-intel vs cpu-x64-linux: 3 practical failures; wgsl-linux-intel vs cpu-x64-linux: pass Shadow Catcher Matte 3 practical failures

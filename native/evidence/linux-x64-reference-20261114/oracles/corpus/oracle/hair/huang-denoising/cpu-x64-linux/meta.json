@@ -1,0 +1,61 @@
+{
+ "sceneId": "hair/huang-denoising",
+ "sceneSha256": "130bd49b85f0548e427258c3eae16402e2681ceaa969244466d57269c593484a",
+ "backend": "cpu-x64-linux",
+ "hostBackend": "cpu",
+ "hostAbi": 1,
+ "rid": "linux-x64",
+ "threads": 2,
+ "width": 64,
+ "height": 48,
+ "samples": 8,
+ "repeats": 2,
+ "repeatBitwiseIdentical": true,
+ "repeatMaxAbsDifference": 0,
+ "renderSeconds": [
+  0.0253935,
+  0.0175884
+ ],
+ "filmSha256": [
+  "68480a030bebd5a184e12f02b65d0868fc21beb87ea33add1fca847ace8fc157",
+  "68480a030bebd5a184e12f02b65d0868fc21beb87ea33add1fca847ace8fc157"
+ ],
+ "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+ "passes": [
+  {
+   "index": 0,
+   "name": "Denoising Normal",
+   "type": "denoising_normal",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "2de1519a4e54aea392bc8d054e937bd58d16bee51b2d2b9a2973f46e9597e8c5",
+    "2de1519a4e54aea392bc8d054e937bd58d16bee51b2d2b9a2973f46e9597e8c5"
+   ]
+  },
+  {
+   "index": 1,
+   "name": "Denoising Albedo",
+   "type": "denoising_albedo",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "15ea282114bd798a83bf0869565e3f924558ef3d5c65156512a50cc050dce7c0",
+    "15ea282114bd798a83bf0869565e3f924558ef3d5c65156512a50cc050dce7c0"
+   ]
+  },
+  {
+   "index": 2,
+   "name": "Denoising Depth",
+   "type": "denoising_depth",
+   "components": 1,
+   "written": true,
+   "filmSha256": [
+    "eeb239a7ace3ab9ab402092638fd4ee5d7d778b4582192c4f1ffa1da94ec82a4",
+    "eeb239a7ace3ab9ab402092638fd4ee5d7d778b4582192c4f1ffa1da94ec82a4"
+   ]
+  }
+ ],
+ "warnings": [],
+ "documentSha256": "130bd49b85f0548e427258c3eae16402e2681ceaa969244466d57269c593484a"
+}

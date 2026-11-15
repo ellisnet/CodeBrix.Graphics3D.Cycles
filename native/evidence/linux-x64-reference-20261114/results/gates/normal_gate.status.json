@@ -1,0 +1,90 @@
+{
+ "complete": true,
+ "passed": true,
+ "gate": "normal_gate",
+ "repo": "<repo>",
+ "checks": {
+  "native:linux-x64": {
+   "passed": true,
+   "seconds": 21.1
+  },
+  "native:render": {
+   "passed": true,
+   "seconds": 23.7
+  },
+  "render: no shared-edge exceptions": {
+   "passed": true,
+   "seconds": 0.0
+  },
+  "arena replay linux-x64:graphs": {
+   "passed": true,
+   "seconds": 2.7
+  },
+  "arena replay linux-x64:dual-1": {
+   "passed": true,
+   "seconds": 2.2
+  },
+  "arena replay linux-x64:dual-2": {
+   "passed": true,
+   "seconds": 2.1
+  },
+  "arena replay linux-x64:dual-3": {
+   "passed": true,
+   "seconds": 2.1
+  },
+  "render replay linux-x64": {
+   "passed": true,
+   "seconds": 3.5
+  }
+ },
+ "commands": [
+  [
+   "<repo>/native/work/cycles-build/bin/codebrix_cycles_normal_gate",
+   "<run>/linux/linux/t01/20261113-223742/normal_gate/linux-x64/run"
+  ],
+  [
+   "<repo>/native/work/cycles-build/bin/codebrix_cycles_render_gate",
+   "<run>/linux/linux/t01/20261113-223742/normal_gate/render/run",
+   "--normals"
+  ]
+ ],
+ "stale": [],
+ "scope": "Linux half only: the gate binaries with the driver's arguments, the driver's Linux collect assertions, the linux-x64 replays; no Android device",
+ "webGpuSha256": "5a61096ef092ae3fb6638189f1ea9fe7a99350f21376f5ea1ce9b22afce35b2b",
+ "replays": {
+  "arena:graphs": {
+   "paths": 1152,
+   "floatChecks": 2001024,
+   "integerChecks": 78336,
+   "strictFloatFailures": 363,
+   "maximumAbsoluteError": 2.86102294921875e-06
+  },
+  "arena:dual-1": {
+   "paths": 24,
+   "floatChecks": 41688,
+   "integerChecks": 1632,
+   "strictFloatFailures": 0,
+   "maximumAbsoluteError": 0.0
+  },
+  "arena:dual-2": {
+   "paths": 24,
+   "floatChecks": 41688,
+   "integerChecks": 1632,
+   "strictFloatFailures": 0,
+   "maximumAbsoluteError": 0.0
+  },
+  "arena:dual-3": {
+   "paths": 24,
+   "floatChecks": 41688,
+   "integerChecks": 1632,
+   "strictFloatFailures": 0,
+   "maximumAbsoluteError": 0.0
+  },
+  "render": {
+   "commands": null,
+   "strictImageFailures": 1022,
+   "maximumAbsoluteImageError": 5.453824996948242e-05
+  }
+ },
+ "seconds": 57.5
+}

@@ -1,0 +1,40 @@
+{
+ "sceneId": "surface-nodes/local-beside-instances-raycast-reference",
+ "sceneSha256": "5d7236b45af8b3ade96b6ef51d58f65f520825e97b0cc46a06b2837976c56db8",
+ "backend": "cpu-x64-linux",
+ "hostBackend": "cpu",
+ "hostAbi": 1,
+ "rid": "linux-x64",
+ "threads": 2,
+ "width": 32,
+ "height": 24,
+ "samples": 8,
+ "repeats": 2,
+ "repeatBitwiseIdentical": true,
+ "repeatMaxAbsDifference": 0,
+ "renderSeconds": [
+  0.00578952,
+  0.00277023
+ ],
+ "filmSha256": [
+  "2bbe9b376133e7a900965a3703f8f1de05a313afef2149b1f1ed87404ccbde44",
+  "2bbe9b376133e7a900965a3703f8f1de05a313afef2149b1f1ed87404ccbde44"
+ ],
+ "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+ "warnings": [],
+ "documentSha256": "5d7236b45af8b3ade96b6ef51d58f65f520825e97b0cc46a06b2837976c56db8",
+ "oracleReferenceFor": {
+  "sceneId": "surface-nodes/local-beside-instances-raycast",
+  "sceneSha256": "4ad5feb20fe0c7fa6b0b3497f247207a334d25231f92c8ffe92db14d01b8f3d1",
+  "sceneFile": "native/oracle/scenes/surface-nodes/local-beside-instances-raycast.json",
+  "referenceScene": "surface-nodes/local-beside-instances-raycast-reference",
+  "withoutHandles": [
+   "shell",
+   "shell-a",
+   "shell-b",
+   "shell-c"
+  ],
+  "reason": "The pinned BVH2 local traversal (bvh/local.h) of a transform-applied object starts at the scene root and runs its triangle loop over instance leaves, reading negative primitive addresses: its result is undefined here. The gold standard is the same scene without the instance objects (native/DEVICE.md, open items 18 and 34)."
+ },
+ "sceneFile": "native/oracle/scenes/surface-nodes/local-beside-instances-raycast-reference.json"
+}

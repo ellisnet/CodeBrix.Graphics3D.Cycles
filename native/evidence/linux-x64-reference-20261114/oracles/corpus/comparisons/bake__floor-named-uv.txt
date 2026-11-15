@@ -1,0 +1,7 @@
+bake/floor-named-uv (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=1.49e-08 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.49e-08   1.34e-07    2.6e-09             0          0
+      worst x=17 y=19 B: ref 0.111052543 got 0.111052558 (0.000206x tolerance)
+  verdict: perfect

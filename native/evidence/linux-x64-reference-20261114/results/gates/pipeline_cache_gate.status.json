@@ -1,0 +1,4757 @@
+{
+ "complete": true,
+ "passed": true,
+ "device": "linux",
+ "checks": {
+  "absent: active, a miss, saved": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/s0",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/s0/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 1,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0.053997,
+     "saves": 1,
+     "savedBytes": 78944,
+     "saveMs": 0.36502,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "one file per pipeline, in a folder per adapter": {
+   "ok": true,
+   "detail": [
+    "10e186c68db5f561e550ce6a103ec02a.bin"
+   ]
+  },
+  "the file is whole": {
+   "ok": true,
+   "detail": "10e186c68db5f561e550ce6a103ec02a.bin"
+  },
+  "warm: a hit, the file not rewritten": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/s0",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/s0/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.364477,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "two hosts in one process: the second hits what the first saved": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/s1",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/s1/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 1,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0.05526,
+     "saves": 1,
+     "savedBytes": 78944,
+     "saveMs": 0.348636,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/s1",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/s1/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.355264,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "the runtime data carries the header the mismatch cases edit": {
+   "ok": true,
+   "detail": "b'WGPUPLCH'"
+  },
+  "zero bytes is ignored and rebuilt (damaged)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-0",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-0/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 1,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.058134,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.338888,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "zero bytes: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-0",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-0/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.385486,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "truncated in the header is ignored and rebuilt (damaged)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-1",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-1/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 1,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.060087,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.37604,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "truncated in the header: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-1",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-1/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.373474,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "truncated in the key is ignored and rebuilt (damaged)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-2",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-2/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 1,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.07449,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.376738,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "truncated in the key: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-2",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-2/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.36439,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "truncated in the data is ignored and rebuilt (damaged)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-3",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-3/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 1,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.074996,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.40393,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "truncated in the data: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-3",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-3/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.366552,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "extended is ignored and rebuilt (damaged)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-4",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-4/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 1,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.080234,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.410172,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "extended: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-4",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-4/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.364801,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "one flipped data bit is ignored and rebuilt (damaged)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-5",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-5/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 1,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.275284,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.420072,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "one flipped data bit: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-5",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-5/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.368701,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "flipped magic is ignored and rebuilt (damaged)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-6",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-6/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 1,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.080788,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.416936,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "flipped magic: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-6",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-6/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.378255,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "garbage is ignored and rebuilt (damaged)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-7",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-7/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 1,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.080595,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.39618,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "garbage: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-7",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-7/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.404349,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "another key in the header is ignored and rebuilt (otherAdapter)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-8",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-8/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 0,
+       "otherAdapter": 1,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.276583,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.364507,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "another key in the header: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-8",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-8/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.370037,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "another runtime in the header is ignored and rebuilt (otherRuntime)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-9",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-9/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 0,
+       "otherAdapter": 0,
+       "otherRuntime": 1,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.327563,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.44226,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "another runtime in the header: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-9",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-9/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.363301,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "another adapter as the runtime sees it is ignored and rebuilt (rejected)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-10",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-10/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 0,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 1,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.309791,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.402961,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "another adapter as the runtime sees it: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-10",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-10/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.369784,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "another driver as the runtime sees it is ignored and rebuilt (outdated)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-11",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-11/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 0,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 1
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.294682,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.401692,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "another driver as the runtime sees it: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-11",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-11/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.426456,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "runtime data truncated is ignored and rebuilt (outdated)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-12",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-12/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 0,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 1
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.293026,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.402197,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "runtime data truncated: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-12",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-12/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.373771,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "runtime data with another magic is ignored and rebuilt (outdated)": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-13",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-13/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 0,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 1
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.286239,
+      "saves": 1,
+      "savedBytes": 78944,
+      "saveMs": 0.408688,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "runtime data with another magic: the rebuilt file is a hit": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-13",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/case-13/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.379476,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "directory that cannot be used: not active, no error": {
+   "ok": true,
+   "detail": [
+    {
+     "active": false,
+     "reason": "directory-unavailable",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/blocked/under",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/blocked/under/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 0,
+     "failure": null
+    }
+   ]
+  },
+  "stale temporary removed, fresh one kept": {
+   "ok": true,
+   "detail": [
+    "10e186c68db5f561e550ce6a103ec02a.bin",
+    "10e186c68db5f561e550ce6a103ec02a.bin.98.0.tmp"
+   ]
+  },
+  "a pipeline over the limit: not kept, no error": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": true,
+      "reason": "active",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/limit",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/limit/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 1,
+      "ignored": {
+       "damaged": 0,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.053029,
+      "saves": 0,
+      "savedBytes": 0,
+      "saveMs": 0,
+      "saveFailures": 0,
+      "maxBytes": 100,
+      "failure": null
+     }
+    ],
+    "left": []
+   }
+  },
+  "over the limit: the oldest goes first": {
+   "ok": true,
+   "detail": [
+    "10e186c68db5f561e550ce6a103ec02a.bin",
+    "11111111111111111111111111111111.bin"
+   ]
+  },
+  "a failure through the cache is not the consumer's: compiled without it": {
+   "ok": true,
+   "detail": {
+    "report": [
+     {
+      "active": false,
+      "reason": "faulted",
+      "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/invalid",
+      "directorySource": "consumer",
+      "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/invalid/wgpu_pipeline_cache_vulkan_32902_18056",
+      "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+      "hits": 0,
+      "misses": 0,
+      "ignored": {
+       "damaged": 0,
+       "otherAdapter": 0,
+       "otherRuntime": 0,
+       "rejected": 0,
+       "outdated": 0
+      },
+      "loadedBytes": 0,
+      "loadMs": 0.079045,
+      "saves": 0,
+      "savedBytes": 0,
+      "saveMs": 0,
+      "saveFailures": 0,
+      "maxBytes": 1073741824,
+      "failure": null
+     }
+    ],
+    "stderr": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)\n"
+   }
+  },
+  "a process dying while compiling removes that pipeline's file only": {
+   "ok": true,
+   "detail": {
+    "rc": -6,
+    "left": [
+     "22222222222222222222222222222222.bin"
+    ]
+   }
+  },
+  "the next process compiles it again": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/crash",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/crash/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 1,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0.050217,
+     "saves": 1,
+     "savedBytes": 78944,
+     "saveMs": 0.3587,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "four processes racing, round 0: no error, one whole file, no temporaries": {
+   "ok": true,
+   "detail": {
+    "codes": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "left": [
+     "10e186c68db5f561e550ce6a103ec02a.bin"
+    ]
+   }
+  },
+  "four processes racing, round 1: no error, one whole file, no temporaries": {
+   "ok": true,
+   "detail": {
+    "codes": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "left": [
+     "10e186c68db5f561e550ce6a103ec02a.bin"
+    ]
+   }
+  },
+  "four processes racing, round 2: no error, one whole file, no temporaries": {
+   "ok": true,
+   "detail": {
+    "codes": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "left": [
+     "10e186c68db5f561e550ce6a103ec02a.bin"
+    ]
+   }
+  },
+  "four processes racing, round 3: no error, one whole file, no temporaries": {
+   "ok": true,
+   "detail": {
+    "codes": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "left": [
+     "10e186c68db5f561e550ce6a103ec02a.bin"
+    ]
+   }
+  },
+  "four processes racing, round 4: no error, one whole file, no temporaries": {
+   "ok": true,
+   "detail": {
+    "codes": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "left": [
+     "10e186c68db5f561e550ce6a103ec02a.bin"
+    ]
+   }
+  },
+  "off: not active": {
+   "ok": true,
+   "detail": [
+    {
+     "active": false,
+     "reason": "off",
+     "directory": null,
+     "directorySource": null,
+     "folder": null,
+     "key": null,
+     "hits": 0,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 0,
+     "failure": null
+    }
+   ]
+  },
+  "the environment switch beats the API directory": {
+   "ok": true,
+   "detail": [
+    {
+     "active": false,
+     "reason": "off",
+     "directory": null,
+     "directorySource": null,
+     "folder": null,
+     "key": null,
+     "hits": 0,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 0,
+     "failure": null
+    }
+   ]
+  },
+  "the environment directory beats the API switch": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/switch",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/switch/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 1,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0.05413,
+     "saves": 1,
+     "savedBytes": 78944,
+     "saveMs": 0.334797,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "the record directory is the cache directory": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/rec",
+     "directorySource": "record-directory",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/rec/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 1,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0.035181,
+     "saves": 1,
+     "savedBytes": 78944,
+     "saveMs": 0.319006,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "a cache directory beats the record directory": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/own",
+     "directorySource": "consumer",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/own/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 1,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0.036088,
+     "saves": 1,
+     "savedBytes": 78944,
+     "saveMs": 0.342691,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "off beats the record directory": {
+   "ok": true,
+   "detail": [
+    {
+     "active": false,
+     "reason": "off",
+     "directory": null,
+     "directorySource": null,
+     "folder": null,
+     "key": null,
+     "hits": 0,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 0,
+     "failure": null
+    }
+   ]
+  },
+  "the CPU device has no cache": {
+   "ok": true,
+   "detail": [
+    {
+     "active": false,
+     "reason": "backend",
+     "directory": null
+    }
+   ]
+  },
+  "default: $XDG_CACHE_HOME/cycles/webgpu-pipelines": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/xdg/cycles/webgpu-pipelines",
+     "directorySource": "user-cache",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/xdg/cycles/webgpu-pipelines/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 1,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0.055324,
+     "saves": 1,
+     "savedBytes": 78944,
+     "saveMs": 0.341206,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "default with XDG_CACHE_HOME=None: ~/.cache/cycles/webgpu-pipelines": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/home/.cache/cycles/webgpu-pipelines",
+     "directorySource": "user-cache",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/home/.cache/cycles/webgpu-pipelines/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 1,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 0.053367,
+     "saves": 1,
+     "savedBytes": 78944,
+     "saveMs": 0.34384,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "default with XDG_CACHE_HOME='': ~/.cache/cycles/webgpu-pipelines": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/home/.cache/cycles/webgpu-pipelines",
+     "directorySource": "user-cache",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/home/.cache/cycles/webgpu-pipelines/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.37268,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "default with XDG_CACHE_HOME='relative/path': ~/.cache/cycles/webgpu-pipelines": {
+   "ok": true,
+   "detail": [
+    {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/home/.cache/cycles/webgpu-pipelines",
+     "directorySource": "user-cache",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/home/.cache/cycles/webgpu-pipelines/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 1,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 78944,
+     "loadMs": 0.389855,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    }
+   ]
+  },
+  "a gate program does not cache by default": {
+   "ok": true,
+   "detail": []
+  },
+  "the oracle runner does not cache by default": {
+   "ok": true,
+   "detail": []
+  },
+  "state gate: cold and warm pass with the same results": {
+   "ok": true,
+   "detail": {
+    "cold": {
+     "rc": 0,
+     "wallSeconds": 17.7,
+     "stdout": "{\"passed\":true,\"originalCpuShaderSetup\":true,\"nativeSceneTables\":true,\"cases\":11,\"paths\":12066,\"cameraHits\":240,\"hitObjects\":9,\"backfacing\":6927,\"smooth\":8050,\"cornerNormals\":4054,\"instanceTransforms\":8054,\"appliedTransforms\":4012,\"negativeScale\":6715,\"projectionAxes\":[3344,3320,5402],\"negativePositionOffsets\":1168,\"negativeNormalOffsets\":4930,\"integerChecks\":84462,\"floatChecks\":337848,\"stateChecks\":1576960,\"untouchedGuardBytes\":5324,\"strictFloatFailures\":0,\"maximumAbsoluteError\":0,\"invalidCasesRejected\":12,\"cyclesAllocationBytesAfterCleanup\":0}",
+     "stderr": ""
+    },
+    "warm": {
+     "rc": 0,
+     "wallSeconds": 15.9,
+     "stdout": "{\"passed\":true,\"originalCpuShaderSetup\":true,\"nativeSceneTables\":true,\"cases\":11,\"paths\":12066,\"cameraHits\":240,\"hitObjects\":9,\"backfacing\":6927,\"smooth\":8050,\"cornerNormals\":4054,\"instanceTransforms\":8054,\"appliedTransforms\":4012,\"negativeScale\":6715,\"projectionAxes\":[3344,3320,5402],\"negativePositionOffsets\":1168,\"negativeNormalOffsets\":4930,\"integerChecks\":84462,\"floatChecks\":337848,\"stateChecks\":1576960,\"untouchedGuardBytes\":5324,\"strictFloatFailures\":0,\"maximumAbsoluteError\":0,\"invalidCasesRejected\":12,\"cyclesAllocationBytesAfterCleanup\":0}",
+     "stderr": ""
+    }
+   }
+  },
+  "state gate: a run that asks gets a cache": {
+   "ok": true,
+   "detail": [
+    "wgpu_pipeline_cache_vulkan_32902_18056"
+   ]
+  },
+  "film gate: all runs pass": {
+   "ok": true,
+   "detail": {
+    "cold": {
+     "rc": 0,
+     "wallSeconds": 32.7,
+     "film": "c331f1d65083eb1bcfbcfd0eaf628d4a3dba255c2b1cc4ab075e714069bec7b4",
+     "stderr": ""
+    },
+    "warm": {
+     "rc": 0,
+     "wallSeconds": 14.7,
+     "film": "c331f1d65083eb1bcfbcfd0eaf628d4a3dba255c2b1cc4ab075e714069bec7b4",
+     "stderr": ""
+    },
+    "cold-control": {
+     "rc": 0,
+     "wallSeconds": 32.6,
+     "film": "c331f1d65083eb1bcfbcfd0eaf628d4a3dba255c2b1cc4ab075e714069bec7b4",
+     "stderr": ""
+    }
+   }
+  },
+  "film gate: the film repeats (control), and a hit gives the same bits": {
+   "ok": true,
+   "detail": {
+    "cold": {
+     "rc": 0,
+     "wallSeconds": 32.7,
+     "film": "c331f1d65083eb1bcfbcfd0eaf628d4a3dba255c2b1cc4ab075e714069bec7b4",
+     "stderr": ""
+    },
+    "warm": {
+     "rc": 0,
+     "wallSeconds": 14.7,
+     "film": "c331f1d65083eb1bcfbcfd0eaf628d4a3dba255c2b1cc4ab075e714069bec7b4",
+     "stderr": ""
+    },
+    "cold-control": {
+     "rc": 0,
+     "wallSeconds": 32.6,
+     "film": "c331f1d65083eb1bcfbcfd0eaf628d4a3dba255c2b1cc4ab075e714069bec7b4",
+     "stderr": ""
+    }
+   }
+  },
+  "starter/diffuse-triangle: all runs rendered": {
+   "ok": true,
+   "detail": {
+    "cold": "",
+    "warm": "",
+    "cold-control": ""
+   }
+  },
+  "starter/diffuse-triangle: the warm run hit every pipeline, the cold runs none": {
+   "ok": true,
+   "detail": {
+    "cold": [
+     0,
+     9,
+     14.78
+    ],
+    "warm": [
+     9,
+     9,
+     0.06
+    ],
+    "cold-control": [
+     0,
+     9,
+     14.79
+    ]
+   }
+  },
+  "starter/diffuse-triangle: the compiled text is identical": {
+   "ok": true,
+   "detail": {
+    "cold": 8,
+    "warm": 8,
+    "cold-control": 8
+   }
+  },
+  "starter/diffuse-triangle: warm against cold, 0 practical": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 99
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 95
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 99
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 90
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 92
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 92
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 90
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 90
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 105
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 105
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 94
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 94
+      }
+     }
+    ]
+   }
+  },
+  "starter/diffuse-triangle: warm differences no larger than cold against cold": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 99
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 95
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 99
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 90
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 92
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 92
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 90
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 90
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 105
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 105
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 94
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 94
+      }
+     }
+    ]
+   }
+  },
+  "linux-gates/broad-lighting-0: all runs rendered": {
+   "ok": true,
+   "detail": {
+    "cold": "",
+    "warm": "",
+    "cold-control": ""
+   }
+  },
+  "linux-gates/broad-lighting-0: the warm run hit every pipeline, the cold runs none": {
+   "ok": true,
+   "detail": {
+    "cold": [
+     0,
+     11,
+     22.44
+    ],
+    "warm": [
+     11,
+     11,
+     0.08
+    ],
+    "cold-control": [
+     0,
+     11,
+     22.29
+    ]
+   }
+  },
+  "linux-gates/broad-lighting-0: the compiled text is identical": {
+   "ok": true,
+   "detail": {
+    "cold": 11,
+    "warm": 11,
+    "cold-control": 11
+   }
+  },
+  "linux-gates/broad-lighting-0: warm against cold, 0 practical": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 200
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 189
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 189
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 179
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 179
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 179
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 160
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 160
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 197
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 197
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 192
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 192
+      }
+     }
+    ]
+   }
+  },
+  "linux-gates/broad-lighting-0: warm differences no larger than cold against cold": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 200
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 189
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 189
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 179
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 179
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 179
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 160
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 160
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 197
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 197
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 192
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 7.450580596923828e-09,
+       "valuesDiffering": 192
+      }
+     }
+    ]
+   }
+  },
+  "sampling/adaptive-auto: all runs rendered": {
+   "ok": true,
+   "detail": {
+    "cold": "",
+    "warm": "",
+    "cold-control": ""
+   }
+  },
+  "sampling/adaptive-auto: the warm run hit every pipeline, the cold runs none": {
+   "ok": true,
+   "detail": {
+    "cold": [
+     0,
+     15,
+     27.89
+    ],
+    "warm": [
+     15,
+     15,
+     0.08
+    ],
+    "cold-control": [
+     0,
+     15,
+     27.78
+    ]
+   }
+  },
+  "sampling/adaptive-auto: the compiled text is identical": {
+   "ok": true,
+   "detail": {
+    "cold": 14,
+    "warm": 14,
+    "cold-control": 14
+   }
+  },
+  "sampling/adaptive-auto: warm against cold, 0 practical": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 73,
+      "maxAbs": 8.58306884765625e-06,
+      "valuesDiffering": 990
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 2,
+      "maxAbs": 3.5762786865234375e-07,
+      "valuesDiffering": 778
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 1,
+       "maxAbs": 2.384185791015625e-07,
+       "valuesDiffering": 657
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 1,
+       "maxAbs": 1.7881393432617188e-07,
+       "valuesDiffering": 773
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 129,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1080
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 129,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1080
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 140,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1082
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 140,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1082
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 132,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1120
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 132,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1120
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 133,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1090
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 133,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1090
+      }
+     }
+    ]
+   }
+  },
+  "sampling/adaptive-auto: warm differences no larger than cold against cold": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 73,
+      "maxAbs": 8.58306884765625e-06,
+      "valuesDiffering": 990
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 2,
+      "maxAbs": 3.5762786865234375e-07,
+      "valuesDiffering": 778
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 1,
+       "maxAbs": 2.384185791015625e-07,
+       "valuesDiffering": 657
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 1,
+       "maxAbs": 1.7881393432617188e-07,
+       "valuesDiffering": 773
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 129,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1080
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 129,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1080
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 140,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1082
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 140,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1082
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 132,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1120
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 132,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1120
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 133,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1090
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 133,
+       "maxAbs": 5.245208740234375e-05,
+       "valuesDiffering": 1090
+      }
+     }
+    ]
+   }
+  },
+  "shadow-catcher/catcher-point-light: all runs rendered": {
+   "ok": true,
+   "detail": {
+    "cold": "",
+    "warm": "",
+    "cold-control": ""
+   }
+  },
+  "shadow-catcher/catcher-point-light: the warm run hit every pipeline, the cold runs none": {
+   "ok": true,
+   "detail": {
+    "cold": [
+     0,
+     15,
+     22.83
+    ],
+    "warm": [
+     15,
+     15,
+     0.08
+    ],
+    "cold-control": [
+     0,
+     15,
+     23.31
+    ]
+   }
+  },
+  "shadow-catcher/catcher-point-light: the compiled text is identical": {
+   "ok": true,
+   "detail": {
+    "cold": 14,
+    "warm": 14,
+    "cold-control": 14
+   }
+  },
+  "shadow-catcher/catcher-point-light: warm against cold, 0 practical": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 2,
+      "maxAbs": 7.152557373046875e-07,
+      "valuesDiffering": 498
+     },
+     "film-1.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.384185791015625e-07,
+      "valuesDiffering": 282
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.384185791015625e-07,
+       "valuesDiffering": 217
+      },
+      "film-1.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 1,
+       "maxAbs": 4.76837158203125e-07,
+       "valuesDiffering": 302
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 2,
+       "maxAbs": 4.76837158203125e-07,
+       "valuesDiffering": 490
+      },
+      "film-1.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 2,
+       "maxAbs": 4.76837158203125e-07,
+       "valuesDiffering": 490
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 4,
+       "maxAbs": 7.152557373046875e-07,
+       "valuesDiffering": 489
+      },
+      "film-1.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 4,
+       "maxAbs": 7.152557373046875e-07,
+       "valuesDiffering": 489
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 3,
+       "maxAbs": 4.76837158203125e-07,
+       "valuesDiffering": 485
+      },
+      "film-1.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 3,
+       "maxAbs": 4.76837158203125e-07,
+       "valuesDiffering": 485
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 4,
+       "maxAbs": 7.152557373046875e-07,
+       "valuesDiffering": 499
+      },
+      "film-1.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 4,
+       "maxAbs": 7.152557373046875e-07,
+       "valuesDiffering": 499
+      }
+     }
+    ]
+   }
+  },
+  "shadow-catcher/catcher-point-light: warm differences no larger than cold against cold": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 2,
+      "maxAbs": 7.152557373046875e-07,
+      "valuesDiffering": 498
+     },
+     "film-1.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.384185791015625e-07,
+      "valuesDiffering": 282
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.384185791015625e-07,
+       "valuesDiffering": 217
+      },
+      "film-1.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 1,
+       "maxAbs": 4.76837158203125e-07,
+       "valuesDiffering": 302
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 2,
+       "maxAbs": 4.76837158203125e-07,
+       "valuesDiffering": 490
+      },
+      "film-1.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 2,
+       "maxAbs": 4.76837158203125e-07,
+       "valuesDiffering": 490
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 4,
+       "maxAbs": 7.152557373046875e-07,
+       "valuesDiffering": 489
+      },
+      "film-1.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 4,
+       "maxAbs": 7.152557373046875e-07,
+       "valuesDiffering": 489
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 3,
+       "maxAbs": 4.76837158203125e-07,
+       "valuesDiffering": 485
+      },
+      "film-1.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 3,
+       "maxAbs": 4.76837158203125e-07,
+       "valuesDiffering": 485
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 4,
+       "maxAbs": 7.152557373046875e-07,
+       "valuesDiffering": 499
+      },
+      "film-1.f32": {
+       "values": 12288,
+       "practicalFailures": 0,
+       "strict": 4,
+       "maxAbs": 7.152557373046875e-07,
+       "valuesDiffering": 499
+      }
+     }
+    ]
+   }
+  },
+  "combinations/camera-motion-ao-node: all runs rendered": {
+   "ok": true,
+   "detail": {
+    "cold": "",
+    "warm": "",
+    "cold-control": ""
+   }
+  },
+  "combinations/camera-motion-ao-node: the warm run hit every pipeline, the cold runs none": {
+   "ok": true,
+   "detail": {
+    "cold": [
+     0,
+     13,
+     29.9
+    ],
+    "warm": [
+     13,
+     13,
+     0.09
+    ],
+    "cold-control": [
+     0,
+     13,
+     29.97
+    ]
+   }
+  },
+  "combinations/camera-motion-ao-node: the compiled text is identical": {
+   "ok": true,
+   "detail": {
+    "cold": 13,
+    "warm": 13,
+    "cold-control": 13
+   }
+  },
+  "combinations/camera-motion-ao-node: warm against cold, 0 practical": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 294
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 267
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 304
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 370
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 258
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 258
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 394
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 394
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 280
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 280
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 350
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 350
+      }
+     }
+    ]
+   }
+  },
+  "combinations/camera-motion-ao-node: warm differences no larger than cold against cold": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 294
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 267
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 304
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 370
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 258
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 258
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 394
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 394
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 280
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 280
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 350
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 5.960464477539063e-08,
+       "valuesDiffering": 350
+      }
+     }
+    ]
+   }
+  },
+  "volumes/absorption-point: all runs rendered": {
+   "ok": true,
+   "detail": {
+    "cold": "",
+    "warm": "",
+    "cold-control": ""
+   }
+  },
+  "volumes/absorption-point: the warm run hit every pipeline, the cold runs none": {
+   "ok": true,
+   "detail": {
+    "cold": [
+     0,
+     19,
+     43.61
+    ],
+    "warm": [
+     19,
+     19,
+     0.14
+    ],
+    "cold-control": [
+     0,
+     19,
+     43.63
+    ]
+   }
+  },
+  "volumes/absorption-point: the compiled text is identical": {
+   "ok": true,
+   "detail": {
+    "cold": 18,
+    "warm": 18,
+    "cold-control": 18
+   }
+  },
+  "volumes/absorption-point: warm against cold, 0 practical": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 1.4901161193847656e-08,
+      "valuesDiffering": 1
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 0.0,
+      "valuesDiffering": 0
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 0.0,
+       "valuesDiffering": 0
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 1
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 2
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 2
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 1
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 1
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 2
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 2
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 1
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 1
+      }
+     }
+    ]
+   }
+  },
+  "volumes/absorption-point: warm differences no larger than cold against cold": {
+   "ok": true,
+   "detail": {
+    "warm": {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 1.4901161193847656e-08,
+      "valuesDiffering": 1
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 0.0,
+      "valuesDiffering": 0
+     }
+    },
+    "control": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 0.0,
+       "valuesDiffering": 0
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 1
+      }
+     }
+    ],
+    "firstAgainstSecond": [
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 2
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 2
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 1
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 1
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 2
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 2.9802322387695312e-08,
+       "valuesDiffering": 2
+      }
+     },
+     {
+      "film-0.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 1
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practicalFailures": 0,
+       "strict": 0,
+       "maxAbs": 1.4901161193847656e-08,
+       "valuesDiffering": 1
+      }
+     }
+    ]
+   }
+  }
+ },
+ "scenes": {
+  "starter/diffuse-triangle": {
+   "cold": {
+    "rc": 0,
+    "wallSeconds": 15.2,
+    "pipelines": 9,
+    "cacheHits": 0,
+    "compileSeconds": 14.78,
+    "maxPipelineSeconds": 3.18,
+    "films": {
+     "film-0.f32": "09a0d7200d57b9beea1c13ac380e7ebdfb500bd9e3dd89f337a22a7bde245896",
+     "film-1.f32": "bcc9d7437dec85cb2688cc851a83af2fed64861fabe067e25a848893ee2065ec"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "1a97d08d50d2d50f7f4d523eeb364e3a5584716f6a27ce6f360935ee11fab330",
+     "002-background.wgsl": "aff73279f4d655e35dc1ac61f948f505d487ff419a59cdb71660b1c5bf0b6634",
+     "003-surface.wgsl": "8ce2a300cd9e89e9148dd59bfa42fdf0781b44fc7165f78622841ffdf281d7a1",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/starter__diffuse-triangle",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/starter__diffuse-triangle/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 10,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 6.45118,
+     "saves": 10,
+     "savedBytes": 9898184,
+     "saveMs": 29.7048,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface_light_triangle"
+   },
+   "cacheFiles": 10,
+   "cacheBytes": 9905344,
+   "warm": {
+    "rc": 0,
+    "wallSeconds": 0.4,
+    "pipelines": 9,
+    "cacheHits": 9,
+    "compileSeconds": 0.06,
+    "maxPipelineSeconds": 0.01,
+    "films": {
+     "film-0.f32": "ef52af9da498d2dac0996441eb257505423e5c0f1cb694c2105cf7e5b269908b",
+     "film-1.f32": "7fc83e20ebe12be1c987e0956db8778204ac1e8eb40a70b461a484eac516b52a"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "1a97d08d50d2d50f7f4d523eeb364e3a5584716f6a27ce6f360935ee11fab330",
+     "002-background.wgsl": "aff73279f4d655e35dc1ac61f948f505d487ff419a59cdb71660b1c5bf0b6634",
+     "003-surface.wgsl": "8ce2a300cd9e89e9148dd59bfa42fdf0781b44fc7165f78622841ffdf281d7a1",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/starter__diffuse-triangle",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/starter__diffuse-triangle/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 10,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 9898184,
+     "loadMs": 41.8584,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface_light"
+   },
+   "cold-control": {
+    "rc": 0,
+    "wallSeconds": 15.2,
+    "pipelines": 9,
+    "cacheHits": 0,
+    "compileSeconds": 14.79,
+    "maxPipelineSeconds": 3.19,
+    "films": {
+     "film-0.f32": "c3696483bdbc24e46a4b3771eeb08a35280f26bf3de83424abf11892375de906",
+     "film-1.f32": "57d28e40de5b531c08085f03189d5da0d2e7edb779bf8e44239716bde858be33"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "1a97d08d50d2d50f7f4d523eeb364e3a5584716f6a27ce6f360935ee11fab330",
+     "002-background.wgsl": "aff73279f4d655e35dc1ac61f948f505d487ff419a59cdb71660b1c5bf0b6634",
+     "003-surface.wgsl": "8ce2a300cd9e89e9148dd59bfa42fdf0781b44fc7165f78622841ffdf281d7a1",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/starter__diffuse-triangle-control",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/starter__diffuse-triangle-control/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 10,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 6.46169,
+     "saves": 10,
+     "savedBytes": 9898184,
+     "saveMs": 29.8266,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface_light_triangle"
+   },
+   "withinSameFilmControl": true,
+   "firstAgainstSecondCold": [
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 92
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 92
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 90
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 90
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 105
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 105
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 1.4901161193847656e-08,
+      "valuesDiffering": 94
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 1.4901161193847656e-08,
+      "valuesDiffering": 94
+     }
+    }
+   ],
+   "warmAgainstCold": {
+    "film-0.f32": {
+     "values": 3072,
+     "practicalFailures": 0,
+     "strict": 0,
+     "maxAbs": 2.9802322387695312e-08,
+     "valuesDiffering": 99
+    },
+    "film-1.f32": {
+     "values": 3072,
+     "practicalFailures": 0,
+     "strict": 0,
+     "maxAbs": 2.9802322387695312e-08,
+     "valuesDiffering": 95
+    }
+   },
+   "coldAgainstCold": [
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 99
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 1.4901161193847656e-08,
+      "valuesDiffering": 90
+     }
+    }
+   ],
+   "identicalBits": false
+  },
+  "linux-gates/broad-lighting-0": {
+   "cold": {
+    "rc": 0,
+    "wallSeconds": 23.3,
+    "pipelines": 11,
+    "cacheHits": 0,
+    "compileSeconds": 22.44,
+    "maxPipelineSeconds": 5.63,
+    "films": {
+     "film-0.f32": "1653ca244919c3efb561286a51ad47a42235d59fa6907850f526fd9b09bd8199",
+     "film-1.f32": "449084f131e1bcea6969760890cd6a941ef725d6e3368268be2e22ba714fd0a2"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "1a97d08d50d2d50f7f4d523eeb364e3a5584716f6a27ce6f360935ee11fab330",
+     "002-background.wgsl": "3c268438ffa4a62273c6d1aa311545ba7ce2357801baa3b0d8a4007cf6830570",
+     "003-surface.wgsl": "33e883534dbdec50a043bafc4aeb07f0fc516d5fd19fec1b48b296757653fe98",
+     "004-shadow.wgsl": "b8570e59bd5a4915f4633b827b0bd61b9c383c01621b718f1af3fb8090606401",
+     "005-shadow.wgsl": "b8570e59bd5a4915f4633b827b0bd61b9c383c01621b718f1af3fb8090606401",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/linux-gates__broad-lighting-0",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/linux-gates__broad-lighting-0/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 12,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 7.63292,
+     "saves": 12,
+     "savedBytes": 12582104,
+     "saveMs": 37.7506,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface"
+   },
+   "cacheFiles": 12,
+   "cacheBytes": 12590696,
+   "warm": {
+    "rc": 0,
+    "wallSeconds": 0.7,
+    "pipelines": 11,
+    "cacheHits": 11,
+    "compileSeconds": 0.08,
+    "maxPipelineSeconds": 0.01,
+    "films": {
+     "film-0.f32": "78122fb6e59253df72942f44e858edf09b47487d2c0ac56972fc950858760d9b",
+     "film-1.f32": "d9b2c9d2e08cad13a55253403b57edad8cc85d391f6b96375c57a2fecaf5a037"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "1a97d08d50d2d50f7f4d523eeb364e3a5584716f6a27ce6f360935ee11fab330",
+     "002-background.wgsl": "3c268438ffa4a62273c6d1aa311545ba7ce2357801baa3b0d8a4007cf6830570",
+     "003-surface.wgsl": "33e883534dbdec50a043bafc4aeb07f0fc516d5fd19fec1b48b296757653fe98",
+     "004-shadow.wgsl": "b8570e59bd5a4915f4633b827b0bd61b9c383c01621b718f1af3fb8090606401",
+     "005-shadow.wgsl": "b8570e59bd5a4915f4633b827b0bd61b9c383c01621b718f1af3fb8090606401",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/linux-gates__broad-lighting-0",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/linux-gates__broad-lighting-0/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 12,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 12582104,
+     "loadMs": 54.8146,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface"
+   },
+   "cold-control": {
+    "rc": 0,
+    "wallSeconds": 22.9,
+    "pipelines": 11,
+    "cacheHits": 0,
+    "compileSeconds": 22.29,
+    "maxPipelineSeconds": 5.64,
+    "films": {
+     "film-0.f32": "b67739d3df9809be5335bf37575a3342ac6f62ababcca865ad4d184897c5f1d4",
+     "film-1.f32": "be5386e805edf50d92388b87524f75b0a1bf333a9af6a014bf0327b802cf5f2e"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "1a97d08d50d2d50f7f4d523eeb364e3a5584716f6a27ce6f360935ee11fab330",
+     "002-background.wgsl": "3c268438ffa4a62273c6d1aa311545ba7ce2357801baa3b0d8a4007cf6830570",
+     "003-surface.wgsl": "33e883534dbdec50a043bafc4aeb07f0fc516d5fd19fec1b48b296757653fe98",
+     "004-shadow.wgsl": "b8570e59bd5a4915f4633b827b0bd61b9c383c01621b718f1af3fb8090606401",
+     "005-shadow.wgsl": "b8570e59bd5a4915f4633b827b0bd61b9c383c01621b718f1af3fb8090606401",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/linux-gates__broad-lighting-0-control",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/linux-gates__broad-lighting-0-control/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 12,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 7.56127,
+     "saves": 12,
+     "savedBytes": 12582104,
+     "saveMs": 37.7014,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface"
+   },
+   "withinSameFilmControl": true,
+   "firstAgainstSecondCold": [
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 179
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 179
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 160
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 160
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 197
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 197
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 192
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 192
+     }
+    }
+   ],
+   "warmAgainstCold": {
+    "film-0.f32": {
+     "values": 3072,
+     "practicalFailures": 0,
+     "strict": 0,
+     "maxAbs": 7.450580596923828e-09,
+     "valuesDiffering": 200
+    },
+    "film-1.f32": {
+     "values": 3072,
+     "practicalFailures": 0,
+     "strict": 0,
+     "maxAbs": 7.450580596923828e-09,
+     "valuesDiffering": 189
+    }
+   },
+   "coldAgainstCold": [
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 189
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 7.450580596923828e-09,
+      "valuesDiffering": 179
+     }
+    }
+   ],
+   "identicalBits": false
+  },
+  "sampling/adaptive-auto": {
+   "cold": {
+    "rc": 0,
+    "wallSeconds": 31.0,
+    "pipelines": 15,
+    "cacheHits": 0,
+    "compileSeconds": 27.89,
+    "maxPipelineSeconds": 7.89,
+    "films": {
+     "film-0.f32": "ec9ec128bcbd1a5364f92ea780983af2455468ccd80ce07034e1bd8850050756",
+     "film-1.f32": "43a41eafce8e823a0c5f10f06b2e9bf4c60b60122ef970ffa07332a03a45f4c9"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "1a97d08d50d2d50f7f4d523eeb364e3a5584716f6a27ce6f360935ee11fab330",
+     "002-surface.wgsl": "2850fa35185bf66a5ba6455035c08b5220135eb2f0ec80aa9ad8cc02dc66ff01",
+     "003-background.wgsl": "eea3c6d9b4b961c2dc11488b7b887334545f4fff3497c4b9fdd2250458d02a56",
+     "004-shadow.wgsl": "30b9f288a68b8e061138f8bba483bb7f354162c4aef58d28f2f3c995be3b013a",
+     "005-shadow.wgsl": "30b9f288a68b8e061138f8bba483bb7f354162c4aef58d28f2f3c995be3b013a",
+     "006-background.wgsl": "eea3c6d9b4b961c2dc11488b7b887334545f4fff3497c4b9fdd2250458d02a56",
+     "007-film_adaptive.wgsl": "00fd5a4ac0183b6f24579b4096daa718557e49d046e753b870e34434f6576965",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-film_adaptive.wgsl": "00fd5a4ac0183b6f24579b4096daa718557e49d046e753b870e34434f6576965",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/sampling__adaptive-auto",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/sampling__adaptive-auto/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 16,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 8.44244,
+     "saves": 16,
+     "savedBytes": 13957512,
+     "saveMs": 42.5296,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "connect_surface_light"
+   },
+   "cacheFiles": 16,
+   "cacheBytes": 13968968,
+   "warm": {
+    "rc": 0,
+    "wallSeconds": 3.1,
+    "pipelines": 15,
+    "cacheHits": 15,
+    "compileSeconds": 0.08,
+    "maxPipelineSeconds": 0.01,
+    "films": {
+     "film-0.f32": "48ad74518964a478512476370343bf88c1c3394405dfdb76fec7d0160c92f460",
+     "film-1.f32": "3711cf4dff428a8bed8e5210abc4354522de457ab89ccfc6a63fa0399e7265e3"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "1a97d08d50d2d50f7f4d523eeb364e3a5584716f6a27ce6f360935ee11fab330",
+     "002-surface.wgsl": "2850fa35185bf66a5ba6455035c08b5220135eb2f0ec80aa9ad8cc02dc66ff01",
+     "003-background.wgsl": "eea3c6d9b4b961c2dc11488b7b887334545f4fff3497c4b9fdd2250458d02a56",
+     "004-shadow.wgsl": "30b9f288a68b8e061138f8bba483bb7f354162c4aef58d28f2f3c995be3b013a",
+     "005-shadow.wgsl": "30b9f288a68b8e061138f8bba483bb7f354162c4aef58d28f2f3c995be3b013a",
+     "006-background.wgsl": "eea3c6d9b4b961c2dc11488b7b887334545f4fff3497c4b9fdd2250458d02a56",
+     "007-film_adaptive.wgsl": "00fd5a4ac0183b6f24579b4096daa718557e49d046e753b870e34434f6576965",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-film_adaptive.wgsl": "00fd5a4ac0183b6f24579b4096daa718557e49d046e753b870e34434f6576965",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/sampling__adaptive-auto",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/sampling__adaptive-auto/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 16,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 13957512,
+     "loadMs": 60.0876,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "connect_surface_light"
+   },
+   "cold-control": {
+    "rc": 0,
+    "wallSeconds": 31.0,
+    "pipelines": 15,
+    "cacheHits": 0,
+    "compileSeconds": 27.78,
+    "maxPipelineSeconds": 7.87,
+    "films": {
+     "film-0.f32": "903eba3868ea72c1374370a94da978e8f71314bff076a20a05702a40586f10f2",
+     "film-1.f32": "967e3c2d4c7ab8cf2fda75136521ba0b9378a2d0cf27eeffadf8b6e984baa504"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "1a97d08d50d2d50f7f4d523eeb364e3a5584716f6a27ce6f360935ee11fab330",
+     "002-surface.wgsl": "2850fa35185bf66a5ba6455035c08b5220135eb2f0ec80aa9ad8cc02dc66ff01",
+     "003-background.wgsl": "eea3c6d9b4b961c2dc11488b7b887334545f4fff3497c4b9fdd2250458d02a56",
+     "004-shadow.wgsl": "30b9f288a68b8e061138f8bba483bb7f354162c4aef58d28f2f3c995be3b013a",
+     "005-shadow.wgsl": "30b9f288a68b8e061138f8bba483bb7f354162c4aef58d28f2f3c995be3b013a",
+     "006-background.wgsl": "eea3c6d9b4b961c2dc11488b7b887334545f4fff3497c4b9fdd2250458d02a56",
+     "007-film_adaptive.wgsl": "00fd5a4ac0183b6f24579b4096daa718557e49d046e753b870e34434f6576965",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-film_adaptive.wgsl": "00fd5a4ac0183b6f24579b4096daa718557e49d046e753b870e34434f6576965",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/sampling__adaptive-auto-control",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/sampling__adaptive-auto-control/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 16,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 8.45838,
+     "saves": 16,
+     "savedBytes": 13957512,
+     "saveMs": 42.4627,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "connect_surface_light"
+   },
+   "withinSameFilmControl": false,
+   "firstAgainstSecondCold": [
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 129,
+      "maxAbs": 5.245208740234375e-05,
+      "valuesDiffering": 1080
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 129,
+      "maxAbs": 5.245208740234375e-05,
+      "valuesDiffering": 1080
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 140,
+      "maxAbs": 5.245208740234375e-05,
+      "valuesDiffering": 1082
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 140,
+      "maxAbs": 5.245208740234375e-05,
+      "valuesDiffering": 1082
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 132,
+      "maxAbs": 5.245208740234375e-05,
+      "valuesDiffering": 1120
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 132,
+      "maxAbs": 5.245208740234375e-05,
+      "valuesDiffering": 1120
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 133,
+      "maxAbs": 5.245208740234375e-05,
+      "valuesDiffering": 1090
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 133,
+      "maxAbs": 5.245208740234375e-05,
+      "valuesDiffering": 1090
+     }
+    }
+   ],
+   "warmAgainstCold": {
+    "film-0.f32": {
+     "values": 3072,
+     "practicalFailures": 0,
+     "strict": 73,
+     "maxAbs": 8.58306884765625e-06,
+     "valuesDiffering": 990
+    },
+    "film-1.f32": {
+     "values": 3072,
+     "practicalFailures": 0,
+     "strict": 2,
+     "maxAbs": 3.5762786865234375e-07,
+     "valuesDiffering": 778
+    }
+   },
+   "coldAgainstCold": [
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 1,
+      "maxAbs": 2.384185791015625e-07,
+      "valuesDiffering": 657
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 1,
+      "maxAbs": 1.7881393432617188e-07,
+      "valuesDiffering": 773
+     }
+    }
+   ],
+   "identicalBits": false
+  },
+  "shadow-catcher/catcher-point-light": {
+   "cold": {
+    "rc": 0,
+    "wallSeconds": 25.0,
+    "pipelines": 15,
+    "cacheHits": 0,
+    "compileSeconds": 22.83,
+    "maxPipelineSeconds": 5.63,
+    "films": {
+     "film-0.f32": "53ffa31ceb219e379ad88d73e4356c8d4f995aecca482e762e695ce298eb3cf8",
+     "film-1.f32": "28e5d9ef573900f3b3d4976699e46e02ada418130e109142d3614a88944499c6"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "3aa3545a9041722808c48374f1b2f1cfbcee8222c09c0525183897e62e2bc4c6",
+     "002-shadow_catcher.wgsl": "0cf493c16a4822934b1814805619478ff33a8f4e5b936fcb5617e36798e44d30",
+     "003-surface.wgsl": "7c26b1d4d9390a5dda7c580ab54fa9e6bd7637c572fd0b6a8fb11c14a6d439c8",
+     "004-background.wgsl": "c5fd58e66e4a5a83b89642f7771723b8305891ee1b47501c0e795cde6723aceb",
+     "005-shadow.wgsl": "66baae3db9d55d0b404eab711d8eb338064ff03a1cac61a4421fdbea3e74479b",
+     "006-shadow.wgsl": "66baae3db9d55d0b404eab711d8eb338064ff03a1cac61a4421fdbea3e74479b",
+     "007-background.wgsl": "c5fd58e66e4a5a83b89642f7771723b8305891ee1b47501c0e795cde6723aceb",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-shadow_catcher.wgsl": "c65cc9b7aeb91e3675f9bd6ca6fcc1b4fcbfc0fbbca722c79153c0e9f6ca83bb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/shadow-catcher__catcher-point-light",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/shadow-catcher__catcher-point-light/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 16,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 8.90883,
+     "saves": 16,
+     "savedBytes": 12992644,
+     "saveMs": 41.8747,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface"
+   },
+   "cacheFiles": 16,
+   "cacheBytes": 13004100,
+   "warm": {
+    "rc": 0,
+    "wallSeconds": 2.0,
+    "pipelines": 15,
+    "cacheHits": 15,
+    "compileSeconds": 0.08,
+    "maxPipelineSeconds": 0.01,
+    "films": {
+     "film-0.f32": "63b46c2d545919ad2b3ee454563d828308e37080b07f88d539395a64ebdafbf2",
+     "film-1.f32": "4aebe37ba2a7355ca3af905ecd517463daddf36ecd657d66d512def06db4178c"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "3aa3545a9041722808c48374f1b2f1cfbcee8222c09c0525183897e62e2bc4c6",
+     "002-shadow_catcher.wgsl": "0cf493c16a4822934b1814805619478ff33a8f4e5b936fcb5617e36798e44d30",
+     "003-surface.wgsl": "7c26b1d4d9390a5dda7c580ab54fa9e6bd7637c572fd0b6a8fb11c14a6d439c8",
+     "004-background.wgsl": "c5fd58e66e4a5a83b89642f7771723b8305891ee1b47501c0e795cde6723aceb",
+     "005-shadow.wgsl": "66baae3db9d55d0b404eab711d8eb338064ff03a1cac61a4421fdbea3e74479b",
+     "006-shadow.wgsl": "66baae3db9d55d0b404eab711d8eb338064ff03a1cac61a4421fdbea3e74479b",
+     "007-background.wgsl": "c5fd58e66e4a5a83b89642f7771723b8305891ee1b47501c0e795cde6723aceb",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-shadow_catcher.wgsl": "c65cc9b7aeb91e3675f9bd6ca6fcc1b4fcbfc0fbbca722c79153c0e9f6ca83bb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/shadow-catcher__catcher-point-light",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/shadow-catcher__catcher-point-light/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 16,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 12992644,
+     "loadMs": 55.9251,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface"
+   },
+   "cold-control": {
+    "rc": 0,
+    "wallSeconds": 25.2,
+    "pipelines": 15,
+    "cacheHits": 0,
+    "compileSeconds": 23.31,
+    "maxPipelineSeconds": 5.73,
+    "films": {
+     "film-0.f32": "7f6714c7001f008e5518361a17bd2b0c64d930cc6966e6fb0ae937e6e8e813b7",
+     "film-1.f32": "400a2fb1e0cbf478a90d125522ced799785453647c8b7b6e10699791e33e477a"
+    },
+    "modules": {
+     "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+     "001-closest.wgsl": "3aa3545a9041722808c48374f1b2f1cfbcee8222c09c0525183897e62e2bc4c6",
+     "002-shadow_catcher.wgsl": "0cf493c16a4822934b1814805619478ff33a8f4e5b936fcb5617e36798e44d30",
+     "003-surface.wgsl": "7c26b1d4d9390a5dda7c580ab54fa9e6bd7637c572fd0b6a8fb11c14a6d439c8",
+     "004-background.wgsl": "c5fd58e66e4a5a83b89642f7771723b8305891ee1b47501c0e795cde6723aceb",
+     "005-shadow.wgsl": "66baae3db9d55d0b404eab711d8eb338064ff03a1cac61a4421fdbea3e74479b",
+     "006-shadow.wgsl": "66baae3db9d55d0b404eab711d8eb338064ff03a1cac61a4421fdbea3e74479b",
+     "007-background.wgsl": "c5fd58e66e4a5a83b89642f7771723b8305891ee1b47501c0e795cde6723aceb",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-shadow_catcher.wgsl": "c65cc9b7aeb91e3675f9bd6ca6fcc1b4fcbfc0fbbca722c79153c0e9f6ca83bb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/shadow-catcher__catcher-point-light-control",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/shadow-catcher__catcher-point-light-control/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 16,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 8.61625,
+     "saves": 16,
+     "savedBytes": 12992644,
+     "saveMs": 39.8468,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface"
+   },
+   "withinSameFilmControl": false,
+   "firstAgainstSecondCold": [
+    {
+     "film-0.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 2,
+      "maxAbs": 4.76837158203125e-07,
+      "valuesDiffering": 490
+     },
+     "film-1.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 2,
+      "maxAbs": 4.76837158203125e-07,
+      "valuesDiffering": 490
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 4,
+      "maxAbs": 7.152557373046875e-07,
+      "valuesDiffering": 489
+     },
+     "film-1.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 4,
+      "maxAbs": 7.152557373046875e-07,
+      "valuesDiffering": 489
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 3,
+      "maxAbs": 4.76837158203125e-07,
+      "valuesDiffering": 485
+     },
+     "film-1.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 3,
+      "maxAbs": 4.76837158203125e-07,
+      "valuesDiffering": 485
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 4,
+      "maxAbs": 7.152557373046875e-07,
+      "valuesDiffering": 499
+     },
+     "film-1.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 4,
+      "maxAbs": 7.152557373046875e-07,
+      "valuesDiffering": 499
+     }
+    }
+   ],
+   "warmAgainstCold": {
+    "film-0.f32": {
+     "values": 12288,
+     "practicalFailures": 0,
+     "strict": 2,
+     "maxAbs": 7.152557373046875e-07,
+     "valuesDiffering": 498
+    },
+    "film-1.f32": {
+     "values": 12288,
+     "practicalFailures": 0,
+     "strict": 0,
+     "maxAbs": 2.384185791015625e-07,
+     "valuesDiffering": 282
+    }
+   },
+   "coldAgainstCold": [
+    {
+     "film-0.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.384185791015625e-07,
+      "valuesDiffering": 217
+     },
+     "film-1.f32": {
+      "values": 12288,
+      "practicalFailures": 0,
+      "strict": 1,
+      "maxAbs": 4.76837158203125e-07,
+      "valuesDiffering": 302
+     }
+    }
+   ],
+   "identicalBits": false
+  },
+  "combinations/camera-motion-ao-node": {
+   "cold": {
+    "rc": 0,
+    "wallSeconds": 31.0,
+    "pipelines": 13,
+    "cacheHits": 0,
+    "compileSeconds": 29.9,
+    "maxPipelineSeconds": 5.63,
+    "films": {
+     "film-0.f32": "63f981db300eb5287457535e397616d3e231571420d26b194f72ff43ba5d8deb",
+     "film-1.f32": "75154511541d896a050ea7c9d025c6546b39ced922d0b6cdc5bb58edbac8d72b"
+    },
+    "modules": {
+     "000-camera.wgsl": "f1637710629a0f2f335399a74091f18187db6ef2b52ad6b7c8ef42d9a0068b0f",
+     "001-closest.wgsl": "bad446ea54020debfb54018c302860a67c572eab0046b145b045463ea59205ae",
+     "002-background.wgsl": "73ce9e6a6d2154fc3ed043bc6ac378b7142429d47818233450671fb27fa18c79",
+     "003-surface.wgsl": "6c8aa5e4aba278daef3fc8ffdd704bef92b1e823da2576f068dc344f870c6df7",
+     "004-shadow.wgsl": "4092e532eb051381fde17df2dd37235d39af75f8508357648879ffed84ae0204",
+     "005-shadow.wgsl": "4092e532eb051381fde17df2dd37235d39af75f8508357648879ffed84ae0204",
+     "006-surface.wgsl": "d808d0f383ca297dc70687c6b980c048e99b796f06c9e42b0e2b8790cc55fa79",
+     "007-background.wgsl": "73ce9e6a6d2154fc3ed043bc6ac378b7142429d47818233450671fb27fa18c79",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/combinations__camera-motion-ao-node",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/combinations__camera-motion-ao-node/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 14,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 9.4478,
+     "saves": 14,
+     "savedBytes": 14964860,
+     "saveMs": 53.9209,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface"
+   },
+   "cacheFiles": 14,
+   "cacheBytes": 14974884,
+   "warm": {
+    "rc": 0,
+    "wallSeconds": 1.0,
+    "pipelines": 13,
+    "cacheHits": 13,
+    "compileSeconds": 0.09,
+    "maxPipelineSeconds": 0.01,
+    "films": {
+     "film-0.f32": "9f01e095f495e4152c23c800e97720672b113c6f4e2f5705a78ca164a18063e9",
+     "film-1.f32": "87ce35bd1269a8e22df113204ab5ee3c49d6b1b1d90aea55e23b0540555ad315"
+    },
+    "modules": {
+     "000-camera.wgsl": "f1637710629a0f2f335399a74091f18187db6ef2b52ad6b7c8ef42d9a0068b0f",
+     "001-closest.wgsl": "bad446ea54020debfb54018c302860a67c572eab0046b145b045463ea59205ae",
+     "002-background.wgsl": "73ce9e6a6d2154fc3ed043bc6ac378b7142429d47818233450671fb27fa18c79",
+     "003-surface.wgsl": "6c8aa5e4aba278daef3fc8ffdd704bef92b1e823da2576f068dc344f870c6df7",
+     "004-shadow.wgsl": "4092e532eb051381fde17df2dd37235d39af75f8508357648879ffed84ae0204",
+     "005-shadow.wgsl": "4092e532eb051381fde17df2dd37235d39af75f8508357648879ffed84ae0204",
+     "006-surface.wgsl": "d808d0f383ca297dc70687c6b980c048e99b796f06c9e42b0e2b8790cc55fa79",
+     "007-background.wgsl": "73ce9e6a6d2154fc3ed043bc6ac378b7142429d47818233450671fb27fa18c79",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/combinations__camera-motion-ao-node",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/combinations__camera-motion-ao-node/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 14,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 14964860,
+     "loadMs": 66.2233,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface"
+   },
+   "cold-control": {
+    "rc": 0,
+    "wallSeconds": 31.1,
+    "pipelines": 13,
+    "cacheHits": 0,
+    "compileSeconds": 29.97,
+    "maxPipelineSeconds": 5.62,
+    "films": {
+     "film-0.f32": "4ec4f416b722b187e2c86e0763bda84365a7e7ddf7d644587f768098fab3ea7f",
+     "film-1.f32": "1ef62f65b460ec087090c450bdb74a9f19b59556749158297818504c0f841cbb"
+    },
+    "modules": {
+     "000-camera.wgsl": "f1637710629a0f2f335399a74091f18187db6ef2b52ad6b7c8ef42d9a0068b0f",
+     "001-closest.wgsl": "bad446ea54020debfb54018c302860a67c572eab0046b145b045463ea59205ae",
+     "002-background.wgsl": "73ce9e6a6d2154fc3ed043bc6ac378b7142429d47818233450671fb27fa18c79",
+     "003-surface.wgsl": "6c8aa5e4aba278daef3fc8ffdd704bef92b1e823da2576f068dc344f870c6df7",
+     "004-shadow.wgsl": "4092e532eb051381fde17df2dd37235d39af75f8508357648879ffed84ae0204",
+     "005-shadow.wgsl": "4092e532eb051381fde17df2dd37235d39af75f8508357648879ffed84ae0204",
+     "006-surface.wgsl": "d808d0f383ca297dc70687c6b980c048e99b796f06c9e42b0e2b8790cc55fa79",
+     "007-background.wgsl": "73ce9e6a6d2154fc3ed043bc6ac378b7142429d47818233450671fb27fa18c79",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/combinations__camera-motion-ao-node-control",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/combinations__camera-motion-ao-node-control/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 14,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 9.34963,
+     "saves": 14,
+     "savedBytes": 14964860,
+     "saveMs": 45.3552,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_surface"
+   },
+   "withinSameFilmControl": true,
+   "firstAgainstSecondCold": [
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 258
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 258
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 394
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 394
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 280
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 280
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 350
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 350
+     }
+    }
+   ],
+   "warmAgainstCold": {
+    "film-0.f32": {
+     "values": 3072,
+     "practicalFailures": 0,
+     "strict": 0,
+     "maxAbs": 5.960464477539063e-08,
+     "valuesDiffering": 294
+    },
+    "film-1.f32": {
+     "values": 3072,
+     "practicalFailures": 0,
+     "strict": 0,
+     "maxAbs": 2.9802322387695312e-08,
+     "valuesDiffering": 267
+    }
+   },
+   "coldAgainstCold": [
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 304
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 5.960464477539063e-08,
+      "valuesDiffering": 370
+     }
+    }
+   ],
+   "identicalBits": false
+  },
+  "volumes/absorption-point": {
+   "cold": {
+    "rc": 0,
+    "wallSeconds": 50.1,
+    "pipelines": 19,
+    "cacheHits": 0,
+    "compileSeconds": 43.61,
+    "maxPipelineSeconds": 8.02,
+    "films": {
+     "film-0.f32": "a0f54ee82876e454f4e1de9b053b9863bff43135327d4159475e46b772410828",
+     "film-1.f32": "dab5d75e6ad250cbcf47c07950275b8e09dc079368a986835db8469409f51d3f"
+    },
+    "modules": {
+     "000-volume.wgsl": "658856634f88a8701f321d3366f026b92a28d669bdf1a578cafa4546c39c6d21",
+     "001-camera.wgsl": "191811a9fc7253caa224f39a222c145990aa5d4a356c3807d5427fb3a4552566",
+     "002-closest.wgsl": "fc1586594dbc9c82515294ecd9a9f29f9bd787577723c68e83492cbef881fac2",
+     "003-surface.wgsl": "844a45c7398df7ae39bd2a1b935c0f851a7030ebf5f842bec01eb24f0d193e86",
+     "004-background.wgsl": "0a8d4a60cd7ba182b7801c1ffa1e4cfdf0d48ee2a55b8df2a66812b0dbde86d8",
+     "005-volume.wgsl": "f03001ef101210af7d4637449d57526ae08dca8788628b2c98f60baad288033a",
+     "006-surface.wgsl": "844a45c7398df7ae39bd2a1b935c0f851a7030ebf5f842bec01eb24f0d193e86",
+     "007-shadow.wgsl": "9c3ebe06fd1c4f35b2b92e5806aed198f3e1183806a2bc21a6b6785542b775d2",
+     "008-shadow.wgsl": "9c3ebe06fd1c4f35b2b92e5806aed198f3e1183806a2bc21a6b6785542b775d2",
+     "009-background.wgsl": "0a8d4a60cd7ba182b7801c1ffa1e4cfdf0d48ee2a55b8df2a66812b0dbde86d8",
+     "010-film_volume_guiding.wgsl": "70d9266cb9a0b9615041b0188dd89dd2f6568f7963171740a0860d3ff3154dda",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-film_volume_guiding.wgsl": "70d9266cb9a0b9615041b0188dd89dd2f6568f7963171740a0860d3ff3154dda",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d",
+     "source-volume.wgsl": "23f4e074f1eef00277a12396946902fa037becc97e615491a84fe51bb3e3c5dd"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/volumes__absorption-point",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/volumes__absorption-point/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 20,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 12.866,
+     "saves": 20,
+     "savedBytes": 23893600,
+     "saveMs": 71.8293,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "connect_surface_light"
+   },
+   "cacheFiles": 20,
+   "cacheBytes": 23907920,
+   "warm": {
+    "rc": 0,
+    "wallSeconds": 7.8,
+    "pipelines": 19,
+    "cacheHits": 19,
+    "compileSeconds": 0.14,
+    "maxPipelineSeconds": 0.01,
+    "films": {
+     "film-0.f32": "f2574bf7c29f8794722612b3094fe1b79954e1c05b2a613b9bf81f40b02d4737",
+     "film-1.f32": "dab5d75e6ad250cbcf47c07950275b8e09dc079368a986835db8469409f51d3f"
+    },
+    "modules": {
+     "000-volume.wgsl": "658856634f88a8701f321d3366f026b92a28d669bdf1a578cafa4546c39c6d21",
+     "001-camera.wgsl": "191811a9fc7253caa224f39a222c145990aa5d4a356c3807d5427fb3a4552566",
+     "002-closest.wgsl": "fc1586594dbc9c82515294ecd9a9f29f9bd787577723c68e83492cbef881fac2",
+     "003-surface.wgsl": "844a45c7398df7ae39bd2a1b935c0f851a7030ebf5f842bec01eb24f0d193e86",
+     "004-background.wgsl": "0a8d4a60cd7ba182b7801c1ffa1e4cfdf0d48ee2a55b8df2a66812b0dbde86d8",
+     "005-volume.wgsl": "f03001ef101210af7d4637449d57526ae08dca8788628b2c98f60baad288033a",
+     "006-surface.wgsl": "844a45c7398df7ae39bd2a1b935c0f851a7030ebf5f842bec01eb24f0d193e86",
+     "007-shadow.wgsl": "9c3ebe06fd1c4f35b2b92e5806aed198f3e1183806a2bc21a6b6785542b775d2",
+     "008-shadow.wgsl": "9c3ebe06fd1c4f35b2b92e5806aed198f3e1183806a2bc21a6b6785542b775d2",
+     "009-background.wgsl": "0a8d4a60cd7ba182b7801c1ffa1e4cfdf0d48ee2a55b8df2a66812b0dbde86d8",
+     "010-film_volume_guiding.wgsl": "70d9266cb9a0b9615041b0188dd89dd2f6568f7963171740a0860d3ff3154dda",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-film_volume_guiding.wgsl": "70d9266cb9a0b9615041b0188dd89dd2f6568f7963171740a0860d3ff3154dda",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d",
+     "source-volume.wgsl": "23f4e074f1eef00277a12396946902fa037becc97e615491a84fe51bb3e3c5dd"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/volumes__absorption-point",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/volumes__absorption-point/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 20,
+     "misses": 0,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 23893600,
+     "loadMs": 103.472,
+     "saves": 0,
+     "savedBytes": 0,
+     "saveMs": 0,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "shade_volume_light"
+   },
+   "cold-control": {
+    "rc": 0,
+    "wallSeconds": 49.2,
+    "pipelines": 19,
+    "cacheHits": 0,
+    "compileSeconds": 43.63,
+    "maxPipelineSeconds": 8.04,
+    "films": {
+     "film-0.f32": "a0f54ee82876e454f4e1de9b053b9863bff43135327d4159475e46b772410828",
+     "film-1.f32": "f2574bf7c29f8794722612b3094fe1b79954e1c05b2a613b9bf81f40b02d4737"
+    },
+    "modules": {
+     "000-volume.wgsl": "658856634f88a8701f321d3366f026b92a28d669bdf1a578cafa4546c39c6d21",
+     "001-camera.wgsl": "191811a9fc7253caa224f39a222c145990aa5d4a356c3807d5427fb3a4552566",
+     "002-closest.wgsl": "fc1586594dbc9c82515294ecd9a9f29f9bd787577723c68e83492cbef881fac2",
+     "003-surface.wgsl": "844a45c7398df7ae39bd2a1b935c0f851a7030ebf5f842bec01eb24f0d193e86",
+     "004-background.wgsl": "0a8d4a60cd7ba182b7801c1ffa1e4cfdf0d48ee2a55b8df2a66812b0dbde86d8",
+     "005-volume.wgsl": "f03001ef101210af7d4637449d57526ae08dca8788628b2c98f60baad288033a",
+     "006-surface.wgsl": "844a45c7398df7ae39bd2a1b935c0f851a7030ebf5f842bec01eb24f0d193e86",
+     "007-shadow.wgsl": "9c3ebe06fd1c4f35b2b92e5806aed198f3e1183806a2bc21a6b6785542b775d2",
+     "008-shadow.wgsl": "9c3ebe06fd1c4f35b2b92e5806aed198f3e1183806a2bc21a6b6785542b775d2",
+     "009-background.wgsl": "0a8d4a60cd7ba182b7801c1ffa1e4cfdf0d48ee2a55b8df2a66812b0dbde86d8",
+     "010-film_volume_guiding.wgsl": "70d9266cb9a0b9615041b0188dd89dd2f6568f7963171740a0860d3ff3154dda",
+     "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+     "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+     "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+     "source-film_volume_guiding.wgsl": "70d9266cb9a0b9615041b0188dd89dd2f6568f7963171740a0860d3ff3154dda",
+     "source-shadow.wgsl": "364e08582c2a998206f3f7ccc160d3f49b97e5afa01dc90ca9f2ec5517f246fb",
+     "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d",
+     "source-volume.wgsl": "23f4e074f1eef00277a12396946902fa037becc97e615491a84fe51bb3e3c5dd"
+    },
+    "stderr": "",
+    "cache": {
+     "active": true,
+     "reason": "active",
+     "directory": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/volumes__absorption-point-control",
+     "directorySource": "environment",
+     "folder": "<run>/linux/linux/g05/20261114-043331/pipeline_cache_gate/scratch/cache/volumes__absorption-point-control/wgpu_pipeline_cache_vulkan_32902_18056",
+     "key": "wgpu_pipeline_cache_vulkan_32902_18056",
+     "hits": 0,
+     "misses": 20,
+     "ignored": {
+      "damaged": 0,
+      "otherAdapter": 0,
+      "otherRuntime": 0,
+      "rejected": 0,
+      "outdated": 0
+     },
+     "loadedBytes": 0,
+     "loadMs": 12.7934,
+     "saves": 20,
+     "savedBytes": 23893600,
+     "saveMs": 72.0504,
+     "saveFailures": 0,
+     "maxBytes": 1073741824,
+     "failure": null
+    },
+    "maxEntry": "connect_surface_light"
+   },
+   "withinSameFilmControl": true,
+   "firstAgainstSecondCold": [
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 2
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 2
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 1.4901161193847656e-08,
+      "valuesDiffering": 1
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 1.4901161193847656e-08,
+      "valuesDiffering": 1
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 2
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 2
+     }
+    },
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 1.4901161193847656e-08,
+      "valuesDiffering": 1
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 1.4901161193847656e-08,
+      "valuesDiffering": 1
+     }
+    }
+   ],
+   "warmAgainstCold": {
+    "film-0.f32": {
+     "values": 3072,
+     "practicalFailures": 0,
+     "strict": 0,
+     "maxAbs": 1.4901161193847656e-08,
+     "valuesDiffering": 1
+    },
+    "film-1.f32": {
+     "values": 3072,
+     "practicalFailures": 0,
+     "strict": 0,
+     "maxAbs": 0.0,
+     "valuesDiffering": 0
+    }
+   },
+   "coldAgainstCold": [
+    {
+     "film-0.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 0.0,
+      "valuesDiffering": 0
+     },
+     "film-1.f32": {
+      "values": 3072,
+      "practicalFailures": 0,
+      "strict": 0,
+      "maxAbs": 2.9802322387695312e-08,
+      "valuesDiffering": 1
+     }
+    }
+   ],
+   "identicalBits": false
+  }
+ },
+ "stateGate": {
+  "cold": {
+   "rc": 0,
+   "wallSeconds": 17.7,
+   "stdout": "{\"passed\":true,\"originalCpuShaderSetup\":true,\"nativeSceneTables\":true,\"cases\":11,\"paths\":12066,\"cameraHits\":240,\"hitObjects\":9,\"backfacing\":6927,\"smooth\":8050,\"cornerNormals\":4054,\"instanceTransforms\":8054,\"appliedTransforms\":4012,\"negativeScale\":6715,\"projectionAxes\":[3344,3320,5402],\"negativePositionOffsets\":1168,\"negativeNormalOffsets\":4930,\"integerChecks\":84462,\"floatChecks\":337848,\"stateChecks\":1576960,\"untouchedGuardBytes\":5324,\"strictFloatFailures\":0,\"maximumAbsoluteError\":0,\"invalidCasesRejected\":12,\"cyclesAllocationBytesAfterCleanup\":0}",
+   "stderr": ""
+  },
+  "warm": {
+   "rc": 0,
+   "wallSeconds": 15.9,
+   "stdout": "{\"passed\":true,\"originalCpuShaderSetup\":true,\"nativeSceneTables\":true,\"cases\":11,\"paths\":12066,\"cameraHits\":240,\"hitObjects\":9,\"backfacing\":6927,\"smooth\":8050,\"cornerNormals\":4054,\"instanceTransforms\":8054,\"appliedTransforms\":4012,\"negativeScale\":6715,\"projectionAxes\":[3344,3320,5402],\"negativePositionOffsets\":1168,\"negativeNormalOffsets\":4930,\"integerChecks\":84462,\"floatChecks\":337848,\"stateChecks\":1576960,\"untouchedGuardBytes\":5324,\"strictFloatFailures\":0,\"maximumAbsoluteError\":0,\"invalidCasesRejected\":12,\"cyclesAllocationBytesAfterCleanup\":0}",
+   "stderr": ""
+  }
+ },
+ "controlFileBytes": 79660,
+ "controlWalls": {
+  "cold": 0.13197731971740723,
+  "warm": 0.08157038688659668
+ },
+ "stateGateCacheFiles": [
+  "wgpu_pipeline_cache_vulkan_32902_18056"
+ ],
+ "filmGate": {
+  "cold": {
+   "rc": 0,
+   "wallSeconds": 32.7,
+   "film": "c331f1d65083eb1bcfbcfd0eaf628d4a3dba255c2b1cc4ab075e714069bec7b4",
+   "stderr": ""
+  },
+  "warm": {
+   "rc": 0,
+   "wallSeconds": 14.7,
+   "film": "c331f1d65083eb1bcfbcfd0eaf628d4a3dba255c2b1cc4ab075e714069bec7b4",
+   "stderr": ""
+  },
+  "cold-control": {
+   "rc": 0,
+   "wallSeconds": 32.6,
+   "film": "c331f1d65083eb1bcfbcfd0eaf628d4a3dba255c2b1cc4ab075e714069bec7b4",
+   "stderr": ""
+  }
+ },
+ "totals": {
+  "warmStrict": 77,
+  "controlStrict": 3
+ },
+ "failures": []
+}

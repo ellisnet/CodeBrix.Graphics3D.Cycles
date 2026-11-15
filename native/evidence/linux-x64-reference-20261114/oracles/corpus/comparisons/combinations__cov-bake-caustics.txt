@@ -1,0 +1,7 @@
+combinations/cov-bake-caustics (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.19e-07   3.96e-07   1.02e-08             0          0
+      worst x=28 y=16 R: ref 0.584543884 got 0.584544003 (0.000714x tolerance)
+  verdict: perfect

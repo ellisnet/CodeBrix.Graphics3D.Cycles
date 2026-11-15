@@ -56,7 +56,7 @@ RUNTIME_NAME='libcodebrix_wgpu.so'
 RUNTIME_PACKAGE=dict(id='CodeBrix.WebGpu.Native.MitLicenseForever',version='1.0.300.210',path=f'runtimes/{RID}/native/{RUNTIME_NAME}')
 SYSTEM={'libc.so.6','libm.so.6','libgcc_s.so.1','libstdc++.so.6','ld-linux-x86-64.so.2','libdl.so.2','libpthread.so.0','librt.so.1'}
 NATIVE_SOURCES=['native/host','native/cycles','native/shaders','native/oracle/runner.cpp','native/manylinux','third_party/cycles','third_party/deps','tools/dependencies']
-REFERENCE='native/evidence/linux-x64-reference-20261107'
+REFERENCE='native/evidence/linux-x64-reference-20261114'
 CHECK_SCENE='starter/diffuse-triangle'
 # Shipped library name prefix -> third_party/dependencies.json component.
 COMPONENTS=[('libcodebrix_cycles_host','cycles'),('libOpenImageDenoise','oidn'),('libOpenImageIO','oiio'),('libOpenColorIO','ocio'),

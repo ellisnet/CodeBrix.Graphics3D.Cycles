@@ -1,0 +1,10 @@
+volumes/catcher-floor (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=1.49e-08 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.79e-07   6.01e-06   9.94e-09             0          2
+      worst x=12 y=4 A: ref 0.0297560692 got 0.0297558904 (0.0032x tolerance)
+      pass Shadow Catcher           shadow_catcher         maxAbs=  1.67e-06 practicalFail=0 strictDiff=33
+      pass Shadow Catcher Matte     shadow_catcher_matte   maxAbs=  1.79e-07 practicalFail=0 strictDiff=2
+      pass Shadow Catcher Sample Count shadow_catcher_sample_count maxAbs=         0 practicalFail=0 strictDiff=0
+  verdict: perfect

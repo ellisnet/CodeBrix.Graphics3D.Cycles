@@ -1,0 +1,56 @@
+{
+ "id": "002-linux-m01",
+ "device": "linux",
+ "queue": "linux",
+ "batch": "m01",
+ "tree": "86f8f0c1fe601395",
+ "attempt": "<run>/linux/linux/m01/20261114-053036",
+ "identity": {},
+ "proof": false,
+ "failures": [
+  {
+   "scene": "size_envelope",
+   "render": {
+    "ok": false,
+    "seconds": 11168.5,
+    "message": "gate script"
+   },
+   "judge": {
+    "perfect": false,
+    "seconds": 11168.5,
+    "reasons": [
+     "status.json: {'complete': True, 'passed': False, 'phase': None, 'error': None}"
+    ],
+    "statusFile": "<run>/linux/linux/m01/20261114-053036/size_envelope/status.json",
+    "log": "<run>/linux/linux/m01/20261114-053036/size_envelope.log",
+    "command": "/usr/bin/python3 <tools>/size_envelope.py --dump <run>/linux/dump --output <run>/linux/linux/m01/20261114-053036/size_envelope",
+    "exit": 1,
+    "phase": null,
+    "finding": null
+   },
+   "rerun": "from the repository or your worktree (cwd = its root; the command names MAIN's script: in a worktree use the same path under your worktree): python3 <tools>/size_envelope.py --dump <run>/linux/dump --output <NEW FOLDER OF YOURS>"
+  },
+  {
+   "scene": "unspecialized_compile_smoke",
+   "render": {
+    "ok": false,
+    "seconds": 901.0,
+    "message": "gate script"
+   },
+   "judge": {
+    "perfect": false,
+    "seconds": 901.0,
+    "reasons": [
+     "status.json: {'complete': True, 'passed': False, 'phase': None, 'error': 'the specialization-off run wrote no <run>/linux/linux/m01/20261114-053036/unspecialized_compile_smoke/capture/surface.wgsl'}"
+    ],
+    "statusFile": "<run>/linux/linux/m01/20261114-053036/unspecialized_compile_smoke/status.json",
+    "log": "<run>/linux/linux/m01/20261114-053036/unspecialized_compile_smoke.log",
+    "command": "/usr/bin/python3 <tools>/spec_checks.py smoke --output <run>/linux/linux/m01/20261114-053036/unspecialized_compile_smoke",
+    "exit": 1,
+    "phase": null,
+    "finding": null
+   },
+   "rerun": "from the repository or your worktree (cwd = its root; the command names MAIN's script: in a worktree use the same path under your worktree): python3 <tools>/spec_checks.py smoke --output <NEW FOLDER OF YOURS>"
+  }
+ ]
+}

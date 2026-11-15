@@ -1,0 +1,13 @@
+denoise/catcher-point-light-on-noisy (64x48)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=7.63e-06 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.38e-05   0.000685   2.13e-07             0        424
+      worst x=41 y=19 B: ref 1.92048097 got 1.92049146 (0.0242x tolerance)
+      pass Shadow Catcher           shadow_catcher         maxAbs=  4.17e-06 practicalFail=0 strictDiff=7630
+      pass Shadow Catcher Matte     shadow_catcher_matte   maxAbs=  1.38e-05 practicalFail=0 strictDiff=424
+      pass Shadow Catcher Sample Count shadow_catcher_sample_count maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Noisy Image              combined               maxAbs=  1.67e-06 practicalFail=0 strictDiff=7
+      pass Shadow Catcher Noisy     shadow_catcher         maxAbs=  2.15e-06 practicalFail=0 strictDiff=98
+      pass Shadow Catcher Matte Noisy shadow_catcher_matte   maxAbs=  1.67e-06 practicalFail=0 strictDiff=7
+  verdict: perfect

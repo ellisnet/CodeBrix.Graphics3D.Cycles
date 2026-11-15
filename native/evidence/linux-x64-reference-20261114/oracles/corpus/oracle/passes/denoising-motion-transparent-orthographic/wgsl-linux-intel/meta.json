@@ -1,0 +1,24 @@
+{
+  "sceneId": "passes/denoising-motion-transparent-orthographic",
+  "sceneSha256": "03a4736f0122a60bfa16f97dfbf49aea94644549a956fa7cda6f8a0cd8780dc1",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "wgslArithmetic": "x64-sse4.2",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 5.9604644775390625e-08,
+  "renderSeconds": [2.29597,0.387897],
+  "filmSha256": ["cfec87e6f60536083eb68c90b001d44ae856de0483a4f45c4feb380affdd8a81","22f9ec83c42b193019c76c2952cce25badee47e9c79dd05105c51c15059d1ef4"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Denoising Backward Motion", "type": "denoising_backward_motion", "components": 3, "written": true, "filmSha256": ["19dec9055a23a2fb60e499d0b11712251d25c18d95db3c06abfb9eb462ed544e","19dec9055a23a2fb60e499d0b11712251d25c18d95db3c06abfb9eb462ed544e"]},
+    {"index": 1, "name": "Denoising Depth", "type": "denoising_depth", "components": 1, "written": true, "filmSha256": ["ce760b644a71634eaa01264b88b74e51c6ce442c8ba91cb88bb0400ef168061d","49188e907991eaf441825bd50c546a11e0ef2f01a140f465d14f1e8353435861"]}
+  ],
+  "warnings": []
+}

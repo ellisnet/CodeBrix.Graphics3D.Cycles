@@ -268,8 +268,9 @@ Each is written by its family's script, whose `--check` still reproduces every c
 - `author_surface_nodes.py`: `surface-nodes/attribute-standard-name` (plain attributes named `color`, `pointiness` and
   `uv`, which an Attribute node and the Texture Coordinate node now find).
 
-The description of `passes/motion` still says "and background motion vectors"; the release writes no background motion
-to the Motion pass, and the committed scene file is left as it is (its bytes are its identity).
+The description of `passes/motion` was corrected: it said "and background motion vectors" and now ends "; the background
+writes no motion vector", because the release writes no background motion to the Motion pass. The scene file's bytes are
+its identity, so its hash changed with the description.
 
 ## Denoising scenes (`scenes/denoise/`)
 
@@ -400,7 +401,10 @@ directories for one scene (`cpu-x64-linux`, `cpu-arm64-macos`, `metal-m2pro`,
 backends first, so a Mac bundle drops in as more directories) and reports the
 pairwise matrix: practical failures, strict differences, maximum absolute and
 relative error, RMS, the worst pixel and NaN/Inf counts, plus every backend's
-repeat films re-read and compared with film-0.
+repeat films re-read and compared with film-0. Its pass or fail verdict rests on
+the first repeat (film-0) of each backend; a validation pass judges every repeat
+against the reference with the same criterion (the first full pass on Cycles
+v5.3.0 did: native/DEVICE.md, "First full pass on Cycles v5.3.0").
 
 Two gold standards. The unmodified pinned Cycles CPU kernels (`cpu-*` backends)
 and the unmodified pinned Cycles Metal backend (`metal-*`) are both reference

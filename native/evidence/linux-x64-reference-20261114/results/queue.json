@@ -1,0 +1,3660 @@
+{
+ "device": "linux",
+ "queue": "linux",
+ "sceneTimeout": 1800,
+ "benchAssets": "<bench-bundle>",
+ "fingerprintIngest": "Part 5 session 1: first full Linux pass on Cycles v5.3.0 (fingerprints recorded in the same run as the verdicts; nothing carried)",
+ "device52": true,
+ "linuxDump": "<run>/linux/dump",
+ "expectedResults": "<tools>/validation-runner/lists/expected-results.json",
+ "references": {
+  "x64Films": "<run>/linux/cpu-films",
+  "x64Label": "Linux x64 CPU film of this run, stage A (cpu_films.py: rendered twice by this build, the two bitwise equal)"
+ },
+ "batches": [
+  {
+   "id": "f00",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "fingerprints",
+     "kind": "fingerprint",
+     "kinds": [
+      "corpus",
+      "gates"
+     ],
+     "timeout": 2400,
+     "repeat": 1,
+     "assets": "<bench-bundle>",
+     "estimate": 420
+    }
+   ]
+  },
+  {
+   "id": "c01",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "cpu-films",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/cpu_films.py",
+      "--all",
+      "--films",
+      "<run>/linux/cpu-films",
+      "--films-b",
+      "<run>/linux/cpu-films-b",
+      "--bench",
+      "<bench-bundle>"
+     ],
+     "failureMeans": "maintainer",
+     "timeout": 3600,
+     "estimate": 150
+    }
+   ]
+  },
+  {
+   "id": "t01",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "surface-nodes/bump-strong-noise",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/bump-strong-noise-attribute",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/heterogeneous-world-sun-tail",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/lamp-area-uv",
+     "kind": "scene"
+    },
+    {
+     "id": "bsdf/principled-dispersion",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/motion",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/attribute-standard-name",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/bevel",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/geometry-tangent",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/geometry-tangent-bump",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/local-beside-instances-ao",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/local-beside-instances-ao-reference",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/local-beside-instances-bevel",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/local-beside-instances-bevel-reference",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/local-beside-instances-raycast",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/local-beside-instances-raycast-reference",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/radial-tiling",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/raycast",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/tangent-node-bump",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/tangent-node-radial",
+     "kind": "scene"
+    },
+    {
+     "id": "surface-nodes/tangent-node-radial-y",
+     "kind": "scene"
+    },
+    {
+     "id": "displacement/both",
+     "kind": "scene"
+    },
+    {
+     "id": "displacement/bump",
+     "kind": "scene"
+    },
+    {
+     "id": "displacement/stateful-nodes",
+     "kind": "scene"
+    },
+    {
+     "id": "displacement/true-height",
+     "kind": "scene"
+    },
+    {
+     "id": "displacement/true-vector",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/area-degenerate-disk-plane",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/area-degenerate-ellipse-spread",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/area-degenerate-lamp-shader",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/area-degenerate-rect",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/area-degenerate-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/area-degenerate-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/area-zero-size",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/lamp-area-parametric",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/lamp-point-falloff",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/lamp-point-ies",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/lamp-point-normal",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/lamp-spot-parametric",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/lamp-sun-parametric",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/light-falloff-constant",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/light-falloff-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "lamps/light-falloff-quadratic",
+     "kind": "scene"
+    },
+    {
+     "id": "attribute_gate",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/linux_half_gates.py",
+      "--gate",
+      "attribute_gate"
+     ],
+     "timeout": 1800,
+     "estimate": 90
+    },
+    {
+     "id": "normal_gate",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/linux_half_gates.py",
+      "--gate",
+      "normal_gate"
+     ],
+     "timeout": 1800,
+     "estimate": 120
+    }
+   ]
+  },
+  {
+   "id": "t02",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "volume_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/volume_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 352,
+     "device52": true
+    },
+    {
+     "id": "mnee_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/mnee_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 3600,
+     "estimate": 690
+    },
+    {
+     "id": "volume_boundary_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/volume_boundary_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 783,
+     "device52": true
+    }
+   ]
+  },
+  {
+   "id": "t03",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "nodes_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/nodes_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 5400,
+     "estimate": 2471
+    }
+   ]
+  },
+  {
+   "id": "t04",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "curves/anisotropic-tangent-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/attributes-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/attributes-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/attributes-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/camera-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/closure-glass-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/closure-glossy-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/closure-glossy-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/closure-oren-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/closure-principled-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/closure-translucent-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/data-passes",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/denoising-features",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/emission-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/fast-gi",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/geometry-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/geometry-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/hair-info-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/hair-info-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/hair-info-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/instanced-mixed",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/light-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/lights-area-sun",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/ribbon-diffuse",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/ribbon-subdivisions-1",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/shadow-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/thick-diffuse",
+     "kind": "scene"
+    },
+    {
+     "id": "curves/thick-linear-diffuse",
+     "kind": "scene"
+    },
+    {
+     "id": "points/anisotropic-tangent",
+     "kind": "scene"
+    },
+    {
+     "id": "points/ao-node-on-points",
+     "kind": "scene"
+    },
+    {
+     "id": "points/attributes",
+     "kind": "scene"
+    },
+    {
+     "id": "points/beside-ao-node",
+     "kind": "scene"
+    },
+    {
+     "id": "points/beside-bevel",
+     "kind": "scene"
+    },
+    {
+     "id": "points/beside-caustics",
+     "kind": "scene"
+    },
+    {
+     "id": "points/beside-displacement",
+     "kind": "scene"
+    },
+    {
+     "id": "points/beside-light-linking",
+     "kind": "scene"
+    },
+    {
+     "id": "points/beside-raycast",
+     "kind": "scene"
+    },
+    {
+     "id": "points/beside-shadow-linking",
+     "kind": "scene"
+    },
+    {
+     "id": "points/beside-subsurface",
+     "kind": "scene"
+    },
+    {
+     "id": "points/beside-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "points/beside-volume-transparent",
+     "kind": "scene"
+    },
+    {
+     "id": "points/bump-on-points",
+     "kind": "scene"
+    },
+    {
+     "id": "points/camera-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "points/caustics-point-caster",
+     "kind": "scene"
+    },
+    {
+     "id": "points/closure-glass",
+     "kind": "scene"
+    },
+    {
+     "id": "points/closure-glossy",
+     "kind": "scene"
+    },
+    {
+     "id": "points/closure-oren",
+     "kind": "scene"
+    },
+    {
+     "id": "points/closure-principled",
+     "kind": "scene"
+    },
+    {
+     "id": "points/closure-translucent",
+     "kind": "scene"
+    },
+    {
+     "id": "points/data-passes",
+     "kind": "scene"
+    },
+    {
+     "id": "points/deform-3",
+     "kind": "scene"
+    },
+    {
+     "id": "points/deform-5",
+     "kind": "scene"
+    },
+    {
+     "id": "points/deform-info",
+     "kind": "scene"
+    },
+    {
+     "id": "points/deform-instanced",
+     "kind": "scene"
+    },
+    {
+     "id": "points/deform-transparent",
+     "kind": "scene"
+    },
+    {
+     "id": "points/denoising-features",
+     "kind": "scene"
+    },
+    {
+     "id": "points/diffuse",
+     "kind": "scene"
+    },
+    {
+     "id": "points/displacement-on-points",
+     "kind": "scene"
+    },
+    {
+     "id": "points/emission",
+     "kind": "scene"
+    },
+    {
+     "id": "points/fast-gi",
+     "kind": "scene"
+    },
+    {
+     "id": "points/geometry",
+     "kind": "scene"
+    },
+    {
+     "id": "points/instanced",
+     "kind": "scene"
+    },
+    {
+     "id": "points/light-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "points/lights-area-sun",
+     "kind": "scene"
+    },
+    {
+     "id": "points/motion-pass",
+     "kind": "scene"
+    },
+    {
+     "id": "points/object-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "points/object-motion-info",
+     "kind": "scene"
+    },
+    {
+     "id": "points/particle-info",
+     "kind": "scene"
+    },
+    {
+     "id": "points/particle-info-mesh",
+     "kind": "scene"
+    },
+    {
+     "id": "points/point-info",
+     "kind": "scene"
+    },
+    {
+     "id": "points/point-info-floor",
+     "kind": "scene"
+    },
+    {
+     "id": "points/point-info-instanced",
+     "kind": "scene"
+    },
+    {
+     "id": "points/raycast-on-points",
+     "kind": "scene"
+    },
+    {
+     "id": "points/shadow-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "points/shadow-linking-emissive",
+     "kind": "scene"
+    },
+    {
+     "id": "points/shadow-linking-emissive-textured",
+     "kind": "scene"
+    },
+    {
+     "id": "points/subsurface-on-points",
+     "kind": "scene"
+    },
+    {
+     "id": "points/transparent-limit",
+     "kind": "scene"
+    },
+    {
+     "id": "points/transparent-node-weighted",
+     "kind": "scene"
+    },
+    {
+     "id": "points/transparent-shadows",
+     "kind": "scene"
+    },
+    {
+     "id": "points/two-materials",
+     "kind": "scene"
+    },
+    {
+     "id": "points/volume-on-points",
+     "kind": "scene"
+    },
+    {
+     "id": "points/wireframe",
+     "kind": "scene"
+    },
+    {
+     "id": "points/with-curves",
+     "kind": "scene"
+    },
+    {
+     "id": "points/with-curves-info",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/absorption-point",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/blue-noise-first-scatter-point-equiangular",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/blue-noise-pure-ray-marching-heterogeneous-point",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/bsdf-in-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/catcher-background",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/catcher-emission",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/catcher-floor",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/catcher-heterogeneous",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/catcher-passes",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/catcher-sphere",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/catcher-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/catcher-world",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/denoise-heterogeneous-point",
+     "kind": "scene"
+    }
+   ]
+  },
+  {
+   "id": "t05",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "volumes/denoise-ray-marching-heterogeneous-point",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/denoise-scatter-point",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/denoising-depth-bounds",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/heterogeneous-in-heterogeneous-world",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/heterogeneous-in-world-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/heterogeneous-point",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/heterogeneous-point-distance",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/heterogeneous-point-equiangular",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/heterogeneous-spot",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/heterogeneous-sun",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/heterogeneous-world",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/heterogeneous-world-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/light-path-heterogeneous-equiangular",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/light-path-heterogeneous-point",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/light-path-overlap",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/linking-emission",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/linking-lamps",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/linking-tree-lamps",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/mixed-phase-world",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/motion-deforming-medium",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/motion-moving-heterogeneous",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/motion-moving-medium",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/motion-static-medium",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/passes-emission",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/passes-emission-heterogeneous",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/passes-heterogeneous",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/passes-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/passes-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/passes-volume-group",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/phase-draine",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/phase-fournier-forand",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/phase-mie",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/phase-mie-small",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/phase-rayleigh",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/principled-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/ray-marching-heterogeneous-distance",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/ray-marching-heterogeneous-equiangular",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/ray-marching-heterogeneous-point",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/ray-marching-heterogeneous-sun",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/ray-marching-homogeneous-point",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/ray-marching-max-steps",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/ray-marching-tree-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/scatter-area",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/scatter-area-ellipse",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/scatter-mesh-light",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/scatter-point",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/scatter-point-distance",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/scatter-point-equiangular",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/scatter-spot",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/scatter-sun",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/scatter-world",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/sobol-burley-heterogeneous-point",
+     "kind": "scene"
+    }
+   ]
+  },
+  {
+   "id": "t06",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "volumes/sobol-burley-tree-lamps",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/tree-heterogeneous",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/tree-lamps",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/tree-lamps-equiangular",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/tree-mesh",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/tree-point",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/tree-world",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/volume-coefficients",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/volume-emission",
+     "kind": "scene"
+    },
+    {
+     "id": "volumes/world-volume-point",
+     "kind": "scene"
+    }
+   ]
+  },
+  {
+   "id": "s01",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "ao/ao-node",
+     "kind": "scene"
+    },
+    {
+     "id": "ao/fast-gi-additive",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/adaptive",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/ao",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/aov-color",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/aov-value",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/background",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/combined",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/combined-camera",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/deformation-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/denoise",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/depth",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/diffuse",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/diffuse-albedo",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/diffuse-color",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/diffuse-direct",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/diffuse-indirect",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/emission",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/floor-named-uv",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/glossy",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/glossy-camera-albedo",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/glossy-color",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/glossy-direct",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/glossy-indirect",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/instanced",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/material-id",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/mist",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/normal",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/object-id",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/position",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/roughness",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/shadow-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/transmission",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/transmission-color",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/transmission-direct",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/transmission-indirect",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/uv",
+     "kind": "scene"
+    },
+    {
+     "id": "bake/zero-area-smooth-normal",
+     "kind": "scene"
+    },
+    {
+     "id": "bsdf/ashikhmin-shirley",
+     "kind": "scene"
+    },
+    {
+     "id": "bsdf/beckmann",
+     "kind": "scene"
+    },
+    {
+     "id": "bsdf/glass-anisotropic",
+     "kind": "scene"
+    },
+    {
+     "id": "bsdf/glossy-filter",
+     "kind": "scene"
+    },
+    {
+     "id": "bsdf/metallic",
+     "kind": "scene"
+    },
+    {
+     "id": "bsdf/metallic-film",
+     "kind": "scene"
+    },
+    {
+     "id": "bsdf/principled-anisotropic-transmission",
+     "kind": "scene"
+    },
+    {
+     "id": "bsdf/principled-layers",
+     "kind": "scene"
+    },
+    {
+     "id": "bsdf/toon",
+     "kind": "scene"
+    },
+    {
+     "id": "bsdf/velvet",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/border-corner",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/border-inner",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/central-cylindrical",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/equiangular-cubemap-face",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/equirectangular",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/equirectangular-range-dof",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/fisheye-dof-sobol-burley",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/fisheye-equidistant",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/fisheye-equisolid",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/fisheye-lens-polynomial",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/mirrorball",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/orthographic",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/orthographic-dof",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/perspective-bokeh",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/perspective-dof",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/stereo-equirectangular-pole-merge",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/stereo-fisheye-right-dof",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/stereo-perspective-left",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/stereo-perspective-right-dof",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/window-central-cylindrical",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/window-equiangular-cubemap-face",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/window-equirectangular",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/window-fisheye-equidistant",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/window-fisheye-equisolid",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/window-fisheye-lens-polynomial",
+     "kind": "scene"
+    },
+    {
+     "id": "cameras/window-mirrorball",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/camera-motion-ao-node",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/camera-motion-fast-gi-additive",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-adaptive-volumes-subsurface",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-ao-node-volume-motion-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-bake-approximate-catcher-world",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-bake-caustics",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-bake-curves",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-bake-light-linking",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-bake-light-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-bake-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-bake-points",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-bake-shadow-linking",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-bake-subsurface",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-bake-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-camera-motion-heterogeneous-linking-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-camera-motion-subsurface-caustics",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-cryptomatte-curves-points-motion-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-displacement-motion-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-heterogeneous-subsurface-caustics",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-lamp-light-path-depth",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-light-groups-tree-linking-denoise",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-light-linking-shadow-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-motion-shadow-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-motion-shadow-linking",
+     "kind": "scene"
+    }
+   ]
+  },
+  {
+   "id": "s02",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "combinations/cov-outward-glass-caustics-subsurface",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-outward-subsurface-methods",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-outward-subsurface-principled",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-panoramic-world-volume-curves-points",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-principled-volume-mesh-attribute",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-shadow-light-path-depth",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-stereo-motion-subsurface",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-subsurface-light-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-subsurface-skin-legacy-linking-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-surface-lamp-near-delta",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-surface-lamp-near-delta-narrow",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-volume-light-path-depth",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-world-light-path-depth",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-world-volume-linking",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/cov-world-volume-subsurface-caustics",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/enclosure-emissive-panel",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/enclosure-emissive-panel-mix",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/enclosure-emissive-panel-oren-nayar",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/enclosure-emissive-panel-translucent",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/glass-fast-gi-additive",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/glass-receiver-transparent-lighting-4",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/link-ao-node",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/link-fast-gi-additive",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/link-transparent-lighting-4",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/link-transparent-lighting-5",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/moving-transparent-fast-gi",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/principled-ao-node",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/principled-receiver-transparent-lighting-5",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/replace-transparent-fast-gi",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/terminator-fast-gi-additive",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-ao-node",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-camera-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-catcher-approximate",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-catcher-point-light",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-deforming-motion-5",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-fast-gi-additive",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-glass-receiver-transparent-lighting-6",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-glass-render",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-glass-sphere",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-link-transparent-lighting-6",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-link-transparent-lighting-7",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-object-motion-4",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-principled",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-principled-receiver-transparent-lighting-7",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-replace-transparent-fast-gi",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-shadow-terminator",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-textured-emitter",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-textured-plane-normal-map",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-transparent-lighting-0",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-transparent-lighting-1",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-transparent-lighting-2",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-transparent-lighting-3",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-transparent-lighting-4",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-transparent-lighting-5",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-transparent-lighting-6",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-transparent-lighting-7",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-triangle-lighting-1",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-triangle-lighting-2",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-triangle-lighting-3",
+     "kind": "scene"
+    },
+    {
+     "id": "combinations/tree-triangle-lighting-5",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/ao-beside",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/ao-on-curves",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/bevel-beside",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/bevel-on-curves",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/caustics-blocker",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/caustics-caster-rejected",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/caustics-receiver",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/caustics-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/displacement-beside",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/displacement-on-curves",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/linking-blockers",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/linking-emissive",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/linking-emissive-textured",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/linking-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-camera-deform",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-deform-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-deform-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-deform-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-info-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-info-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-mixed-instanced",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-object-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-object-ribbon",
+     "kind": "scene"
+    }
+   ]
+  },
+  {
+   "id": "s03",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "curves-b/motion-object-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-pass-both",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-pass-deform",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-pass-object",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-pass-static",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-radius-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-radius-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/motion-radius-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/raycast-beside",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/shadow-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/shadow-catcher-on-curves",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/shadow-constant-triangles",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/shadow-dense",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/shadow-fast-gi",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/shadow-light-path",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/shadow-limit",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/shadow-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/shadow-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/shadow-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/shadow-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/subsurface-beside",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/subsurface-on-curves",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/volume-absorption",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/volume-heterogeneous",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/volume-ray-marching",
+     "kind": "scene"
+    },
+    {
+     "id": "curves-b/volume-scatter",
+     "kind": "scene"
+    },
+    {
+     "id": "denoise/beckmann-off",
+     "kind": "scene"
+    },
+    {
+     "id": "denoise/beckmann-on",
+     "kind": "scene"
+    },
+    {
+     "id": "denoise/catcher-point-light-off-noisy",
+     "kind": "scene"
+    },
+    {
+     "id": "denoise/catcher-point-light-on-noisy",
+     "kind": "scene"
+    },
+    {
+     "id": "denoise/enclosure-emissive-panel-off",
+     "kind": "scene"
+    },
+    {
+     "id": "denoise/enclosure-emissive-panel-on",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-absorption-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-absorption-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-absorption-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-absorption-triangle",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-black-lane",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-coat-tilt",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-data-passes",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-denoising-features",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-direct-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-direct-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-direct-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-direct-triangle",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-filter-glossy",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-ggx-mix",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-light-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-melanin-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-melanin-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-melanin-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-melanin-tint-random",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-melanin-triangle",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-random-linked",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-rough",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-sharp",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/chiang-smooth",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-absorption",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-circular-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-default-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-default-shadows-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-default-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-denoising",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-direct-coloring",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-ellipse-narrow",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-ellipse-wide",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-far-field",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-lobes",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-melanin-tint",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-mix-glossy",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-mix-principled",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-mix-two",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-near-field",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-passes",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-r-only",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-random",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-rough",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-smooth-tilted",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-triangles",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-triangles-ellipse",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/huang-tt-only",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/reflection-data-passes",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/reflection-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/reflection-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/reflection-rough",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/reflection-tangent-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/reflection-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/reflection-transmission-mix-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/reflection-transmission-mix-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/reflection-transparent-triangle",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/reflection-triangle",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/transmission-linear",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/transmission-ribbon",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/transmission-rough",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/transmission-thick",
+     "kind": "scene"
+    },
+    {
+     "id": "hair/transmission-triangle",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/camera-deforming-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/camera-object-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/clamps-filters-exclude",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/deforming-smooth-normal-bump",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/light-cast-shadow",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/light-cast-shadow-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/light-max-bounces",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/light-max-bounces-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/linking-glass",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/linking-hdri",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/linking-motion-flat",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/linking-motion-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/linking-transparent",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/motion-glass-principled-lamps",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/motion-hdri-emitter",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/moving-deforming-emitter",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/moving-lamps",
+     "kind": "scene"
+    },
+    {
+     "id": "light-motion/moving-lamps-object-shader",
+     "kind": "scene"
+    },
+    {
+     "id": "light-tree/lamps-and-mesh-lights",
+     "kind": "scene"
+    },
+    {
+     "id": "light-tree/light-linking",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/broad-lighting-0",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/broad-lighting-1",
+     "kind": "scene"
+    }
+   ]
+  },
+  {
+   "id": "s04",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "linux-gates/broad-lighting-10",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/broad-lighting-11",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/broad-lighting-2",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/broad-lighting-3",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/broad-lighting-4",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/broad-lighting-5",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/broad-lighting-6",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/broad-lighting-7",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/broad-lighting-8",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/broad-lighting-9",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/closed-volumes",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/deforming-motion-0",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/deforming-motion-1",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/deforming-motion-2",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/deforming-motion-3",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/deforming-motion-4",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/deforming-motion-5",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/deforming-motion-6",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/deforming-motion-7",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/glass-render",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/object-motion-0",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/object-motion-1",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/object-motion-2",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/object-motion-3",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/object-motion-4",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/object-motion-5",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/object-motion-6",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/object-motion-7",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/textured-plane",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/transparent-lighting-0",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/transparent-lighting-1",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/transparent-lighting-2",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/transparent-lighting-3",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/transparent-lighting-4",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/transparent-lighting-5",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/transparent-lighting-6",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/transparent-lighting-7",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/triangle-lighting-0",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/triangle-lighting-1",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/triangle-lighting-2",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/triangle-lighting-3",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/triangle-lighting-5",
+     "kind": "scene"
+    },
+    {
+     "id": "linux-gates/world-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/anisotropic-glass-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/anisotropic-principled-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/area-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/area-disk-spread-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/area-zero-spread-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/background-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/beckmann-refraction-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/glass-sphere-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/glass-sphere-deforming",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/glass-sphere-fast-gi",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/glass-sphere-moving-caster",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/glass-sphere-object-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/huang-hair-moving-receiver",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/huang-hair-receiver",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/lamp-shader-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/light-linking-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/light-tree-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/spot-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/spot-sphere-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "mnee/volume-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/aovs",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/cryptomatte",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/data-passes",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/denoising-features",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/denoising-features-weighted",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/denoising-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/denoising-motion-deforming",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/denoising-motion-equirectangular",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/denoising-motion-orthographic",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/denoising-motion-transparent",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/denoising-motion-transparent-orthographic",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/holdout-transparent-film",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/light-groups",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/light-passes",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/motion-central-cylindrical",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/motion-deforming",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/motion-equiangular-cubemap-face",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/motion-equirectangular",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/motion-fisheye-equidistant",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/motion-fisheye-equisolid",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/motion-fisheye-lens-polynomial",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/motion-mirrorball",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/motion-orthographic",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/sample-count",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-ao-ao-node",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-ao-fast-gi-additive",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-bsdf-ashikhmin-shirley",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-bsdf-beckmann",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-bsdf-glossy-filter",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-bsdf-metallic",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-bsdf-toon",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-bsdf-velvet",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-combinations-enclosure-emissive-panel-mix",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-combinations-glass-fast-gi-additive",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-combinations-link-transparent-lighting-4",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-combinations-tree-principled",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-combinations-tree-textured-emitter",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-combinations-tree-transparent-lighting-3",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-displacement-both",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-displacement-true-vector",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-light-motion-clamps-filters-exclude",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-light-motion-linking-hdri",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-light-motion-motion-hdri-emitter",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-light-tree-lamps-and-mesh-lights",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-light-tree-light-linking",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-linux-gates-broad-lighting-0",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-linux-gates-broad-lighting-5",
+     "kind": "scene"
+    }
+   ]
+  },
+  {
+   "id": "s05",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "passes/with-linux-gates-deforming-motion-0",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-linux-gates-glass-render",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-linux-gates-object-motion-0",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-linux-gates-triangle-lighting-1",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-mnee-glass-sphere-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-mnee-glass-sphere-object-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-shadow-catcher-catcher-approximate",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-shadow-catcher-catcher-point-light",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-starter-glass-and-area-light",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-starter-textured-plane",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-surface-nodes-bevel",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-surface-nodes-radial-tiling",
+     "kind": "scene"
+    },
+    {
+     "id": "passes/with-surface-nodes-raycast",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/adaptive-auto",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/adaptive-blue-noise",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/adaptive-coarse",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/adaptive-sobol-burley",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/adaptive-threshold",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/blue-noise-first",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/blue-noise-first-ao-ao-node",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/blue-noise-first-shadow-catcher-catcher-point-light",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/blue-noise-pure",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/blue-noise-pure-ao-fast-gi-additive",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/blue-noise-pure-light-motion-linking-hdri",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/blue-noise-pure-light-tree-lamps-and-mesh-lights",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/blue-noise-round",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/scrambling-distance",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/sobol-burley",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/sobol-burley-combinations-camera-motion-fast-gi-additive",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/sobol-burley-combinations-tree-textured-plane-normal-map",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/sobol-burley-light-motion-clamps-filters-exclude",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/sobol-burley-mnee-glass-sphere-caustic",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/sobol-burley-surface-nodes-bevel",
+     "kind": "scene"
+    },
+    {
+     "id": "sampling/tabulated-sobol-room",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-catcher/catcher-approximate",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-catcher/catcher-point-light",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-catcher/caustics-receiver",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/ao-pass",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/blockers",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/caustics",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/emissive-textured",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/fast-gi",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/hdri-world",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/light-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/shadow-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/volume",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/volume-emission-passes",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/volume-light-passes",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/volume-light-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/volume-spot-area",
+     "kind": "scene"
+    },
+    {
+     "id": "shadow-linking/volume-triangles",
+     "kind": "scene"
+    },
+    {
+     "id": "sky/hosek-wilkie",
+     "kind": "scene"
+    },
+    {
+     "id": "sky/multiple-scattering",
+     "kind": "scene"
+    },
+    {
+     "id": "sky/multiple-scattering-sun",
+     "kind": "scene"
+    },
+    {
+     "id": "sky/multiple-scattering-sun-guiding",
+     "kind": "scene"
+    },
+    {
+     "id": "sky/preetham",
+     "kind": "scene"
+    },
+    {
+     "id": "sky/single-scattering",
+     "kind": "scene"
+    },
+    {
+     "id": "sky/single-scattering-sun-guiding",
+     "kind": "scene"
+    },
+    {
+     "id": "sky/sun-guiding-emissive-panel",
+     "kind": "scene"
+    },
+    {
+     "id": "sky/sun-guiding-light-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "sky/sun-guiding-light-tree-panel",
+     "kind": "scene"
+    },
+    {
+     "id": "starter/diffuse-triangle",
+     "kind": "scene"
+    },
+    {
+     "id": "starter/glass-and-area-light",
+     "kind": "scene"
+    },
+    {
+     "id": "starter/glossy-sphere-point-light",
+     "kind": "scene"
+    },
+    {
+     "id": "starter/textured-plane",
+     "kind": "scene"
+    },
+    {
+     "id": "subdivision/linear-object-attribute",
+     "kind": "scene"
+    },
+    {
+     "id": "subdivision/linear-pixel",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/aov-cryptomatte-bump",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/aov-only-bump",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/aov-principled-bump",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/burley-beside-points",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/burley-sobol",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/deformation-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/denoise-on",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/holdout",
+     "kind": "scene"
+    }
+   ]
+  },
+  {
+   "id": "s06",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "subsurface/light-linking",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/mnee-receivers",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/mnee-receivers-area",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/mnee-receivers-background",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/mnee-receivers-spot",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/node-burley",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/node-methods",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/node-skin",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/object-motion",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/principled-burley",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/principled-marble",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/principled-random-walk",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/principled-skin",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/principled-thin-wall",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/principled-thin-wall-mixed",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/principled-wax",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/shadow-catcher",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/shadow-linking",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/volume-crossing",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/volume-enclosed",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/walk-beside-instances",
+     "kind": "scene"
+    },
+    {
+     "id": "subsurface/with-passes",
+     "kind": "scene"
+    },
+    {
+     "id": "world/portal-light-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "world/portal-no-mis",
+     "kind": "scene"
+    },
+    {
+     "id": "world/portal-sun-guiding",
+     "kind": "scene"
+    },
+    {
+     "id": "world/portal-two",
+     "kind": "scene"
+    },
+    {
+     "id": "world/portal-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "world/portal-volume-heterogeneous",
+     "kind": "scene"
+    },
+    {
+     "id": "world/portal-volume-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "world/portal-window",
+     "kind": "scene"
+    },
+    {
+     "id": "world/ray-portal",
+     "kind": "scene"
+    },
+    {
+     "id": "world/ray-portal-depth",
+     "kind": "scene"
+    },
+    {
+     "id": "world/ray-portal-light-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "world/ray-portal-mix",
+     "kind": "scene"
+    },
+    {
+     "id": "world/ray-portal-moved",
+     "kind": "scene"
+    },
+    {
+     "id": "world/ray-portal-volume",
+     "kind": "scene"
+    },
+    {
+     "id": "world/two-background-lights",
+     "kind": "scene"
+    },
+    {
+     "id": "world/two-background-lights-portal",
+     "kind": "scene"
+    },
+    {
+     "id": "world/two-background-lights-tree",
+     "kind": "scene"
+    },
+    {
+     "id": "assets/bench_01",
+     "kind": "scene"
+    },
+    {
+     "id": "assets/bench_01-hdri",
+     "kind": "scene"
+    }
+   ]
+  },
+  {
+   "id": "g01",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "device_gate",
+     "kind": "gate",
+     "noOutput": true,
+     "verdictBy": "exit",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<repo>/native/tools/device_gate.py",
+      "run"
+     ],
+     "timeout": 1200,
+     "estimate": 20
+    },
+    {
+     "id": "closest_queue_gate",
+     "kind": "gate",
+     "noOutput": true,
+     "verdictBy": "exit",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<repo>/native/tools/closest_queue_gate.py",
+      "run"
+     ],
+     "timeout": 1200,
+     "estimate": 25
+    },
+    {
+     "id": "camera_queue_gate",
+     "kind": "gate",
+     "noOutput": true,
+     "verdictBy": "exit",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<repo>/native/tools/camera_queue_gate.py",
+      "run"
+     ],
+     "timeout": 1200,
+     "estimate": 22
+    },
+    {
+     "id": "background_queue_gate",
+     "kind": "gate",
+     "noOutput": true,
+     "verdictBy": "exit",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<repo>/native/tools/background_queue_gate.py",
+      "run"
+     ],
+     "timeout": 1200,
+     "estimate": 29
+    },
+    {
+     "id": "shader_data_gate",
+     "kind": "gate",
+     "noOutput": true,
+     "verdictBy": "exit",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<repo>/native/tools/shader_data_gate.py",
+      "run"
+     ],
+     "timeout": 1200,
+     "estimate": 48
+    },
+    {
+     "id": "svm_surface_gate",
+     "kind": "gate",
+     "noOutput": true,
+     "verdictBy": "exit",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<repo>/native/tools/svm_surface_gate.py",
+      "run"
+     ],
+     "timeout": 1800,
+     "estimate": 59
+    },
+    {
+     "id": "svm_world_gate",
+     "kind": "gate",
+     "noOutput": true,
+     "verdictBy": "exit",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<repo>/native/tools/svm_world_gate.py",
+      "run"
+     ],
+     "timeout": 1200,
+     "estimate": 44
+    },
+    {
+     "id": "tier_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/tier_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 600,
+     "estimate": 8
+    },
+    {
+     "id": "bake_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/bake_gate.py"
+     ],
+     "timeout": 600,
+     "estimate": 32,
+     "mutex": "mainbuild"
+    },
+    {
+     "id": "shadow_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/shadow_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 1200,
+     "estimate": 50
+    },
+    {
+     "id": "scene_edit_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/scene_edit_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 1200,
+     "estimate": 57
+    },
+    {
+     "id": "transparent_shadow_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/transparent_shadow_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 1800,
+     "estimate": 154
+    },
+    {
+     "id": "hair_huang_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/hair_huang_gate.py"
+     ],
+     "timeout": 1800,
+     "estimate": 122,
+     "mutex": "mainbuild",
+     "verdictBy": "summary"
+    },
+    {
+     "id": "point_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/point_gate.py"
+     ],
+     "timeout": 2400,
+     "estimate": 130,
+     "mutex": "mainbuild",
+     "verdictBy": "summary"
+    },
+    {
+     "id": "glass_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/glass_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 311
+    },
+    {
+     "id": "curve_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/curve_gate.py"
+     ],
+     "timeout": 2400,
+     "estimate": 92,
+     "mutex": "mainbuild",
+     "verdictBy": "summary"
+    },
+    {
+     "id": "bsdf_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/bsdf_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 230
+    },
+    {
+     "id": "hair_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/hair_gate.py"
+     ],
+     "timeout": 2400,
+     "estimate": 400,
+     "mutex": "mainbuild",
+     "verdictBy": "summary"
+    },
+    {
+     "id": "principled_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/principled_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 745
+    }
+   ]
+  },
+  {
+   "id": "g02",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "light_tree_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/light_tree_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 395
+    },
+    {
+     "id": "shadow_catcher_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/shadow_catcher_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 776
+    },
+    {
+     "id": "shadow_linking_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/shadow_linking_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 4800,
+     "estimate": 1024
+    },
+    {
+     "id": "broad_lighting_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/broad_lighting_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 127
+    },
+    {
+     "id": "lighting_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/lighting_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 84
+    },
+    {
+     "id": "lighting_mis_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/lighting_mis_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 104
+    },
+    {
+     "id": "feature_combination_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/feature_combination_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 45
+    },
+    {
+     "id": "shadow_terminator_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/shadow_terminator_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 132
+    }
+   ]
+  },
+  {
+   "id": "g03",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "triangle_lighting_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/triangle_lighting_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 82
+    },
+    {
+     "id": "object_motion_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/object_motion_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 136
+    },
+    {
+     "id": "deforming_motion_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/deforming_motion_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 236
+    },
+    {
+     "id": "camera_motion_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/camera_motion_gate.py",
+      "--skip-build"
+     ],
+     "timeout": 2400,
+     "estimate": 230
+    }
+   ]
+  },
+  {
+   "id": "g04",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "curve_mixed_gate",
+     "kind": "gate",
+     "cmd": [
+      "<repo>/native/tools/curve_mixed_gate.py"
+     ],
+     "timeout": 7200,
+     "estimate": 2353,
+     "mutex": "mainbuild",
+     "verdictBy": "summary"
+    }
+   ]
+  },
+  {
+   "id": "g05",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "pipeline_cache_gate",
+     "kind": "gate",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<repo>/native/tools/pipeline_cache_gate.py"
+     ],
+     "timeout": 2400,
+     "estimate": 526
+    },
+    {
+     "id": "microfacet_gate",
+     "kind": "gate",
+     "noOutput": true,
+     "verdictBy": "exit",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<repo>/native/tools/microfacet_gate.py",
+      "native"
+     ],
+     "timeout": 2400,
+     "estimate": 111
+    },
+    {
+     "id": "render_gate_linux",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/render_gate_linux.py"
+     ],
+     "timeout": 2700,
+     "estimate": 31
+    },
+    {
+     "id": "bake_gate_webgpu",
+     "kind": "gate",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<repo>/native/tools/bake_gate.py",
+      "--backend",
+      "webgpu"
+     ],
+     "timeout": 1200,
+     "estimate": 119
+    },
+    {
+     "id": "image_gate",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/linux_half_gates.py",
+      "--gate",
+      "image_gate"
+     ],
+     "timeout": 1800,
+     "estimate": 120
+    },
+    {
+     "id": "image_file_gate",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/linux_half_gates.py",
+      "--gate",
+      "image_file_gate"
+     ],
+     "timeout": 1800,
+     "estimate": 120
+    },
+    {
+     "id": "packed_state_gate",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/linux_half_gates.py",
+      "--gate",
+      "packed_state_gate"
+     ],
+     "timeout": 600,
+     "estimate": 10
+    },
+    {
+     "id": "specialization_glass_render",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/spec_checks.py",
+      "specialization",
+      "--gate",
+      "glass_render"
+     ],
+     "timeout": 7200,
+     "estimate": 235
+    },
+    {
+     "id": "specialization_principled_render",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/spec_checks.py",
+      "specialization",
+      "--gate",
+      "principled_render"
+     ],
+     "timeout": 10800,
+     "estimate": 900
+    }
+   ]
+  },
+  {
+   "id": "r01",
+   "budget": 5400,
+   "jobs": [
+    {
+     "id": "oracle_replays_linux",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/oracle_replays.py",
+      "--scenes",
+      "<tools>/validation-runner/lists/canary.txt.scenes",
+      "--replay-build",
+      "<run>/linux/replay-build"
+     ],
+     "timeout": 3600,
+     "estimate": 787
+    },
+    {
+     "id": "host_gate",
+     "kind": "gate",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<repo>/native/tools/host_gate.py",
+      "--jobs",
+      "6"
+     ],
+     "timeout": 2400,
+     "estimate": 214
+    },
+    {
+     "id": "dotnet_debug",
+     "kind": "gate",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<tools>/dotnet_check.py",
+      "--config",
+      "Debug"
+     ],
+     "timeout": 4200,
+     "estimate": 400
+    },
+    {
+     "id": "dotnet_release",
+     "kind": "gate",
+     "mutex": "mainbuild",
+     "cmd": [
+      "<tools>/dotnet_check.py",
+      "--config",
+      "Release",
+      "--expect-stale-payload"
+     ],
+     "timeout": 4200,
+     "estimate": 480,
+     "findingKey": "findings",
+     "notJudged": "the payload is the old pin's until the restage (plan Part 5 section 9 session 1 steps 2 and 10): the pack driver's \"payload is STALE\" warning is EXPECTED; Release is judged after the restage"
+    }
+   ]
+  },
+  {
+   "id": "m01",
+   "budget": 16200,
+   "jobs": [
+    {
+     "id": "size_envelope",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/size_envelope.py",
+      "--dump",
+      "<run>/linux/dump"
+     ],
+     "timeout": 14000,
+     "estimate": 9509
+    },
+    {
+     "id": "unspecialized_compile_smoke",
+     "kind": "gate",
+     "cmd": [
+      "<tools>/spec_checks.py",
+      "smoke"
+     ],
+     "timeout": 5400,
+     "estimate": 600,
+     "findingKey": "warnings"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,7 @@
+volumes/heterogeneous-point-equiangular (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.56e-06   6.88e-06   3.61e-08             0          3
+      worst x=12 y=14 R: ref 0.227386117 got 0.227387682 (0.0164x tolerance)
+  verdict: perfect

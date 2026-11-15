@@ -1,0 +1,101 @@
+{
+  "gate": "glass_render",
+  "binarySha256": "64650cccd9fee917145cc65a488ffea45c1b11f59e26145734dc2b18a63375cf",
+  "default": {
+    "thresholdBytes": 940000,
+    "largestEntryBytes": 587839,
+    "largestEntry": "shade_surface",
+    "estimatedInstructions": 29392,
+    "warnings": 0
+  },
+  "lowered": {
+    "thresholdBytes": 200000,
+    "largestEntryBytes": 587839,
+    "largestEntry": "shade_surface",
+    "estimatedInstructions": 29392,
+    "warnings": 7
+  },
+  "defaultSizeWarnings": [],
+  "loweredSizeWarnings": [
+    "pipeline 'init_camera' (camera module) inlines to 217655 bytes of WGSL, at or above the 200000-byte size guard: about 10883 backend instructions estimated (8776 to 15115); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'intersect_closest' (closest module) inlines to 227816 bytes of WGSL, at or above the 200000-byte size guard: about 11391 backend instructions estimated (9186 to 15821); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'prepare_shader_data' (surface module) inlines to 255631 bytes of WGSL, at or above the 200000-byte size guard: about 12782 backend instructions estimated (10308 to 17752); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'prepare_surface' (surface module) inlines to 318713 bytes of WGSL, at or above the 200000-byte size guard: about 15936 backend instructions estimated (12851 to 22133); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'shade_surface_light' (surface module) inlines to 501865 bytes of WGSL, at or above the 200000-byte size guard: about 25093 backend instructions estimated (20236 to 34852); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'connect_surface_light' (surface module) inlines to 371850 bytes of WGSL, at or above the 200000-byte size guard: about 18592 backend instructions estimated (14994 to 25823); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'shade_surface' (surface module) inlines to 587839 bytes of WGSL, at or above the 200000-byte size guard: about 29392 backend instructions estimated (23703 to 40822); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged"
+  ],
+  "films": {
+    "run.cpu.film.bin": "956377d37e6f3e89d3c5cc6bcf926466d62955d178b1b9ae669c9b1c64169982",
+    "run.cpu.ppm": "073bc2d684d2606cab53e56587725c7168310c419abbe194ba4240a8ba22a024",
+    "run.gpu.film.bin": "c331f1d65083eb1bcfbcfd0eaf628d4a3dba255c2b1cc4ab075e714069bec7b4",
+    "run.gpu.ppm": "073bc2d684d2606cab53e56587725c7168310c419abbe194ba4240a8ba22a024"
+  },
+  "filmsIdentical": true,
+  "gpuBitIdentity": {
+    "run.gpu.film.bin": {
+      "identical": true
+    },
+    "run.gpu.ppm": {
+      "identical": true
+    }
+  },
+  "againstCpu": {
+    "default": {
+      "run.gpu.film.bin": {
+        "cpu": "run.cpu.film.bin",
+        "components": 12288,
+        "practicalFailures": 0,
+        "strictDifferences": 6,
+        "nonfinite": 0,
+        "maxAbs": 1.9073486328125e-06,
+        "passed": true
+      }
+    },
+    "lowered": {
+      "run.gpu.film.bin": {
+        "cpu": "run.cpu.film.bin",
+        "components": 12288,
+        "practicalFailures": 0,
+        "strictDifferences": 6,
+        "nonfinite": 0,
+        "maxAbs": 1.9073486328125e-06,
+        "passed": true
+      }
+    }
+  },
+  "pipelines": 8,
+  "modules": {
+    "000-camera.wgsl": "775900f002f691a316f4e688870204c75026a0d44a97b6e6844cb109a52fb2fa",
+    "001-closest.wgsl": "1a97d08d50d2d50f7f4d523eeb364e3a5584716f6a27ce6f360935ee11fab330",
+    "002-surface.wgsl": "a055330abaed7ed6e747a4baa92693e5f8bf57084b32227522fa56fa7eef0d68",
+    "003-background.wgsl": "01100c2fea034bcf8894c82c0351c7f43214a0181b1035f89695679f3e9b4624",
+    "source-background.wgsl": "1533fc6a253b4aa1eb66121ddf905d8006023e8c300f1f6e0d0a6d34af168920",
+    "source-camera.wgsl": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8",
+    "source-closest.wgsl": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73",
+    "source-surface.wgsl": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+  },
+  "degraded": [
+    false,
+    false
+  ],
+  "tier": [
+    "full",
+    "full"
+  ],
+  "checks": {
+    "default threshold reported": true,
+    "largest entry measured": true,
+    "no size warning at the default threshold": true,
+    "lowered threshold reported": true,
+    "size warnings raised when lowered": true,
+    "warnings on stderr": true,
+    "degraded and tier unchanged": true,
+    "same pipelines built": true,
+    "byte-identical WGSL modules": true,
+    "same film and image files": true,
+    "CPU films and other files bit-identical": true,
+    "WebGPU films within practical of their CPU films": true
+  },
+  "passed": true
+}

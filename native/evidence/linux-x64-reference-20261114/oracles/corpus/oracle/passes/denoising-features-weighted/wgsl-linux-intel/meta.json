@@ -1,0 +1,27 @@
+{
+  "sceneId": "passes/denoising-features-weighted",
+  "sceneSha256": "86c371cf3729e0ce5cc870481545131b4807e6c5c5c1763214298572163fd362",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "wgslArithmetic": "x64-sse4.2",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 4.76837158203125e-07,
+  "renderSeconds": [0.728461,0.317598],
+  "filmSha256": ["6903ea72e3e2188f1edacf40961441321379b8726cf8faffd92d023c932589fc","4ba3913575286d7f4903a90f516631322558d6b141ce080f15945741469dc89e"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Denoising Albedo", "type": "denoising_albedo", "components": 3, "written": true, "filmSha256": ["ec237cd7528b2374a677981193b7495927b826b18fa5dd0a03873be2dec06340","95310f4bd245d48f79fc95125aeeb75e0feca2528d251168de77934d5f78dd1b"]},
+    {"index": 1, "name": "Denoising Normal", "type": "denoising_normal", "components": 3, "written": true, "filmSha256": ["986f701c6eefc854a5f3e081dae4c0d2ecac1ced0bb8a9c144857b942123ae7e","986f701c6eefc854a5f3e081dae4c0d2ecac1ced0bb8a9c144857b942123ae7e"]},
+    {"index": 2, "name": "Denoising Specular Albedo", "type": "denoising_specular_albedo", "components": 3, "written": true, "filmSha256": ["21e4af64f869d98b10c582c312e62a0f6319f2a42de3fdb03ddcaaf808589606","fff022162fc2d91c8fde6b6d20ddbd72f55bd191c9789f05dd9112a3818ab4a1"]},
+    {"index": 3, "name": "Denoising Roughness", "type": "denoising_roughness", "components": 1, "written": true, "filmSha256": ["e4b3a98986f52c3a4fd2b092d8c61ea0174fce982dea407b6734546b39750d7d","51468c6b9dad2261c26ad136ef78d207501d8c3934b9a06ea83b6d05d7ac7286"]},
+    {"index": 4, "name": "Denoising Depth", "type": "denoising_depth", "components": 1, "written": true, "filmSha256": ["c8b01564c74eec75ee68b93ae8b34ad2ac99d7915835c301877cd254b99a77f6","5c7ac63d3e55d020214dd1ebc7d8c8ebf9aab3185f27b905b1b5d463baedcc7c"]}
+  ],
+  "warnings": []
+}

@@ -1,0 +1,21 @@
+passes/light-passes (48x36)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=9.54e-07 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.91e-06   8.97e-07   1.09e-07             0         14
+      worst x=10 y=3 G: ref 0.132844374 got 0.132844493 (0.00156x tolerance)
+      pass DiffDir                  diffuse_direct         maxAbs=  2.38e-07 practicalFail=0 strictDiff=5
+      pass DiffInd                  diffuse_indirect       maxAbs=  1.43e-06 practicalFail=0 strictDiff=2
+      pass DiffCol                  diffuse_color          maxAbs=  5.96e-08 practicalFail=0 strictDiff=0
+      pass GlossDir                 glossy_direct          maxAbs=  1.43e-06 practicalFail=0 strictDiff=18
+      pass GlossInd                 glossy_indirect        maxAbs=  7.15e-07 practicalFail=0 strictDiff=8
+      pass GlossCol                 glossy_color           maxAbs=  5.96e-08 practicalFail=0 strictDiff=0
+      pass TransDir                 transmission_direct    maxAbs=  9.91e-09 practicalFail=0 strictDiff=0
+      pass TransInd                 transmission_indirect  maxAbs=  7.45e-08 practicalFail=0 strictDiff=0
+      pass TransCol                 transmission_color     maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass Emit                     emission               maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Env                      background             maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Diffuse                  diffuse                maxAbs=  9.54e-07 practicalFail=0 strictDiff=8
+      pass Glossy                   glossy                 maxAbs=  1.43e-06 practicalFail=0 strictDiff=27
+      pass Transmission             transmission           maxAbs=  7.45e-08 practicalFail=0 strictDiff=0
+  verdict: perfect

@@ -1,0 +1,7 @@
+volumes/mixed-phase-world (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             9.83e-07    6.2e-06   4.28e-08             0         32
+      worst x=11 y=14 B: ref 0.303875476 got 0.30387646 (0.00888x tolerance)
+  verdict: perfect

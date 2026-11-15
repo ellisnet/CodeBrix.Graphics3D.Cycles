@@ -1,0 +1,10 @@
+combinations/cov-light-linking-shadow-catcher (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=8.94e-08 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             9.54e-07   4.42e-07   2.58e-08             0          0
+      worst x=21 y=16 G: ref 0.269519717 got 0.269519836 (0.00115x tolerance)
+      pass Shadow Catcher           shadow_catcher         maxAbs=  1.61e-06 practicalFail=0 strictDiff=52
+      pass Shadow Catcher Matte     shadow_catcher_matte   maxAbs=  9.54e-07 practicalFail=0 strictDiff=0
+      pass Shadow Catcher Sample Count shadow_catcher_sample_count maxAbs=         0 practicalFail=0 strictDiff=0
+  verdict: perfect

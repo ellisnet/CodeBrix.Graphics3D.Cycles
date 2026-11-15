@@ -1,0 +1,94 @@
+{
+ "sceneId": "denoise/catcher-point-light-on-noisy",
+ "sceneSha256": "d54ab960a4343e29bd0aaddcb3778533d5ce6f1516c2105873cdc499376e3873",
+ "backend": "cpu-x64-linux",
+ "hostBackend": "cpu",
+ "hostAbi": 1,
+ "rid": "linux-x64",
+ "threads": 2,
+ "width": 64,
+ "height": 48,
+ "samples": 16,
+ "repeats": 2,
+ "repeatBitwiseIdentical": true,
+ "repeatMaxAbsDifference": 0,
+ "renderSeconds": [
+  0.0988044,
+  0.0649488
+ ],
+ "filmSha256": [
+  "549ee2ef373508cd19d33eeabd04927f9f9a8b0985775a2a43152cba8f490e36",
+  "549ee2ef373508cd19d33eeabd04927f9f9a8b0985775a2a43152cba8f490e36"
+ ],
+ "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+ "passes": [
+  {
+   "index": 0,
+   "name": "Shadow Catcher",
+   "type": "shadow_catcher",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "400673e025836b9cd199bd3370d263a99b99dc68b65c65f5fe9cef117c9279d0",
+    "400673e025836b9cd199bd3370d263a99b99dc68b65c65f5fe9cef117c9279d0"
+   ]
+  },
+  {
+   "index": 1,
+   "name": "Shadow Catcher Matte",
+   "type": "shadow_catcher_matte",
+   "components": 4,
+   "written": true,
+   "filmSha256": [
+    "549ee2ef373508cd19d33eeabd04927f9f9a8b0985775a2a43152cba8f490e36",
+    "549ee2ef373508cd19d33eeabd04927f9f9a8b0985775a2a43152cba8f490e36"
+   ]
+  },
+  {
+   "index": 2,
+   "name": "Shadow Catcher Sample Count",
+   "type": "shadow_catcher_sample_count",
+   "components": 1,
+   "written": true,
+   "filmSha256": [
+    "a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990",
+    "a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990"
+   ]
+  },
+  {
+   "index": 3,
+   "name": "Noisy Image",
+   "type": "combined",
+   "components": 4,
+   "written": true,
+   "filmSha256": [
+    "3d0eba53a88ff47f09ddbb768742fad51cfd8d7f4d9cd809aab64fb6b51a32e9",
+    "3d0eba53a88ff47f09ddbb768742fad51cfd8d7f4d9cd809aab64fb6b51a32e9"
+   ]
+  },
+  {
+   "index": 4,
+   "name": "Shadow Catcher Noisy",
+   "type": "shadow_catcher",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "bc6f15b492b4e5f8085e3c07f69c1de774d7d170a9dc8f750fb51e36dddfae1a",
+    "bc6f15b492b4e5f8085e3c07f69c1de774d7d170a9dc8f750fb51e36dddfae1a"
+   ]
+  },
+  {
+   "index": 5,
+   "name": "Shadow Catcher Matte Noisy",
+   "type": "shadow_catcher_matte",
+   "components": 4,
+   "written": true,
+   "filmSha256": [
+    "3d0eba53a88ff47f09ddbb768742fad51cfd8d7f4d9cd809aab64fb6b51a32e9",
+    "3d0eba53a88ff47f09ddbb768742fad51cfd8d7f4d9cd809aab64fb6b51a32e9"
+   ]
+  }
+ ],
+ "warnings": [],
+ "documentSha256": "d54ab960a4343e29bd0aaddcb3778533d5ce6f1516c2105873cdc499376e3873"
+}

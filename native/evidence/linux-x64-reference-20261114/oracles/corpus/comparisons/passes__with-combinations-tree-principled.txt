@@ -1,0 +1,35 @@
+passes/with-combinations-tree-principled (64x48)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=3.58e-07 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             4.77e-07   4.89e-07   1.95e-08             0         11
+      worst x=27 y=6 R: ref 0.868737638 got 0.86873734 (0.00133x tolerance)
+      pass DiffDir                  diffuse_direct         maxAbs=  9.54e-07 practicalFail=0 strictDiff=94
+      pass DiffInd                  diffuse_indirect       maxAbs=  2.38e-07 practicalFail=0 strictDiff=0
+      pass DiffCol                  diffuse_color          maxAbs=  5.96e-08 practicalFail=0 strictDiff=0
+      pass GlossDir                 glossy_direct          maxAbs=  9.54e-07 practicalFail=0 strictDiff=19
+      pass GlossInd                 glossy_indirect        maxAbs=  1.91e-06 practicalFail=0 strictDiff=6
+      pass GlossCol                 glossy_color           maxAbs=  5.96e-08 practicalFail=0 strictDiff=0
+      pass TransDir                 transmission_direct    maxAbs=  1.06e-07 practicalFail=0 strictDiff=1
+      pass TransInd                 transmission_indirect  maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass TransCol                 transmission_color     maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass Emit                     emission               maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Env                      background             maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Diffuse                  diffuse                maxAbs=  9.54e-07 practicalFail=0 strictDiff=96
+      pass Glossy                   glossy                 maxAbs=  2.38e-06 practicalFail=0 strictDiff=24
+      pass Transmission             transmission           maxAbs=  1.79e-07 practicalFail=0 strictDiff=2
+      pass Depth                    depth                  maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Position                 position               maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Normal                   normal                 maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass Roughness                roughness              maxAbs=  5.96e-08 practicalFail=0 strictDiff=0
+      pass UV                       uv                     maxAbs=         0 practicalFail=0 strictDiff=0
+      pass IndexOB                  object_id              maxAbs=     exact practicalFail=0 strictDiff=0
+      pass IndexMA                  material_id            maxAbs=     exact practicalFail=0 strictDiff=0
+      pass Mist                     mist                   maxAbs=  1.79e-07 practicalFail=0 strictDiff=96
+      pass AO                       ao                     maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Denoising Albedo         denoising_albedo       maxAbs=  4.77e-07 practicalFail=0 strictDiff=8
+      pass Denoising Normal         denoising_normal       maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass Denoising Specular Albedo denoising_specular_albedo maxAbs=  5.96e-08 practicalFail=0 strictDiff=0
+      pass Denoising Roughness      denoising_roughness    maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass Denoising Depth          denoising_depth        maxAbs=  2.29e-05 practicalFail=0 strictDiff=177
+  verdict: perfect

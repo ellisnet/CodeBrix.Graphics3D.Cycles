@@ -1,0 +1,8 @@
+sampling/adaptive-blue-noise (32x24)
+  cpu-x64-linux              cpu       samples 64    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 64    repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             4.77e-06   5.53e-07    3.4e-07             0         24
+      worst x=25 y=20 B: ref 8.62889194 got 8.62889671 (0.00269x tolerance)
+      pass Sample Count             sample_count           maxAbs=         0 practicalFail=0 strictDiff=0
+  verdict: perfect

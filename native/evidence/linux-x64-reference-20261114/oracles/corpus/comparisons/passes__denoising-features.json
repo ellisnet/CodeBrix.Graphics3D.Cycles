@@ -1,0 +1,284 @@
+{
+  "sceneId": "passes/denoising-features",
+  "sceneSha256": "96782c3deafd4c46d801689a520f853dff5629e4e1774f73f4a91beda8c16acf",
+  "width": 48,
+  "height": 36,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "<run>/linux/linux/s04/20261113-215503/judge/oracle/passes/denoising-features/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Denoising Albedo",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Denoising Normal",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Denoising Specular Albedo",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Denoising Roughness",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Denoising Depth",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": null,
+      "renderSeconds": [
+        0.0140877,
+        0.0113354
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "<run>/linux/linux/s04/20261113-215503/judge/oracle/passes/denoising-features/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Denoising Albedo",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        },
+        {
+          "name": "Denoising Normal",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        },
+        {
+          "name": "Denoising Specular Albedo",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "Denoising Roughness",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "Denoising Depth",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.288818359375e-05
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 2.384185791015625e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.384185791015625e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 2.384185791015625e-07,
+      "deviceName": null,
+      "renderSeconds": [
+        28.2712,
+        0.35535
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": "x64-sse4.2",
+      "isaFamily": "x64",
+      "isaSource": "wgslArithmetic x64-sse4.2"
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux"
+  ],
+  "candidates": [
+    "wgsl-linux-intel"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.9073486328125e-06,
+      "maxRelativeError": 3.82528910100542e-07,
+      "rms": 1.0851476184632961e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 12,
+      "worstPixel": {
+        "x": 14,
+        "y": 24,
+        "channel": "G",
+        "reference": 4.2155938148498535,
+        "candidate": 4.21559476852417,
+        "absoluteDifference": 9.5367431640625e-07,
+        "criterionRatio": 0.001067802352774348
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Denoising Albedo",
+          "type": "denoising_albedo",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.9073486328125e-06,
+          "maxRelativeError": 4.1201934595637004e-07,
+          "rms": 1.2095389194026966e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 5,
+          "worstPixel": {
+            "x": 24,
+            "y": 23,
+            "channel": 1,
+            "reference": 0.5193714499473572,
+            "candidate": 0.5193716287612915,
+            "absoluteDifference": 1.7881393432617188e-07,
+            "criterionRatio": 0.0011620780465561003
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Denoising Normal",
+          "type": "denoising_normal",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 8.940696716308594e-08,
+          "maxRelativeError": 3.283083191577097e-07,
+          "rms": 4.911431544529749e-09,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 16,
+            "y": 11,
+            "channel": 2,
+            "reference": -0.2723262310028076,
+            "candidate": -0.2723263204097748,
+            "absoluteDifference": 8.940696716308594e-08,
+            "criterionRatio": 0.0008558536969456293
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Denoising Specular Albedo",
+          "type": "denoising_specular_albedo",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.7881393432617188e-07,
+          "maxRelativeError": 2.0039948970273942e-07,
+          "rms": 1.135332375540343e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 26,
+            "y": 9,
+            "channel": 2,
+            "reference": 0.8922873735427856,
+            "candidate": 0.89228755235672,
+            "absoluteDifference": 1.7881393432617188e-07,
+            "criterionRatio": 0.0007827011769007976
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Denoising Roughness",
+          "type": "denoising_roughness",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.384185791015625e-07,
+          "maxRelativeError": 2.466399215816591e-07,
+          "rms": 3.9826872174689907e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 27,
+          "worstPixel": {
+            "x": 11,
+            "y": 9,
+            "channel": 0,
+            "reference": 1.1049998998641968,
+            "candidate": 1.1050001382827759,
+            "absoluteDifference": 2.384185791015625e-07,
+            "criterionRatio": 0.0008797734196344136
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Denoising Depth",
+          "type": "denoising_depth",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.52587890625e-05,
+          "maxRelativeError": 2.3337005022123482e-07,
+          "rms": 3.104086700282592e-06,
+          "practicalFailures": 0,
+          "strictDifferences": 89,
+          "worstPixel": {
+            "x": 21,
+            "y": 9,
+            "channel": 0,
+            "reference": 8.173065185546875,
+            "candidate": 8.173067092895508,
+            "absoluteDifference": 1.9073486328125e-06,
+            "criterionRatio": 0.0011322176611462753
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 1,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

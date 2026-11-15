@@ -1,0 +1,8 @@
+sampling/adaptive-auto (32x24)
+  cpu-x64-linux              cpu       samples 96    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 96    repeats 2 bitwise=False repeatMaxAbs=5.25e-05 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.14e-05   1.25e-06   8.72e-07             0         63
+      worst x=26 y=21 B: ref 9.17615795 got 9.17614651 (0.00607x tolerance)
+      pass Sample Count             sample_count           maxAbs=         0 practicalFail=0 strictDiff=0
+  verdict: perfect

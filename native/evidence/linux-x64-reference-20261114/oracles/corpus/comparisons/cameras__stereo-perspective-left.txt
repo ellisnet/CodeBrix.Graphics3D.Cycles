@@ -1,0 +1,7 @@
+cameras/stereo-perspective-left (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.91e-06   2.72e-07    9.6e-08             0          7
+      worst x=15 y=14 B: ref 0.328871101 got 0.328871012 (0.000772x tolerance)
+  verdict: perfect

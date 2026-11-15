@@ -1,0 +1,39 @@
+{
+ "complete": true,
+ "passed": true,
+ "gate": "image_file_gate",
+ "repo": "<repo>",
+ "checks": {
+  "native:linux-x64": {
+   "passed": true,
+   "seconds": 0.6
+  },
+  "sampling diagnostics": {
+   "passed": true,
+   "seconds": 0.0
+  },
+  "arena replay linux-x64:files": {
+   "passed": true,
+   "seconds": 2.1
+  }
+ },
+ "commands": [
+  [
+   "<repo>/native/work/cycles-build/bin/codebrix_cycles_image_file_gate",
+   "<run>/linux/linux/g05/20261114-043331/image_file_gate/linux-x64/run"
+  ]
+ ],
+ "stale": [],
+ "scope": "Linux half only: the gate binaries with the driver's arguments, the driver's Linux collect assertions, the linux-x64 replays; no Android device",
+ "webGpuSha256": "5a61096ef092ae3fb6638189f1ea9fe7a99350f21376f5ea1ce9b22afce35b2b",
+ "replays": {
+  "arena:files": {
+   "paths": 116352,
+   "floatChecks": 465408,
+   "integerChecks": 0,
+   "strictFloatFailures": 56117,
+   "maximumAbsoluteError": 13421772800.0
+  }
+ },
+ "seconds": 2.7
+}

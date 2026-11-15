@@ -1,0 +1,19 @@
+Packet 002-linux-m01. Written by run_queue.py; no model has read or interpreted any of it.
+Device: linux local Intel GPU (laptop, linux-x64, arithmetic x64-sse4.2).
+Tree state: 86f8f0c1fe601395. Queue: linux, batch m01. Attempt folder: <run>/linux/linux/m01/20261114-053036.
+Runtime: CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210, sha256 pinned and checked by the gate scripts
+Driver and OS: the laptop's Intel GPU, Linux Mesa
+
+== size_envelope
+Render: ok=False 11168.5 s; gate script
+Why failed: ["status.json: {'complete': True, 'passed': False, 'phase': None, 'error': None}"]
+Status: <run>/linux/linux/m01/20261114-053036/size_envelope/status.json; log <run>/linux/linux/m01/20261114-053036/size_envelope.log; phase None; exit 1
+Rerun this one job (Linux: no lock; renders with the worktree's runner, judges against the queue's CPU films; not journalled):
+  from the repository or your worktree (cwd = its root; the command names MAIN's script: in a worktree use the same path under your worktree): python3 <tools>/size_envelope.py --dump <run>/linux/dump --output <NEW FOLDER OF YOURS>
+
+== unspecialized_compile_smoke
+Render: ok=False 901.0 s; gate script
+Why failed: ["status.json: {'complete': True, 'passed': False, 'phase': None, 'error': 'the specialization-off run wrote no <run>/linux/linux/m01/20261114-053036/unspecialized_compile_smoke/capture/surface.wgsl'}"]
+Status: <run>/linux/linux/m01/20261114-053036/unspecialized_compile_smoke/status.json; log <run>/linux/linux/m01/20261114-053036/unspecialized_compile_smoke.log; phase None; exit 1
+Rerun this one job (Linux: no lock; renders with the worktree's runner, judges against the queue's CPU films; not journalled):
+  from the repository or your worktree (cwd = its root; the command names MAIN's script: in a worktree use the same path under your worktree): python3 <tools>/spec_checks.py smoke --output <NEW FOLDER OF YOURS>

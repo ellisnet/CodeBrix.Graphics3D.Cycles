@@ -1,0 +1,92 @@
+[
+ {
+  "t": "2026-11-13T19:40:16",
+  "ev": "device52-rerun",
+  "queue": "linux",
+  "batch": "t05",
+  "job": "volumes/light-path-heterogeneous-equiangular",
+  "first": {
+   "render": {
+    "ok": true,
+    "seconds": 52.4,
+    "message": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)"
+   },
+   "judge": {
+    "perfect": false,
+    "reasons": [
+     "repeat film-1.f32: 3 practical (worst ratio 2.26; compare.py gates film-0 only, every repeat must pass)"
+    ],
+    "practical": 0,
+    "strict": 3,
+    "worstRatio": 2.259764100770623,
+    "maxAbs": 0.00016048550605773926
+   },
+   "filmMovedTo": "<run>/linux/linux/t05/20261113-193019/device52-first/volumes/light-path-heterogeneous-equiangular"
+  },
+  "second": false,
+  "proof": false
+ },
+ {
+  "t": "2026-11-13T19:40:50",
+  "ev": "device52-rerun",
+  "queue": "linux",
+  "batch": "t05",
+  "job": "volumes/light-path-heterogeneous-point",
+  "first": {
+   "render": {
+    "ok": true,
+    "seconds": 14.6,
+    "message": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)"
+   },
+   "judge": {
+    "perfect": false,
+    "reasons": [
+     "compare.py verdict not perfect exit 1: ['wgsl-linux-intel vs cpu-x64-linux: 10 practical failures']",
+     "10 practical failures"
+    ],
+    "practical": 10,
+    "strict": 93,
+    "worstRatio": 6.962802495482797,
+    "maxAbs": 0.0007848143577575684
+   },
+   "filmMovedTo": "<run>/linux/linux/t05/20261113-193019/device52-first/volumes/light-path-heterogeneous-point"
+  },
+  "second": true,
+  "proof": false
+ },
+ {
+  "t": "2026-11-13T20:00:29",
+  "ev": "packet",
+  "id": "001-linux-t05",
+  "jobs": [
+   "volumes/light-path-heterogeneous-equiangular"
+  ],
+  "path": "<run>/packets/001-linux-t05/packet.txt",
+  "proof": false
+ },
+ {
+  "t": "2026-11-13T20:02:14",
+  "ev": "packet-closed",
+  "id": "001-linux-t05",
+  "kind": "UNRESOLVED",
+  "text": "operator 2026-11-13: closed so that the queue moves on while a fixer diagnoses; the job stays recorded as failed and is requeued by any fix (apply_fix.py requeues by verdict); if no fix follows it goes to the maintainer with the fixer's evidence"
+ },
+ {
+  "t": "2026-11-14T08:51:46",
+  "ev": "packet",
+  "id": "002-linux-m01",
+  "jobs": [
+   "size_envelope",
+   "unspecialized_compile_smoke"
+  ],
+  "path": "<run>/packets/002-linux-m01/packet.txt",
+  "proof": false
+ },
+ {
+  "t": "2026-11-14T08:53:51",
+  "ev": "packet-closed",
+  "id": "002-linux-m01",
+  "kind": "REQUEUED",
+  "text": "operator 2026-11-14: both failures are faults of the queue's own tools, not of the tree. size_envelope: the four envelope shards each ran into the 9000 s step budget at about 77 percent (rc 124) because the v5.3.0 corpus dump has 1661 distinct modules and 10126 entries; the tool now uses 8 shards (size_envelope.py NS=8; sharding step proven). unspecialized_compile_smoke: the capture step never wrote surface.wgsl (the queue tooling had marked this form as an unproven inference); the queue tooling corrects spec_checks.py smoke"
+ }
+]

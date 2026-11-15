@@ -1,0 +1,7 @@
+hair/chiang-absorption-thick (64x48)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=5.96e-08 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             0.000109    0.00238   9.99e-07             1          9
+      worst x=41 y=14 R: ref 0.0457193255 got 0.0456106551 (1.84x tolerance)
+  verdict: not perfect; FAILED: wgsl-linux-intel vs cpu-x64-linux: 1 practical failures

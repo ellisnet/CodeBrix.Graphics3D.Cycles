@@ -513,12 +513,17 @@ dedicated Linux x64 machine; Linux x64 and Android testing and validation are
 done on that machine ONLY, and every Linux x64 reference other platforms compare
 against comes from it and is committed:
 the newest native/evidence/linux-x64-reference-<date>/ (now
-linux-x64-reference-20261107: the full host gate without its reload rounds,
-oracle and bench films; linux-x64-reference-20261101 still supplies the overlay
-hashes, libm record, managed reference films and host-gate reload rounds). Both folders were recorded at the
-previous pinned Cycles revision: the CPU oracle's films changed with the re-pin to Cycles v5.3.0, so they are
-records of that revision and no reference for the current source until the full pass on v5.3.0 is recorded
-in a new native/evidence/linux-x64-reference-<date>/ folder. Device-gate exchanges of the
+linux-x64-reference-20261114, recorded by the first full pass on Cycles v5.3.0
+(native/DEVICE.md, "First full pass on Cycles v5.3.0"): the oracle and bench
+films and the host gate. Four further items are either supplied by 20261114
+or have NOT been re-made on Cycles v5.3.0:
+overlay hashes: supplied by 20261114; libm record: supplied by 20261114; host-gate reload rounds: supplied by 20261114 as a list of file hashes; managed reference films: NOT re-made.
+Where an item is not re-made, its copy in linux-x64-reference-20261101 is of
+the previous pinned Cycles revision and is no reference for the current
+source). linux-x64-reference-20261107 and linux-x64-reference-20261101 were
+recorded at the previous pinned Cycles revision: the CPU oracle's films
+changed with the re-pin to Cycles v5.3.0, so they are records of that revision
+and must never be compared with films of the current source. Device-gate exchanges of the
 devices without a Linux x64 side (Windows, the Intel Mac, the Raspberry Pi) run
 as the two-visit hand-off of native/tools/reference_exchange_handoff.py
 (docs/TESTING-WINDOWS-ARM64.md, "Device-gate exchange with the Linux x64

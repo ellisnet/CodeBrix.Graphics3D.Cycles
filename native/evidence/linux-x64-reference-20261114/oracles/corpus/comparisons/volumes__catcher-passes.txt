@@ -1,0 +1,21 @@
+volumes/catcher-passes (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.19e-07   6.29e-07    1.4e-08             0          0
+      worst x=15 y=8 A: ref 0.220911086 got 0.220911205 (0.00127x tolerance)
+      pass volume_direct            volume_direct          maxAbs=  2.98e-08 practicalFail=0 strictDiff=0
+      pass volume_indirect          volume_indirect        maxAbs=  2.98e-08 practicalFail=0 strictDiff=0
+      pass diffuse_direct           diffuse_direct         maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass diffuse_indirect         diffuse_indirect       maxAbs=  2.38e-07 practicalFail=0 strictDiff=2
+      pass glossy_direct            glossy_direct          maxAbs=  8.94e-08 practicalFail=0 strictDiff=0
+      pass glossy_indirect          glossy_indirect        maxAbs=  5.96e-08 practicalFail=0 strictDiff=0
+      pass transmission_direct      transmission_direct    maxAbs=         0 practicalFail=0 strictDiff=0
+      pass transmission_indirect    transmission_indirect  maxAbs=         0 practicalFail=0 strictDiff=0
+      pass emission                 emission               maxAbs=  2.98e-08 practicalFail=0 strictDiff=0
+      pass background               background             maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Combined_one             combined               maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass Shadow Catcher           shadow_catcher         maxAbs=  4.05e-06 practicalFail=0 strictDiff=53
+      pass Shadow Catcher Matte     shadow_catcher_matte   maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass Shadow Catcher Sample Count shadow_catcher_sample_count maxAbs=         0 practicalFail=0 strictDiff=0
+  verdict: perfect

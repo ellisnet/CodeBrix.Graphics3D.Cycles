@@ -1,0 +1,72 @@
+{
+ "complete": true,
+ "passed": true,
+ "gate": "image_gate",
+ "repo": "<repo>",
+ "checks": {
+  "native:linux-x64": {
+   "passed": true,
+   "seconds": 30.1
+  },
+  "native:render": {
+   "passed": true,
+   "seconds": 19.3
+  },
+  "render: no shared-edge exceptions": {
+   "passed": true,
+   "seconds": 0.0
+  },
+  "sampling diagnostics": {
+   "passed": true,
+   "seconds": 0.0
+  },
+  "arena replay linux-x64:sampling": {
+   "passed": true,
+   "seconds": 2.2
+  },
+  "arena replay linux-x64:graphs": {
+   "passed": true,
+   "seconds": 2.5
+  },
+  "render replay linux-x64": {
+   "passed": true,
+   "seconds": 3.5
+  }
+ },
+ "commands": [
+  [
+   "<repo>/native/work/cycles-build/bin/codebrix_cycles_image_gate",
+   "<run>/linux/linux/g05/20261114-043331/image_gate/linux-x64/run"
+  ],
+  [
+   "<repo>/native/work/cycles-build/bin/codebrix_cycles_render_gate",
+   "<run>/linux/linux/g05/20261114-043331/image_gate/render/run",
+   "--images"
+  ]
+ ],
+ "stale": [],
+ "scope": "Linux half only: the gate binaries with the driver's arguments, the driver's Linux collect assertions, the linux-x64 replays; no Android device",
+ "webGpuSha256": "5a61096ef092ae3fb6638189f1ea9fe7a99350f21376f5ea1ce9b22afce35b2b",
+ "replays": {
+  "arena:sampling": {
+   "paths": 115650,
+   "floatChecks": 462600,
+   "integerChecks": 0,
+   "strictFloatFailures": 29089,
+   "maximumAbsoluteError": 0.328125
+  },
+  "arena:graphs": {
+   "paths": 768,
+   "floatChecks": 1334016,
+   "integerChecks": 52224,
+   "strictFloatFailures": 8,
+   "maximumAbsoluteError": 3.5762786865234375e-07
+  },
+  "render": {
+   "commands": null,
+   "strictImageFailures": 175,
+   "maximumAbsoluteImageError": 3.814697265625e-06
+  }
+ },
+ "seconds": 57.6
+}

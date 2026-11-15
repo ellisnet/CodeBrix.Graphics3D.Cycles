@@ -1,0 +1,249 @@
+{
+  "sceneId": "combinations/cov-light-groups-tree-linking-denoise",
+  "sceneSha256": "ab6fe47a0368173961c5da7540d63ac4ab969ec6d92755b46a9de593198804f8",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "<run>/linux/linux/s01/20261113-200822/judge/oracle/combinations/cov-light-groups-tree-linking-denoise/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "LG lamp",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "LG fill",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "LG spot",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "LG world",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": null,
+      "renderSeconds": [
+        0.0656909,
+        0.024272
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "<run>/linux/linux/s01/20261113-200822/judge/oracle/combinations/cov-light-groups-tree-linking-denoise/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "LG lamp",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.4901161193847656e-08
+        },
+        {
+          "name": "LG fill",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.450580596923828e-09
+        },
+        {
+          "name": "LG spot",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.9802322387695312e-08
+        },
+        {
+          "name": "LG world",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 8.20159912109375e-05,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 8.20159912109375e-05,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 8.20159912109375e-05,
+      "deviceName": null,
+      "renderSeconds": [
+        42.1353,
+        0.392848
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": "x64-sse4.2",
+      "isaFamily": "x64",
+      "isaSource": "wgslArithmetic x64-sse4.2"
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux"
+  ],
+  "candidates": [
+    "wgsl-linux-intel"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 5.53131103515625e-05,
+      "maxRelativeError": 6.4677166234638596e-06,
+      "rms": 3.48824413459717e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 1574,
+      "worstPixel": {
+        "x": 27,
+        "y": 19,
+        "channel": "B",
+        "reference": 2.0643205642700195,
+        "candidate": 2.064333915710449,
+        "absoluteDifference": 1.33514404296875e-05,
+        "criterionRatio": 0.028845270261638963
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "LG lamp",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07,
+          "maxRelativeError": 6.228320578511328e-07,
+          "rms": 4.988801359004846e-09,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 9,
+            "y": 7,
+            "channel": 1,
+            "reference": 0.23270778357982635,
+            "candidate": 0.23270772397518158,
+            "absoluteDifference": 5.960464477539063e-08,
+            "criterionRatio": 0.0006173988363451952
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG fill",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 9.5367431640625e-07,
+          "maxRelativeError": 4.2991485106459816e-07,
+          "rms": 2.82884654913829e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 1,
+          "worstPixel": {
+            "x": 6,
+            "y": 19,
+            "channel": 0,
+            "reference": 5.182054042816162,
+            "candidate": 5.1820549964904785,
+            "absoluteDifference": 9.5367431640625e-07,
+            "criterionRatio": 0.0008778210865441177
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG spot",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 8.940696716308594e-08,
+          "maxRelativeError": 2.8892999399603473e-07,
+          "rms": 2.1000158062261734e-09,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 16,
+            "y": 11,
+            "channel": 2,
+            "reference": 0.30944162607192993,
+            "candidate": 0.30944153666496277,
+            "absoluteDifference": 8.940696716308594e-08,
+            "criterionRatio": 0.000799073245504174
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG world",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08,
+          "maxRelativeError": 2.633782545431432e-07,
+          "rms": 1.0028699310555546e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 11,
+            "y": 19,
+            "channel": 0,
+            "reference": 0.2516501545906067,
+            "candidate": 0.2516500949859619,
+            "absoluteDifference": 5.960464477539063e-08,
+            "criterionRatio": 0.0005940857809964553
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 1,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

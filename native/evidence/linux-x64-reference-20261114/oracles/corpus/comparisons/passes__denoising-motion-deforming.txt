@@ -1,0 +1,11 @@
+passes/denoising-motion-deforming (48x36)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=4.77e-07 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.91e-06   8.97e-07   1.08e-07             0         13
+      worst x=10 y=3 G: ref 0.132844374 got 0.132844493 (0.00156x tolerance)
+      pass Denoising Backward Motion denoising_backward_motion maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass Denoising Specular Motion denoising_specular_motion maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Denoising Albedo         denoising_albedo       maxAbs=  1.91e-06 practicalFail=0 strictDiff=5
+      pass Denoising Normal         denoising_normal       maxAbs=  5.96e-08 practicalFail=0 strictDiff=0
+  verdict: perfect

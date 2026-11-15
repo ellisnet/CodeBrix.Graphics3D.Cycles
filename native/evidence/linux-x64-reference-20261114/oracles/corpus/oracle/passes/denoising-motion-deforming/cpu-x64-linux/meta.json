@@ -1,0 +1,72 @@
+{
+ "sceneId": "passes/denoising-motion-deforming",
+ "sceneSha256": "e68755d8f24ca29be4e070547b456fd9e8879a580accaafbf3334ec1fb94dd80",
+ "backend": "cpu-x64-linux",
+ "hostBackend": "cpu",
+ "hostAbi": 1,
+ "rid": "linux-x64",
+ "threads": 2,
+ "width": 48,
+ "height": 36,
+ "samples": 8,
+ "repeats": 2,
+ "repeatBitwiseIdentical": true,
+ "repeatMaxAbsDifference": 0,
+ "renderSeconds": [
+  0.0134666,
+  0.00938437
+ ],
+ "filmSha256": [
+  "ee13fdb5dcee9224297ddab5607b955d112dc706f17c18ca3aaa565b9fde6bf8",
+  "ee13fdb5dcee9224297ddab5607b955d112dc706f17c18ca3aaa565b9fde6bf8"
+ ],
+ "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+ "passes": [
+  {
+   "index": 0,
+   "name": "Denoising Backward Motion",
+   "type": "denoising_backward_motion",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "6e2bfbdfc0bfc5c3a6036b619c65a1785b5a2e3b2245f18994fc259441d8914d",
+    "6e2bfbdfc0bfc5c3a6036b619c65a1785b5a2e3b2245f18994fc259441d8914d"
+   ]
+  },
+  {
+   "index": 1,
+   "name": "Denoising Specular Motion",
+   "type": "denoising_specular_motion",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "6d5c60f2aeefa50ba1b390e8f10bc911a96b8e149fea42742c549c038f41e5e4",
+    "6d5c60f2aeefa50ba1b390e8f10bc911a96b8e149fea42742c549c038f41e5e4"
+   ]
+  },
+  {
+   "index": 2,
+   "name": "Denoising Albedo",
+   "type": "denoising_albedo",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "ba3d969c8682b5770e6d70b925926bf9d134a7f7c011a6db2ae1b1bddf1cbbf4",
+    "ba3d969c8682b5770e6d70b925926bf9d134a7f7c011a6db2ae1b1bddf1cbbf4"
+   ]
+  },
+  {
+   "index": 3,
+   "name": "Denoising Normal",
+   "type": "denoising_normal",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "09e3ae794240374d5b5c16182a5bd0e8ada3185c991e711056822a9dd7bfdfd9",
+    "09e3ae794240374d5b5c16182a5bd0e8ada3185c991e711056822a9dd7bfdfd9"
+   ]
+  }
+ ],
+ "warnings": [],
+ "documentSha256": "e68755d8f24ca29be4e070547b456fd9e8879a580accaafbf3334ec1fb94dd80"
+}

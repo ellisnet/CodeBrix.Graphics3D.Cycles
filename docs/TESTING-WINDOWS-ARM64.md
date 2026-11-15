@@ -38,9 +38,11 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 >    Android testing and validation are done on the dedicated Linux x64 machine
 >    only. Every comparison against Linux x64 uses the newest
 >    `native/evidence/linux-x64-reference-<date>/` set (now
->    `linux-x64-reference-20261107` for the oracle and bench films and the host gate,
->    `linux-x64-reference-20261101` for the overlay hashes, libm record, managed
->    reference films and host-gate reload rounds, which 20261107 did not re-make); device-gate exchanges go through
+>    `linux-x64-reference-20261114`, recorded on Cycles v5.3.0, for the oracle and bench films and the host gate.
+>    Four further items are either supplied by 20261114 or have NOT been re-made on Cycles v5.3.0:
+>    overlay hashes: supplied by 20261114; libm record: supplied by 20261114; host-gate reload rounds: supplied by 20261114 as a list of file hashes; managed reference films: NOT re-made.
+>    Where an item is not re-made, its copy in `linux-x64-reference-20261101` is of the previous pinned Cycles
+>    revision and is no reference for the current source); device-gate exchanges go through
 >    `native/tools/reference_exchange_handoff.py` with that machine as the Linux
 >    side. **Do NOT** produce Linux x64 references in Docker, WSL or any other
 >    machine; `linux-x64-docker-reference-20261027` is history only.

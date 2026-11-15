@@ -1,0 +1,83 @@
+{
+ "sceneId": "passes/denoising-features-weighted",
+ "sceneSha256": "86c371cf3729e0ce5cc870481545131b4807e6c5c5c1763214298572163fd362",
+ "backend": "cpu-x64-linux",
+ "hostBackend": "cpu",
+ "hostAbi": 1,
+ "rid": "linux-x64",
+ "threads": 2,
+ "width": 48,
+ "height": 36,
+ "samples": 8,
+ "repeats": 2,
+ "repeatBitwiseIdentical": true,
+ "repeatMaxAbsDifference": 0,
+ "renderSeconds": [
+  0.0140791,
+  0.0110568
+ ],
+ "filmSha256": [
+  "2ee63fd3a7a99949ded520d995847eb68659b3d7a9ab4c8663c23bf5c2250936",
+  "2ee63fd3a7a99949ded520d995847eb68659b3d7a9ab4c8663c23bf5c2250936"
+ ],
+ "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+ "passes": [
+  {
+   "index": 0,
+   "name": "Denoising Albedo",
+   "type": "denoising_albedo",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "68339da53a9e7af51137ab572f4906714c45ae2151e70512c66206cc95f672d1",
+    "68339da53a9e7af51137ab572f4906714c45ae2151e70512c66206cc95f672d1"
+   ]
+  },
+  {
+   "index": 1,
+   "name": "Denoising Normal",
+   "type": "denoising_normal",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "05e575ba17e2cfb3be06782d1f86e0074d0ed2cfa402a3dab213e8768990010c",
+    "05e575ba17e2cfb3be06782d1f86e0074d0ed2cfa402a3dab213e8768990010c"
+   ]
+  },
+  {
+   "index": 2,
+   "name": "Denoising Specular Albedo",
+   "type": "denoising_specular_albedo",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "b783050ab79130fe41f2b97b0f2b3cb2e8f6d7f1473b028b5cfa6cb9bb37a4a8",
+    "b783050ab79130fe41f2b97b0f2b3cb2e8f6d7f1473b028b5cfa6cb9bb37a4a8"
+   ]
+  },
+  {
+   "index": 3,
+   "name": "Denoising Roughness",
+   "type": "denoising_roughness",
+   "components": 1,
+   "written": true,
+   "filmSha256": [
+    "5613de0f8ce0d71fab93e40dfb37bf800fc7883d6db9d46f0dd0aab80d5bded6",
+    "5613de0f8ce0d71fab93e40dfb37bf800fc7883d6db9d46f0dd0aab80d5bded6"
+   ]
+  },
+  {
+   "index": 4,
+   "name": "Denoising Depth",
+   "type": "denoising_depth",
+   "components": 1,
+   "written": true,
+   "filmSha256": [
+    "278a9574649ece4e0bf53a104cfb64e7d0993405a534cb4c28921f25672f1890",
+    "278a9574649ece4e0bf53a104cfb64e7d0993405a534cb4c28921f25672f1890"
+   ]
+  }
+ ],
+ "warnings": [],
+ "documentSha256": "86c371cf3729e0ce5cc870481545131b4807e6c5c5c1763214298572163fd362"
+}

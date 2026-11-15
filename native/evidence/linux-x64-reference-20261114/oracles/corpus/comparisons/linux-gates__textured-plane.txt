@@ -1,0 +1,7 @@
+linux-gates/textured-plane (64x48)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=3.81e-06 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             3.81e-06   0.000719   8.19e-08             0         21
+      worst x=16 y=28 B: ref 1.16960013 got 1.16959965 (0.00168x tolerance)
+  verdict: perfect

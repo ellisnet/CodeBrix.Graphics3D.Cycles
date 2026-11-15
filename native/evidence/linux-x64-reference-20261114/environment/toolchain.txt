@@ -1,0 +1,24 @@
+# this machine (runs every binary, the gates, the judge and the managed tests)
+gcc (Debian 14.2.0-19) 14.2.0
+Debian clang version 19.1.7 (3+b1)
+cmake version 3.31.6
+Python 3.13.5
+dotnet SDK 11.0.100
+ldd (Debian GLIBC 2.41-12+deb13u4) 2.41
+Linux 6.12.117+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12) x86_64
+LMDE 7 (gigi), Debian 13.0
+GPU (lspci): Intel Corporation Alder Lake-HX GT1 [UHD Graphics 770] (rev 0c)
+# the build machine of the native binaries (native/work/cycles-build.json, buildMachine)
+kind: manylinux container
+image: codebrix-cycles-build-x86_64
+imageId: dc75b83755667dbcbb3a8a453224bca11ab49f145e0988a893aecab198f663be
+baseImage: quay.io/pypa/manylinux_2_28_x86_64:2026.07.19-1
+baseDigest: sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca
+os: AlmaLinux 8.10 (Cerulean Leopard)
+compiler: c++ (GCC) 14.2.1 20250110 (Red Hat 14.2.1-11)
+linker: GNU ld version 2.41-4.el8_10.1
+libc: ldd (GNU libc) 2.28
+cmake: cmake version 4.4.0
+make: GNU Make 4.2.1
+python: 3.12.13
+ispc: Intel(r) Implicit SPMD Program Compiler (Intel(r) ISPC), 1.30.0 (build commit 3fc6d50cf24dc8b4 @ 20260204, LLVM 21.1.8)

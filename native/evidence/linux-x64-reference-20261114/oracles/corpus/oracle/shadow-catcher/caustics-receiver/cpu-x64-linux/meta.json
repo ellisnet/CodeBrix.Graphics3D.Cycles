@@ -1,0 +1,61 @@
+{
+ "sceneId": "shadow-catcher/caustics-receiver",
+ "sceneSha256": "153478a96d08dfecd397d653680ef115bd74eab98a2f03cacdfe9f937d19d87e",
+ "backend": "cpu-x64-linux",
+ "hostBackend": "cpu",
+ "hostAbi": 1,
+ "rid": "linux-x64",
+ "threads": 2,
+ "width": 64,
+ "height": 48,
+ "samples": 16,
+ "repeats": 2,
+ "repeatBitwiseIdentical": true,
+ "repeatMaxAbsDifference": 0,
+ "renderSeconds": [
+  0.0417602,
+  0.0228474
+ ],
+ "filmSha256": [
+  "5a04bbd893c969eb1a1fd73d6cf936a8517b0fad96ddfc70b895e8db69b189ae",
+  "5a04bbd893c969eb1a1fd73d6cf936a8517b0fad96ddfc70b895e8db69b189ae"
+ ],
+ "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+ "passes": [
+  {
+   "index": 0,
+   "name": "Shadow Catcher",
+   "type": "shadow_catcher",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "b21e43b5ac0c9ec4403b3944ca2bbc2a0965585748892dcf5c9fa6919345d19c",
+    "b21e43b5ac0c9ec4403b3944ca2bbc2a0965585748892dcf5c9fa6919345d19c"
+   ]
+  },
+  {
+   "index": 1,
+   "name": "Shadow Catcher Matte",
+   "type": "shadow_catcher_matte",
+   "components": 4,
+   "written": true,
+   "filmSha256": [
+    "5a04bbd893c969eb1a1fd73d6cf936a8517b0fad96ddfc70b895e8db69b189ae",
+    "5a04bbd893c969eb1a1fd73d6cf936a8517b0fad96ddfc70b895e8db69b189ae"
+   ]
+  },
+  {
+   "index": 2,
+   "name": "Shadow Catcher Sample Count",
+   "type": "shadow_catcher_sample_count",
+   "components": 1,
+   "written": true,
+   "filmSha256": [
+    "a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990",
+    "a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990"
+   ]
+  }
+ ],
+ "warnings": [],
+ "documentSha256": "153478a96d08dfecd397d653680ef115bd74eab98a2f03cacdfe9f937d19d87e"
+}

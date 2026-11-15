@@ -1,0 +1,9 @@
+subsurface/aov-only-bump (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             4.77e-06   4.91e-07   3.29e-07             0         17
+      worst x=25 y=23 G: ref 8.79343319 got 8.793437 (0.00211x tolerance)
+      pass Coords                   aov_color              maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass Height                   aov_value              maxAbs=  5.96e-08 practicalFail=0 strictDiff=0
+  verdict: perfect

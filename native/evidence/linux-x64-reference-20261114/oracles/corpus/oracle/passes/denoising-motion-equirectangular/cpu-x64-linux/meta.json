@@ -1,0 +1,72 @@
+{
+ "sceneId": "passes/denoising-motion-equirectangular",
+ "sceneSha256": "2db8b2d07757d93ccb14b4c1c303dcaf30b351908495ec9634a52f28e33f42cc",
+ "backend": "cpu-x64-linux",
+ "hostBackend": "cpu",
+ "hostAbi": 1,
+ "rid": "linux-x64",
+ "threads": 2,
+ "width": 48,
+ "height": 36,
+ "samples": 8,
+ "repeats": 2,
+ "repeatBitwiseIdentical": true,
+ "repeatMaxAbsDifference": 0,
+ "renderSeconds": [
+  0.00799286,
+  0.006165
+ ],
+ "filmSha256": [
+  "e70ead90e955ec65db5b9bbcd207e1c6ac88b10a8a68b5c4c2d9e80d1fb4d5cf",
+  "e70ead90e955ec65db5b9bbcd207e1c6ac88b10a8a68b5c4c2d9e80d1fb4d5cf"
+ ],
+ "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+ "passes": [
+  {
+   "index": 0,
+   "name": "Denoising Backward Motion",
+   "type": "denoising_backward_motion",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "fc78bca70149d3b43ba2c794300a34ecb2279f81b7f7a35e28e4e2db26f6c1d3",
+    "fc78bca70149d3b43ba2c794300a34ecb2279f81b7f7a35e28e4e2db26f6c1d3"
+   ]
+  },
+  {
+   "index": 1,
+   "name": "Denoising Specular Motion",
+   "type": "denoising_specular_motion",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "9729b7716752c971f27a8d3459730c528ab86cf1ec18a1f98fd67295b5a63294",
+    "9729b7716752c971f27a8d3459730c528ab86cf1ec18a1f98fd67295b5a63294"
+   ]
+  },
+  {
+   "index": 2,
+   "name": "Denoising Albedo",
+   "type": "denoising_albedo",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "2439f2d421b21b07f570a5d956ec2353671c28fb857eb94f42374ec52dd43b4b",
+    "2439f2d421b21b07f570a5d956ec2353671c28fb857eb94f42374ec52dd43b4b"
+   ]
+  },
+  {
+   "index": 3,
+   "name": "Denoising Normal",
+   "type": "denoising_normal",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "209b46591791e6b64110023a44cd573a5f762bac7feed6e75053cd781b950522",
+    "209b46591791e6b64110023a44cd573a5f762bac7feed6e75053cd781b950522"
+   ]
+  }
+ ],
+ "warnings": [],
+ "documentSha256": "2db8b2d07757d93ccb14b4c1c303dcaf30b351908495ec9634a52f28e33f42cc"
+}

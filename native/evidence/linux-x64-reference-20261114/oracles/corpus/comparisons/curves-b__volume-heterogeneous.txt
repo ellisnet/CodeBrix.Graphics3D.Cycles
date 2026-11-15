@@ -1,0 +1,7 @@
+curves-b/volume-heterogeneous (64x48)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.52e-06   6.84e-06   2.24e-08             0         17
+      worst x=41 y=28 B: ref 0.318444967 got 0.318446487 (0.0134x tolerance)
+  verdict: perfect

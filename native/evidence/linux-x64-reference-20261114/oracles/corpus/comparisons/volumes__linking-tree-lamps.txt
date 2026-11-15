@@ -1,0 +1,7 @@
+volumes/linking-tree-lamps (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             9.54e-07    4.1e-07   2.73e-08             0          3
+      worst x=21 y=3 G: ref 0.580912292 got 0.58091253 (0.00143x tolerance)
+  verdict: perfect

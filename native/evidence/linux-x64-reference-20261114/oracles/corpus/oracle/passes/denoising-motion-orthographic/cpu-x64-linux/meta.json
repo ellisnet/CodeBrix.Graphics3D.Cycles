@@ -1,0 +1,72 @@
+{
+ "sceneId": "passes/denoising-motion-orthographic",
+ "sceneSha256": "9b435ab9417a9a11c454ea8eec516845dd7968fd44ecafa44dec813199a83484",
+ "backend": "cpu-x64-linux",
+ "hostBackend": "cpu",
+ "hostAbi": 1,
+ "rid": "linux-x64",
+ "threads": 2,
+ "width": 48,
+ "height": 36,
+ "samples": 8,
+ "repeats": 2,
+ "repeatBitwiseIdentical": true,
+ "repeatMaxAbsDifference": 0,
+ "renderSeconds": [
+  0.0114496,
+  0.0083738
+ ],
+ "filmSha256": [
+  "94a35495af38c7feb1e0c10f95be45ba8c6598f169cfcf495b86bd0eeeb7f0c1",
+  "94a35495af38c7feb1e0c10f95be45ba8c6598f169cfcf495b86bd0eeeb7f0c1"
+ ],
+ "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+ "passes": [
+  {
+   "index": 0,
+   "name": "Denoising Backward Motion",
+   "type": "denoising_backward_motion",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "fa6f1b4289fa3d00e9ceef528bab9768667341343d871160da5071a990c1c357",
+    "fa6f1b4289fa3d00e9ceef528bab9768667341343d871160da5071a990c1c357"
+   ]
+  },
+  {
+   "index": 1,
+   "name": "Denoising Specular Motion",
+   "type": "denoising_specular_motion",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "39701e37bc825bb7c0c389c9234f7e559d059b27b8faf961e75023956fe5fad6",
+    "39701e37bc825bb7c0c389c9234f7e559d059b27b8faf961e75023956fe5fad6"
+   ]
+  },
+  {
+   "index": 2,
+   "name": "Denoising Albedo",
+   "type": "denoising_albedo",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "829408cbc2e1396bcc60bb404557eceea0bffd7188e318ca29b5a1031d3e5b59",
+    "829408cbc2e1396bcc60bb404557eceea0bffd7188e318ca29b5a1031d3e5b59"
+   ]
+  },
+  {
+   "index": 3,
+   "name": "Denoising Normal",
+   "type": "denoising_normal",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "ec7dbd70a8a8fba654a1505a38b7e782db6413ad86999fb4d20f4c117c771e0e",
+    "ec7dbd70a8a8fba654a1505a38b7e782db6413ad86999fb4d20f4c117c771e0e"
+   ]
+  }
+ ],
+ "warnings": [],
+ "documentSha256": "9b435ab9417a9a11c454ea8eec516845dd7968fd44ecafa44dec813199a83484"
+}

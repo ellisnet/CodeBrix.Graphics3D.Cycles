@@ -1,0 +1,87 @@
+{
+ "complete": true,
+ "passed": true,
+ "action": "smoke",
+ "gate": "nodes_render",
+ "binary": "<repo>/native/work/cycles-build/bin/codebrix_cycles_nodes_render_gate",
+ "steps": {
+  "capture": {
+   "rc": -15,
+   "seconds": 30.1,
+   "command": "<repo>/native/work/cycles-build/bin/codebrix_cycles_nodes_render_gate <run>/linux/linux/m01/20261114-085400/unspecialized_compile_smoke/capture/run",
+   "env": {
+    "CODEBRIX_CYCLES_SHADER_SPECIALIZATION": "0",
+    "CODEBRIX_CYCLES_WGSL_DUMP": "<run>/linux/linux/m01/20261114-085400/unspecialized_compile_smoke/capture/dump",
+    "CODEBRIX_CYCLES_PIPELINE_LOG": "<run>/linux/linux/m01/20261114-085400/unspecialized_compile_smoke/capture/pipelines.jsonl",
+    "MESA_SHADER_CACHE_DIR": "<run>/linux/linux/m01/20261114-085400/unspecialized_compile_smoke/mesa-capture"
+   },
+   "endedByThisJob": "SIGTERM",
+   "moduleTextFrom": "<run>/linux/linux/m01/20261114-085400/unspecialized_compile_smoke/capture/dump/002-surface.wgsl",
+   "dumped": {
+    "000-camera.wgsl": {
+     "bytes": 118686,
+     "sha256": "fa01c89aee16065096fa19c27c74603da2c82ac522a482fc01cad3d9bc9e90aa"
+    },
+    "001-closest.wgsl": {
+     "bytes": 163742,
+     "sha256": "eb98fec54adaef87207873e2c393a52418fe81953b9e0cd0d7f245f4f4caca7b"
+    },
+    "002-surface.wgsl": {
+     "bytes": 1078946,
+     "sha256": "90076dbb7cf5aaa4d1e253a098f31c5a81c768e72284e0909fc7cb5cb55fc2fb"
+    },
+    "source-camera.wgsl": {
+     "bytes": 122843,
+     "sha256": "fbf5c098c18001fbc99f22a716a049ec65f8e5bc788d8f0e1b2c48a1b9d281d8"
+    },
+    "source-closest.wgsl": {
+     "bytes": 169971,
+     "sha256": "78f352a07f19b12934f8402c8db2935a90efa31862e922a0ae84e5f0ced3fc73"
+    },
+    "source-surface.wgsl": {
+     "bytes": 1253519,
+     "sha256": "271962e82027f58dd43409e951d2c38146910e9d69bd539912b5abc5cb0c838d"
+    }
+   }
+  },
+  "smoke": {
+   "rc": 0,
+   "seconds": 940.0,
+   "command": "/usr/bin/python3 <repo>/native/tools/unspecialized_compile_smoke.py --wgsl <run>/linux/linux/m01/20261114-085400/unspecialized_compile_smoke/capture/surface.wgsl --output <run>/linux/linux/m01/20261114-085400/unspecialized_compile_smoke/smoke",
+   "env": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+   }
+  }
+ },
+ "captureRunIsDiagnosticOnly": "ended by this job (SIGTERM) once the module text existed: recorded, not judged (the unspecialized module is outside what Intel Mesa 25.0.7 compiles correctly)",
+ "warnings": [
+  "prepare_surface: compile did not complete (timeout)",
+  "prepare_surface: inlined 8392517 bytes above the 2300000-byte Intel Android danger zone"
+ ],
+ "moduleBytes": 1078946,
+ "entries": {
+  "prepare_surface": {
+   "inlinedBytes": 8392517,
+   "passed": false,
+   "timeout": true,
+   "wallSeconds": 900.9
+  },
+  "shade_surface_light": {
+   "inlinedBytes": 1695359,
+   "entry": "shade_surface_light",
+   "mode": "default",
+   "wgslBytes": 1078946,
+   "moduleMs": 72.7901,
+   "pipelineMs": 36844.6,
+   "baseVmHWMkB": 68440,
+   "baseVmRSSkB": 68440,
+   "moduleVmHWMkB": 102160,
+   "peakVmHWMkB": 3217272,
+   "adapter": "Intel(R) UHD Graphics (ADL-S GT1) / Mesa 25.0.7-2+deb13u1",
+   "passed": true,
+   "returncode": 0,
+   "wallSeconds": 37.0
+  }
+ },
+ "record": "<run>/linux/linux/m01/20261114-085400/unspecialized_compile_smoke/smoke/smoke.json"
+}

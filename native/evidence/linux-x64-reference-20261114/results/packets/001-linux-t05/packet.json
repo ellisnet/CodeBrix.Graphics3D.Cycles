@@ -1,0 +1,106 @@
+{
+ "id": "001-linux-t05",
+ "device": "linux",
+ "queue": "linux",
+ "batch": "t05",
+ "tree": "3fb353bcc52d7151",
+ "attempt": "<run>/linux/linux/t05/20261113-193019",
+ "identity": {
+  "device": {
+   "label": "laptop",
+   "rid": "linux-x64"
+  },
+  "runtimeSha256": null,
+  "hostLibrarySha256": "873a2f8b970871655c5561bfdc90498b4c20cf019957ff4d17796285e41880d8",
+  "runnerSha256": "1be28b227df76de084d364d4f53a05ad0c1507e015c00ca583c731c02641405e"
+ },
+ "proof": false,
+ "failures": [
+  {
+   "scene": "volumes/light-path-heterogeneous-equiangular",
+   "render": {
+    "ok": true,
+    "seconds": 16.7,
+    "message": "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)"
+   },
+   "judge": {
+    "perfect": false,
+    "reasons": [
+     "repeat film-1.f32: 3 practical (worst ratio 1.58; compare.py gates film-0 only, every repeat must pass)"
+    ],
+    "referenceLabel": "Linux x64 CPU film of this run, stage A (cpu_films.py: rendered twice by this build, the two bitwise equal)",
+    "scene": "volumes/light-path-heterogeneous-equiangular",
+    "compareExit": 0,
+    "verdict": "perfect",
+    "problems": [],
+    "gatingPairs": [
+     [
+      "wgsl-linux-intel",
+      "cpu-x64-linux"
+     ]
+    ],
+    "reference": "cpu-x64-linux",
+    "practical": 0,
+    "strict": 12,
+    "worstPixel": {
+     "x": 10,
+     "y": 19,
+     "channel": "R",
+     "reference": 0.2594341039657593,
+     "candidate": 0.25950247049331665,
+     "absoluteDifference": 6.836652755737305e-05,
+     "criterionRatio": 0.6710046208642539
+    },
+    "worstRatio": 1.580915294354659,
+    "maxAbs": 0.0001525282859802246,
+    "nonfinite": 0,
+    "repeatBitwiseIdentical": false,
+    "wgslArithmetic": "x64-sse4.2",
+    "adapter": null,
+    "comparisonText": "<run>/linux/linux/t05/20261113-193019/judge/comparisons/volumes__light-path-heterogeneous-equiangular.txt",
+    "comparisonJson": "<run>/linux/linux/t05/20261113-193019/judge/comparisons/volumes__light-path-heterogeneous-equiangular.json",
+    "compareStderr": "",
+    "filmDir": "<run>/linux/linux/t05/20261113-193019/films/oracle/volumes/light-path-heterogeneous-equiangular/wgsl-linux-intel",
+    "referenceDir": "<run>/linux/cpu-films/oracle/volumes/light-path-heterogeneous-equiangular/cpu-x64-linux",
+    "recount": {
+     "filmsMatch": true,
+     "films": 2,
+     "values": 6144,
+     "practical": 3,
+     "strict": 50,
+     "nonfinite": 0,
+     "worstRatio": 1.580915294354659,
+     "maxAbs": 0.0001525282859802246,
+     "perFilm": {
+      "film-0.f32": {
+       "values": 3072,
+       "practical": 0,
+       "strict": 12,
+       "nonfinite": 0,
+       "worstRatio": 0.6710046208642539,
+       "maxAbs": 7.343292236328125e-05
+      },
+      "film-1.f32": {
+       "values": 3072,
+       "practical": 3,
+       "strict": 38,
+       "nonfinite": 0,
+       "worstRatio": 1.580915294354659,
+       "maxAbs": 0.0001525282859802246
+      }
+     }
+    },
+    "practicalFilm0": 0,
+    "practicalRepeats": {
+     "film-0.f32": 0,
+     "film-1.f32": 3
+    },
+    "strictRepeats": {
+     "film-0.f32": 12,
+     "film-1.f32": 38
+    }
+   },
+   "rerun": "CBC_RQ_DATA=<run> python3 <tools>/validation-runner/run_queue.py rerun linux volumes/light-path-heterogeneous-equiangular --out <EMPTY FOLDER OF YOURS> [--repo <YOUR WORKTREE, BUILT>]"
+  }
+ ]
+}

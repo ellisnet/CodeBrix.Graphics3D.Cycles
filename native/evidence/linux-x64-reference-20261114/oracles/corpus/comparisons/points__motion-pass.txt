@@ -1,0 +1,9 @@
+points/motion-pass (64x48)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=1.91e-06 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             2.44e-06   5.52e-06   1.07e-07             0         12
+      worst x=17 y=24 R: ref 0.442605287 got 0.442607731 (0.0176x tolerance)
+      pass Vector                   motion                 maxAbs=  9.54e-07 practicalFail=0 strictDiff=45
+      pass Vector Weight            motion_weight          maxAbs=         0 practicalFail=0 strictDiff=0
+  verdict: perfect

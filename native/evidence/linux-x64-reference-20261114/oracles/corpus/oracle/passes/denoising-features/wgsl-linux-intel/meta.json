@@ -1,0 +1,27 @@
+{
+  "sceneId": "passes/denoising-features",
+  "sceneSha256": "96782c3deafd4c46d801689a520f853dff5629e4e1774f73f4a91beda8c16acf",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "wgslArithmetic": "x64-sse4.2",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 2.384185791015625e-07,
+  "renderSeconds": [28.2712,0.35535],
+  "filmSha256": ["8151bb3bc73406ecc29b92a9a55eec63590770a6e50e8cfd1dbfb09ae39307f2","b48f0856aaf240dc4f2ab1d4794b8b16726313e514b54cfa9629bfb03f03b35b"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Denoising Albedo", "type": "denoising_albedo", "components": 3, "written": true, "filmSha256": ["d993447a9b4b24979ec09a4f21f8f8c1b31341028eda94c4c333713c01f9ffc9","4b21d8ed78312e4ebd68dd38fdd62c7bb79e204114b80361fdf9e4a09e594ff9"]},
+    {"index": 1, "name": "Denoising Normal", "type": "denoising_normal", "components": 3, "written": true, "filmSha256": ["0a995a8a249118c99cf4d04763d360634cab8f39dcc92da6f7efc4cee2a0578f","336cf157f6d830aa2d729b53896c5f735ed7b40c2e5a142d74389a6a106fd2d4"]},
+    {"index": 2, "name": "Denoising Specular Albedo", "type": "denoising_specular_albedo", "components": 3, "written": true, "filmSha256": ["fdbd138c288329dc6daa436d08e3001bec1c4695e636cb3d9703dffcd348f050","c6be1cb4375c0bb8a02c760c0a6e70f7505c027f379a81404cc7e008348e998d"]},
+    {"index": 3, "name": "Denoising Roughness", "type": "denoising_roughness", "components": 1, "written": true, "filmSha256": ["45bb343bf7561ddb759c8806a994679ee64581c7f1e89dafd91837738e165f18","11885f4bfbf6adfd3e31d64251d204467e3b12f869302db4f2ec55c968ef1810"]},
+    {"index": 4, "name": "Denoising Depth", "type": "denoising_depth", "components": 1, "written": true, "filmSha256": ["a60de11823edd70f0db6a21df94da134939cd869422f528a8588593ce7e531ff","2909b4beb103026635ced345c5cf4214f9686f9843c0c322fdbe18d0c1aa8651"]}
+  ],
+  "warnings": []
+}

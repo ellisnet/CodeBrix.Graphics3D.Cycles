@@ -1,0 +1,9 @@
+shadow-linking/volume-emission-passes (64x48)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=2.38e-07 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.19e-06   1.02e-06   5.14e-08             0        144
+      worst x=36 y=32 B: ref 0.264795214 got 0.264795482 (0.00261x tolerance)
+      pass emission                 emission               maxAbs=  8.94e-08 practicalFail=0 strictDiff=0
+      pass Combined_one             combined               maxAbs=  3.58e-07 practicalFail=0 strictDiff=12
+  verdict: perfect

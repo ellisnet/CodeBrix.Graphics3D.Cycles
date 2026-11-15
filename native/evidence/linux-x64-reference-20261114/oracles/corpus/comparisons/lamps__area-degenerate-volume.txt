@@ -1,0 +1,7 @@
+lamps/area-degenerate-volume (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=5.4e-07 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             5.55e-06   0.000228    1.6e-07             0         10
+      worst x=30 y=1 R: ref 0.027267633 got 0.0272620786 (0.1x tolerance)
+  verdict: perfect

@@ -1,0 +1,7 @@
+volumes/sobol-burley-tree-lamps (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=2.38e-07 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.91e-06   2.01e-06   5.92e-08             0         13
+      worst x=13 y=4 R: ref 0.192453906 got 0.192454293 (0.00438x tolerance)
+  verdict: perfect

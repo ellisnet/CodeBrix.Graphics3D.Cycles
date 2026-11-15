@@ -221,7 +221,16 @@ fn shadow_write_film(index:u32){
 }
 // Bound compiler pressure from the SVM path with one invocation per workgroup.
 // Static transparent triangles remain the supported scope; tuning is pending.
+//#if VOLUME_HETEROGENEOUS
+// With a heterogeneous medium the entry is declared with 64 invocations per workgroup (native/DEVICE.md 52: with one
+// invocation per workgroup the Intel driver on Linux intermittently computed single shadow paths wrong in the octree
+// walk; the entry's code, its arithmetic and its order are the same in both declarations). Intel through Metal and the
+// conservative tier build it with one invocation (pipelines.cpp).
+@compute @workgroup_size(64) fn shade_shadow_transparent(@builtin(global_invocation_id) id:vec3<u32>){
+//#endif
+//#if !VOLUME_HETEROGENEOUS
 @compute @workgroup_size(1) fn shade_shadow_transparent(@builtin(global_invocation_id) id:vec3<u32>){
+//#endif
     svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}let flag=state_word(S_shadow_path_flag,index);let count=state_half(S_shadow_path_packed_num_hits,index);

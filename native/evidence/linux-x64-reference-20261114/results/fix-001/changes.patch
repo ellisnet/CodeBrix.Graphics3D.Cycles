@@ -1,0 +1,98 @@
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index 03eefedc9..268afea90 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -3211,8 +3211,11 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
+ 50. (resolved, see "Resolved" below) Was: **`volumes/scatter-world` and `volumes/world-volume-point` have no box medium.**
+ 51. (replaced by item 53) Was: **Volumes with a finite spherical lamp inside the medium.** The cause is now known; item 53 carries it.
+ 52. **Heterogeneous medium: an intermittent wrong path on Intel (Linux). Not our WGSL or host code: the Intel driver or
+-   hardware, determined 2026-11-06; the gates are not relaxed. Not observed since the heterogeneous integration was split
+-   into a step entry and an evaluation entry (see "Split", the last point of this item); the driver fault itself is not fixed.**
++   hardware, determined 2026-11-06; the gates are not relaxed. Mitigated twice: the heterogeneous integration is split into
++   a step entry and an evaluation entry (see "Split"), and the transparent shadow entry of a heterogeneous scene is declared
++   with 64 invocations per workgroup (see "Cycles v5.3.0: back in the transparent shadow entry", the last point of this
++   item). Observed again between the two (on Cycles v5.3.0, at a high rate in two scenes) and not in the measurements made
++   after the second; the driver fault itself is not fixed.**
+    `codebrix_cycles_volume_gate` cases 35 and 55 (equiangular sampling without MIS) sometimes fail with
+    `shadow_path.throughput` NaN or a `path.bounce` integer mismatch, so a `volume_gate.py` or `volume_boundary_gate.py` run
+    can fail on a good tree. Rate on the UHD Graphics 770 (ADL-S GT1, Mesa 25.0.7, i915, kernel 6.12): case 55 evaluated 20
+@@ -3294,6 +3297,43 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
+      path delayed in `shade_shadow_transparent`) was not measured here.
+      With the split, the heterogeneous world scenes of item 140 (`volumes/heterogeneous-world-volume`,
+      `volumes/heterogeneous-in-heterogeneous-world`): 0 of 16 direct renders wrong each.
++   - **Cycles v5.3.0: back in the transparent shadow entry (2026-11-13).** FACT. On the v5.3.0 tree the fault showed again
++     in `volumes/light-path-heterogeneous-equiangular` and `volumes/light-path-heterogeneous-point` (32x24, 16 samples, two
++     repeats, every repeat judged practical against the CPU film): single wrong paths, finite, on different pixels from film
++     to film, the same paths recurring across processes, and every film without one bitwise one of two films one unit in
++     the last place apart. Rate before, UHD Graphics 770, Mesa 25.0.7, the GPU shared with other renders: 10 of 14
++     renders of the first scene failed at least one repeat and 4 of 6 of the second (single renders with a cold driver
++     cache); in direct renders alternated with the variants below, 30 of 60 films of the first scene held at least one wrong
++     path. What was measured on that scene, as temporary texts loaded into one binary (`CODEBRIX_CYCLES_WGSL_LOAD`),
++     alternated with the unchanged text in the same rounds, films with a wrong path of 16:
++     | text | films with a wrong path | unchanged text, same rounds |
++     | --- | --- | --- |
++     | `vh_expected_steps` written inline at its two call sites (step entry and shadow entry) | 1 | 9 |
++     | the same in the volume module only; in the shadow module only | 8; 6 | 7 |
++     | `surface_differentials` without its ordering barriers | 11 | 9 |
++     | the tail of the step entry (after the loop) run by the evaluation entry: step entry 667,308 -> 540,676 bytes | 7 | 7 |
++     | `shade_volume_heterogeneous` with one invocation per workgroup; the evaluation entry too | 11; 9 | 5 |
++     | `shade_shadow_transparent` with 64 invocations per workgroup | 0 | 5 |
++     So the rate follows the shape of the compiled text and not its size alone (a helper call of 169 bytes moves it; a step
++     entry of the size the split had left does not lower it). Inference from the last row: the wrong paths of these scenes
++     are computed in `shade_shadow_transparent`, the "second face" above; with that entry at 64 invocations per workgroup
++     all 16 films are one film, bitwise. The entry is 762,268 inlined bytes in these scenes and 19,271 backend instructions declared 64
++     (18,426 declared 1; `intel_compile_envelope.py`), smaller than the step entry, so the entry's size is not what the
++     fault needs. Inference, not shown: with one invocation per workgroup the driver runs many more concurrent threads of
++     the entry, and the fault needs that concurrency (the plain Vulkan measurements above: none alone, more with more
++     concurrent workgroups).
++     Change: in a module with a heterogeneous medium `shade_shadow_transparent` is declared `@workgroup_size(64)`
++     (`wavefront_shadow.wgsl`); every other module's text is unchanged (one invocation), Intel through Metal and the
++     conservative tier build the entry with one invocation as before (`pipelines.cpp`). The entry's code, arithmetic and
++     order are unchanged; the film of a heterogeneous scene can differ from the earlier one in the last place of a few
++     values (the order of the per-word film additions: 2 values of 3,072 by at most 2 units in the first scene). Rate
++     after, same device, same day, the GPU shared in the same way: 24 of 24 single renders of the first scene and 12 of 12
++     of the second passed every repeat (48 and 24 films, each scene one film bitwise throughout); at the rates before, that has
++     probability under 1e-9. One render each of `volumes/heterogeneous-point`, `volumes/motion-moving-heterogeneous`,
++     `volumes/ray-marching-heterogeneous-point`, `volumes/catcher-heterogeneous`, `curves-b/volume-heterogeneous` and
++     `volumes/heterogeneous-in-heterogeneous-world`: perfect. Not measured: the step entry's own rate on this tree apart from
++     the shadow entry's (no film of the measurements after the change held a wrong path), other Intel generations, any
++     other platform (the declaration is shared WGSL: unverified elsewhere), an idle GPU.
+ 53. **A finite sphere lamp inside a medium: a last-bit branch on the lamp's surface (accepted by the maintainer as a documented deviation, like item 47; the two reproducer scenes are not in the corpus).** A path that hits
+    the lamp from the medium continues through it, and its next segment starts on the sphere, one float past the hit.
+    `point_light_sample` branches there on `d_sq > r_sq`, within rounding: the two sides give different points for
+diff --git a/native/cycles/pipelines.cpp b/native/cycles/pipelines.cpp
+index 685ee1b1a..7578a5059 100644
+--- a/native/cycles/pipelines.cpp
++++ b/native/cycles/pipelines.cpp
+@@ -1135,6 +1135,10 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
+       // The integration's shader evaluations run in shade_volume_heterogeneous_eval (native/DEVICE.md 52), so it is built so too.
+       if(override_code.empty()&&(std::strcmp(entry,"shade_volume_heterogeneous")==0||std::strcmp(entry,"shade_volume_heterogeneous_eval")==0)&&intel_metal_surface_workgroup(gpu))
+         single_invocation_entry(code,entry);
++      // The transparent shadow entry is declared with 64 invocations per workgroup for a heterogeneous medium
++      // (wavefront_shadow.wgsl, native/DEVICE.md 52); Intel through Metal keeps the one invocation it was validated with.
++      if(override_code.empty()&&std::strcmp(entry,"shade_shadow_transparent")==0&&intel_metal_surface_workgroup(gpu))
++        single_invocation_entry(code,entry);
+       if(fingerprint&&!fingerprint_module(module,entry,features,code,out))break;
+       const auto t0=clock::now();
+       WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={code.data(),code.size()};
+diff --git a/native/shaders/wavefront_shadow.wgsl b/native/shaders/wavefront_shadow.wgsl
+index 7ac716017..8653d1d56 100644
+--- a/native/shaders/wavefront_shadow.wgsl
++++ b/native/shaders/wavefront_shadow.wgsl
+@@ -221,7 +221,16 @@ fn shadow_write_film(index:u32){
+ }
+ // Bound compiler pressure from the SVM path with one invocation per workgroup.
+ // Static transparent triangles remain the supported scope; tuning is pending.
++//#if VOLUME_HETEROGENEOUS
++// With a heterogeneous medium the entry is declared with 64 invocations per workgroup (native/DEVICE.md 52: with one
++// invocation per workgroup the Intel driver on Linux intermittently computed single shadow paths wrong in the octree
++// walk; the entry's code, its arithmetic and its order are the same in both declarations). Intel through Metal and the
++// conservative tier build it with one invocation (pipelines.cpp).
++@compute @workgroup_size(64) fn shade_shadow_transparent(@builtin(global_invocation_id) id:vec3<u32>){
++//#endif
++//#if !VOLUME_HETEROGENEOUS
+ @compute @workgroup_size(1) fn shade_shadow_transparent(@builtin(global_invocation_id) id:vec3<u32>){
++//#endif
+     svm_invocation(id.x);
+     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     if(index>=p(10u)){fail();return;}let flag=state_word(S_shadow_path_flag,index);let count=state_half(S_shadow_path_packed_num_hits,index);

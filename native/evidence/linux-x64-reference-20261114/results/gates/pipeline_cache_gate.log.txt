@@ -1,0 +1,117 @@
+[04:33:31] ok   absent: active, a miss, saved
+[04:33:31] ok   one file per pipeline, in a folder per adapter
+[04:33:31] ok   the file is whole
+[04:33:31] ok   warm: a hit, the file not rewritten
+[04:33:31] ok   two hosts in one process: the second hits what the first saved
+[04:33:31] ok   the runtime data carries the header the mismatch cases edit
+[04:33:31] ok   zero bytes is ignored and rebuilt (damaged)
+[04:33:31] ok   zero bytes: the rebuilt file is a hit
+[04:33:32] ok   truncated in the header is ignored and rebuilt (damaged)
+[04:33:32] ok   truncated in the header: the rebuilt file is a hit
+[04:33:32] ok   truncated in the key is ignored and rebuilt (damaged)
+[04:33:32] ok   truncated in the key: the rebuilt file is a hit
+[04:33:32] ok   truncated in the data is ignored and rebuilt (damaged)
+[04:33:32] ok   truncated in the data: the rebuilt file is a hit
+[04:33:32] ok   extended is ignored and rebuilt (damaged)
+[04:33:32] ok   extended: the rebuilt file is a hit
+[04:33:32] ok   one flipped data bit is ignored and rebuilt (damaged)
+[04:33:33] ok   one flipped data bit: the rebuilt file is a hit
+[04:33:33] ok   flipped magic is ignored and rebuilt (damaged)
+[04:33:33] ok   flipped magic: the rebuilt file is a hit
+[04:33:33] ok   garbage is ignored and rebuilt (damaged)
+[04:33:33] ok   garbage: the rebuilt file is a hit
+[04:33:33] ok   another key in the header is ignored and rebuilt (otherAdapter)
+[04:33:33] ok   another key in the header: the rebuilt file is a hit
+[04:33:33] ok   another runtime in the header is ignored and rebuilt (otherRuntime)
+[04:33:33] ok   another runtime in the header: the rebuilt file is a hit
+[04:33:34] ok   another adapter as the runtime sees it is ignored and rebuilt (rejected)
+[04:33:34] ok   another adapter as the runtime sees it: the rebuilt file is a hit
+[04:33:34] ok   another driver as the runtime sees it is ignored and rebuilt (outdated)
+[04:33:34] ok   another driver as the runtime sees it: the rebuilt file is a hit
+[04:33:34] ok   runtime data truncated is ignored and rebuilt (outdated)
+[04:33:34] ok   runtime data truncated: the rebuilt file is a hit
+[04:33:34] ok   runtime data with another magic is ignored and rebuilt (outdated)
+[04:33:34] ok   runtime data with another magic: the rebuilt file is a hit
+[04:33:34] ok   directory that cannot be used: not active, no error
+[04:33:34] ok   stale temporary removed, fresh one kept
+[04:33:35] ok   a pipeline over the limit: not kept, no error
+[04:33:35] ok   over the limit: the oldest goes first
+[04:33:35] ok   a failure through the cache is not the consumer's: compiled without it
+[04:33:35] ok   a process dying while compiling removes that pipeline's file only
+[04:33:35] ok   the next process compiles it again
+[04:33:35] ok   four processes racing, round 0: no error, one whole file, no temporaries
+[04:33:36] ok   four processes racing, round 1: no error, one whole file, no temporaries
+[04:33:36] ok   four processes racing, round 2: no error, one whole file, no temporaries
+[04:33:36] ok   four processes racing, round 3: no error, one whole file, no temporaries
+[04:33:36] ok   four processes racing, round 4: no error, one whole file, no temporaries
+[04:33:36] ok   off: not active
+[04:33:36] ok   the environment switch beats the API directory
+[04:33:36] ok   the environment directory beats the API switch
+[04:33:36] ok   the record directory is the cache directory
+[04:33:36] ok   a cache directory beats the record directory
+[04:33:37] ok   off beats the record directory
+[04:33:37] ok   the CPU device has no cache
+[04:33:37] ok   default: $XDG_CACHE_HOME/cycles/webgpu-pipelines
+[04:33:37] ok   default with XDG_CACHE_HOME=None: ~/.cache/cycles/webgpu-pipelines
+[04:33:37] ok   default with XDG_CACHE_HOME='': ~/.cache/cycles/webgpu-pipelines
+[04:33:37] ok   default with XDG_CACHE_HOME='relative/path': ~/.cache/cycles/webgpu-pipelines
+[04:33:55] ok   a gate program does not cache by default
+[04:34:10] ok   the oracle runner does not cache by default
+[04:34:28] shader_data gate cold: wall 17.7 s, rc 0
+[04:34:44] shader_data gate warm: wall 15.9 s, rc 0
+[04:34:44] ok   state gate: cold and warm pass with the same results
+[04:34:44] ok   state gate: a run that asks gets a cache
+[04:35:16] glass_render gate cold: wall 32.7 s, rc 0, film c331f1d65083eb1b
+[04:35:31] glass_render gate warm: wall 14.7 s, rc 0, film c331f1d65083eb1b
+[04:36:04] glass_render gate cold-control: wall 32.6 s, rc 0, film c331f1d65083eb1b
+[04:36:04] ok   film gate: all runs pass
+[04:36:04] ok   film gate: the film repeats (control), and a hit gives the same bits
+[04:36:19] starter/diffuse-triangle cold: wall 15.2 s, compile 14.78 s, hits 0/9, rc 0
+[04:36:19] starter/diffuse-triangle warm: wall 0.4 s, compile 0.06 s, hits 9/9, rc 0
+[04:36:34] starter/diffuse-triangle cold-control: wall 15.2 s, compile 14.79 s, hits 0/9, rc 0
+[04:36:34] ok   starter/diffuse-triangle: all runs rendered
+[04:36:34] ok   starter/diffuse-triangle: the warm run hit every pipeline, the cold runs none
+[04:36:34] ok   starter/diffuse-triangle: the compiled text is identical
+[04:36:34] ok   starter/diffuse-triangle: warm against cold, 0 practical
+[04:36:34] ok   starter/diffuse-triangle: warm differences no larger than cold against cold
+[04:36:58] linux-gates/broad-lighting-0 cold: wall 23.3 s, compile 22.44 s, hits 0/11, rc 0
+[04:36:58] linux-gates/broad-lighting-0 warm: wall 0.7 s, compile 0.08 s, hits 11/11, rc 0
+[04:37:21] linux-gates/broad-lighting-0 cold-control: wall 22.9 s, compile 22.29 s, hits 0/11, rc 0
+[04:37:21] ok   linux-gates/broad-lighting-0: all runs rendered
+[04:37:21] ok   linux-gates/broad-lighting-0: the warm run hit every pipeline, the cold runs none
+[04:37:21] ok   linux-gates/broad-lighting-0: the compiled text is identical
+[04:37:21] ok   linux-gates/broad-lighting-0: warm against cold, 0 practical
+[04:37:21] ok   linux-gates/broad-lighting-0: warm differences no larger than cold against cold
+[04:37:52] sampling/adaptive-auto cold: wall 31.0 s, compile 27.89 s, hits 0/15, rc 0
+[04:37:56] sampling/adaptive-auto warm: wall 3.1 s, compile 0.08 s, hits 15/15, rc 0
+[04:38:27] sampling/adaptive-auto cold-control: wall 31.0 s, compile 27.78 s, hits 0/15, rc 0
+[04:38:27] ok   sampling/adaptive-auto: all runs rendered
+[04:38:27] ok   sampling/adaptive-auto: the warm run hit every pipeline, the cold runs none
+[04:38:27] ok   sampling/adaptive-auto: the compiled text is identical
+[04:38:27] ok   sampling/adaptive-auto: warm against cold, 0 practical
+[04:38:27] ok   sampling/adaptive-auto: warm differences no larger than cold against cold
+[04:38:52] shadow-catcher/catcher-point-light cold: wall 25.0 s, compile 22.83 s, hits 0/15, rc 0
+[04:38:54] shadow-catcher/catcher-point-light warm: wall 2.0 s, compile 0.08 s, hits 15/15, rc 0
+[04:39:19] shadow-catcher/catcher-point-light cold-control: wall 25.2 s, compile 23.31 s, hits 0/15, rc 0
+[04:39:19] ok   shadow-catcher/catcher-point-light: all runs rendered
+[04:39:19] ok   shadow-catcher/catcher-point-light: the warm run hit every pipeline, the cold runs none
+[04:39:19] ok   shadow-catcher/catcher-point-light: the compiled text is identical
+[04:39:19] ok   shadow-catcher/catcher-point-light: warm against cold, 0 practical
+[04:39:19] ok   shadow-catcher/catcher-point-light: warm differences no larger than cold against cold
+[04:39:50] combinations/camera-motion-ao-node cold: wall 31.0 s, compile 29.9 s, hits 0/13, rc 0
+[04:39:51] combinations/camera-motion-ao-node warm: wall 1.0 s, compile 0.09 s, hits 13/13, rc 0
+[04:40:22] combinations/camera-motion-ao-node cold-control: wall 31.1 s, compile 29.97 s, hits 0/13, rc 0
+[04:40:22] ok   combinations/camera-motion-ao-node: all runs rendered
+[04:40:22] ok   combinations/camera-motion-ao-node: the warm run hit every pipeline, the cold runs none
+[04:40:22] ok   combinations/camera-motion-ao-node: the compiled text is identical
+[04:40:22] ok   combinations/camera-motion-ao-node: warm against cold, 0 practical
+[04:40:22] ok   combinations/camera-motion-ao-node: warm differences no larger than cold against cold
+[04:41:12] volumes/absorption-point cold: wall 50.1 s, compile 43.61 s, hits 0/19, rc 0
+[04:41:20] volumes/absorption-point warm: wall 7.8 s, compile 0.14 s, hits 19/19, rc 0
+[04:42:09] volumes/absorption-point cold-control: wall 49.2 s, compile 43.63 s, hits 0/19, rc 0
+[04:42:09] ok   volumes/absorption-point: all runs rendered
+[04:42:09] ok   volumes/absorption-point: the warm run hit every pipeline, the cold runs none
+[04:42:09] ok   volumes/absorption-point: the compiled text is identical
+[04:42:09] ok   volumes/absorption-point: warm against cold, 0 practical
+[04:42:09] ok   volumes/absorption-point: warm differences no larger than cold against cold
+PASSED

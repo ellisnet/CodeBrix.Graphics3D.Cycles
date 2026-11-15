@@ -1,0 +1,26 @@
+{
+  "sceneId": "passes/denoising-motion-deforming",
+  "sceneSha256": "e68755d8f24ca29be4e070547b456fd9e8879a580accaafbf3334ec1fb94dd80",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "wgslArithmetic": "x64-sse4.2",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 4.76837158203125e-07,
+  "renderSeconds": [22.1354,0.286784],
+  "filmSha256": ["56b32f58bca65be180cf79a79f4e08a2fa06e95b8626dc1b3702fa4c74cfb813","dd5397f1788fa5fcbeab3857416e208b51279a77c1ae975f81b8efa5998a9c7e"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Denoising Backward Motion", "type": "denoising_backward_motion", "components": 3, "written": true, "filmSha256": ["7efa8f95a975d8215b6401dd906d0c05bbcd0099a92957dccf32631a7f031c62","f31d466e3f626fc7c08ac4992ab4648302d70759dcc5bf8c63d9a0be9f18974a"]},
+    {"index": 1, "name": "Denoising Specular Motion", "type": "denoising_specular_motion", "components": 3, "written": true, "filmSha256": ["6d5c60f2aeefa50ba1b390e8f10bc911a96b8e149fea42742c549c038f41e5e4","6d5c60f2aeefa50ba1b390e8f10bc911a96b8e149fea42742c549c038f41e5e4"]},
+    {"index": 2, "name": "Denoising Albedo", "type": "denoising_albedo", "components": 3, "written": true, "filmSha256": ["a20008e83aba4d071d0ecad28cf3ac5d67adcb7424be0c7eb9d1667b6bbc0685","62525648457fa9bab4d9f72d4c72d38546768b2ef104a1b507c0f67fcd87299c"]},
+    {"index": 3, "name": "Denoising Normal", "type": "denoising_normal", "components": 3, "written": true, "filmSha256": ["b4183c2ac2e6f0e1d2b53463c1b9ff5e184255c400f65f7b276fc9dc4fd330c5","29bfb9b3ea0fe7fbcf8dfd1777a3d9441a46e61d10c5caed2fed35d2df836bf8"]}
+  ],
+  "warnings": []
+}

@@ -1,0 +1,7 @@
+subsurface/holdout (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=5.96e-08 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             3.58e-07   4.33e-07   1.47e-08             0          1
+      worst x=25 y=19 R: ref 1.8137573 got 1.81375694 (0.000866x tolerance)
+  verdict: perfect

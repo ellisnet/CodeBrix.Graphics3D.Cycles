@@ -1,0 +1,72 @@
+{
+ "sceneId": "passes/denoising-motion",
+ "sceneSha256": "8b3870f78cf9c83bfdb90ace84f998939d39370f0be6708d6c6a9ee043ecea40",
+ "backend": "cpu-x64-linux",
+ "hostBackend": "cpu",
+ "hostAbi": 1,
+ "rid": "linux-x64",
+ "threads": 2,
+ "width": 48,
+ "height": 36,
+ "samples": 8,
+ "repeats": 2,
+ "repeatBitwiseIdentical": true,
+ "repeatMaxAbsDifference": 0,
+ "renderSeconds": [
+  0.00761441,
+  0.00582286
+ ],
+ "filmSha256": [
+  "ee13fdb5dcee9224297ddab5607b955d112dc706f17c18ca3aaa565b9fde6bf8",
+  "ee13fdb5dcee9224297ddab5607b955d112dc706f17c18ca3aaa565b9fde6bf8"
+ ],
+ "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+ "passes": [
+  {
+   "index": 0,
+   "name": "Denoising Backward Motion",
+   "type": "denoising_backward_motion",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "97581891d21c18f7fce852a1c0801e04370f498ca9279263a60b4989d3c1d4aa",
+    "97581891d21c18f7fce852a1c0801e04370f498ca9279263a60b4989d3c1d4aa"
+   ]
+  },
+  {
+   "index": 1,
+   "name": "Denoising Specular Motion",
+   "type": "denoising_specular_motion",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "4595d80c06aa6a24e09a7b8ae04e5291bcdf371d092784c9479449c696547b08",
+    "4595d80c06aa6a24e09a7b8ae04e5291bcdf371d092784c9479449c696547b08"
+   ]
+  },
+  {
+   "index": 2,
+   "name": "Denoising Albedo",
+   "type": "denoising_albedo",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "ba3d969c8682b5770e6d70b925926bf9d134a7f7c011a6db2ae1b1bddf1cbbf4",
+    "ba3d969c8682b5770e6d70b925926bf9d134a7f7c011a6db2ae1b1bddf1cbbf4"
+   ]
+  },
+  {
+   "index": 3,
+   "name": "Denoising Normal",
+   "type": "denoising_normal",
+   "components": 3,
+   "written": true,
+   "filmSha256": [
+    "09e3ae794240374d5b5c16182a5bd0e8ada3185c991e711056822a9dd7bfdfd9",
+    "09e3ae794240374d5b5c16182a5bd0e8ada3185c991e711056822a9dd7bfdfd9"
+   ]
+  }
+ ],
+ "warnings": [],
+ "documentSha256": "8b3870f78cf9c83bfdb90ace84f998939d39370f0be6708d6c6a9ee043ecea40"
+}

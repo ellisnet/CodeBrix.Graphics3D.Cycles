@@ -1,0 +1,41 @@
+{
+ "format": "cycles-expected-results-v1",
+ "note": "Part 5 session 1 (the queue tooling, 2026-11-13). DATA the queue compares the judge's output with; NOT a criterion. The judge (native/oracle/compare.py through judge_scene.py, practical abs(a-e) <= 5e-5 + 2e-4*abs(e), strict reported) runs unchanged on these scenes and reports them as failing. run_queue.py journals verdict 'expected' ONLY when the judge's output equals the recorded one below in every field given; anything else in these scenes (more or fewer failing values, another pass, another pixel, a perfect film, a render that fails, another refusal text) is a FINDING for the operator. Rulings: plan Part 5 section 3.4 (DEVICE.md 44, 189, 190: accepted by the maintainer 2026-11-13) and section 3.2 / section 9 session 1 (dispersion refused by name on the WebGPU device until session 3).",
+ "recordedFrom": [
+  "<repin>/films/failure-map-m3.json (WGSL corpus run m3, exactly commit A 9b2458a4f)",
+  "<repin>/reports/RUN7.md and films/failure-map-m5-proof.json (commit B's content)",
+  "judge_scene.py of this folder run by the queue tooling on the films of both runs (m3-wgsl against m3-cpu, m5-proof-wgsl against m5-cpu), 2026-11-13: problems, film-0 count, the recount of each repeat and the failing pixel are identical in both runs"
+ ],
+ "fields": "deviation: compareProblems = compare.py's 'problems' list, exactly (order ignored); practicalFilm0 = compare.py's practical count of the gating pair's film (film-0); the recount of EVERY repeat (film-0, film-1) must equal practicalFilm0; failingPixel (given when the film itself has failing values) = x, y of compare.py's worst pixel of the film, which is the one failing pixel. refusal: text = the message after 'codebrix_cycles_oracle: cbc_host_render returned N: ' on the runner's last stderr line, exactly; the runner must exit non-zero and write no film.",
+ "scenes": {
+  "passes/cryptomatte": {
+   "kind": "deviation", "deviceItem": 44,
+   "label": "expected deviation, DEVICE.md 44",
+   "what": "one pixel, two material ids in the other slot order (layers 00 and 01 of CryptoMaterial)",
+   "compareProblems": ["wgsl-linux-intel vs cpu-x64-linux: pass CryptoMaterial00 1 practical failures", "wgsl-linux-intel vs cpu-x64-linux: pass CryptoMaterial01 1 practical failures"],
+   "practicalFilm0": 0
+  },
+  "hair/chiang-absorption-thick": {
+   "kind": "deviation", "deviceItem": 189,
+   "label": "expected deviation, DEVICE.md 189",
+   "what": "one value of one pixel, 1.84 times the practical tolerance (the oracle's glibc logf)",
+   "compareProblems": ["wgsl-linux-intel vs cpu-x64-linux: 1 practical failures"],
+   "practicalFilm0": 1,
+   "failingPixel": [41, 14]
+  },
+  "combinations/cov-camera-motion-heterogeneous-linking-catcher": {
+   "kind": "deviation", "deviceItem": 190,
+   "label": "expected deviation, DEVICE.md 190",
+   "what": "one pixel (three values) of the film and of the Shadow Catcher Matte pass",
+   "compareProblems": ["wgsl-linux-intel vs cpu-x64-linux: 3 practical failures", "wgsl-linux-intel vs cpu-x64-linux: pass Shadow Catcher Matte 3 practical failures"],
+   "practicalFilm0": 3,
+   "failingPixel": [24, 13]
+  },
+  "bsdf/principled-dispersion": {
+   "kind": "refusal",
+   "label": "expected refusal on the WebGPU device (dispersion is session 3's port)",
+   "text": "WebGPU dispersion not implemented",
+   "recordedLine": "codebrix_cycles_oracle: cbc_host_render returned 2: WebGPU dispersion not implemented"
+  }
+ }
+}

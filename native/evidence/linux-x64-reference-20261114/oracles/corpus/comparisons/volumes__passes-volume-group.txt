@@ -1,0 +1,18 @@
+volumes/passes-volume-group (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=1.49e-08 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.19e-07   3.03e-07    9.3e-09             0          0
+      worst x=10 y=13 R: ref 0.196511388 got 0.196511328 (0.000667x tolerance)
+      pass volume_direct            volume_direct          maxAbs=  2.24e-08 practicalFail=0 strictDiff=0
+      pass volume_indirect          volume_indirect        maxAbs=  2.98e-08 practicalFail=0 strictDiff=0
+      pass diffuse_direct           diffuse_direct         maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+      pass diffuse_indirect         diffuse_indirect       maxAbs=  2.38e-07 practicalFail=0 strictDiff=1
+      pass glossy_direct            glossy_direct          maxAbs=  7.15e-07 practicalFail=0 strictDiff=6
+      pass glossy_indirect          glossy_indirect        maxAbs=  7.15e-07 practicalFail=0 strictDiff=11
+      pass transmission_direct      transmission_direct    maxAbs=         0 practicalFail=0 strictDiff=0
+      pass transmission_indirect    transmission_indirect  maxAbs=  2.98e-08 practicalFail=0 strictDiff=0
+      pass emission                 emission               maxAbs=         0 practicalFail=0 strictDiff=0
+      pass background               background             maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Combined_one             combined               maxAbs=  1.19e-07 practicalFail=0 strictDiff=0
+  verdict: perfect

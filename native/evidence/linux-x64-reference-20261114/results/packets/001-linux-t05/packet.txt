@@ -1,0 +1,25 @@
+Packet 001-linux-t05. Written by run_queue.py; no model has read or interpreted any of it.
+Device: linux local Intel GPU (laptop, linux-x64, arithmetic x64-sse4.2).
+Tree state: 3fb353bcc52d7151. Queue: linux, batch t05. Attempt folder: <run>/linux/linux/t05/20261113-193019.
+Runtime: CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210, sha256 pinned and checked by the gate scripts
+Driver and OS: the laptop's Intel GPU, Linux Mesa; {"device": {"label": "laptop", "rid": "linux-x64"}, "runtimeSha256": null, "hostLibrarySha256": "873a2f8b970871655c5561bfdc90498b4c20cf019957ff4d17796285e41880d8", "runnerSha256": "1be28b227df76de084d364d4f53a05ad0c1507e015c00ca583c731c02641405e"}
+
+== volumes/light-path-heterogeneous-equiangular
+Render: ok=True 16.7 s; [OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)
+Why failed: ['repeat film-1.f32: 3 practical (worst ratio 1.58; compare.py gates film-0 only, every repeat must pass)']
+Judge lines (verbatim, compare.py):
+volumes/light-path-heterogeneous-equiangular (32x24)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=0.000152 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             7.34e-05   0.000264   2.33e-06             0         12
+      worst x=10 y=19 R: ref 0.259434104 got 0.25950247 (0.671x tolerance)
+  verdict: perfect
+Numbers: practical 0, strict 12, worst pixel {'x': 10, 'y': 19, 'channel': 'R', 'reference': 0.2594341039657593, 'candidate': 0.25950247049331665, 'absoluteDifference': 6.836652755737305e-05, 'criterionRatio': 0.6710046208642539}, worst ratio 1.580915294354659, max abs 0.0001525282859802246, NaN/Inf 0
+Independent recount: {'filmsMatch': True, 'films': 2, 'values': 6144, 'practical': 3, 'strict': 50, 'nonfinite': 0, 'worstRatio': 1.580915294354659, 'maxAbs': 0.0001525282859802246, 'perFilm': {'film-0.f32': {'values': 3072, 'practical': 0, 'strict': 12, 'nonfinite': 0, 'worstRatio': 0.6710046208642539, 'maxAbs': 7.343292236328125e-05}, 'film-1.f32': {'values': 3072, 'practical': 3, 'strict': 38, 'nonfinite': 0, 'worstRatio': 1.580915294354659, 'maxAbs': 0.0001525282859802246}}}
+Adapter: None; arithmetic x64-sse4.2; repeat bitwise identical False
+Film: <run>/linux/linux/t05/20261113-193019/films/oracle/volumes/light-path-heterogeneous-equiangular/wgsl-linux-intel
+Reference: <run>/linux/cpu-films/oracle/volumes/light-path-heterogeneous-equiangular/cpu-x64-linux (Linux x64 CPU film of this run, stage A (cpu_films.py: rendered twice by this build, the two bitwise equal))
+Device output: <run>/linux/linux/t05/20261113-193019/films/logs/volumes__light-path-heterogeneous-equiangular.output.txt
+Rerun this one job (Linux: no lock; renders with the worktree's runner, judges against the queue's CPU films; not journalled):
+  CBC_RQ_DATA=<run> python3 <tools>/validation-runner/run_queue.py rerun linux volumes/light-path-heterogeneous-equiangular --out <EMPTY FOLDER OF YOURS> [--repo <YOUR WORKTREE, BUILT>]

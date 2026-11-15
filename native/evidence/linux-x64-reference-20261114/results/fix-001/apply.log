@@ -1,0 +1,227 @@
+build: cycles in codebrix-cycles-build-x86_64 (dc75b83755667dbcbb3a8a453224bca11ab49f145e0988a893aecab198f663be), checkout <repo> at /src, network none
+container: AlmaLinux 8.10 (Cerulean Leopard); gcc (GCC) 14.2.1 20250110 (Red Hat 14.2.1-11); cmake version 4.4.0; ldd (GNU libc) 2.28; Python 3.12.13
+container: image codebrix-cycles-build-x86_64 (dc75b83755667dbcbb3a8a453224bca11ab49f145e0988a893aecab198f663be), base quay.io/pypa/manylinux_2_28_x86_64:2026.07.19-1@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca; network: lo
+-- Not using precompiled libraries
+-- Attempting to use system libraries instead
+CMake Warning (policy) at src/cmake/external_libs.cmake:443 (find_package):
+  Policy CMP0167 is not set: The FindBoost module is removed.  Run "cmake
+  --help-policy CMP0167" for policy details.  Use the cmake_policy command to
+  set the policy and suppress this warning.
+Call Stack (most recent call first):
+  CMakeLists.txt:258 (include)
+This warning is for project developers.  Use -Wno-author or -Wno-policy to
+suppress it.
+
+-- CodeBrix Cycles host 1.0.20261114.0, Cycles b3f6262640f1a2f2d10b55b6ffccbf310ce0f981
+-- Configuring done (0.1s)
+-- Generating done (0.4s)
+-- Build files have been written to: /src/native/work/cycles-build
+[  1%] Built target extern_libc_compat
+[  1%] Built target extern_sky
+[  2%] Built target zstd_compress
+{"overlay": "/src/native/work/cycles-overlay", "files": 27, "identical": true}
+[  2%] Built target codebrix_cycles_overlay
+[  6%] Built target cycles_util
+[  6%] Built target codebrix_host_reference_color
+[  6%] Built target cycles_graph
+[  7%] Built target cycles_kernel_cpu
+[  7%] Building CXX object src/device/CMakeFiles/cycles_device.dir/src/native/cycles/shadow.cpp.o
+[  7%] Building CXX object src/device/CMakeFiles/cycles_device.dir/src/native/cycles/pipelines.cpp.o
+[  7%] Linking CXX static library ../../lib/libcycles_device.a
+[ 15%] Built target cycles_device
+[ 17%] Built target cycles_session
+[ 21%] Built target cycles_integrator
+[ 21%] Built target cycles_subd
+[ 27%] Built target cycles_scene
+[ 29%] Built target cycles_bvh
+[ 29%] Linking CXX shared library lib/libcodebrix_cycles_host.so
+[ 29%] Linking CXX executable bin/codebrix_host_image_reference
+[ 29%] Linking CXX executable bin/codebrix_cycles_camera_gate
+[ 30%] Linking CXX executable bin/codebrix_cycles_device_gate
+[ 30%] Linking CXX executable bin/codebrix_host_session64_reference
+[ 30%] Linking CXX executable bin/codebrix_host_session_reference
+[ 30%] Linking CXX executable bin/codebrix_cycles_curve_gate
+[ 30%] Linking CXX executable bin/codebrix_cycles_closest_gate
+[ 30%] Built target codebrix_cycles_device_gate
+[ 31%] Built target codebrix_cycles_camera_gate
+[ 32%] Built target codebrix_cycles_curve_gate
+[ 32%] Built target codebrix_cycles_closest_gate
+[ 32%] Linking CXX executable bin/codebrix_cycles_curve_shadow_gate
+[ 32%] Linking CXX executable bin/codebrix_cycles_hair_state_gate
+[ 32%] Linking CXX executable bin/codebrix_cycles_point_gate
+[ 32%] Linking CXX executable bin/codebrix_cycles_curve_render_gate
+[ 32%] Built target codebrix_cycles_host
+[ 32%] Linking CXX executable bin/codebrix_cycles_point_render_gate
+[ 32%] Built target codebrix_host_session64_reference
+[ 33%] Built target codebrix_host_image_reference
+[ 33%] Linking CXX executable bin/codebrix_cycles_hair_curve_render_gate
+[ 33%] Built target codebrix_host_session_reference
+[ 33%] Linking CXX executable bin/codebrix_cycles_hair_huang_gate
+[ 33%] Linking CXX executable bin/codebrix_cycles_hair_huang_render_gate
+[ 34%] Built target codebrix_cycles_hair_state_gate
+[ 35%] Built target codebrix_cycles_curve_shadow_gate
+[ 35%] Linking CXX executable bin/codebrix_cycles_shadow_gate
+[ 35%] Linking CXX executable bin/codebrix_cycles_transparent_shadow_gate
+[ 36%] Built target codebrix_cycles_curve_render_gate
+[ 37%] Built target codebrix_cycles_point_gate
+[ 37%] Linking CXX executable bin/codebrix_cycles_transparent_shadow_motion_gate
+[ 38%] Built target codebrix_cycles_point_render_gate
+[ 38%] Linking CXX executable bin/codebrix_cycles_transparent_lighting_gate
+[ 38%] Linking CXX executable bin/codebrix_cycles_lighting_gate
+[ 39%] Built target codebrix_cycles_hair_curve_render_gate
+[ 40%] Built target codebrix_cycles_hair_huang_gate
+[ 40%] Linking CXX executable bin/codebrix_cycles_lighting_mis_gate
+[ 40%] Linking CXX executable bin/codebrix_cycles_triangle_lighting_gate
+[ 41%] Built target codebrix_cycles_hair_huang_render_gate
+[ 41%] Linking CXX executable bin/codebrix_cycles_broad_lighting_gate
+[ 41%] Built target codebrix_cycles_transparent_shadow_gate
+[ 42%] Built target codebrix_cycles_transparent_shadow_motion_gate
+[ 42%] Built target codebrix_cycles_shadow_gate
+[ 42%] Linking CXX executable bin/codebrix_cycles_environment_gate
+[ 42%] Linking CXX executable bin/codebrix_cycles_light_tree_gate
+[ 42%] Linking CXX executable bin/codebrix_cycles_displacement_gate
+[ 43%] Built target codebrix_cycles_transparent_lighting_gate
+[ 44%] Built target codebrix_cycles_lighting_gate
+[ 44%] Linking CXX executable bin/codebrix_cycles_shadow_linking_gate
+[ 45%] Linking CXX executable bin/codebrix_cycles_shadow_catcher_gate
+[ 46%] Built target codebrix_cycles_lighting_mis_gate
+[ 47%] Built target codebrix_cycles_triangle_lighting_gate
+[ 47%] Linking CXX executable bin/codebrix_cycles_ao_state_gate
+[ 47%] Linking CXX executable bin/codebrix_cycles_ao_render_gate
+[ 49%] Built target codebrix_cycles_broad_lighting_gate
+[ 49%] Linking CXX executable bin/codebrix_cycles_raytrace_nodes_render_gate
+[ 50%] Built target codebrix_cycles_environment_gate
+[ 52%] Built target codebrix_cycles_light_tree_gate
+[ 52%] Linking CXX executable bin/codebrix_cycles_raytrace_nodes_state_gate
+[ 53%] Built target codebrix_cycles_displacement_gate
+[ 53%] Linking CXX executable bin/codebrix_cycles_mnee_gate
+[ 53%] Linking CXX executable bin/codebrix_cycles_mnee_render_gate
+[ 54%] Built target codebrix_cycles_shadow_catcher_gate
+[ 56%] Built target codebrix_cycles_shadow_linking_gate
+[ 56%] Linking CXX executable bin/codebrix_cycles_shadow_terminator_gate
+[ 56%] Linking CXX executable bin/codebrix_cycles_object_motion_render_gate
+[ 57%] Built target codebrix_cycles_ao_state_gate
+[ 58%] Built target codebrix_cycles_ao_render_gate
+[ 58%] Linking CXX executable bin/codebrix_cycles_deforming_motion_render_gate
+[ 58%] Linking CXX executable bin/codebrix_cycles_feature_combination_gate
+[ 60%] Built target codebrix_cycles_raytrace_nodes_render_gate
+[ 60%] Linking CXX executable bin/codebrix_cycles_light_state_gate
+[ 61%] Built target codebrix_cycles_raytrace_nodes_state_gate
+[ 63%] Built target codebrix_cycles_mnee_gate
+[ 63%] Linking CXX executable bin/codebrix_cycles_broad_light_state_gate
+[ 64%] Built target codebrix_cycles_mnee_render_gate
+[ 64%] Linking CXX executable bin/codebrix_cycles_emitter_sample_gate
+[ 64%] Linking CXX executable bin/codebrix_cycles_triangle_sample_gate
+[ 65%] Built target codebrix_cycles_shadow_terminator_gate
+[ 66%] Built target codebrix_cycles_object_motion_render_gate
+[ 66%] Linking CXX executable bin/codebrix_cycles_background_gate
+[ 67%] Linking CXX executable bin/codebrix_cycles_svm_world_gate
+[ 68%] Built target codebrix_cycles_deforming_motion_render_gate
+[ 69%] Built target codebrix_cycles_feature_combination_gate
+[ 69%] Linking CXX executable bin/codebrix_cycles_nodes_world_gate
+[ 69%] Linking CXX executable bin/codebrix_cycles_shader_data_gate
+[ 69%] Built target codebrix_cycles_light_state_gate
+[ 69%] Linking CXX executable bin/codebrix_cycles_svm_surface_gate
+[ 69%] Built target codebrix_cycles_broad_light_state_gate
+[ 69%] Linking CXX executable bin/codebrix_cycles_attribute_gate
+[ 70%] Built target codebrix_cycles_emitter_sample_gate
+[ 70%] Built target codebrix_cycles_background_gate
+[ 71%] Built target codebrix_cycles_triangle_sample_gate
+[ 71%] Linking CXX executable bin/codebrix_cycles_normal_gate
+[ 71%] Built target codebrix_cycles_svm_world_gate
+[ 71%] Linking CXX executable bin/codebrix_cycles_image_file_gate
+[ 72%] Linking CXX executable bin/codebrix_cycles_image_gate
+[ 72%] Linking CXX executable bin/codebrix_cycles_surface_gate
+[ 72%] Built target codebrix_cycles_nodes_world_gate
+[ 72%] Built target codebrix_cycles_shader_data_gate
+[ 72%] Linking CXX executable bin/codebrix_cycles_microfacet_svm_gate
+[ 72%] Linking CXX executable bin/codebrix_cycles_microfacet_bounce_gate
+[ 72%] Built target codebrix_cycles_svm_surface_gate
+[ 72%] Linking CXX executable bin/codebrix_cycles_microfacet_render_gate
+[ 73%] Built target codebrix_cycles_attribute_gate
+[ 74%] Built target codebrix_cycles_image_file_gate
+[ 74%] Linking CXX executable bin/codebrix_cycles_glass_svm_gate
+[ 74%] Built target codebrix_cycles_image_gate
+[ 74%] Linking CXX executable bin/codebrix_cycles_glass_bounce_gate
+[ 75%] Built target codebrix_cycles_normal_gate
+[ 76%] Built target codebrix_cycles_surface_gate
+[ 76%] Linking CXX executable bin/codebrix_cycles_glass_render_gate
+[ 76%] Linking CXX executable bin/codebrix_cycles_principled_bounce_gate
+[ 76%] Linking CXX executable bin/codebrix_cycles_principled_svm_gate
+[ 77%] Built target codebrix_cycles_microfacet_bounce_gate
+[ 77%] Built target codebrix_cycles_microfacet_svm_gate
+[ 77%] Linking CXX executable bin/codebrix_cycles_bsdf_svm_gate
+[ 77%] Linking CXX executable bin/codebrix_cycles_principled_render_gate
+[ 78%] Built target codebrix_cycles_microfacet_render_gate
+[ 78%] Linking CXX executable bin/codebrix_cycles_bsdf_bounce_gate
+[ 79%] Built target codebrix_cycles_glass_bounce_gate
+[ 79%] Built target codebrix_cycles_glass_svm_gate
+[ 80%] Linking CXX executable bin/codebrix_cycles_bsdf2_svm_gate
+[ 81%] Built target codebrix_cycles_glass_render_gate
+[ 81%] Linking CXX executable bin/codebrix_cycles_bsdf_render_gate
+[ 81%] Built target codebrix_cycles_principled_svm_gate
+[ 82%] Built target codebrix_cycles_principled_bounce_gate
+[ 82%] Linking CXX executable bin/codebrix_cycles_bsdf2_bounce_gate
+[ 82%] Linking CXX executable bin/codebrix_cycles_bsdf2_render_gate
+[ 82%] Linking CXX executable bin/codebrix_cycles_bsdf3_svm_gate
+[ 83%] Built target codebrix_cycles_principled_render_gate
+[ 83%] Built target codebrix_cycles_bsdf_svm_gate
+[ 83%] Linking CXX executable bin/codebrix_cycles_bsdf3_bounce_gate
+[ 83%] Linking CXX executable bin/codebrix_cycles_bsdf3_render_gate
+[ 84%] Built target codebrix_cycles_bsdf_bounce_gate
+[ 84%] Linking CXX executable bin/codebrix_cycles_hair_svm_gate
+[ 84%] Built target codebrix_cycles_bsdf2_bounce_gate
+[ 84%] Built target codebrix_cycles_bsdf2_svm_gate
+[ 85%] Linking CXX executable bin/codebrix_cycles_hair_bounce_gate
+[ 86%] Built target codebrix_cycles_bsdf_render_gate
+[ 86%] Built target codebrix_cycles_bsdf3_svm_gate
+[ 87%] Built target codebrix_cycles_bsdf2_render_gate
+[ 87%] Linking CXX executable bin/codebrix_cycles_nodes_render_gate
+[ 87%] Linking CXX executable bin/codebrix_cycles_nodes_svm_gate
+[ 87%] Linking CXX executable bin/codebrix_cycles_hair_render_gate
+[ 87%] Linking CXX executable bin/codebrix_cycles_volume_gate
+[ 88%] Built target codebrix_cycles_bsdf3_render_gate
+[ 88%] Built target codebrix_cycles_bsdf3_bounce_gate
+[ 88%] Linking CXX executable bin/codebrix_cycles_subsurface_gate
+[ 88%] Linking CXX executable bin/codebrix_cycles_subsurface_exit_gate
+[ 88%] Built target codebrix_cycles_hair_svm_gate
+[ 88%] Linking CXX executable bin/codebrix_cycles_volume_render_gate
+[ 88%] Built target codebrix_cycles_hair_bounce_gate
+[ 88%] Linking CXX executable bin/codebrix_cycles_volume_boundary_gate
+[ 89%] Built target codebrix_cycles_volume_gate
+[ 90%] Built target codebrix_cycles_nodes_svm_gate
+[ 91%] Built target codebrix_cycles_nodes_render_gate
+[ 92%] Built target codebrix_cycles_hair_render_gate
+[ 92%] Linking CXX executable bin/codebrix_cycles_atomic_film_gate
+[ 92%] Linking CXX executable bin/codebrix_cycles_closed_volume_render_gate
+[ 92%] Linking CXX executable bin/codebrix_cycles_bake_state_gate
+[ 93%] Linking CXX executable bin/codebrix_cycles_render_gate
+[ 93%] Built target codebrix_cycles_atomic_film_gate
+[ 93%] Linking C executable bin/codebrix_host_cpu_test
+[ 93%] Built target codebrix_host_cpu_test
+[ 93%] Built target codebrix_cycles_subsurface_gate
+[ 94%] Linking C executable bin/codebrix_host_reload_test
+[ 94%] Linking C executable bin/codebrix_host_gpu_test
+[ 95%] Built target codebrix_cycles_subsurface_exit_gate
+[ 96%] Linking C executable bin/codebrix_host_concurrency_test
+[ 96%] Built target codebrix_host_reload_test
+[ 97%] Built target codebrix_cycles_volume_render_gate
+[ 97%] Linking C executable bin/codebrix_host_tier_test
+[ 97%] Linking C executable bin/codebrix_host_abi_test
+[ 97%] Built target codebrix_host_concurrency_test
+[ 97%] Built target codebrix_host_gpu_test
+[ 97%] Linking C executable bin/codebrix_host_example_test
+[ 97%] Linking C executable bin/codebrix_host_scene_edit_test
+[ 97%] Built target codebrix_host_abi_test
+[ 97%] Linking C executable bin/codebrix_host_pipeline_cache_test
+[ 97%] Built target codebrix_host_example_test
+[ 98%] Built target codebrix_host_tier_test
+[ 98%] Linking CXX executable bin/codebrix_cycles_oracle
+[ 98%] Built target codebrix_host_scene_edit_test
+[ 98%] Built target codebrix_host_pipeline_cache_test
+[ 98%] Built target codebrix_cycles_oracle
+[ 99%] Built target codebrix_cycles_closed_volume_render_gate
+[100%] Built target codebrix_cycles_bake_state_gate
+[100%] Built target codebrix_cycles_volume_boundary_gate
+[100%] Built target codebrix_cycles_render_gate
+build: cycles finished with exit 0 in 15 s

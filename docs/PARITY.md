@@ -113,8 +113,9 @@ device replays of Linux captures that cannot pass bit for bit on another GPU).
 
 The pinned source is the released Cycles v5.3.0. The WGSL device was brought to
 its kernels (native/DEVICE.md, "Re-pin to Cycles v5.3.0": what changed in the
-pinned behaviour and how each change was proven); the full gate and corpus pass
-on this revision is the next device checkpoint, and the machine-readable
+pinned behaviour and how each change was proven). The first full gate and corpus
+pass on this revision ran on Linux x64 (2026-11-13/14; "First full pass" below);
+no other platform has been built or run on it. The machine-readable
 inventory (`compatibility/*.json`) still describes the previous revision until
 it is recorded again. What the release ADDED, feature by feature:
 
@@ -144,15 +145,47 @@ changed). Three corpus scenes fail narrowly on the WGSL device against the v5.3.
 | `hair/chiang-absorption-thick` | 1 practical failure at one pixel, 1.84 times the tolerance | At one hair hit the oracle's glibc `logf` is one unit in the last place off the correctly rounded value the device computes; three hair-to-hair bounces amplify it. glibc's `logf` cannot be copied into this repository | item 189 |
 | `combinations/cov-camera-motion-heterogeneous-linking-catcher` | 3 practical failures at one pixel of the Shadow Catcher Matte pass | At one sample the CPU's primary ray transmits through the heterogeneous medium and the device's scatters; the CPU value is itself unstable in the last bit of the scene (16-sample sum between 3.14 and 4.14 as the medium box moves by one to six units in the last place; 3.94 unmoved, device 3.14) | item 190 |
 
-The open items are native/DEVICE.md items 185 to 187. Effect on the parity
-estimate below (INFERENCE from the pinned header's node list, not a re-run of
-the method): the release removed the two Vertex Color opcodes (the node now
-compiles to an Attribute node) and added four (Boolean Math, Integer Math, Get
-Vector Component and its derivative form), so the target has 110 opcodes, of
-which the device implements 106. The opcode table of
-`native/cycles/pipelines.cpp` names the four new opcodes for their record size
-only, so a plain name search would count them; they are refused and must be
-subtracted. The closure, kernel and pass figures were not re-derived.
+Not handled by the WebGPU device and not refused by name (native/DEVICE.md item
+188 c): the Glass BSDF node with the multiscatter GGX distribution. The pinned
+node offers that distribution and the CPU kernel renders it; the device has no
+handler for it as a Glass BSDF distribution and no named refusal, and what such
+a scene renders or reports on the WebGPU device has not been established (no
+committed scene uses it). It is a gap to close.
+
+### First full pass (Linux x64, 2026-11-13/14)
+
+The first full pass on this revision, on Linux x64 only (native/DEVICE.md,
+"First full pass on Cycles v5.3.0", has the tree, the identity, the per-job
+table and the one fix applied during the pass, item 52). Practical criterion
+must pass, strict differences reported, every repeat judged; verdicts from the
+status files and the judge. The CPU reference is the same build's own CPU
+films, rendered twice and bitwise equal (the wall-clock pass excepted).
+
+| Device | Oracle corpus (scene jobs) | Gate, replay, host and tool jobs | Managed tests | Evidence |
+| --- | --- | --- | --- | --- |
+| Linux x64, Intel UHD 770, Mesa 25.0.7 | 726 (724 committed scenes and the 2 bench scenes): 722 perfect and the four expected results (the three accepted deviations above, each at its one recorded pixel, and `bsdf/principled-dispersion` refused with "WebGPU dispersion not implemented"); largest tolerance ratio among the 722: 0.746 | 53 of 53 judged jobs perfect: 47 gate jobs, the size guard and compile envelope job, the unspecialized compile smoke, the oracle replays (21 of 21), the host gate, the managed tests in Debug and the CPU films job | Debug 332 of 332, 0 warnings; Release recorded, not judged: pending the restage of the `linux-x64` payload | `native/evidence/linux-x64-reference-20261114/` |
+
+The size guard and the compile envelope over this pass's corpus dump: every entry the device builds is within the 60,000-instruction envelope (largest 58,006, `intersect_subsurface`); 37 built rows are at or above the 940,000-byte size guard, each measured within the envelope (warning rows; the table is in native/DEVICE.md, "First full pass on Cycles v5.3.0"); the ratio rule holds (14.483 bytes per instruction at the densest entry).
+
+The open items are native/DEVICE.md items 185 to 187 and 188. Effect on the
+parity estimate below (FACT for the opcodes, counted in the pinned source and
+in the device's table at this revision; not a re-run of the whole method): the
+release removed the two Vertex Color opcodes (the node now compiles to an
+Attribute node) and added four (Boolean Math, Integer Math, Get Vector
+Component and its derivative form). The pinned source has 112 opcodes. The
+opcode table of `native/cycles/pipelines.cpp` holds 108 of them; the four
+outside it are structural: `NODE_END` and `NODE_AOV_START`, which the device
+handles outside the table, and the sentinels `NODE_NONE` and `NODE_PAD1`. Four
+of the 108 in the table are there for their record size and are refused by name
+when an input is linked (Boolean Math, Integer Math, Get Vector Component and
+its derivative form), so a plain name search would count them and they must be
+subtracted: by the method below the target has 110 opcodes, of which the device
+implements 106. The closure, kernel and pass figures were not re-derived by
+that method; a name search at this revision found no closure, kernel or pass
+of the target missing from the device (the three kernels the release added
+belong to the dlss denoiser), and a name search cannot see a gap like the Glass
+BSDF's multiscatter GGX distribution, whose closure name the device uses for
+the Principled BSDF.
 
 ## Parity estimate
 
@@ -208,11 +241,17 @@ the evidence folders.
      `PASS_DENOISING_PREVIOUS` (temporal denoising of the OptiX denoiser, which
      the target does not include).
    Weights (an engineering judgment, not a measurement): opcodes 25, closures
-   30, kernels 30, passes 15. At the time of writing: opcodes 108 of 108,
-   closures 38 of 38, kernels 41 of 41, passes 52 of 52: **100%**. The same
-   source by the earlier method (excluded rows in the denominators): opcodes
-   108 of 108, closures 38 of 41, kernels 41 of 77, passes 51 of 56 (render
-   time not counted), about 82%.
+   30, kernels 30, passes 15. At the previous pinned revision, the last time
+   the whole method was run: opcodes 108 of 108, closures 38 of 38, kernels 41
+   of 41, passes 52 of 52, 100%; by the earlier method (excluded rows in the
+   denominators) opcodes 108 of 108, closures 38 of 41, kernels 41 of 77,
+   passes 51 of 56 (render time not counted), about 82%. Those figures do not
+   hold at Cycles v5.3.0: the opcodes are **106 of 110** ("Cycles v5.3.0"
+   above: four opcodes of the device's table are refused by name when an input
+   is linked), so the figure is below 100 (about 99 with the other three
+   families as they were, which have not been re-derived at this revision),
+   and the Glass BSDF's multiscatter GGX distribution is a gap this name
+   search does not count.
    Outside these four families and not in this figure: cameras (every type but
    the OSL custom camera renders), the sampling patterns, geometry (curves,
    points, displacement), lighting beyond the lamp set, the film and denoising

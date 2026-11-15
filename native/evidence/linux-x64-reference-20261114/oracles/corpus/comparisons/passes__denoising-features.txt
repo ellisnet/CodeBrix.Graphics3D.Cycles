@@ -1,0 +1,12 @@
+passes/denoising-features (48x36)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=2.38e-07 nonfinite=0 isa=x64 (wgslArithmetic x64-sse4.2)
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             1.91e-06   3.83e-07   1.09e-07             0         12
+      worst x=14 y=24 G: ref 4.21559381 got 4.21559477 (0.00107x tolerance)
+      pass Denoising Albedo         denoising_albedo       maxAbs=  1.91e-06 practicalFail=0 strictDiff=5
+      pass Denoising Normal         denoising_normal       maxAbs=  8.94e-08 practicalFail=0 strictDiff=0
+      pass Denoising Specular Albedo denoising_specular_albedo maxAbs=  1.79e-07 practicalFail=0 strictDiff=0
+      pass Denoising Roughness      denoising_roughness    maxAbs=  2.38e-07 practicalFail=0 strictDiff=27
+      pass Denoising Depth          denoising_depth        maxAbs=  1.53e-05 practicalFail=0 strictDiff=89
+  verdict: perfect

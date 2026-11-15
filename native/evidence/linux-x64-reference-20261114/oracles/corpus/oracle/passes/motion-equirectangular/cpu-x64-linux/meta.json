@@ -1,0 +1,61 @@
+{
+ "sceneId": "passes/motion-equirectangular",
+ "sceneSha256": "4746831edafef0a411a85567700913ed24ed1a0b09df096c3db419ac4d503d13",
+ "backend": "cpu-x64-linux",
+ "hostBackend": "cpu",
+ "hostAbi": 1,
+ "rid": "linux-x64",
+ "threads": 2,
+ "width": 48,
+ "height": 36,
+ "samples": 8,
+ "repeats": 2,
+ "repeatBitwiseIdentical": true,
+ "repeatMaxAbsDifference": 0,
+ "renderSeconds": [
+  0.0116434,
+  0.00865669
+ ],
+ "filmSha256": [
+  "e70ead90e955ec65db5b9bbcd207e1c6ac88b10a8a68b5c4c2d9e80d1fb4d5cf",
+  "e70ead90e955ec65db5b9bbcd207e1c6ac88b10a8a68b5c4c2d9e80d1fb4d5cf"
+ ],
+ "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+ "passes": [
+  {
+   "index": 0,
+   "name": "Vector",
+   "type": "motion",
+   "components": 4,
+   "written": true,
+   "filmSha256": [
+    "95242dabe058241b74f90eda2cc41397690d03a1c503f270087c2949a0006605",
+    "95242dabe058241b74f90eda2cc41397690d03a1c503f270087c2949a0006605"
+   ]
+  },
+  {
+   "index": 1,
+   "name": "Vector Weight",
+   "type": "motion_weight",
+   "components": 1,
+   "written": true,
+   "filmSha256": [
+    "005c173917705c670369270e2595aa6c321ae3a65f0036491e6697a8d54b176d",
+    "005c173917705c670369270e2595aa6c321ae3a65f0036491e6697a8d54b176d"
+   ]
+  },
+  {
+   "index": 2,
+   "name": "Depth",
+   "type": "depth",
+   "components": 1,
+   "written": true,
+   "filmSha256": [
+    "446a622874f7749d25dfa8db1e9d0e652f0916bf1d9229413a524d93de3862a1",
+    "446a622874f7749d25dfa8db1e9d0e652f0916bf1d9229413a524d93de3862a1"
+   ]
+  }
+ ],
+ "warnings": [],
+ "documentSha256": "4746831edafef0a411a85567700913ed24ed1a0b09df096c3db419ac4d503d13"
+}
