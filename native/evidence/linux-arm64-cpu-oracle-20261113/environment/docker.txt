@@ -1,0 +1,15 @@
+# Read on the Mac after the render (read-only Docker queries; the container still ran unchanged).
+$ docker version --format '{{.Server.Version}} {{.Server.Os}}/{{.Server.Arch}} client {{.Client.Version}}'
+29.9.3 linux/arm64 client 29.9.3
+$ docker info --format '{{.NCPU}} CPUs {{.MemTotal}} bytes {{.KernelVersion}} {{.OperatingSystem}}'
+10 CPUs 8319438848 bytes 7.0.14-linuxkit Docker Desktop
+$ docker image inspect debian:trixie --format '{{json .RepoDigests}} {{.Created}} {{.Os}}/{{.Architecture}}'
+["debian@sha256:9c6e381421d0f48d1b8133e573f33c185ee16cbf505eda9c4a8a4791b25ea8a6"] 2026-11-04T21:23:39Z linux/arm64
+$ docker inspect cbc-arm64-oracle-20261113b (mounts | command | working directory | network | created | id)
+[{"Destination":"/work/CodeBrix.Graphics3D.Cycles","Mode":"","Propagation":"rprivate","RW":true,"Source":"<repo>","Type":"bind"},{"Destination":"/root/.nuget/packages","Mode":"ro","Propagation":"rprivate","RW":false,"Source":"<home>/.nuget/packages","Type":"bind"}] | ["sleep","infinity"] | /work/CodeBrix.Graphics3D.Cycles | bridge | 2026-11-14T06:58:24.198072717Z | e5c18b8d0f242d07c94dc1318e2a8083e6507e16fa8920937647fc1036ff6f3b
+$ docker exec cbc-arm64-oracle-20261113b bash -c 'cat /etc/debian_version; uname -m; uname -r; git --version; make --version | head -1'
+13.7
+aarch64
+7.0.14-linuxkit
+git version 2.47.3
+GNU Make 4.4.1

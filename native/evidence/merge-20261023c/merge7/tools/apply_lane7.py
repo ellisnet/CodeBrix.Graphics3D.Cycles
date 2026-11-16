@@ -10,7 +10,7 @@ sha256Before), theirs = lane worktree file == after-hash) under merge-<lane>/; c
 conflicts are left for hand reconciliation (exit 3)."""
 import hashlib, json, shutil, subprocess, sys
 from pathlib import Path
-root = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge7'
+root = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge7'
 BASE = 'd21bd4a58f489afeafe2a3046ab32a556578f0ec'
 lane, want, basesrc = sys.argv[1:4]
 wt = Path.home() / 'ClaudeHome/cycles-worktrees' / lane

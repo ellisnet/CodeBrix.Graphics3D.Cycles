@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 8 (copied from merge wave 7): Android gate builds (arm64 then x64) in merge 5's build trees + review/staging lists into native/work/merge8,
 # then the Android host builds (as merge wave 5's android_builds.sh, --jobs 4). No device is touched.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; cd $R
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; cd $R
 K="triangle_sample surface triangle_lighting emitter_sample glass_render glass_bounce lighting_mis lighting light_state broad_light_state broad_lighting transparent_lighting transparent_shadow feature_combination object_motion_render deforming_motion_render camera render volume volume_render volume_boundary closed_volume_render closest shadow shader_data shadow_terminator principled_svm principled_bounce principled_render nodes_svm nodes_world nodes_render microfacet_render microfacet_svm microfacet_bounce glass_svm environment light_tree shadow_catcher ao_state ao_render mnee mnee_render"
 L=${1:-1}
 for rid in android-arm64 android-x64; do

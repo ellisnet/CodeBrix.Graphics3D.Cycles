@@ -22,7 +22,7 @@ Future RID and package audits remain tracked in [the license work](RELEASE-LICEN
 Historical evidence retains the earlier findings; it is not rewritten.
 
 The [WGSL release license work](RELEASE-LICENSE-PLAN.md) tracks the requirements
-from Jeremy's October 18 license plan, including source, dependencies, generated
+from the maintainer's October 18 license plan, including source, dependencies, generated
 shaders, history review, and package contents.
 
 - [Parity ledger and remaining work](PARITY.md)
@@ -49,14 +49,14 @@ shaders, history review, and package contents.
 The prototype renders an actual Cycles-prepared scene on Linux x64 and Android
 ARM64/x64, including API 33, with no CLR or Slang in the rendering path. Its
 current shading is deliberately restricted; full materials and integration
-remain under development. Changes are left uncommitted for Jeremy's review.
+remain under development. Changes are left uncommitted for the maintainer's review.
 
 The bounded native-scheduler proof now includes a repeated mixed-material render
 and a ForestCommunity clay bench, independently compared against original CPU
 kernels. Complete captured GPU command sequences pass on Linux and all three
 Android devices through the unchanged shipped runtime. Android native Cycles
 hosts and full rendering parity remain pending. The comprehensive continuation
-plan is `/home/jeremy/ClaudeHome/PLAN_Cycles_Targetting_WGSL_WebGPU.md`.
+plan is `<home>/ClaudeHome/PLAN_Cycles_Targetting_WGSL_WebGPU.md`.
 
 The current Linux x64 build starts with `python3 tools/build.py --jobs 6`.
 It builds the 18 pinned dependency snapshots in `third_party/deps`, then the
@@ -76,5 +76,5 @@ see `RELEASE-LICENSE-PLAN.md` for their current status.
 
 Intentional future RID binaries, applicable unstripped builds and symbols will
 be versioned under `native/binaries/<rid>/` after their artifact reviews. The
-Visual Studio/.NET build-output ignore rules remain active elsewhere. Jeremy
+Visual Studio/.NET build-output ignore rules remain active elsewhere. The maintainer
 performs all commits and pushes.

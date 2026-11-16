@@ -56,7 +56,7 @@ wavefront_svm_microfacet.wgsl; s3: wavefront_triangle_light.wgsl); m1-asset chan
    - the job's scene parameters (env keys not starting with CODEBRIX_CYCLES_, i.e. CODEBRIX_VOLUME_*) are passed to the
      Linux scene-reference and stage-judge passes too (they were device-only, which matters only for the volume jobs).
 2. **Lane rule** (A650-2 Q2): one sentence in MAINTAINER-README TESTING, after the envelope sentence.
-   Runner sha256: S3's copy b2810c44caeb1498b75c245bfbf698fa1ed55e3f9d522f64fd807aa88e5e3414 (kept as
+   Runner sha256: S3's copy 1598b600e4af9e46f60402a63c3b6b2211700bfa40dbf8116e1f70727c86c0b6 (kept as
    `tools/run_corpus.stage-exchange.orig.py`); merge-6 runner f7e1c82c1ae5d80dc9cb2773956937f01bd16b9ec1968b9168025a93b6ddd3eb.
    Linux self-test of the exchange for every newly added gate: `validation/s-*/flow` (judge = local lockstep exactly).
 2. **Lane rule** (A650-2 Q2): MAINTAINER-README TESTING, after the envelope sentence: "Any change to WGSL that every

@@ -44,7 +44,8 @@ const BakeType &bake_type(uint32_t value) {
   for (const BakeType &type : bake_types) if (type.value == value) return type;
   throw Failure(CBC_INVALID, "Unknown bake type");
 }
-struct BakeRequest { Object *object; Mesh *mesh; const Attribute *uv; const BakeType *type; };
+// subdivision: the object's mesh is a linear subdivision cage (cbc_host_subd_mesh), baked through Cycles' tessellation of it.
+struct BakeRequest { Object *object; Mesh *mesh; const Attribute *uv; const BakeType *type; bool subdivision; };
 BakeRequest bake_request(Host &host, const CBCBakeConfig *config) {
   require(config && config->struct_size == sizeof(*config), "Invalid bake configuration");
   require(std::all_of(std::begin(config->reserved), std::end(config->reserved), [](auto value) { return value == 0; }) && config->reserved2 == 0, "Unknown bake options");
@@ -57,16 +58,50 @@ BakeRequest bake_request(Host &host, const CBCBakeConfig *config) {
   require(request.object, "Bake object handle is not an object");
   request.mesh = dynamic_cast<Mesh *>(request.object->get_geometry());
   require(request.mesh, "Only an object whose geometry is a triangle mesh can be baked");
-  require(request.mesh->get_subdivision_type() == Mesh::SUBDIVISION_NONE, "A subdivision surface cannot be baked", CBC_UNSUPPORTED);
-  require(request.mesh->num_triangles() > 0, "The bake mesh has no triangles");
+  // Subdivision surfaces (PROVISIONAL): a linear subdivision cage is baked through the triangles Cycles dices from it
+  // (subdivision_bake_map). Catmull-Clark is refused as at render (validate_geometry). Pixel-space dicing measures in a
+  // camera a bake does not have: GeometryManager::device_update (scene/geometry.cpp) hands Mesh::tessellate the scene's
+  // dicing camera only for subd_adaptive_space pixel, and DiagSplit::T (subd/split.cpp) divides each edge's length by
+  // that camera's pixel size (Camera::world_to_raster_size). A bake sets the camera to the bake's size, and the dicing
+  // camera is the camera of the scene's last render (cbc_host_render) or Cycles' default, so the bake's triangles would
+  // depend on the scene's history: refused by name. In object space they depend on the cage and its dicing settings alone.
+  require(request.mesh->get_subdivision_type() != Mesh::SUBDIVISION_CATMULL_CLARK,
+          "Unsupported feature: Catmull-Clark subdivision needs OpenSubdiv, which this library does not include", CBC_UNSUPPORTED);
+  request.subdivision = request.mesh->get_subdivision_type() == Mesh::SUBDIVISION_LINEAR && request.mesh->get_num_subd_faces() != 0;
+  require(!request.subdivision || request.mesh->get_subd_adaptive_space() == Mesh::SUBDIVISION_ADAPTIVE_SPACE_OBJECT,
+          "Unsupported feature: bakes of subdivision surfaces diced in pixel space (subd_adaptive_space pixel measures the dicing in "
+          "pixels of a render camera, which a bake does not have; use subd_adaptive_space object)", CBC_UNSUPPORTED);
+  require(request.subdivision || request.mesh->num_triangles() > 0, "The bake mesh has no triangles");
+  // A subdivision surface's UV layout is one of its subdivision attributes (CBC_ATTR_SUBDIVISION), which Cycles
+  // interpolates over the faces it dices.
+  const AttributeSet &attributes = request.subdivision ? request.mesh->subd_attributes : request.mesh->attributes;
   const char *name = config->uv_attribute;
-  request.uv = name && *name ? request.mesh->attributes.find(ustring(name)) : request.mesh->attributes.find(ATTR_STD_UV);
-  require(request.uv, "The bake mesh has no such UV attribute");
+  request.uv = name && *name ? attributes.find(ustring(name)) : attributes.find(ATTR_STD_UV);
+  require(request.uv, request.subdivision ? "The bake mesh has no such UV attribute among its subdivision attributes (CBC_ATTR_SUBDIVISION)"
+                                          : "The bake mesh has no such UV attribute");
   require(request.uv->type == TypeFloat2 && (request.uv->element == ATTR_ELEMENT_CORNER || request.uv->element == ATTR_ELEMENT_VERTEX),
           "The bake UV attribute must be a float2 corner or vertex attribute");
   const bool aov = config->type == CBC_BAKE_AOV_COLOR || config->type == CBC_BAKE_AOV_VALUE;
   require(aov ? config->aov_name && *config->aov_name : !config->aov_name, aov ? "An AOV bake needs the AOV pass name" : "Only an AOV bake takes an AOV pass name");
   return request;
+}
+// Every other subdivision surface of a baked scene (PROVISIONAL): GeometryManager::device_update (scene/geometry.cpp) dices
+// each modified linear cage whose positions or dicing settings changed (Mesh::need_tessellation, scene/mesh.cpp), and for
+// subd_adaptive_space pixel it hands Mesh::tessellate the scene's dicing camera, in whose pixels DiagSplit::T
+// (subd/split.cpp) measures every edge (Camera::world_to_raster_size). cbc_host_render keeps the dicing camera equal to the
+// render camera; a bake sets neither, so such a surface is diced in the camera of the scene's last render (Cycles' default
+// before any render), or keeps the dicing of the last render when it was not modified since. Either way what the bake sees
+// of it depends on the scene's history: refused by name, as for the bake target (bake_request). Only geometry an object
+// uses is diced into what rays meet.
+void validate_bake_dicing(Host &host, const BakeRequest &request) {
+  for (Object *object : host.session->scene->objects) {
+    auto mesh = dynamic_cast<Mesh *>(object->get_geometry());
+    if (!mesh || mesh == request.mesh || !mesh->get_num_subd_faces() || mesh->get_subdivision_type() == Mesh::SUBDIVISION_NONE) continue;
+    require(mesh->get_subd_adaptive_space() == Mesh::SUBDIVISION_ADAPTIVE_SPACE_OBJECT,
+            "Unsupported feature: bakes of subdivision surfaces diced in pixel space (another subdivision surface of the baked scene has "
+            "subd_adaptive_space pixel, which a bake would dice in the camera of the scene's last render, so the bake would depend on the "
+            "scene's history; use subd_adaptive_space object for every subdivision surface of a scene you bake)", CBC_UNSUPPORTED);
+  }
 }
 // Twice the signed area of (a, b, p). A pair of points is always taken in the
 // same order, whichever triangle it comes from, so two triangles sharing an edge
@@ -119,6 +154,39 @@ TextureBakeMap bake_map(const Mesh &mesh, const Attribute &uv, int width, int he
   }
   return map;
 }
+// The bake map of a linear subdivision surface (PROVISIONAL). The kernel shades the triangles Cycles dices from the cage:
+// GeometryManager::device_update (scene/geometry.cpp) runs Mesh::tessellate (scene/mesh_subdivision.cpp) with the mesh's
+// subd_dicing_rate and subd_max_level and, in object space, no camera, whenever the cage's positions or its dicing
+// settings changed since the last dicing (Mesh::need_tessellation; an edit of a subdivision attribute tags the positions,
+// host_scene.inc). Those triangles and their order follow from the faces, the cage positions and the two settings alone
+// (DiagSplit, subd/split.cpp; EdgeDice, subd/dice.cpp), so the host dices a copy of the cage (its faces, positions and UV
+// attribute) with the same Mesh::tessellate and parameters and maps each texel through the copy's UV attribute, which
+// Cycles interpolates over each face (SubdAttributeInterpolation, subd/interpolation.cpp). Its triangle indices are the
+// device's; true displacement moves the diced vertices afterwards and changes neither the triangles nor their UVs.
+TextureBakeMap subdivision_bake_map(const Mesh &mesh, const Attribute &uv, int width, int height) {
+  const Attribute *cage = mesh.subd_attributes.find(ATTR_STD_POSITION);
+  require(cage, "The subdivision surface has no cage positions", CBC_FAILED);
+  Mesh diced;
+  diced.resize_mesh(int(cage->size), 0);
+  diced.resize_subd_faces(int(mesh.get_num_subd_faces()), int(mesh.get_subd_face_corners().size()));
+  const auto copy = [](const auto &from, auto &to) { std::copy_n(from.data(), from.size(), to.data()); };
+  copy(mesh.get_subd_start_corner(), diced.get_subd_start_corner()); copy(mesh.get_subd_num_corners(), diced.get_subd_num_corners());
+  copy(mesh.get_subd_shader(), diced.get_subd_shader()); copy(mesh.get_subd_smooth(), diced.get_subd_smooth());
+  copy(mesh.get_subd_ptex_offset(), diced.get_subd_ptex_offset()); copy(mesh.get_subd_face_corners(), diced.get_subd_face_corners());
+  copy_attribute(*cage, diced.subd_attributes);  // host_edits.inc
+  copy_attribute(uv, diced.subd_attributes);
+  diced.set_subdivision_type(Mesh::SUBDIVISION_LINEAR);
+  SubdParams params(&diced);
+  params.dicing_rate = mesh.get_subd_dicing_rate();
+  params.max_level = mesh.get_subd_max_level();
+  diced.tessellate(params);
+  const Attribute *diced_uv = diced.attributes.find(uv.name);
+  require(diced_uv && diced.num_triangles() > 0, "Cycles' tessellation of the subdivision surface has no triangles", CBC_FAILED);
+  return bake_map(diced, *diced_uv, width, height);
+}
+TextureBakeMap bake_map(const BakeRequest &request, int width, int height) {
+  return request.subdivision ? subdivision_bake_map(*request.mesh, *request.uv, width, height) : bake_map(*request.mesh, *request.uv, width, height);
+}
 // Scene state a bake changes, restored when the bake ends, however it ends.
 struct BakeScope {
   Scene &scene;
@@ -144,7 +212,7 @@ extern "C" int cbc_host_bake_map(CBCHost handle, const CBCBakeConfig *config, in
     *required = pixels;
     require(capacity >= pixels, "Result buffer is too small", CBC_SMALL_BUFFER);
     validate_geometry(host);
-    const TextureBakeMap map = bake_map(*request.mesh, *request.uv, int(config->width), int(config->height));
+    const TextureBakeMap map = bake_map(request, int(config->width), int(config->height));
     std::copy(map.triangles.begin(), map.triangles.end(), triangles);
     if (coordinates) for (uint64_t i = 0; i < pixels; ++i) {
       coordinates[i * 6] = map.primitive[i * 3]; coordinates[i * 6 + 1] = map.primitive[i * 3 + 1];
@@ -171,12 +239,16 @@ extern "C" int cbc_host_bake(CBCHost handle, const CBCBakeConfig *config, float 
     // kernel (integrator_init_from_bake) takes any background pass as a request to bake the world: the bake is the
     // world's, as Cycles writes it on every device.
     validate_geometry(host);
-    TextureBakeMap map = bake_map(*request.mesh, *request.uv, int(config->width), int(config->height));
+    // Refused before anything renders, as at render (cycles_host.cpp).
+    validate_upscale_factor(scene);
+    validate_bake_dicing(host, request);
+    TextureBakeMap map = bake_map(request, int(config->width), int(config->height));
     struct Prune { Host &host; ~Prune() { prune_bakes(host); } } prune{host};
     reconcile_bakes(host);
     host.prepare_graphs();
     WorldVolumeLight world_light{scene}; world_volume_light(host, world_light);
     recover_device(host);
+    reconcile_displacement(host);  // host_edits.inc, as in cbc_host_render
     // The position pass is not divided by the sample count, but the kernel adds to it
     // once per sample: one sample, at the texel centre, is the exact value.
     const int samples = request.type->pass == PASS_POSITION ? 1 : int(config->samples);
@@ -189,11 +261,14 @@ extern "C" int cbc_host_bake(CBCHost handle, const CBCBakeConfig *config, float 
     params.sample_subset_offset = scene.integrator->get_sample_subset_offset();
     params.sample_subset_length = scene.integrator->get_sample_subset_length();
     params.time_limit = host.time_limit;
+    // Tiled rendering (cbc_host_tile_size, PROVISIONAL): a bake renders in tiles as a render does (no overscan when baking,
+    // TileManager::update); each tile reads its region of the bake map (HostOutput::read_render_tile).
+    params.use_auto_tile = host.tile_size != 0; params.tile_size = host.tile_size ? int(host.tile_size) : SessionParams().tile_size;
     scene.integrator->set_aa_samples(params.samples);
     BufferParams buffers; buffers.width = buffers.full_width = buffers.window_width = int(config->width);
     buffers.height = buffers.full_height = buffers.window_height = int(config->height);
     host.result = Result{}; host.result.width = buffers.width; host.result.height = buffers.height;
-    host.result.pixels.assign(size_t(config->width) * config->height * 4, -1000.0f); host.cancellation = false;
+    host.result.pixels.assign(size_t(config->width) * config->height * 4, -1000.0f); host.cancellation = false; host.tiled_reads->begin();
     host.result.bake_map = &map;
     host.last_sample = -1; host.last_status.clear();
     struct Active { Host &host; Active(Host &h) : host(h) { host.rendering = true; } ~Active() { host.rendering = false; } } active(host);
@@ -227,13 +302,25 @@ extern "C" int cbc_host_bake(CBCHost handle, const CBCBakeConfig *config, float 
     render_pass_modes(host, parking);
     scene.film->tag_modified();
     session.progress.reset();
-    session.reset(params, buffers); session.start(); session.wait();
+    { CancelWatch watch{host}; session.reset(params, buffers); session.start(); session.wait(); }
+    DropTiles drop_tiles{host};
+    host.images_loaded = host.images_loaded || scene.dscene.image_textures.size() != 0;  // cbc_host_texture_limit
+    host.retry_undelivered_tiles();
     try {
+      host.render_tiles_delivered();
       require(!host.cancellation && !host.closing, "Bake cancelled", CBC_CANCELLED);
       require(!session.progress.get_error(), session.progress.get_error_message().c_str(), CBC_FAILED);
       require(!session.device->have_error(), session.device->error_message().c_str(), CBC_FAILED);
       require(!session.progress.get_cancel(), "Bake cancelled", CBC_CANCELLED);
+      // A tiled bake's output comes from its full frame in memory (cbc_host_tile_size, as in cbc_host_render).
+      if (host.read_back_tiles()) {
+        require(!host.cancellation && !host.closing, "Bake cancelled", CBC_CANCELLED);
+        require(!session.progress.get_error(), session.progress.get_error_message().c_str(), CBC_FAILED);
+        require(!session.device->have_error(), session.device->error_message().c_str(), CBC_FAILED);
+        require(!session.progress.get_cancel(), "Bake cancelled", CBC_CANCELLED);
+      }
       require(host.result.bake_map_read, "Cycles did not read the bake map", CBC_FAILED);
+      require(host.result.delivered_error.empty(), host.result.delivered_error.c_str(), CBC_FAILED);  // cycles_host.cpp, HostOutput
       require(host.result.writes == 1 && host.result.valid, "Missing complete bake output", CBC_FAILED);
       if (!host.result.passes.empty()) require(host.result.passes[0].written, "The device did not write this bake pass", CBC_FAILED);
       const std::vector<float> &output = host.result.passes.empty() ? host.result.pixels : host.result.passes[0].pixels;

@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # M4 final validation slots (M3 copy, trimmed to the box). A: all-lanes + host gate; B: nodes, glass on/off, replay, principled.
-R=/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative; F=$R/native/work/m4/validation/final; T=$R/native/work/m4/tools
+R=<home>/ClaudeHome/cycles-worktrees/m4-bump-derivative; F=$R/native/work/m4/validation/final; T=$R/native/work/m4/tools
 cd $R; mkdir -p $F/extra
 if [ "$1" = A ]; then
   export MESA_SHADER_CACHE_DIR=$R/native/work/m4/mesa-fa; rm -rf $MESA_SHADER_CACHE_DIR; mkdir -p $MESA_SHADER_CACHE_DIR

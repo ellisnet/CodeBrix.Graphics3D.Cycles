@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Merge wave 4: DEVICE.md doc edits decided by Jeremy (b)-(e), the merge-wave-4 device section, and lane Q's
+"""Merge wave 4: DEVICE.md doc edits decided by the maintainer (b)-(e), the merge-wave-4 device section, and lane Q's
 S20 section hand-applied at the end."""
 from pathlib import Path
-R = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); p = R/'native/DEVICE.md'; t = p.read_text()
+R = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); p = R/'native/DEVICE.md'; t = p.read_text()
 def rep(old, new):
     global t
     assert t.count(old) == 1, old[:80]; t = t.replace(old, new)
@@ -28,7 +28,7 @@ t = t[:i]+"""- Materials, settled at merge wave 4 (2026-10-22) after lane S, one
   Samsung walls of principled_render, nodes_svm and nodes_render are times to their (open) Samsung failures. Evidence:
   `native/work/merge4/runs/pixel/materials-p-*` and `native/work/merge4/device/pixel-cutoffs.json`.
 
-Dispositions DECIDED by Jeremy (2026-10-22): the following are definitively not supported on Pixel 4 level hardware
+Dispositions DECIDED by the maintainer (2026-10-22): the following are definitively not supported on Pixel 4 level hardware
 (Adreno 640) and will NOT be rerun: object and deformation motion blur, node-based world shaders, transparent shadows
 and transparent lighting, emissive triangle lights, feature combination, shadow terminator, stationary renders of
 motion-capable scenes, the managed validation app, and most on-device replays. A full functionality test on a Pixel 5

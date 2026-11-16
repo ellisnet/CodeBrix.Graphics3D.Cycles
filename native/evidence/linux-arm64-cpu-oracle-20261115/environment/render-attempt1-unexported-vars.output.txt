@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/work/CodeBrix.Graphics3D.Cycles/native/oracle/render_oracles.py", line 290, in <module>
+    if __name__=='__main__':sys.exit(main())
+                                     ~~~~^^
+  File "/work/CodeBrix.Graphics3D.Cycles/native/oracle/render_oracles.py", line 266, in main
+    return run(a)
+  File "/work/CodeBrix.Graphics3D.Cycles/native/oracle/render_oracles.py", line 183, in run
+    common=dict(machine=machine(),hostLibrarySha256=sha(args.host_library),runnerSha256=sha(args.runner),cpuKernelCompile=kernel_flags())
+                                                    ~~~^^^^^^^^^^^^^^^^^^^
+  File "/work/CodeBrix.Graphics3D.Cycles/native/oracle/render_oracles.py", line 59, in sha
+    def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                                        ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/pathlib/_abc.py", line 625, in read_bytes
+    with self.open(mode='rb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.13/pathlib/_local.py", line 539, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+IsADirectoryError: [Errno 21] Is a directory: '.'

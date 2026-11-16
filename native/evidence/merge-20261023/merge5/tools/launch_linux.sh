@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 4: start Linux slots A and B once the v2 target build succeeded; then the validation APK once the host gate
 # and both Android host builds succeeded.
-M=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge4; R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles
+M=<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge4; R=<home>/GitHome/CodeBrix.Graphics3D.Cycles
 until grep -q "v2 gate build exit=" $M/timeline.log; do sleep 10; done
 grep -q "v2 gate build exit=0" $M/timeline.log || { echo "[$(date +%H:%M:%S)] slots NOT started (v2 build failed)" >> $M/timeline.log; exit 1; }
 bash $M/tools/slotA.sh > $M/validation/slotA.log 2>&1 &

@@ -19,6 +19,10 @@ subprocess.run(['cmake','-S',str(ROOT/'native/oracle'),'-B',str(oracle),'-DCMAKE
                 # The SDK by name, as tools/dependencies/build_macos.py: without --sdk, xcrun takes the newest SDK it finds.
                 '-DCMAKE_OSX_SYSROOT='+subprocess.check_output(['xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),
                 '-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local',
+                # The host library by a path relative to the runner instead of the absolute
+                # BUILD_RPATH of native/oracle/CMakeLists.txt, whose length would size the
+                # Mach-O header with the checkout path.
+                '-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON','-DCMAKE_INSTALL_RPATH=@executable_path/../host/build/lib',
                 '-DCODEBRIX_HOST_LIBRARY='+str(host)],cwd=ROOT,check=True,stdout=subprocess.DEVNULL)
 subprocess.run(['cmake','--build',str(oracle),'--parallel',str(args.jobs)],cwd=ROOT,check=True,stdout=subprocess.DEVNULL)
 print('osx-arm64: dependencies, Metal host and oracle runner built',flush=True)

@@ -4,14 +4,14 @@
 # Merge wave 3 device chain. Usage: chain_device.sh DEVICE (hp | samsung | pixel)
 # Lock protocol: mkdir the lock (stop if held), owner.txt, stage + verify, corpora (budgets are declared by
 # run_corpus.py / replay_host_captures.py before each run), managed app, clean the device, release the lock.
-cd "$(dirname "$0")"; dev=$1; M=$(realpath ..); L=/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
+cd "$(dirname "$0")"; dev=$1; M=$(realpath ..); L=<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
 ref=$M/reference/linux-x64; V=$M/validation
 case $dev in
   hp) serial=192.168.86.225:5555; rid=android-x64; F="--reference $ref --device-scene"; FM="--reference $ref --mesa-scratch-cache";;
   samsung) serial=R52W207XQ1V; rid=android-arm64; F="--reference $ref --device-scene"; FM="--reference $ref";;
   pixel) serial=98271FFBA0048D; rid=android-arm64; F="--reference $ref --device-scene --pipeline-budget-ms 20000"; FM="--reference $ref --pipeline-budget-ms 20000";;
 esac
-A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"
+A="<home>/Android/Sdk/platform-tools/adb -s $serial"
 lg(){ echo "[$(date +%H:%M:%S)] $dev $*" >> $M/timeline.log; }
 mkdir $L/$serial 2>/dev/null || { lg "lock HELD, chain not started"; exit 2; }
 echo "merge-wave-3 agent (session-close merge E4/E5/M4) $(date -Iseconds) chain_device.sh $dev" > $L/$serial/owner.txt; lg "lock taken"

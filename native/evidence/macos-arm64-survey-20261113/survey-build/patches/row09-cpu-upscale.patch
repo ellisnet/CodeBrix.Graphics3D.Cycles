@@ -1,0 +1,25 @@
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+
+Survey row 9 (KIT-MACOS-ARM64 section 6): lifts the CPU/WebGPU host refusal of a denoiser upscale factor other than 1
+(native/host/cycles_host.cpp, cbc_host_render) so that what the CPU backend does with the factor can be recorded.
+The Metal backend already accepts the factor at the base commit.
+
+SURVEY BUILD ONLY, NEVER PRODUCT CODE. Scratch change for the Apple Silicon feature survey; applied with
+`patch -p1 -d <survey copy>` to a git-archive copy of the base tree under native/work/, never to the repository.
+Base: branch cycles-with-metal-v5.3.0, commit 0b19d87507ac24f1e55ba6a50d1ac6b05c8d417c (host sources identical to 828f6c2f9).
+
+--- a/native/host/cycles_host.cpp
++++ b/native/host/cycles_host.cpp
+@@ -1157,11 +1157,6 @@
+       region_height = int(std::lround(double(border.top) * config->height)) - region_y;
+       require(region_width > 0 && region_height > 0, "Camera border covers no whole pixel of this film");
+     }
+-    // Cycles upscales only in its GPU denoisers; the Open Image Denoise CPU denoiser that the CPU and WebGPU backends
+-    // use resets the factor to 1 (integrator/denoiser.cpp), so the setting would be lost.
+-    require(host.backend == CBC_HOST_METAL || !scene.integrator->get_use_denoise() || scene.integrator->get_denoiser_upscale_factor() == 1.0f,
+-            "Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)",
+-            CBC_UNSUPPORTED);
+     // Adaptive dicing of subdivision surfaces measures in the dicing camera's pixels: with subdivision faces in the scene
+     // the host keeps it equal to the render camera (Cycles' own scene leaves it at its defaults).
+     if (std::any_of(scene.geometry.begin(), scene.geometry.end(), [](Geometry *g) {

@@ -4,7 +4,7 @@
 """M1 measurement helper: build the Linux render replay tool and replay one capture."""
 import sys
 from pathlib import Path
-ROOT=Path('/home/jeremy/ClaudeHome/cycles-worktrees/m1-principled')
+ROOT=Path('<home>/ClaudeHome/cycles-worktrees/m1-principled')
 sys.path.insert(0,str(ROOT/'native/tools'))
 import render_replay
 render_replay.build('linux-x64')

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 4, Linux slot C: WGSL dumps (dump folders created first; slot B's l2 dumps wrote nothing because
 # CODEBRIX_CYCLES_WGSL_DUMP does not create its folder) and the Intel compile envelope over them.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge4; V=$M/validation; S=$M/tools/slot.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge4; V=$M/validation; S=$M/tools/slot.sh
 T=$R/native/tools; B=$R/native/work/cycles-build/bin
 cd $R
 mkdir -p $V/l3-abi-dump/dump

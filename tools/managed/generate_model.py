@@ -53,7 +53,7 @@ LIGHT_ROOT = 'light'
 
 # Members the hand-written bases or the extras below already use.
 RESERVED = {'Scene', 'Handle', 'Graph', 'TypeInfo', 'Describe', 'Equals', 'GetHashCode', 'ToString',
-            'GetType', 'NativeTypeName', 'Output', 'Add', 'Connect', 'Bind', 'Unbind', 'SetTriangles',
+            'GetType', 'NativeTypeName', 'Output', 'Add', 'Connect', 'Bind', 'Unbind', 'BindTiles', 'SetTriangles',
             'SetMotionPositions', 'ClearMotionPositions', 'IsRemoved',
             'SetAttribute', 'SetAttributeBytes', 'GetAttribute', 'GetAttributeBytes', 'RemoveAttribute',
             'MemberwiseClone', 'Finalize'}
@@ -166,7 +166,7 @@ EXTRAS = {
     /// </summary>
     public void ClearMotionPositions() => Scene.SetMeshMotion(this, 1, ReadOnlySpan<float>.Empty);
 ''',
-    'image_texture': 'IMAGE',
+    'image_texture': 'IMAGE_UDIM',
     'environment_texture': 'IMAGE',
 }
 IMAGE_EXTRA = '''
@@ -182,6 +182,21 @@ IMAGE_EXTRA = '''
     /// </summary>
     public void Unbind() => Scene.UnbindImage(this);
 '''
+# Image Texture nodes only: Cycles builds UDIM textures for them, not for Environment Texture nodes.
+UDIM_EXTRA = '''
+    /// <summary>
+    /// Binds images to this texture as UDIM tiles (provisional): each <see cref="UdimTile.Image"/> at its
+    /// <see cref="UdimTile.Number"/>, the tile covering UV [u, u + 1) x [v, v + 1) being 1001 + 10 * v + u (u 0 to 9).
+    /// A UV outside every bound tile reads <see cref="Missing"/> and <see cref="MissingAlpha"/>. The tile numbers are
+    /// distinct and at least 1001, and every image has the same <see cref="ImageFormat"/>. Replaces any earlier binding;
+    /// <see cref="Unbind"/> removes it. The bindings keep the pixels alive even after the images are disposed.
+    /// </summary>
+    /// <param name="tiles">The tiles, in any order.</param>
+    /// <exception cref="ArgumentException">An image is missing or belongs to another scene.</exception>
+    /// <exception cref="ObjectDisposedException">An image was disposed.</exception>
+    /// <exception cref="NativeFailure">A tile number is below 1001 or listed twice, the images differ in format, or no tile is given (status 1); nothing changed.</exception>
+    public void BindTiles(ReadOnlySpan<UdimTile> tiles) => Scene.BindImageTiles(this, tiles);
+'''
 
 ARRAY_ELEMENT = {'array_float': 'float', 'array_int': 'int', 'array_boolean': 'bool', 'array_color': 'Vector3',
                  'array_vector': 'Vector3', 'array_point': 'Vector3', 'array_normal': 'Vector3',
@@ -194,7 +209,7 @@ ARRAY_ACCESSOR = {'float': 'FloatArray', 'int': 'IntArray', 'bool': 'BoolArray',
                   'Vector2': 'Vector2Array', 'Transform3x4': 'TransformArray', 'string': 'StringArray'}
 VALUE_KIND = {0: 'Unsupported', 1: 'Boolean', 2: 'Int', 3: 'UInt', 4: 'UInt64', 5: 'Float', 6: 'Color',
               7: 'Vector', 8: 'Point', 9: 'Normal', 10: 'Point2', 11: 'String', 12: 'Enum', 13: 'Transform',
-              14: 'Node', 15: 'Closure', 16: 'Float4', 17: 'Byte4'}
+              14: 'Node', 15: 'Closure', 16: 'Float4', 17: 'Byte4', 18: 'Quaternion', 19: 'SphericalHarmonicsRest'}
 LINKABLE, INTERNAL, READABLE, WRITABLE = 2, 4, 8, 16
 
 
@@ -381,6 +396,8 @@ def class_code(model, name):
     extras = EXTRAS.get(name, '')
     if extras == 'IMAGE':
         extras = IMAGE_EXTRA
+    elif extras == 'IMAGE_UDIM':
+        extras = IMAGE_EXTRA + UDIM_EXTRA
     text = ''
     creation_note = {
         'Singleton': f'Get the scene\'s instance from <see cref="CyclesScene"/>.',

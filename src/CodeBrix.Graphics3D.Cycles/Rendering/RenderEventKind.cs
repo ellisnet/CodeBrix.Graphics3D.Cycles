@@ -16,5 +16,11 @@ public enum RenderEventKind
     Progress = 2,
 
     /// <summary>The render is failing; <see cref="RenderEvent.Message"/> holds the native error.</summary>
-    Error = 3
+    Error = 3,
+
+    /// <summary>
+    /// Provisional: an intermediate film of a host created with <see cref="HostFlags.ProgressiveResults"/>
+    /// (<see cref="CyclesScene.IntermediateFilmReceived"/>; never raised through <see cref="CyclesScene.RenderEventReceived"/>).
+    /// </summary>
+    Film = 4
 }

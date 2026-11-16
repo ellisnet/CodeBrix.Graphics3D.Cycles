@@ -1,0 +1,27 @@
+{
+  "sceneId": "passes/denoising-features",
+  "sceneSha256": "96782c3deafd4c46d801689a520f853dff5629e4e1774f73f4a91beda8c16acf",
+  "backend": "metal-m2pro",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 4.76837158203125e-07,
+  "renderSeconds": [0.919671,0.492903],
+  "filmSha256": ["9af831e6eeda9d8b4bc31fdf2b772b78aa40397a8e1a4b546ad58d126a352e14","b652764467374a0e828b88c04b7c189bd7c8f7baf01aaebe9e47911dadc6922a"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Denoising Albedo", "type": "denoising_albedo", "components": 3, "written": true, "filmSha256": ["b438bdb08239f4090cc0dcc552a31b1b4a551d8ad17693e33c5d0cace61e0748","39c2be0c19270b82ea0ed69c6211485f7dacaaadf38d7759f6ff93570fff9177"]},
+    {"index": 1, "name": "Denoising Normal", "type": "denoising_normal", "components": 3, "written": true, "filmSha256": ["6851f3da632112e73ea2ebc43ec7d5538a8feca940bf47377f9c6ebc2eb8b530","4575948c2c66384051c11cd5a60ebd8d4b1b57626cfec28606f069f1229204de"]},
+    {"index": 2, "name": "Denoising Specular Albedo", "type": "denoising_specular_albedo", "components": 3, "written": true, "filmSha256": ["f94e9b81fc72a7681ab5ca3feb9639595ec66fd9dde37374f7ba5f4b861f34f4","96b30cdce766220906c359ccfa6c2230795e1e285f57032f564bfa8e8a62fcb6"]},
+    {"index": 3, "name": "Denoising Roughness", "type": "denoising_roughness", "components": 1, "written": true, "filmSha256": ["91d62f0e12e183b0044872605098f62d74a666d28cf382f813536ea320178110","c1397cb925efd6508a86267f96eebd0a4566c97fd776f921cf33f97724e1504c"]},
+    {"index": 4, "name": "Denoising Depth", "type": "denoising_depth", "components": 1, "written": true, "filmSha256": ["3981e521727c894efc940fb60e4ee34305a3eb939aa3760a73975bf07bbadaef","ecbb6c42bee64bda452bded104743ba2c38dca587ab6099d721fb077ea48b088"]}
+  ],
+  "warnings": []
+}
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)

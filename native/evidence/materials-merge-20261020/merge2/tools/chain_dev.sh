@@ -18,7 +18,7 @@ if [ $dev = hp ]; then
     timeout 1300 python3 probe.py run --device hp --wgsl $M/validation/l2-nodes-gate/out/$spec/surface.wgsl --entry $e --timeout 1200 --tag $spec --log $M/device/hp-compile-probes.jsonl > /dev/null 2>&1
     echo "[$(date +%H:%M:%S)] hp compile probe $spec/$e exit=$?" >> $M/timeline.log
   done; done
-  /home/jeremy/Android/Sdk/platform-tools/adb -s $serial shell 'rm -rf /data/local/tmp/codebrix-mw2-probe'
+  <home>/Android/Sdk/platform-tools/adb -s $serial shell 'rm -rf /data/local/tmp/codebrix-mw2-probe'
 fi
 bash chain_app.sh $dev $rid $serial "lock taken"
 echo "[$(date +%H:%M:%S)] $dev chain_dev DONE" >> $M/timeline.log

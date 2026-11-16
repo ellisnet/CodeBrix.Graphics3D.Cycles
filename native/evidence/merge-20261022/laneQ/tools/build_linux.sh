@@ -1,6 +1,6 @@
 #!/bin/bash
 # Lane Q: Linux x64 host build (needed for the device-scene glibc references). Copy of merge3 build_all.sh for this worktree.
-R=/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep; Q=$R/native/work/q; cd $R
+R=<home>/ClaudeHome/cycles-worktrees/q-s20-sweep; Q=$R/native/work/q; cd $R
 echo "[$(date +%H:%M:%S)] DECLARED linux native build (tools/build.py --jobs 6 --skip-dependencies) timeout=3600s" >> $Q/budgets.txt
 s=$(date +%s); timeout 3600 python3 tools/build.py --jobs 6 --skip-dependencies > $Q/logs/linux-native-build.log 2>&1; c=$?
 echo "[$(date +%H:%M:%S)] linux native build exit=$c $(( $(date +%s)-s ))s" >> $Q/timeline.log; [ $c = 0 ] || exit $c

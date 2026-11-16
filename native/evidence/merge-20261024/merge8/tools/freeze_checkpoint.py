@@ -5,9 +5,9 @@
 binaries, *.bin films and files over 1 MB recorded by sha256 and work location)."""
 import datetime, gzip, hashlib, json, os, shutil, subprocess, sys
 from pathlib import Path
-REPO = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles')
+REPO = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles')
 OUT = REPO/'native/evidence/merge-20261024'
-WT = Path('/home/jeremy/ClaudeHome/cycles-worktrees')
+WT = Path('<home>/ClaudeHome/cycles-worktrees')
 SOURCES = [  # (label in checkpoint, absolute folder, location string) -- merge wave 8 part 2
     ('merge8', REPO/'native/work/merge8', 'native/work/merge8'),
     ('.', REPO/'native/work/merge8/freeze-root', 'native/work/merge8/freeze-root', ['ledger-stale.txt', 'citations.json']),

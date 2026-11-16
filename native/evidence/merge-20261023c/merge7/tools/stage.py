@@ -21,7 +21,7 @@ from android_host_gate import PLATFORM
 import render_replay
 BUILD_ROOT = REPO/'native/work/merge5'  # merge wave 6: build trees and replay build stay in merge 5's folder
 render_replay.BASE = C2/'replay-build'  # merge wave 7: render_replay.cpp changed (recorder v9), fresh replay builds here
-ADB = '/home/jeremy/Android/Sdk/platform-tools/adb'
+ADB = '<home>/Android/Sdk/platform-tools/adb'
 DEVICES = {'samsung': 'R52W207XQ1V', 'hp': '192.168.86.225:5555', 'pixel': '98271FFBA0048D', 's20': 'RFCRB0MPHYH'}
 RIDS = {'samsung': 'android-arm64', 'hp': 'android-x64', 'pixel': 'android-arm64', 's20': 'android-arm64'}
 RUNTIME_SHAS = {'android-arm64': '8113cbfa287b5ffc3d9b3c092ddc5ce543b8390abf05eefdde86cf69792fed52', 'android-x64': 'c2b0105f28ba01068cd9b6af6d560315af90b4b2cab6c40fcb78813bd9bb4380'}

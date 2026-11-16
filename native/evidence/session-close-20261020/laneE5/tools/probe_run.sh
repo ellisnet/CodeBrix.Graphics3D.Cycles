@@ -4,8 +4,8 @@
 # Phase E5 (pattern of E2's probe_run.sh): run the diagnostic sampler_probe on the Pixel; pulls the dumps.
 # Usage: probe_run.sh LABEL TIMEOUT_S [WGSL_FILE|-] [ENV=VAL ...]
 set -u
-E=/home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5
-ADB="/home/jeremy/Android/Sdk/platform-tools/adb -s 98271FFBA0048D"; S=/data/local/tmp/codebrix-e5-stage; R=/data/local/tmp/codebrix-e5-probe
+E=<home>/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5
+ADB="<home>/Android/Sdk/platform-tools/adb -s 98271FFBA0048D"; S=/data/local/tmp/codebrix-e5-stage; R=/data/local/tmp/codebrix-e5-probe
 label=$1; to=$2; wgsl=$3; shift 3
 out=$E/probe/runs/$label; rm -rf $out; mkdir -p $out
 $ADB shell "rm -rf $R/out-$label; mkdir -p $R/out-$label"

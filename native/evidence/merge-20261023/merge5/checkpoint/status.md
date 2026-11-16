@@ -2,7 +2,7 @@
 
 SEALED. Report written. Nothing in the brief undone (native Debug configuration does not exist: decision 1).
 
-changes.patch sha256 82098bbc78773d17331b75a937f83fbf0f3cf2a2635331c35df366981e9e7223
+changes.patch sha256 d2923a10c124330bf9c6488464eb899f9ab19aa13e1b8b7ea515f5dde0e22177
 
 ## timeline (tail)
 [00:24:47] END b-probe-attribute exit=0 18s
@@ -28,5 +28,5 @@ changes.patch sha256 82098bbc78773d17331b75a937f83fbf0f3cf2a2635331c35df366981e9
 [00:45:25] Android rebuild after doc fix: staged arm64 67/67 and x64 67/67 binaries byte-identical to the first build (validation/staged-binaries-*.pre-docfix.json); host builds redone (exit 0)
 [00:47:12] APK rebuild exit=0 107s
 [00:47:29] APK rebuilt on the final tree: android-app/validation-m5b (apk d6b0b510..., 56 native payloads byte-identical to validation-m5; the APK file differs by packaging/signing); validation-m5b is the one for part 2
-[00:48:38] checkpoint written (82098bbc78773d17)
-[00:50:57] SEALED: reconciliation.md, post-merge.json (fff21328...), handoff/wave5.patch (82098bbc...), report ~/ClaudeHome/cycles-wgsl-2026-10-22/agent-reports/merge-wave-5-merge.md; git status 68 M / 16 ??
+[00:48:38] checkpoint written (d2923a10c124330b)
+[00:50:57] SEALED: reconciliation.md, post-merge.json (fff21328...), handoff/wave5.patch (d2923a10...), report ~/ClaudeHome/cycles-wgsl-2026-10-22/agent-reports/merge-wave-5-merge.md; git status 68 M / 16 ??

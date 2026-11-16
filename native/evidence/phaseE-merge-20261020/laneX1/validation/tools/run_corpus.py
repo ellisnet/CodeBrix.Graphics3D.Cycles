@@ -28,7 +28,7 @@ import android_reference
 import render_replay
 render_replay.BASE = C2/'replay-build'
 
-ADB = '/home/jeremy/Android/Sdk/platform-tools/adb'
+ADB = '<home>/Android/Sdk/platform-tools/adb'
 DEVICES = {'samsung': ('R52W207XQ1V', 'SM-X700'), 'hp': ('192.168.86.225:5555', '87FE')}
 RIDS = {'samsung': 'android-arm64', 'hp': 'android-x64'}; ABIS = {'android-arm64': 'arm64-v8a', 'android-x64': 'x86_64'}
 RUNTIME_SHAS = {'android-arm64': '8113cbfa287b5ffc3d9b3c092ddc5ce543b8390abf05eefdde86cf69792fed52', 'android-x64': 'c2b0105f28ba01068cd9b6af6d560315af90b4b2cab6c40fcb78813bd9bb4380'}

@@ -14,7 +14,7 @@ namespace CodeBrix.Graphics3D.Cycles.Interop;
 /// typed <see cref="CyclesScene"/> unless you are writing your own binding.
 /// </summary>
 /// <remarks>
-/// Structures carry their own <c>struct_size</c> (32 for every structure here) and, where present,
+/// Structures carry their own <c>struct_size</c> (32 for most structures here; see each one) and, where present,
 /// the <c>abi_version</c> the caller targets (<see cref="CyclesAbi.ExpectedAbiVersion"/>); reserved
 /// fields must be zero. Getter functions follow one protocol: they set <c>required</c> even when the
 /// destination is too small (status 6), leave the destination unchanged on any failure, and accept a
@@ -26,11 +26,14 @@ public static unsafe class Native
     /// <summary>The native library name the declarations bind to (<c>libcodebrix_cycles_host.so</c> on Linux).</summary>
     public const string Library = "codebrix_cycles_host";
 
-    /// <summary>The ABI structure <c>CBCHostConfig</c>, passed to <see cref="Create"/>.</summary>
+    /// <summary>
+    /// The ABI structure <c>CBCHostConfig</c>, passed to <see cref="Create"/>: 40 bytes with the provisional trailing
+    /// <see cref="Flags"/> and <see cref="Reserved4"/>; the native library also accepts the earlier 32 bytes (no flags).
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct HostConfig
     {
-        /// <summary>The structure size in bytes (32).</summary>
+        /// <summary>The structure size in bytes (40; 32 for a configuration without flags).</summary>
         public uint Size;
         /// <summary>The ABI version the caller targets (<c>CBC_HOST_ABI</c>).</summary>
         public uint Abi;
@@ -46,6 +49,10 @@ public static unsafe class Native
         public uint R2;
         /// <summary>Reserved; must be zero.</summary>
         public uint R3;
+        /// <summary>Provisional: the <see cref="HostFlags"/> of the host (<c>CBC_HOST_*</c> flags).</summary>
+        public uint Flags;
+        /// <summary>Provisional: reserved; must be zero.</summary>
+        public uint Reserved4;
     }
 
     /// <summary>The ABI structure <c>CBCRenderConfig</c>, passed to <see cref="Render"/>.</summary>
@@ -122,8 +129,8 @@ public static unsafe class Native
         public uint Height;
         /// <summary>The pixel layout, an <see cref="ImageFormat"/> value.</summary>
         public uint Format;
-        /// <summary>Reserved; must be zero.</summary>
-        public uint R0;
+        /// <summary>Provisional: the tile side of a tiled image (<see cref="CreateTiledImage"/>; 0 for 64); 0 otherwise.</summary>
+        public uint TileSize;
         /// <summary>Reserved; must be zero.</summary>
         public uint R1;
         /// <summary>Reserved; must be zero.</summary>
@@ -271,11 +278,37 @@ public static unsafe class Native
     /// <returns>The native status code.</returns>
     [DllImport(Library, EntryPoint="cbc_host_image_bind", CallingConvention=CallingConvention.Cdecl)] public static extern int BindImage(ulong host, ulong texture, ulong image);
 
+    /// <summary>
+    /// <c>cbc_host_image_bind_tiles</c> (provisional): binds <paramref name="count"/> images to one image texture node as
+    /// UDIM tiles, <paramref name="images"/>[i] at tile <paramref name="tiles"/>[i] (distinct, at least 1001, one format).
+    /// </summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="texture">The image texture node handle.</param>
+    /// <param name="tiles">The tile numbers.</param>
+    /// <param name="images">The image handles, one per tile.</param>
+    /// <param name="count">The number of tiles.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_image_bind_tiles", CallingConvention=CallingConvention.Cdecl)] public static extern int BindImageTiles(ulong host, ulong texture, uint* tiles, ulong* images, ulong count);
+
     /// <summary><c>cbc_host_image_release</c>: releases the caller's image handle; bindings keep the pixels.</summary>
     /// <param name="host">The host handle.</param>
     /// <param name="image">The image handle.</param>
     /// <returns>The native status code.</returns>
     [DllImport(Library, EntryPoint="cbc_host_image_release", CallingConvention=CallingConvention.Cdecl)] public static extern int ReleaseImage(ulong host, ulong image);
+
+    /// <summary>
+    /// <c>cbc_host_image_create_tiled</c> (provisional): a tiled image, whose tiles and mip levels Cycles' texture cache
+    /// loads through <paramref name="read"/> while a render or bake runs. <paramref name="release"/> runs exactly once for
+    /// every call, also when the call fails (then before it returns).
+    /// </summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="config">The image configuration (width, height, format).</param>
+    /// <param name="read">The <c>CBCImageTileReadCallback</c>: user data, level, x, y, width, height, pixels, row bytes; 0 for success.</param>
+    /// <param name="release">The <c>CBCReleaseCallback</c>, or null.</param>
+    /// <param name="userData">The value passed to both callbacks.</param>
+    /// <param name="image">Receives the image handle.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_image_create_tiled", CallingConvention=CallingConvention.Cdecl)] public static extern int CreateTiledImage(ulong host, ref ImageConfig config, delegate* unmanaged[Cdecl]<nint, uint, uint, uint, uint, uint, void*, ulong, int> read, delegate* unmanaged[Cdecl]<nint, void> release, nint userData, out ulong image);
 
     /// <summary><c>cbc_host_property_info</c>: describes a socket.</summary>
     /// <param name="host">The host handle.</param>
@@ -538,6 +571,16 @@ public static unsafe class Native
         public double ElapsedSeconds;
         /// <summary>The UTF-8 status or error text, valid only during the callback, or null.</summary>
         public byte* Message;
+        /// <summary>
+        /// Provisional, <see cref="Rendering.RenderEventKind.Film"/> only: <see cref="Width"/> * <see cref="Height"/> * 4
+        /// floats of the Combined film so far (scene-linear RGBA, lower-left origin), valid only during the callback; null
+        /// for the other kinds.
+        /// </summary>
+        public float* Film;
+        /// <summary>Provisional, <see cref="Rendering.RenderEventKind.Film"/> only: the film width in pixels (0 otherwise).</summary>
+        public uint Width;
+        /// <summary>Provisional, <see cref="Rendering.RenderEventKind.Film"/> only: the film height in pixels (0 otherwise).</summary>
+        public uint Height;
     }
 
     /// <summary><c>cbc_host_version</c>: fills the library version, ABI and Cycles revision. Callable at any time, including from an event callback.</summary>
@@ -731,4 +774,31 @@ public static unsafe class Native
     /// <param name="seconds">The limit in seconds; 0 renders every sample.</param>
     /// <returns>The native status code.</returns>
     [DllImport(Library, EntryPoint="cbc_host_render_time_limit", CallingConvention=CallingConvention.Cdecl)] public static extern int RenderTimeLimit(ulong host, double seconds);
+
+    /// <summary>
+    /// <c>cbc_host_texture_limit</c> (provisional): Cycles' texture limit, the larger side an image may have when it loads
+    /// (larger images are halved on the host until it fits); fixed once a render or bake has loaded images.
+    /// </summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="maxSize">0 (no limit) to <see cref="int.MaxValue"/> pixels.</param>
+    /// <returns>The native status code (<c>CBC_NOT_READY</c> for a change after images loaded).</returns>
+    [DllImport(Library, EntryPoint="cbc_host_texture_limit", CallingConvention=CallingConvention.Cdecl)] public static extern int TextureLimit(ulong host, uint maxSize);
+
+    /// <summary>
+    /// <c>cbc_host_bvh_spatial_split</c> (provisional): Cycles' BVH spatial splits; a change has every BVH built again at
+    /// the next render or bake.
+    /// </summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="enabled">0 (the default) or 1.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_bvh_spatial_split", CallingConvention=CallingConvention.Cdecl)] public static extern int BvhSpatialSplit(ulong host, uint enabled);
+
+    /// <summary>
+    /// <c>cbc_host_tile_size</c> (provisional): the tile size of the host's later renders and bakes (Cycles' tiled
+    /// rendering; the finished tiles stay in memory and the whole film is returned).
+    /// </summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="tileSize">0 (the default: one tile), 8 to 128, or a multiple of 128 up to 8192.</param>
+    /// <returns>The native status code (<c>CBC_INVALID</c> for another size).</returns>
+    [DllImport(Library, EntryPoint="cbc_host_tile_size", CallingConvention=CallingConvention.Cdecl)] public static extern int TileSize(ulong host, uint tileSize);
 }

@@ -181,7 +181,9 @@ public sealed class CapabilityReport : ICapabilityReport
                 bool passList = value.TryGetProperty("passes", out JsonElement passes) && passes.ValueKind == JsonValueKind.Array;
                 scopes[entry.Name] = new BackendScope(Text(value, "device"), Strings(value, "cameraTypes"), Strings(value, "primitives"),
                     passList ? Strings(value, "passes") : NoStrings, passList ? null : Text(value, "passes"),
-                    Strings(value, "renderTimeRejections"), Text(value, "reference"));
+                    Strings(value, "renderTimeRejections"), Text(value, "reference"),
+                    value.TryGetProperty("maxImageDimension", out JsonElement maxImage) && maxImage.ValueKind == JsonValueKind.Number ? maxImage.GetInt64() : null,
+                    value.TryGetProperty("maxImageTileSize", out JsonElement maxTile) && maxTile.ValueKind == JsonValueKind.Number ? maxTile.GetInt64() : null);
             }
         }
         BackendScopes = scopes;

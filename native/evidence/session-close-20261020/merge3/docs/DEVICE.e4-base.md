@@ -117,7 +117,7 @@ to overwrite it. No executable or native dependency library is archived.
 
 General lighting/MIS, tiled/sparse image paths, most closures, volumes, motion,
 curves/points, guiding, MNEE and general film/session modes still require work.
-The broad roadmap is `/home/jeremy/ClaudeHome/PLAN_Cycles_Targetting_WGSL_WebGPU.md`;
+The broad roadmap is `<home>/ClaudeHome/PLAN_Cycles_Targetting_WGSL_WebGPU.md`;
 all nine requested RIDs and full functionality remain its target.
 
 ## What is implemented
@@ -817,7 +817,7 @@ native-render regressions. Point/sun NEE and shadow-path creation now have bound
 native-render coverage below. Next are transparent shadows, remaining emitters,
 forward/MIS and broader rendering features.
 Use the existing Linux and Android hosts for relevant feature regressions.
-Jeremy's 2026-10-19 priority defers additional platform ports and release packaging
+The maintainer's 2026-10-19 priority defers additional platform ports and release packaging
 until rendering functionality is complete, unless a concrete feature needs them.
 The existing WGSL rendering functions provide tested behavior to adapt, but
 the existing complete-path shader must not be disguised as those individual
@@ -1108,7 +1108,7 @@ regression crashes. The candidate and failure evidence are preserved under
 `native/work/mesh-light-v1/deferred-candidate`; it is excluded from production.
 The validated pre-extension source was restored by exact hash, retaining the
 original triangle-light guards and recorder v5. Restoration and follow-up results
-are recorded under `native/work/mesh-light-v1` and in section 44 of Jeremy's plan.
+are recorded under `native/work/mesh-light-v1` and in section 44 of the maintainer's plan.
 Before reintegration, resolve the transparent-lighting regression and the retained
 instanced-emitter image mismatch, then validate moving emitters and broader
 interactions. Environment/textured emission, light trees and remaining full MIS

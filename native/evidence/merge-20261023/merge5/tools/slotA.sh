@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 5, Linux slot A: all-lanes, host gate, .NET Release and Debug build/test/pack (managed Linux reference films
 # from the Release test run, as merge wave 4).
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge5; V=$M/validation; S=$M/tools/slot.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge5; V=$M/validation; S=$M/tools/slot.sh
 cd $R
 $S a-all-lanes 2700 python3 native/evidence/phaseC-closeout-20261020/closeout/tools/linux_validate.py --tree $R --output $V/a-all-lanes/out --skip-build
 $S a-host-gate 1500 python3 native/tools/host_gate.py --output $V/a-host-gate/out

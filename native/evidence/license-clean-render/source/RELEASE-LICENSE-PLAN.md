@@ -4,7 +4,7 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 
 SPDX-License-Identifier: Apache-2.0
 
-The governing policy is Jeremy's October 18, 2026
+The governing policy is the maintainer's October 18, 2026
 `~/ClaudeHome/Apache-2.0 License Plan for Cycles Build.md`. Original contributions
 are Apache-2.0; permissive third-party source retains its own license. No Git
 commit, push or history rewrite is authorized. Metal work is out of scope.
@@ -68,7 +68,7 @@ runtimes and the pinned unchanged WebGPU package remain external inputs.
 `tools/licensing/binary_audit.py` records compilation databases, compiler header
 inputs, static archives and resolved ELF dependencies. Dynamic system glibc and
 GCC runtimes under the explicit Runtime Library Exception are permitted by
-Jeremy's policy. Other renderer dependencies must resolve to the source-built
+the maintainer's policy. Other renderer dependencies must resolve to the source-built
 prefix. Android replay uses the unchanged shipped runtime and NDK API 33.
 
 Durable reports are in `native/evidence/license-compliance-20261018`; working
@@ -91,7 +91,7 @@ parity and full Cycles functionality remain unproven; tolerances were not relaxe
 The proposed source contents and existing Git history have been reviewed. Older
 license inventories and blocker descriptions are preserved as documentary
 evidence, without importing the excluded implementations. This is readiness for
-Jeremy's source-repository review/commit/push under the agreed policy, not a
+the maintainer's source-repository review/commit/push under the agreed policy, not a
 clearance of unbuilt native RIDs or an actual future NuGet payload. Agents have
 not committed, pushed, staged files or rewritten history.
 
@@ -101,7 +101,7 @@ All nine intended RIDs remain in the continuation plan. This Linux proof does
 not validate unbuilt native hosts. Every actual NuGet payload requires its own
 unpack/hash/notice/dependency audit before publication.
 
-Jeremy requires intentional RID runtime binaries, applicable unstripped builds
+The maintainer requires intentional RID runtime binaries, applicable unstripped builds
 and symbols to be versioned under `native/binaries/<rid>/`, with exact reviewed
 provenance. Ordinary intermediate outputs remain ignored. The current source
 scanner rejects unreviewed compiled payloads; introduce exact approved-artifact

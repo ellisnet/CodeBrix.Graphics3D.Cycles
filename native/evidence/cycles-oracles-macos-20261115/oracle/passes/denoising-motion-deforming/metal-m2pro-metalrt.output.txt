@@ -1,0 +1,26 @@
+{
+  "sceneId": "passes/denoising-motion-deforming",
+  "sceneSha256": "e68755d8f24ca29be4e070547b456fd9e8879a580accaafbf3334ec1fb94dd80",
+  "backend": "metal-m2pro-metalrt",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 4.76837158203125e-07,
+  "renderSeconds": [0.70112,0.19768],
+  "filmSha256": ["26a62e25f247503a5e9b613c20be99ca290b54642e04d1f1f86ac478a96c0ab2","155d6dd5f0f65d8d7d700d31063bfbe7fe1c3c5906cbe25c8605059d6bb97665"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Denoising Backward Motion", "type": "denoising_backward_motion", "components": 3, "written": true, "filmSha256": ["4c259ae57b11add79107fcb5446bcdf0828555bf2253529f28255fd1e37080f7","8af2d4bfed3d8ca5888ca87730030acdecd4824868dbcaf6c3cafe80f141d6ab"]},
+    {"index": 1, "name": "Denoising Specular Motion", "type": "denoising_specular_motion", "components": 3, "written": true, "filmSha256": ["539fddd07f544400295fb66f2835b0833d4f92de456cd5a5a2077f1d95295cf3","539fddd07f544400295fb66f2835b0833d4f92de456cd5a5a2077f1d95295cf3"]},
+    {"index": 2, "name": "Denoising Albedo", "type": "denoising_albedo", "components": 3, "written": true, "filmSha256": ["94cf925963f6ac138da6a093d1997c73cd7b4465473948904c3d754eb38a5c4e","1274dddee1e20c17573e01dcbb148ca57f7311f76ba02b831c17df8b9a9f08f7"]},
+    {"index": 3, "name": "Denoising Normal", "type": "denoising_normal", "components": 3, "written": true, "filmSha256": ["f5e92a07d7848ac64d678551ff8b836015e355c97c4e637f16b83c3cd70f3543","f5e92a07d7848ac64d678551ff8b836015e355c97c4e637f16b83c3cd70f3543"]}
+  ],
+  "warnings": []
+}
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)

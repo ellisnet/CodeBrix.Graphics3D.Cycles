@@ -6,10 +6,10 @@ Before-content of a path is the M3 handoff copy (M3-touched paths) or HEAD. Read
 The patch is checked by applying it to a scratch copy of the before files and comparing hashes."""
 import hashlib,json,shutil,subprocess,sys,tempfile
 from pathlib import Path
-ROOT=Path('/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative')
+ROOT=Path('<home>/ClaudeHome/cycles-worktrees/m4-bump-derivative')
 OUT=ROOT/'native/work/m4/handoff'
-M3=Path('/home/jeremy/ClaudeHome/cycles-worktrees/m3-procedural/native/work/m3/handoff')
-MANIFEST='/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-m4.json'
+M3=Path('<home>/ClaudeHome/cycles-worktrees/m3-procedural/native/work/m3/handoff')
+MANIFEST='<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-m4.json'
 BASE=json.loads(Path(MANIFEST).read_text())
 M3C=json.loads((M3/'changes.json').read_text())['changes']
 sha=lambda b:hashlib.sha256(b).hexdigest()
@@ -20,7 +20,7 @@ def before(p):
     r=subprocess.run(['git','show','HEAD:'+p],cwd=ROOT,capture_output=True)
     return r.stdout if r.returncode==0 else None
 paths=[];changes={}
-tmp=Path(tempfile.mkdtemp(prefix='m4seal-',dir='/tmp/claude-1000/-home-jeremy/c2281c28-97ca-4e0e-87ce-8b9b6c8aba81/scratchpad'))
+tmp=Path(tempfile.mkdtemp(prefix='m4seal-',dir='/tmp/claude-1000/<home>/c2281c28-97ca-4e0e-87ce-8b9b6c8aba81/scratchpad'))
 for p in candidates:
     after=(ROOT/p).read_bytes();b=before(p);bsha=None if b is None else sha(b)
     assert bsha==BASE['sourceSha256'].get(p),('before content does not match baseline-m4.json',p)

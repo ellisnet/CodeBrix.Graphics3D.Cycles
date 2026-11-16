@@ -6,7 +6,7 @@ native/work/render/replay-build (used by the gate drivers' --skip-build replays)
 android-x64 into native/work/merge8/replay-build (staged for part 2)."""
 import sys
 from pathlib import Path
-ROOT = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); sys.path.insert(0, str(ROOT/'native/tools'))
+ROOT = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); sys.path.insert(0, str(ROOT/'native/tools'))
 import render_replay
 render_replay.build('linux-x64')
 render_replay.BASE = ROOT/'native/work/merge8/replay-build'

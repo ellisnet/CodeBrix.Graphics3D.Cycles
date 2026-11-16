@@ -170,6 +170,41 @@ public class CyclesSceneTests
     }
 
     [Fact]
+    public async Task RenderAsync_cancelled_during_a_batch_stops_it_and_reports_only_the_samples_completed_before()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        TestScenes.BuildTyped(scene);
+        float[] pixels = Enumerable.Repeat(-99f, (int)Small.FloatCount).ToArray();
+        using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        ConcurrentQueue<RenderProgress> reports = new();
+
+        //Act
+        // Cycles renders one sample first; the headless scheduler sizes the next batch to about 30 seconds of samples
+        // and counts them when it schedules them, so 300 ms after the first count that batch is running, far from done.
+        Task render = scene.RenderAsync(Small with { Samples = 1_000_000 }, pixels, new SynchronousProgress(reports), cancellation.Token);
+        Stopwatch wait = Stopwatch.StartNew();
+        while (!reports.Any(report => report.Stage == RenderStage.Rendering && report.CompletedSamples >= 1) && !render.IsCompleted &&
+               wait.Elapsed < TimeSpan.FromSeconds(30))
+            await Task.Delay(1, Token);
+        await Task.Delay(300, Token);
+        uint before = reports.Last(report => report.Stage == RenderStage.Rendering).CompletedSamples ?? 0;
+        Stopwatch cancelled = Stopwatch.StartNew();
+        cancellation.Cancel();
+        Func<Task> awaiting = () => render;
+
+        //Assert
+        await awaiting.Should().ThrowAsync<OperationCanceledException>();
+        cancelled.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10));
+        before.Should().BeGreaterThan(0u);
+        pixels.All(value => value == -99f).Should().BeTrue();
+        reports.Last().Stage.Should().Be(RenderStage.Cancelled);
+        reports.Last().CompletedSamples.Should().Be(before);
+        reports.Where(report => report.Stage == RenderStage.Rendering).Select(report => report.CompletedSamples ?? 0).Max().Should().Be(before);
+        scene.Render(Small).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task RenderAsync_with_a_cancelled_token_does_not_start()
     {
         //Arrange
@@ -828,6 +863,60 @@ public class CyclesSceneTests
         partial.Should().Throw<ArgumentException>();
         Action wrongRadii = () => late.SetMotionKeys(3, keys, radii[..^1]);
         wrongRadii.Should().Throw<ArgumentException>();
+    }
+
+    // Cycles skips the shaders no node references when it compiles the shaders of a render; a shader that becomes referenced
+    // after a render (a mesh's used_shaders, a light's emission shader, the world) is compiled for the next one.
+    [Fact]
+    public void Shaders_first_referenced_after_a_render_match_a_scene_built_with_them()
+    {
+        //Arrange
+        static (MeshNode Mesh, ShaderNode Material, ShaderNode Green, ShaderNode Glow, ShaderNode Sky, PointLightNode Lamp) Build(CyclesScene scene)
+        {
+            (ShaderNode material, _, MeshNode mesh) = TestScenes.BuildTyped(scene);
+            mesh.SetTriangles([-1.5f, -1, 0, 1.5f, -1, 0, 0, 1.5f, 0, 1.5f, 1.5f, 0], [0, 1, 2, 1, 3, 2]);
+            ShaderNode green = scene.CreateShader();
+            DiffuseBsdfNode diffuse = green.Add<DiffuseBsdfNode>();
+            diffuse.Color = new Vector3(.1f, .6f, .2f);
+            green.Connect(diffuse.BsdfOutput, green.Output.SurfaceInput);
+            green.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+            ShaderNode glow = scene.CreateShader();
+            EmissionNode emission = glow.Add<EmissionNode>();
+            emission.Color = new Vector3(1f, .7f, .4f);
+            emission.Strength = 1f;
+            glow.Connect(emission.EmissionOutput, glow.Output.SurfaceInput);
+            ShaderNode sky = scene.CreateShader();
+            BackgroundShaderNode background = sky.Add<BackgroundShaderNode>();
+            background.Color = new Vector3(.5f, .3f, .2f);
+            background.Strength = .6f;
+            sky.Connect(background.BackgroundOutput, sky.Output.SurfaceInput);
+            sky.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+            PointLightNode lamp = scene.CreateLight<PointLightNode>();
+            lamp.Strength = new Vector3(40f, 40f, 40f);
+            lamp.Radius = .2f;
+            scene.CreateObject(lamp, Transform3x4.CreateTranslation(1f, 1.5f, -2f));
+            return (mesh, material, green, glow, sky, lamp);
+        }
+        static void Edit((MeshNode Mesh, ShaderNode Material, ShaderNode Green, ShaderNode Glow, ShaderNode Sky, PointLightNode Lamp) parts, CyclesScene scene)
+        {
+            parts.Mesh.UsedShaders = [parts.Material, parts.Green];
+            parts.Mesh.Shader = [0, 1];
+            parts.Lamp.UsedShaders = [parts.Glow];
+            scene.Background.Shader = parts.Sky;
+        }
+        using CyclesScene edited = TestScenes.CreateCpuScene();
+        var editedParts = Build(edited);
+        FilmBuffer first = edited.Render(Small);
+        using CyclesScene fresh = TestScenes.CreateCpuScene();
+        Edit(Build(fresh), fresh);
+
+        //Act
+        Edit(editedParts, edited);
+        FilmBuffer after = edited.Render(Small);
+
+        //Assert
+        after.Span.SequenceEqual(fresh.Render(Small).Span).Should().BeTrue();
+        after.Span.SequenceEqual(first.Span).Should().BeFalse();
     }
 
     [Fact]

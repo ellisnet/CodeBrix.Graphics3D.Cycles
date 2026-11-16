@@ -4,7 +4,7 @@
 # Merge wave 4, Linux slot B (sequential): device reference export, triangle/terminator (v8 captures for the devices),
 # emitter/precision/shadow/scene-edit, glass/Principled/node renders with the superset check (WGSL dumped), the
 # Principled and node gates, replays, probe gates, the ABI WGSL dump and the Intel compile envelope.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge4; V=$M/validation; S=$M/tools/slot.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge4; V=$M/validation; S=$M/tools/slot.sh
 T=$R/native/tools; B=$R/native/work/cycles-build/bin
 cd $R
 pl(){ echo "CODEBRIX_CYCLES_PIPELINE_LOG=$V/$1/pipelines.jsonl"; }

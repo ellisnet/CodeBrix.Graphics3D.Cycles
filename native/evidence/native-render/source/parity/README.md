@@ -72,7 +72,7 @@ python3 research/run.py android --materials --serial 98271FFBA0048D
 The last two commands currently exit 1 because of the documented numerical
 failures. Detailed reports are saved despite that exit status.
 
-## Models supplied by Jeremy
+## Models supplied by the maintainer
 
 [ASSETS.md](ASSETS.md) records the 706-model corpus and test progression.
 `GltfImport` uses the actual `CodeBrix.Graphics3D.Gltf2.MitLicenseForever`
@@ -131,7 +131,7 @@ performance benchmarks.
 ```sh
 dotnet restore parity/GltfImport
 python3 parity/tools/asset_gate.py prepare --name bench --asset \
-  /home/jeremy/GitHome/Oasys/Assets/ForestCommunity/Domes/ForestVillage/CommunityProps/bench_01.gltf
+  <home>/GitHome/Oasys/Assets/ForestCommunity/Domes/ForestVillage/CommunityProps/bench_01.gltf
 python3 research/run.py linux --asset-name bench
 python3 research/run.py android --asset-name bench --serial 98271FFBA0048D
 # After preparing lime in the same way:

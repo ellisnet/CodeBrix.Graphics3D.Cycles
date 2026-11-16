@@ -2,8 +2,8 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 3, Linux slot 1 (sequential): all-lanes corpus, host gate, .NET build/test/pack (+ managed Linux
-# reference films), then the specialization-off measurements (Jeremy's 17:52 decision: once each, declared budget).
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge3; V=$M/validation; S=$M/tools/slot.sh
+# reference films), then the specialization-off measurements (the maintainer's 17:52 decision: once each, declared budget).
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge3; V=$M/validation; S=$M/tools/slot.sh
 B=$R/native/work/cycles-build/bin; T=$R/native/tools
 cd $R
 pl(){ echo "CODEBRIX_CYCLES_PIPELINE_LOG=$V/$1/pipelines.jsonl"; }

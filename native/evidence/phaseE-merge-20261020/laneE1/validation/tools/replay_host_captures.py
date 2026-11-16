@@ -14,7 +14,7 @@ sys.path.insert(0, str(REPO/'native/tools'))
 from device_gate import sha, save
 from render_gate import inputs as source_inputs
 import render_replay
-ADB = '/home/jeremy/Android/Sdk/platform-tools/adb'
+ADB = '<home>/Android/Sdk/platform-tools/adb'
 DEVICES = {'samsung': 'R52W207XQ1V', 'hp': '192.168.86.225:5555'}
 RIDS = {'samsung': 'android-arm64', 'hp': 'android-x64'}
 STAGE = '/data/local/tmp/codebrix-e1-stage'

@@ -5,7 +5,7 @@
 Installs compare-isa.py as native/oracle/compare.py and updates the oracle README, MAINTAINER-README and DEVICE.md item 25."""
 import shutil
 from pathlib import Path
-R = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles')
+R = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles')
 shutil.copy(R/'native/work/merge8/compare-isa.py', R/'native/oracle/compare.py')
 def edit(p, a, b):
     s = (R/p).read_text(); assert s.count(a) == 1, (p, a[:60]); (R/p).write_text(s.replace(a, b))

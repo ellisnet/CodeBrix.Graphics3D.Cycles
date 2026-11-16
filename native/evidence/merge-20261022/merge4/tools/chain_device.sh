@@ -4,13 +4,13 @@
 # Merge wave 4 device chain (reference devices). Usage: chain_device.sh DEVICE (samsung | hp)
 # Lock protocol: mkdir the lock by device name (stop if held), owner.txt, stage + verify, corpora (budgets are declared
 # by run_corpus.py / replay_host_captures.py before each run), Android host gate, managed app, clean, release the lock.
-cd "$(dirname "$0")"; dev=$1; M=$(realpath ..); L=/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
-ref=$M/reference/linux-x64; V=$M/validation; R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles
+cd "$(dirname "$0")"; dev=$1; M=$(realpath ..); L=<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
+ref=$M/reference/linux-x64; V=$M/validation; R=<home>/GitHome/CodeBrix.Graphics3D.Cycles
 case $dev in
   hp) serial=192.168.86.225:5555; rid=android-x64; F="--reference $ref --device-scene"; FM="--reference $ref --device-scene --mesa-scratch-cache";;
   samsung) serial=R52W207XQ1V; rid=android-arm64; F="--reference $ref --device-scene"; FM="--reference $ref --device-scene";;
 esac
-A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"
+A="<home>/Android/Sdk/platform-tools/adb -s $serial"
 lg(){ echo "[$(date +%H:%M:%S)] $dev $*" >> $M/timeline.log; }
 waitfor(){ until grep -q "$1" $M/timeline.log; do grep -q "$2" $M/timeline.log && return 1; sleep 15; done; }
 waitfor "review $rid exit=0" "android gate build $rid exit=[1-9]" || { lg "chain not started (android build failed)"; exit 1; }

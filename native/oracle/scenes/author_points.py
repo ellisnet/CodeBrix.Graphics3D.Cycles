@@ -5,7 +5,8 @@
 
 Clouds of points in the sampling family's room: single-user and instanced, with the closures the WebGPU device has, point
 attributes, the Point Info and Particle Info nodes, the Geometry and Texture Coordinate nodes, bump, lights, the light
-tree, emission, data passes, transparency, object and deformation motion, the motion pass, and points beside the features
+tree, emission, data passes, transparency, object and deformation motion, the motion pass, the Geometry node's Tangent output
+(as a colour and as a Bump height), and points beside the features
 that have their own traversals (Ambient Occlusion, Bevel and Raycast nodes, subsurface scattering, caustics, volumes,
 displacement, shadow linking, curves), through the public C API.
 Usage: python3 native/oracle/scenes/author_points.py [--check]."""
@@ -16,6 +17,7 @@ from pathlib import Path
 
 import author_curves as curves
 import author_sampling as room
+from author_geometry_tangent import tangent_colour, tangent_bump
 
 HERE = Path(__file__).resolve().parent/'points'
 SCENES = Path(__file__).resolve().parent
@@ -228,6 +230,10 @@ def scenes():
             entry['set'].update({'particle_system': 'system', 'particle_index': 2})
     out['particle-info-mesh.json'] = mesh_particles
     out['geometry.json'] = with_nodes(base('points/geometry', 'The Geometry and Texture Coordinate nodes and a bumped diffuse on points'), geometry_material(), cloud('points', 'geo'), place('points-object', 'points', [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 0.0]))
+    out['geometry-tangent.json'] = with_nodes(base('points/geometry-tangent', 'The Geometry node Tangent output on points (normalize(dPdu) of the point frame) as a colour'),
+                                              tangent_colour('tangent'), cloud('points', 'tangent'), place('points-object', 'points', [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 0.0]))
+    out['geometry-tangent-bump.json'] = with_nodes(base('points/geometry-tangent-bump', 'The Geometry node Tangent output on points as the height of a Bump node (the form with derivatives)'),
+                                                   tangent_bump('tangent'), cloud('points', 'tangent'), place('points-object', 'points', [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 0.0]))
     tangent = room.shader('anisotropic', [
         {'handle': 't', 'type': 'tangent', 'set': {'direction_type': 'radial', 'axis': 'y'}},
         {'handle': 'nm', 'type': 'normal_map', 'set': {'space': 'object', 'strength': 0.7, 'color': [0.6, 0.5, 0.8]}},

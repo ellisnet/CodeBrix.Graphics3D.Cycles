@@ -1,0 +1,147 @@
+{
+  "sceneId": "surface-nodes/integer-math",
+  "sceneSha256": "fb078a241f955cfb01a3564f7892277b03378e923067c833f53c57ed864dac62",
+  "backend": "cpu-arm64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-arm64",
+  "threads": 4,
+  "width": 68,
+  "height": 72,
+  "samples": 4,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.00492475,
+    0.00149512
+  ],
+  "filmSha256": [
+    "ca0b3fc204e0d51360a97acab02ace799ed84acc43428b1d8095200700a31f9f",
+    "ca0b3fc204e0d51360a97acab02ace799ed84acc43428b1d8095200700a31f9f"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "D0",
+      "type": "aov_value",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "5dc9b5f2f689e232d2858e245f50e0e7e6faf159a4f273d2faa3ee66f2107e8b",
+        "5dc9b5f2f689e232d2858e245f50e0e7e6faf159a4f273d2faa3ee66f2107e8b"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "D1",
+      "type": "aov_value",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "7d455bfbe4f6cb9e140c7a987d2514c76ed3db912f9be3cb1756104240cb847a",
+        "7d455bfbe4f6cb9e140c7a987d2514c76ed3db912f9be3cb1756104240cb847a"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "D2",
+      "type": "aov_value",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "7b9a2ef96377ee06d2c62014e61bf5aa500447ac7959964a8545e358a35be375",
+        "7b9a2ef96377ee06d2c62014e61bf5aa500447ac7959964a8545e358a35be375"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "D3",
+      "type": "aov_value",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "47e26c3723bfae1291a58598387a18ab98c221c680e06268d65d5fa29a22fe7c",
+        "47e26c3723bfae1291a58598387a18ab98c221c680e06268d65d5fa29a22fe7c"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "R",
+      "type": "aov_value",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "ed2f95f75548e4cf92f6d7f5146ce4fb83a08673f253bf461546576b3e5a5669",
+        "ed2f95f75548e4cf92f6d7f5146ce4fb83a08673f253bf461546576b3e5a5669"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "CELL",
+      "type": "aov_value",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "d978632f6469770642ec07ea3f82fc0f6de164ceb500e8a90da3f4c883ea2a79",
+        "d978632f6469770642ec07ea3f82fc0f6de164ceb500e8a90da3f4c883ea2a79"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux e5c18b8d0f24 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 30 13:45:20 UTC 2026 aarch64 GNU/Linux",
+    "cpu": "",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981",
+    "deviceModel": "unavailable: no /proc/device-tree/model (no device tree, for example in a container)",
+    "vulkan": "unavailable: [Errno 2] No such file or directory: 'vulkaninfo'"
+  },
+  "hostLibrarySha256": "e744ce15338739e8e54edd37492aff0e571ed4fcfb94f54093d9a8f26104f67b",
+  "runnerSha256": "426c1c9eeb9df5f102ca7c00f47017ba8d782967b045da8b20bd372ce76038db",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/linux/linux-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/surface-nodes/integer-math.json",
+  "backendDescription": "Cycles CPU device, GCC 14 aarch64 (glibc), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.05,
+  "runnerCommand": [
+    "native/work/linux/linux-arm64/host/build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/work/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/surface-nodes/integer-math.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-linux",
+    "--output",
+    "/work/CodeBrix.Graphics3D.Cycles/native/work/oracles/linux-arm64-20261115/oracle/surface-nodes/integer-math/cpu-arm64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": " (the C API does not expose Cycles' DeviceInfo)"
+}

@@ -1,0 +1,126 @@
+[
+  {
+    "command": [
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/bin/codebrix_host_session_reference",
+      "CPU",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/cpu/run"
+    ],
+    "environment": {},
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/bin/codebrix_host_session64_reference",
+      "CPU",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/cpu64/run"
+    ],
+    "environment": {},
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/bin/codebrix_host_cpu_test",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/cpu-consumer/run"
+    ],
+    "environment": {},
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/bin/codebrix_host_cpu_test",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/cpu-exit-consumer/run",
+      "--exit-live"
+    ],
+    "environment": {},
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "dotnet",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/managed-bin/HostLifecycle.dll",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/cpu",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/managed-run"
+    ],
+    "environment": {
+      "DYLD_LIBRARY_PATH": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/lib"
+    },
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/bin/codebrix_host_gpu_test",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/metal-consumer/run"
+    ],
+    "environment": {},
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/bin/codebrix_host_gpu_test",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/metal-metalrt-consumer/run"
+    ],
+    "environment": {
+      "CYCLES_METALRT": "1"
+    },
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/bin/codebrix_host_image_reference",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/tests/host/configs/a.ocio",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/references/a/output"
+    ],
+    "environment": {},
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/bin/codebrix_host_image_reference",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/tests/host/configs/b.ocio",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/references/b/output"
+    ],
+    "environment": {},
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/bin/codebrix_host_image_reference",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/tests/host/configs/c.ocio",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/references/c/output"
+    ],
+    "environment": {},
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/bin/codebrix_host_reload_test",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/references",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/reload",
+      "6"
+    ],
+    "environment": {},
+    "timeoutSeconds": 2400
+  },
+  {
+    "command": [
+      "dotnet",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/managed-bin/ColorReload/ColorReload.dll",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/managed-bin/ImageModes/ImageModes.dll",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/references",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/managed-reload"
+    ],
+    "environment": {
+      "DYLD_LIBRARY_PATH": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/lib"
+    },
+    "timeoutSeconds": 2400
+  },
+  {
+    "command": [
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos/osx-arm64/host/build/bin/codebrix_host_concurrency_test",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/stress-input",
+      "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/macos-validation-20261113a/stress-output"
+    ],
+    "environment": {},
+    "timeoutSeconds": 1200
+  }
+]

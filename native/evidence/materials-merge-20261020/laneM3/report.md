@@ -1,6 +1,6 @@
 # M3 materials: M1+M2 reconciliation and procedural opcodes
 
-Worktree `/home/jeremy/ClaudeHome/cycles-worktrees/m3-procedural` (clean `01eb27b6`, seed
+Worktree `<home>/ClaudeHome/cycles-worktrees/m3-procedural` (clean `01eb27b6`, seed
 `native/work/materials-seed.json`). Linux x64 / Intel UHD ADL-S, Mesa 25.0.7 only; no Android
 device used. No commit, push, stash, ref or index change (the reconcile used `git apply` /
 `git apply --reject`; seal diffs new files with `--no-index`). Runtime

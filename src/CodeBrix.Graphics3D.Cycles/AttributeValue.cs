@@ -34,5 +34,22 @@ public enum AttributeValue : uint
     Float4 = 16,
 
     /// <summary>Four bytes per element, uploaded with <see cref="CyclesHost.SetAttributeBytes"/>.</summary>
-    Byte4 = 17
+    Byte4 = 17,
+
+    /// <summary>
+    /// A quaternion, four floats per element in Cycles' order w, x, y, z, stored and read back exactly. Accepted on meshes
+    /// and point clouds. An Attribute node returns w, x, y as its Color and Vector, their average as Fac and z as Alpha.
+    /// Provisional: the native ABI marks this value kind provisional.
+    /// </summary>
+    Quaternion = 18,
+
+    /// <summary>
+    /// The spherical-harmonics coefficients of bands 1 to 3 (band 0 is not included), 45 floats per element: 15 RGB
+    /// coefficients in Cycles' order (L1 M-1, L1 M0, L1 M1, L2 M-2, ..., L3 M3), each in [-1, 1]. Values outside that
+    /// range are refused (<see cref="NativeStatus.Invalid"/>), never clipped. Cycles stores each coefficient at 8 bits
+    /// over [-1, 1], so a read returns the stored value, within 1/255 of the value set. Accepted on meshes and point
+    /// clouds, not as a subdivision attribute. An Attribute node finds it and returns black with alpha 1 (Cycles has no
+    /// shader reading of it). Provisional: the native ABI marks this value kind provisional.
+    /// </summary>
+    SphericalHarmonicsRest = 19
 }

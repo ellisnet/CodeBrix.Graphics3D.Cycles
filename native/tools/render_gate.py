@@ -178,7 +178,7 @@ def archive():
     for folder in [*SCENES,'surface','readback-rejection']:
         for path in (OUT/folder).iterdir():
             # Keep original asset files local. The capture includes prepared
-            # bench geometry authored by Jeremy; notices record that provenance.
+            # bench geometry authored by the maintainer; notices record that provenance.
             if path.is_file() and path.name != 'triangles.bin':
                 copy(path,DEST/folder/path.name)
     for path in (OUT/'replay').glob('*/*/*'):

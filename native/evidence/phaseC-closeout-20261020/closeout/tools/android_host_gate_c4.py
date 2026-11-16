@@ -22,7 +22,7 @@ import subprocess
 from pathlib import Path
 
 import sys
-sys.path.insert(0, '/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools')
+sys.path.insert(0, '<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/tools')
 from build import REPO, ROOT, WORK, PACKAGE
 from build_cycles_android import dependencies
 from android_toolchain import AndroidToolchain, TARGETS

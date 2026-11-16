@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
   CBCVersionInfo version = {sizeof(version), 0, {0}, {0}, {0}};
   TRY(cbc_host_version(&version));
 
-  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, gpu ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE, 0, {0}};
+  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, gpu ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE, 0, {0}, 0, 0};
   CBCHost host = 0;
   TRY(cbc_host_create(&config, &host));
   uint32_t backend = 0;

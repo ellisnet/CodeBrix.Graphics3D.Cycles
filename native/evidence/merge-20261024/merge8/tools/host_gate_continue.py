@@ -16,7 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, '/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools')
+sys.path.insert(0, '<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/tools')
 from build import REPO, ROOT, WORK, PACKAGE, REVISION
 from device_gate import sha, save
 from render_gate import inputs

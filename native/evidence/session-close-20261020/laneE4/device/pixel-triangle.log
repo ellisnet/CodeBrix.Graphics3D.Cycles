@@ -29,10 +29,10 @@ case-5.film      gpu-vs-glibc passed=True practical=0 strict=231 max=1.788e-06 |
 [18:30:48] pixel triangle-final: START replay-5 timeout=2400s
 [18:33:23] pixel triangle-final: ERROR KeyboardInterrupt()
 Traceback (most recent call last):
-  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 410, in <module>
+  File "<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 410, in <module>
     code, stdout = call(['shell', command], 'replay-'+name, timeout, False)
                    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 225, in call
+  File "<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 225, in call
     r = subprocess.run(command, stdout=so, stderr=se, timeout=timeout)
   File "/usr/lib/python3.13/subprocess.py", line 556, in run
     stdout, stderr = process.communicate(input, timeout=timeout)
@@ -54,13 +54,13 @@ KeyboardInterrupt
 During handling of the above exception, another exception occurred:
 
 Traceback (most recent call last):
-  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 453, in <module>
+  File "<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 453, in <module>
     state['binaryInputsUnchanged'] = all(sha(Path(p)) == d for p, d in pins.items())
                                      ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 453, in <genexpr>
+  File "<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 453, in <genexpr>
     state['binaryInputsUnchanged'] = all(sha(Path(p)) == d for p, d in pins.items())
                                          ~~~^^^^^^^^^
-  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/tools/device_gate.py", line 15, in sha
+  File "<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/tools/device_gate.py", line 15, in sha
     def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
                                         ~~~~~~~~~~~~~~~^^
   File "/usr/lib/python3.13/pathlib/_abc.py", line 625, in read_bytes
@@ -69,4 +69,4 @@ Traceback (most recent call last):
   File "/usr/lib/python3.13/pathlib/_local.py", line 539, in open
     return io.open(self, mode, buffering, encoding, errors, newline)
            ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/build-android-arm64/android/android-arm64/host/build/bin/codebrix_cycles_broad_light_state_gate'
+FileNotFoundError: [Errno 2] No such file or directory: '<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/build-android-arm64/android/android-arm64/host/build/bin/codebrix_cycles_broad_light_state_gate'

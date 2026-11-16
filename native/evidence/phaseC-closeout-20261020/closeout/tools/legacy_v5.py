@@ -4,7 +4,7 @@
 # The cache (cold scratch dir or warm user cache) is chosen by the caller's environment.
 import contextlib,json,sys
 from pathlib import Path
-root=Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles');sys.path.insert(0,str(root/'native/tools'))
+root=Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles');sys.path.insert(0,str(root/'native/tools'))
 import render_replay
 out=Path(sys.argv[1]).resolve();out.mkdir(parents=True,exist_ok=False)
 legacy=root/'native/work/parallel-integration/all-lanes-validation-v2/transparent_shadow_gate/transparent_lighting/run/case-1'

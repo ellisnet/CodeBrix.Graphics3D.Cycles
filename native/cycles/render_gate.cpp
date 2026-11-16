@@ -123,7 +123,7 @@ static void compare_stage(DeviceScene &scene,bool clay,const std::vector<Field>&
 }
 static IntegratorQueueCounter queue_counter(WebGPUDevice &d){IntegratorQueueCounter counter{};d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));healthy(d);return counter;}
 #if defined(CBC_BSDF_FIXTURE)
-// Velvet subnormal rule (Jeremy's ruling, native/DEVICE.md open item 29), surface stages of the BSDF family images. A
+// Velvet subnormal rule (the maintainer's ruling, native/DEVICE.md open item 29), surface stages of the BSDF family images. A
 // stage's state difference is accepted only when (a) every differing path's evaluated closures contain an Ashikhmin
 // velvet closure (the original CPU surface shader on the stage's input state), (b) the queue counters differ only
 // together with a differing velvet path's next kernel, (c) the stage's film matches the normal CPU oracle by the

@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # M3 final validation slots (A: all-lanes + host gate; B: material gates + extras).
-R=/home/jeremy/ClaudeHome/cycles-worktrees/m3-procedural; F=$R/native/work/m3/validation/final; T=$R/native/work/m3/tools
+R=<home>/ClaudeHome/cycles-worktrees/m3-procedural; F=$R/native/work/m3/validation/final; T=$R/native/work/m3/tools
 cd $R
 log(){ echo "[$(date +%H:%M:%S)] $*" >> $F/$1.txt; }
 if [ "$1" = A ]; then

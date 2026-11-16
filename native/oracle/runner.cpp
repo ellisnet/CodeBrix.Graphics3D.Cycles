@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <bit>
 #include <chrono>
+#include <climits>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -61,7 +62,7 @@ struct Loader {
     const auto &handle = entry.at("handle").string();
     auto format = formats.find(entry.at("format").string());
     if (format == formats.end()) fail("Unknown image format for " + handle);
-    CBCImageConfig config = {sizeof(config), uint32_t(entry.at("width").as_int()), uint32_t(entry.at("height").as_int()), format->second.first, {0}};
+    CBCImageConfig config = {sizeof(config), uint32_t(entry.at("width").as_int()), uint32_t(entry.at("height").as_int()), format->second.first, 0, {0}};
     auto pixels = read_file(directory / entry.at("file").string());
     if (pixels.size() != uint64_t(config.width) * config.height * format->second.second)
       fail("Raw pixel file size does not match " + handle);
@@ -74,6 +75,19 @@ struct Loader {
   void set(CBCNode target, const std::string &socket, const Json &value, const std::map<std::string, CBCNode> *local) {
     const std::string where = "socket '" + socket + "'";
     if (socket == "image") {
+      // An object binds UDIM tiles (PROVISIONAL): tile numbers to image handles, in document order.
+      if (value.is(Json::Object)) {
+        std::vector<uint32_t> tiles; std::vector<CBCImage> bound;
+        for (auto &[key, handle] : value.fields) {
+          if (key.empty() || key.size() > 10 || key.find_first_not_of("0123456789") != std::string::npos || std::stoull(key) > UINT32_MAX)
+            fail("UDIM tile '" + key + "' of " + where + " is not a tile number");
+          auto image = handle.is(Json::String) ? images.find(handle.string()) : images.end();
+          if (image == images.end()) fail("Unknown image handle for UDIM tile " + key + " of " + where);
+          tiles.push_back(uint32_t(std::stoull(key))); bound.push_back(image->second);
+        }
+        check(cbc_host_image_bind_tiles(host, target, tiles.data(), bound.data(), tiles.size()), "cbc_host_image_bind_tiles");
+        return;
+      }
       auto it = images.find(value.string());
       if (it == images.end()) fail("Unknown image handle for " + where);
       check(cbc_host_image_bind(host, target, it->second), "cbc_host_image_bind");
@@ -169,7 +183,8 @@ struct Loader {
     if (auto attributes = geometry.find("attributes")) for (auto &attribute : attributes->items) {
       static const std::map<std::string, uint32_t> values = {{"float", CBC_VALUE_FLOAT}, {"color", CBC_VALUE_COLOR},
         {"vector", CBC_VALUE_VECTOR}, {"point", CBC_VALUE_POINT}, {"normal", CBC_VALUE_NORMAL}, {"point2", CBC_VALUE_POINT2},
-        {"transform", CBC_VALUE_TRANSFORM}, {"float4", CBC_VALUE_FLOAT4}, {"byte4", CBC_VALUE_BYTE4}};
+        {"transform", CBC_VALUE_TRANSFORM}, {"float4", CBC_VALUE_FLOAT4}, {"byte4", CBC_VALUE_BYTE4},
+        {"quaternion", CBC_VALUE_QUATERNION}, {"spherical_harmonics_rest", CBC_VALUE_SPHERICAL_HARMONICS_REST}};
       static const std::map<std::string, uint32_t> domains = {{"mesh", CBC_ATTR_MESH}, {"face", CBC_ATTR_FACE},
         {"vertex", CBC_ATTR_VERTEX}, {"corner", CBC_ATTR_CORNER}, {"vertex_normal", CBC_ATTR_VERTEX_NORMAL},
         {"corner_normal", CBC_ATTR_CORNER_NORMAL}, {"corner_byte", CBC_ATTR_CORNER_BYTE}, {"curve", CBC_ATTR_CURVE},
@@ -430,10 +445,25 @@ int run(int argc, char **argv) {
   // CODEBRIX_CYCLES_PIPELINE_CACHE_DIR (native/DEVICE.md "Pipeline cache").
   CBCPipelineCacheConfig cache = {sizeof(cache), CBC_HOST_ABI, CBC_PIPELINE_CACHE_OFF, 0, {0}};
   check(cbc_host_pipeline_cache_config(&cache, nullptr), "cbc_host_pipeline_cache_config");
-  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, backend->second, options.threads, {0}};
+  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, backend->second, options.threads, {0}, 0, 0};
   CBCHost host = 0; check(cbc_host_create(&config, &host), "cbc_host_create(" + options.backend + ")");
   Loader loader{host, directory, {}, {}};
   if (auto subdivisions = render.find("curveSubdivisions")) check(cbc_host_curve_subdivisions(host, uint32_t(subdivisions->as_int())), "cbc_host_curve_subdivisions");
+  // Provisional (native/host/ABI.md "Images"): Cycles' texture limit, set before any render loads an image.
+  if (auto limit = render.find("textureLimit")) {
+    if (limit->as_int() < 0 || limit->as_int() > INT_MAX) fail("render.textureLimit must be 0 to INT_MAX");
+    check(cbc_host_texture_limit(host, uint32_t(limit->as_int())), "cbc_host_texture_limit");
+  }
+  // Provisional (native/host/ABI.md "Scene authoring"): Cycles' BVH spatial splits, a boolean.
+  if (auto split = render.find("bvhSpatialSplit")) {
+    if (!split->is(Json::Boolean)) fail("render.bvhSpatialSplit must be true or false");
+    check(cbc_host_bvh_spatial_split(host, split->boolean ? 1u : 0u), "cbc_host_bvh_spatial_split");
+  }
+  // Provisional (native/host/ABI.md "Tiled rendering"): Cycles' tile size; the host refuses sizes Cycles would change.
+  if (auto tiles = render.find("tileSize")) {
+    if (!tiles->is(Json::Number) || tiles->as_int() < 0 || tiles->as_int() > 8192) fail("render.tileSize must be a number from 0 to 8192");
+    check(cbc_host_tile_size(host, uint32_t(tiles->as_int())), "cbc_host_tile_size");
+  }
   std::vector<std::vector<float>> films;
   std::vector<double> seconds;
   // Named passes the scene created ("pass" nodes), read after every repeat with

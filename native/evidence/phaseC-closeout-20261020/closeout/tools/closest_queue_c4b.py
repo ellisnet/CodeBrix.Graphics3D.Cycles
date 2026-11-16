@@ -7,7 +7,7 @@
 # transparent_shadows, committed at HEAD). device_gate.py was not changed.
 import sys
 from pathlib import Path
-sys.path.insert(0, '/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools')
+sys.path.insert(0, '<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/tools')
 import camera_queue_gate, closest_queue_gate
 out = Path(sys.argv[1]).resolve()
 camera_queue_gate.run_controls = lambda: None

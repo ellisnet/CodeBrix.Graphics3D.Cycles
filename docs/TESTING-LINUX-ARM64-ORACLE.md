@@ -5,19 +5,18 @@ SPDX-License-Identifier: Apache-2.0
 
 > **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
 > Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
-> `third_party/cycles-import.json`). The Linux ARM64 CPU oracle has not been built or rendered on it (NOT BUILT);
-> the committed `native/evidence/linux-arm64-cpu-oracle-<date>/` films are films of the previous revision.
-> Every result, film, hash, file count and payload statement in this document
-> was recorded at the previous pinned revision
-> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
-> evidence for the current source. Films and references recorded at the
-> previous revision cannot be compared with the current source: the CPU
-> oracle's films changed with the pin.
+> `third_party/cycles-import.json`). The Linux ARM64 CPU oracle is built and rendered on it (VALIDATED):
+> `native/evidence/linux-arm64-cpu-oracle-20261113/` (2026-11-13, commit `0b19d8750`, 726 scenes, the first run at
+> this pin, with the answers of section 10) and `native/evidence/linux-arm64-cpu-oracle-20261115/` (2026-11-15, commit
+> `24b74e095`, 793 scenes, no refusal, no failure, every scene repeat-identical; the 726 scenes it shares with
+> 20261113 are bitwise identical to it). The films of the earlier `linux-arm64-cpu-oracle-20261031`, `-20261101` and
+> `-20261105` folders, and every result, film, hash and file count recorded in this document before 2026-11-13,
+> belong to the previous pinned revision (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`): historical records, not
+> evidence for the current source, and never compared with it (the CPU oracle's films changed with the pin).
 >
-> The procedure below is the procedure for the current pin. The first run on it also answers the questions of
-> section 10. A `native/evidence/linux-x64-reference-<date>/` folder counts as "of the current pin" only if its
-> README names Cycles v5.3.0; until one is committed, the comparison of section 6 is skipped and the README of the
-> new folder says so. A run made on a branch is committed on that branch.
+> A `native/evidence/linux-x64-reference-<date>/` folder counts as "of the current pin" only if its
+> README names Cycles v5.3.0; until one exists, the comparison of section 6 is skipped and the README of the
+> new folder says so (none is committed yet).
 
 > **MANDATORY TEST RULES** (the same as every TESTING document):
 >
@@ -37,7 +36,7 @@ Renders the committed oracle corpus (`native/oracle/scenes/**`) with the
 `cpu-arm64-linux` backend of `native/oracle/render_oracles.py`: the unmodified
 Cycles CPU kernels at the fixed ARM64 oracle baseline (ARMv8-A base level, no FMA
 contraction, no reciprocal math; native/DEVICE.md "Validation reference policy"),
-GCC 14 and glibc. The result is the Linux ARM64 CPU oracle film set, committed as
+GCC 14 and glibc. The result is the Linux ARM64 CPU oracle film set, kept as
 a new frozen evidence folder, so that WGSL renders on ARM64 devices can be compared
 against a CPU rendering of the same architecture.
 
@@ -63,7 +62,7 @@ Pi 5 remains the Linux ARM64 reference for the WGSL device on its own GPU
 On the Mac (the maintainer installs these; nothing is installed by the procedure):
 
 - Docker Desktop for Mac (Apple Silicon), running `linux/arm64` containers natively.
-- The repository checked out at the commit to be rendered (`git pull`), clean.
+- The repository checked out at the commit to be rendered, clean.
 - The NuGet cache holding `codebrix.webgpu.native.mitlicenseforever/1.0.300.210`
   (restore it once on the Mac, e.g. `dotnet restore research/GpuProbe/GpuProbe.csproj`
   with SDK 11.0.100). The package contains every RID, including
@@ -157,8 +156,15 @@ echo "$RUNNER"; ls -l "$HOSTLIB"
 ## 5. Render the corpus (inside the container)
 
 ```sh
-RUN=native/work/oracles/linux-arm64-<date>
+export RUN=native/work/oracles/linux-arm64-<date>
+export RUNNER=native/work/linux/linux-arm64/host/build/bin/codebrix_cycles_oracle   # the RUNNER path section 4 printed
+export HOSTLIB=native/work/linux/linux-arm64/host/build/lib/libcodebrix_cycles_host.so
 ```
+
+Set and export the three variables in the shell that runs the loop below, and check that `"$RUNNER"` and `"$HOSTLIB"`
+exist. Every `docker exec` starts a new shell, and a command wrapped in `bash -c '...'` sees only exported variables:
+without `export`, the runner receives empty paths and stops with `IsADirectoryError: [Errno 21] Is a directory: '.'`
+after creating the run folder, which must then be removed before the next attempt (the runner refuses a non-empty one).
 
 - Without `--scene`, the runner renders every scene under `native/oracle/scenes/`.
   The two `assets/bench_01*` documents read raw files that are generated, not
@@ -209,14 +215,14 @@ record, never failures and never tuned away** (native/DEVICE.md open item 25:
 x64 and ARM64 CPU oracles are known to differ on some scenes). Use the
 `linux-x64-reference-<date>` folder of the same or the nearest commit and name it.
 
-## 7. Evidence to commit
+## 7. Evidence folder
 
 Copy the run into a NEW folder `native/evidence/linux-arm64-cpu-oracle-<date>/`
 (never into an existing evidence folder): `oracle/<scene>/cpu-arm64-linux/`
 (films and `meta.json`), `run.json`, the comparison JSON of section 6, and a
 `README.md` with the commit, the image (`debian:trixie` digest from
 `docker image inspect`), the tool versions of section 2, the walls, and the list of
-refused or failed scenes, and commit. No licence checks are needed: the run adds films and records, no external
+refused or failed scenes. No licence checks are needed: the run adds films and records, no external
 code (MAINTAINER-README.txt, "Licensing and source checks").
 
 ## 8. What to record
@@ -254,20 +260,20 @@ Steps (sections 3 to 7, with these requirements):
    and name it in the README; the x64 folder may be of an earlier commit when the
    current commit has no Linux x64 evidence yet, but never of another pinned Cycles
    revision (section 6). Per-scene results go in `vs-x64/`.
-5. Commit the run as a NEW folder `native/evidence/linux-arm64-cpu-oracle-<date>/`
+5. Add the run as a NEW folder `native/evidence/linux-arm64-cpu-oracle-<date>/`
    with the layout of section 7. The README states: the commit hash, that the folder
    is the ARM64 gold standard for that commit (section 1), the x64 folder compared
    against, the scene count, and the refused, failed or non-identical scenes
    (or "none"). Earlier `linux-arm64-cpu-oracle-*` folders stay untouched.
-6. After the commit, Android ARM64 validation of that commit judges product-default
-   films against this folder (native/DEVICE.md, "Validation reference policy",
-   Option A); the Linux x64 host must `git pull` before it starts.
+6. Android ARM64 validation of that commit then judges product-default films
+   against this folder (native/DEVICE.md, "Validation reference policy",
+   Option A); the Linux x64 host's checkout must contain the folder before it starts.
 
 ## 10. The first run at the current pin: what it has to show
 
-Nothing of this pin has been built for Linux ARM64. `build_cycles_linux_arm64.py` and the dependency recipe were
-brought to the pin by reading only; a build failure is recorded verbatim (the compiler's text, the file, the line) and
-is never corrected by editing a file under `third_party/cycles`.
+The first run at this pin is `native/evidence/linux-arm64-cpu-oracle-20261113/` (2026-11-13); its README answers
+each item below. A build failure is recorded verbatim (the compiler's text, the file, the line) and is never corrected
+by editing a file under `third_party/cycles`.
 
 Beyond sections 3 to 9, record these in the README of the new folder. Each is something only an ARM64 CPU run can show;
 the shared WGSL carries a scalar (ARM64) branch for each that was written from the source and never run.

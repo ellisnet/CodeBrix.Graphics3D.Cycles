@@ -174,7 +174,7 @@ samsung
 [11:31:39] hp terminator-m8: START terminator-replay-8 timeout=900s
 [11:31:40] s20 transparent-s20-transparent_lighting-rerun: PASS transparent_lighting-replay-6 52s readbacks=428 max=6.02e-06 strict=103 fmt=native-command-stream-v7
 [11:31:40] s20 transparent-s20-transparent_lighting-rerun: START transparent_lighting-replay-7 timeout=900s
-[11:31:51] PART 1C START (Jeremy GO 11:28): items 21 and 22; part 2 is running in this checkout - only volume_gate.cpp, ImageModes/Program.cs, DEVICE.md items 21/22 and merge8 seal files will change
+[11:31:51] PART 1C START (the maintainer's GO 11:28): items 21 and 22; part 2 is running in this checkout - only volume_gate.cpp, ImageModes/Program.cs, DEVICE.md items 21/22 and merge8 seal files will change
 [11:32:13] START c1-volume_gate
 [11:32:32] s20 transparent-s20-transparent_lighting-rerun: PASS transparent_lighting-replay-7 52s readbacks=518 max=6.02e-06 strict=205 fmt=native-command-stream-v7
 [11:32:35] hp terminator-m8: PASS terminator-replay-8 53s readbacks=407 max=2.38e-07 strict=5 fmt=native-command-stream-v6

@@ -35,7 +35,7 @@ static int cbc_barrier_destroy(cbc_barrier_t *barrier) {
 #endif
 
 enum { WORKERS=4, CONFIG_ROUNDS=64, HOST_ROUNDS=24, DESTROY_ROUNDS=12 };
-static const CBCHostConfig host_config={sizeof(CBCHostConfig),CBC_HOST_ABI,CBC_HOST_CPU_REFERENCE,1,{0}};
+static const CBCHostConfig host_config={sizeof(CBCHostConfig),CBC_HOST_ABI,CBC_HOST_CPU_REFERENCE,1,{0},0,0};
 static char config_a[4096],config_b[4096];
 typedef struct Worker { pthread_barrier_t *barrier; int guarded; unsigned accepted,rejected,hosts; } Worker;
 static void start(Worker *worker) {
@@ -90,7 +90,7 @@ static CBCHost textured(const char *root) {
   char path[4096];REQUIRE(snprintf(path,sizeof(path),"%s/input.5.bin",root)>0);
   unsigned char pixels[7*5*4];FILE *file=fopen(path,"rb");REQUIRE(file);
   REQUIRE(fread(pixels,1,sizeof(pixels),file)==sizeof(pixels));REQUIRE(fclose(file)==0);
-  CBCImageConfig config={sizeof(config),7,5,CBC_IMAGE_BYTE4,{0}};CBCImage image=0;
+  CBCImageConfig config={sizeof(config),7,5,CBC_IMAGE_BYTE4,0,{0}};CBCImage image=0;
   CHECK(cbc_host_image_create(host,&config,pixels,sizeof(pixels),&image));
   CHECK(cbc_host_image_bind(host,texture,image));CHECK(cbc_host_image_release(host,image));return host;
 }

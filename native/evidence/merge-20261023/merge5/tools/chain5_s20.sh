@@ -4,8 +4,8 @@
 # Merge wave 5 part 2: S20 (RFCRB0MPHYH, Adreno 650, fix-or-degrade) chain. Per-job timeout = s20_timeouts.py (max(600 s, 3 x this
 # merge's tablet wall)); principled_bounce gets max(that, 2400 s) because lane A650 measured ~1,650 s there (deviation, reported).
 # Chain cap 3 hours: jobs not started by then are logged as not run.
-cd "$(dirname "$0")"; M=$(realpath ..); L=/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
-ref=$M/reference/linux-x64; serial=RFCRB0MPHYH; A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"
+cd "$(dirname "$0")"; M=$(realpath ..); L=<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
+ref=$M/reference/linux-x64; serial=RFCRB0MPHYH; A="<home>/Android/Sdk/platform-tools/adb -s $serial"
 lg(){ echo "[$(date +%H:%M:%S)] s20 $*" >> $M/timeline.log; }
 until grep -q "samsung lock released" $M/timeline.log; do sleep 20; done
 python3 s20_timeouts.py > $M/device/s20-timeouts.json || { lg "timeout computation failed"; exit 1; }

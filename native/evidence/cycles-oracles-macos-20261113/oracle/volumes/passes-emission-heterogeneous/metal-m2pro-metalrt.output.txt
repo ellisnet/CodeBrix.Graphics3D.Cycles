@@ -1,0 +1,32 @@
+{
+  "sceneId": "volumes/passes-emission-heterogeneous",
+  "sceneSha256": "47fe28423face986eb19da2ca739f985690d3b8af45d19d91445040e182b8c88",
+  "backend": "metal-m2pro-metalrt",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 5.9604644775390625e-08,
+  "renderSeconds": [3.24213,3.03162],
+  "filmSha256": ["6e44f58680d35b263fa697b1a6ffb34b17d16225526c738a63685001019833c0","4d453a99f390512aef982f1f16e27b416ae94e39879af8d647208d8eb4cc6d7a"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "volume_direct", "type": "volume_direct", "components": 3, "written": true, "filmSha256": ["bc2f344eb166cad67daf5da92e7bc8c20cd7013d54f219614776d85e9b92b646","6915ff325b740c2815df912657e12852f2c0ab53dd64364d4f1e3454b9c22bc1"]},
+    {"index": 1, "name": "volume_indirect", "type": "volume_indirect", "components": 3, "written": true, "filmSha256": ["65c0d2add8f68791dd4b11ba31fddc3ec660c4d629a884d88ad01701390f790b","5d6a501d4ebfb6740e2e7bef3c26b550a00843a852bda38b23e5bbd99d44531b"]},
+    {"index": 2, "name": "diffuse_direct", "type": "diffuse_direct", "components": 3, "written": true, "filmSha256": ["01a74ff4c29ad70972a552bd1958b35899829f2a4db1861384ac743d3fe0c5a3","a89fa4fc530a3da92ece639c4215dff3f06ba9a60cbb6e4a92705f8a55c25cf3"]},
+    {"index": 3, "name": "diffuse_indirect", "type": "diffuse_indirect", "components": 3, "written": true, "filmSha256": ["c230c1fda91e3779aabfbce91cb5ed8b7a10fe3f6a0a4748ce7b77b62054c1c0","11462d3bb0420cd0ce09ea8860697c775d9e6f250204c46147994ae5637d79c1"]},
+    {"index": 4, "name": "glossy_direct", "type": "glossy_direct", "components": 3, "written": true, "filmSha256": ["e04ae903aa0a97cec5ad81da1fcd69315c9c1a927cdcdcf3267719103a93ebc0","d4dc50b1eeb2fa77f82ac27cd241769f57405472a50a2da6e80ae9e0941ba7a8"]},
+    {"index": 5, "name": "glossy_indirect", "type": "glossy_indirect", "components": 3, "written": true, "filmSha256": ["c850a2168e2dc8776764dfa129bb023ae9bf56e38e65bae0f47455368f9b4126","522971fc91b1aad27cb237f125624e2f990554228e1a99f239ccf31c7efa1a46"]},
+    {"index": 6, "name": "transmission_direct", "type": "transmission_direct", "components": 3, "written": true, "filmSha256": ["7b0e750cdaa13f578373db5582e05b65eabf58909fcd6390c00d2fbf40053e06","dc3b87068b9ea2a579ff48db848fe7ef03fdb95f25b4e50545e1b22caaea10d7"]},
+    {"index": 7, "name": "transmission_indirect", "type": "transmission_indirect", "components": 3, "written": true, "filmSha256": ["180637c92c629b758c9cf934351b54ff54e8ca913c4892805871a16597e42511","3b3f34f45ed622cdc72e2b4f04a636405f24ea79bb3737cbbcbe5451af260066"]},
+    {"index": 8, "name": "emission", "type": "emission", "components": 3, "written": true, "filmSha256": ["392983ce19bd7733015b53d541999543c370685da834e3bbc298e6385988a0d1","0ee84c785eaba7d6c60636a1d91798c460c3310a6d3bd9d52cafd60a0bb89cf4"]},
+    {"index": 9, "name": "background", "type": "background", "components": 3, "written": true, "filmSha256": ["2f21a8ca19de37bea1231fa9799fe2d3a9f77348e388b1c647a8157f62b8a288","2f21a8ca19de37bea1231fa9799fe2d3a9f77348e388b1c647a8157f62b8a288"]}
+  ],
+  "warnings": []
+}
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)

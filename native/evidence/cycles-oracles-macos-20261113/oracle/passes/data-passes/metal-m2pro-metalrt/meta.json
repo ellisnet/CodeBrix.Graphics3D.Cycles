@@ -1,0 +1,200 @@
+{
+  "sceneId": "passes/data-passes",
+  "sceneSha256": "6ac8d20295bf4152449fda807a19d3915613baceb2809133e4e87448b23b8716",
+  "backend": "metal-m2pro-metalrt",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 2.384185791015625e-07,
+  "renderSeconds": [
+    0.2902,
+    0.0325074
+  ],
+  "filmSha256": [
+    "17d5531945cb7bfd94e552866e63556e25f1ce7f2386654d0212fbdbf3479e98",
+    "467476182189518aea62385a8e6ef43c25643119ca3e59aad4861186e52aafa7"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "7b845dc1816bb4201bb3aac6a104ddf2cf414f56344aaa71ece516e69598b1f8",
+        "7b845dc1816bb4201bb3aac6a104ddf2cf414f56344aaa71ece516e69598b1f8"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Position",
+      "type": "position",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "7c0d9ee3201f9b2b40f9b4f94375fb8864bcd61afd3f5d0b5948070a74d928f5",
+        "7c0d9ee3201f9b2b40f9b4f94375fb8864bcd61afd3f5d0b5948070a74d928f5"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Normal",
+      "type": "normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "c62cf9ab42049d22c4653fb612baaf80e1199161abf9661e3dc8ed420b11575c",
+        "c62cf9ab42049d22c4653fb612baaf80e1199161abf9661e3dc8ed420b11575c"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Roughness",
+      "type": "roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "029386b9f916f2aa82fc2530110c213d0e19412bf0ca68bcb4aa7189431ab612",
+        "cd3433883b998e777eff93edf5f0019aedd69b0cabbc7b97f1d9e91f15501b5b"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "UV",
+      "type": "uv",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "99d632e9e4ad1bdeab237994f034d895afbd2890894ac08dc9665d2410b24b2c",
+        "574a274a8eb23fd4b2c82770cb2c22fd954ad986c6d6507593fe16984f853149"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "IndexOB",
+      "type": "object_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "fc18e88de3a6efaacc3104b5f0d20cbc41cf95411aecf2435ca9a131a52376ad",
+        "fc18e88de3a6efaacc3104b5f0d20cbc41cf95411aecf2435ca9a131a52376ad"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "IndexMA",
+      "type": "material_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "22b0131540fc295afcd9c7bbf4570fb6417e910dd78f5cdcea39bb545de82f84",
+        "22b0131540fc295afcd9c7bbf4570fb6417e910dd78f5cdcea39bb545de82f84"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "Mist",
+      "type": "mist",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "ef49baa52cc4b6b3bc4fbfc152fa58ba3fc00abfd0e4e24f7102a910e4b70f9c",
+        "f4cf2569d8a52edcbcfc3acc0ca0b19882a2938b4aa11674a22ce5f011a68566"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "RenderTime",
+      "type": "render_time",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "71c642b31e5890a15ef92f3cbeba34edfb6e2e9f63079ecbda13a89d426f7d8b",
+        "71c642b31e5890a15ef92f3cbeba34edfb6e2e9f63079ecbda13a89d426f7d8b"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/data-passes.json",
+  "kernelCompileSeconds": 115.202,
+  "backendDescription": "Cycles Metal device, MetalRT forced on (Apple ray-tracing API, software on M2), generic kernels; validation of the M3+ default path",
+  "environment": {
+    "CYCLES_METALRT": "1",
+    "CYCLES_METAL_SPECIALIZATION_LEVEL": "0"
+  },
+  "processSeconds": 0.429,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/passes/data-passes.json",
+    "--backend",
+    "metal",
+    "--label",
+    "metal-m2pro-metalrt",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/passes/data-passes/metal-m2pro-metalrt",
+    "--threads",
+    "4"
+  ],
+  "metalSettings": {
+    "device": "DEVICE_METAL",
+    "metalrt": true,
+    "specializationLevel": "CYCLES_METAL_SPECIALIZATION_LEVEL=0 (PSO_GENERIC)",
+    "bvhLayout": "BVH_LAYOUT_METAL",
+    "fastMathEnabled": true,
+    "denoiser": null,
+    "kernelSource": "native/work/macos/osx-arm64/host/build/lib/codebrix-cycles/source",
+    "kernelCache": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/cache/metal-m2pro-metalrt/cycles",
+    "systemMetalShaderCache": "not cleared (macOS-managed)",
+    "optionNames": [
+      "CYCLES_METALRT",
+      "CYCLES_METAL_SPECIALIZATION_LEVEL",
+      "DeviceInfo::use_hardware_raytracing",
+      "DeviceInfo::kernel_optimization_level"
+    ]
+  },
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

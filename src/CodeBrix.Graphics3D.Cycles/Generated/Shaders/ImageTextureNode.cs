@@ -179,6 +179,19 @@ public sealed partial class ImageTextureNode : ShaderGraphNode
     /// Detaches any bound caller-supplied pixels.
     /// </summary>
     public void Unbind() => Scene.UnbindImage(this);
+
+    /// <summary>
+    /// Binds images to this texture as UDIM tiles (provisional): each <see cref="UdimTile.Image"/> at its
+    /// <see cref="UdimTile.Number"/>, the tile covering UV [u, u + 1) x [v, v + 1) being 1001 + 10 * v + u (u 0 to 9).
+    /// A UV outside every bound tile reads <see cref="Missing"/> and <see cref="MissingAlpha"/>. The tile numbers are
+    /// distinct and at least 1001, and every image has the same <see cref="ImageFormat"/>. Replaces any earlier binding;
+    /// <see cref="Unbind"/> removes it. The bindings keep the pixels alive even after the images are disposed.
+    /// </summary>
+    /// <param name="tiles">The tiles, in any order.</param>
+    /// <exception cref="ArgumentException">An image is missing or belongs to another scene.</exception>
+    /// <exception cref="ObjectDisposedException">An image was disposed.</exception>
+    /// <exception cref="NativeFailure">A tile number is below 1001 or listed twice, the images differ in format, or no tile is given (status 1); nothing changed.</exception>
+    public void BindTiles(ReadOnlySpan<UdimTile> tiles) => Scene.BindImageTiles(this, tiles);
 }
 
 /// <summary>

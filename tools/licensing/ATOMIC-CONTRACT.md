@@ -5,7 +5,7 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 SPDX-License-Identifier: Apache-2.0
 
 This is an original implementation, not an edit, translation or paraphrase of
-Blender's excluded atomic implementation. Its inputs are Jeremy's license plan,
+Blender's excluded atomic implementation. Its inputs are the project's license plan,
 function names and uses in the pinned Apache-2.0 Cycles `src/util/atomic.h`,
 `src/util/stats.h`, `src/scene/image_cache.cpp`, `src/integrator/`, and
 `src/kernel/film/`, plus standard C++20 atomic operations. The excluded headers'

@@ -130,7 +130,7 @@ headers are not build inputs. The [license work](../RELEASE-LICENSE-PLAN.md)
 tracks the current repository, build and publication audits. Historical proof
 bundles preserve the findings that applied when those bundles were captured.
 
-Original contributions use Apache-2.0 and Jeremy's standard copyright. Cycles
+Original contributions use Apache-2.0 and the maintainer's standard copyright. Cycles
 derivation notices are in [THIRD-PARTY-NOTICES](../research/THIRD-PARTY-NOTICES.txt).
 The separately supplied WebGPU package retains its own license and notices.
 

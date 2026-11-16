@@ -9,7 +9,7 @@ static CBCImage make_image(CBCHost host,const char *root,unsigned format) {
   FILE *file=fopen(path,"rb");REQUIRE(file);REQUIRE(fseek(file,0,SEEK_END)==0);long size=ftell(file);REQUIRE(size>0);
   REQUIRE(fseek(file,0,SEEK_SET)==0);void *pixels=malloc((size_t)size);REQUIRE(pixels);
   REQUIRE(fread(pixels,1,(size_t)size,file)==(size_t)size);REQUIRE(fclose(file)==0);
-  CBCImageConfig config={sizeof(config),7,5,format+1,{0}};CBCImage image=0;
+  CBCImageConfig config={sizeof(config),7,5,format+1,0,{0}};CBCImage image=0;
   CHECK(cbc_host_image_create(host,&config,pixels,(uint64_t)size,&image));memset(pixels,0,(size_t)size);free(pixels);return image;
 }
 static void bind_copy(CBCHost host,CBCNode texture,const char *root,unsigned format) {
@@ -33,7 +33,7 @@ static int image_cases(int argc,char **argv) {
   REQUIRE(snprintf(missing,sizeof(missing),"%s/missing-config.ocio",argv[1])>0);
   REQUIRE(cbc_host_color_config_path("")==CBC_INVALID);CHECK(cbc_host_color_config_path(config_path));
   REQUIRE(cbc_host_color_config_path(missing)==CBC_FAILED);
-  CBCHostConfig config={sizeof(config),CBC_HOST_ABI,CBC_HOST_CPU_REFERENCE,1,{0}};CBCHost host=0;CHECK(cbc_host_create(&config,&host));
+  CBCHostConfig config={sizeof(config),CBC_HOST_ABI,CBC_HOST_CPU_REFERENCE,1,{0},0,0};CBCHost host=0;CHECK(cbc_host_create(&config,&host));
   REQUIRE(cbc_host_color_config_path(config_path)==CBC_NOT_READY);
   CBCNode mesh=0,material=0;uint64_t count=0;CBCNode original_color=fixture(host,&mesh);
   CHECK(cbc_host_get_nodes(host,mesh,"used_shaders",&material,1,&count));REQUIRE(count==1);

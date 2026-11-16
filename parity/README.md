@@ -132,7 +132,7 @@ performance benchmarks.
 ```sh
 dotnet restore parity/GltfImport
 python3 parity/tools/asset_gate.py prepare --name bench --asset \
-  /home/jeremy/GitHome/Oasys/Assets/ForestCommunity/Domes/ForestVillage/CommunityProps/bench_01.gltf
+  ~/GitHome/Oasys/Assets/ForestCommunity/Domes/ForestVillage/CommunityProps/bench_01.gltf
 python3 research/run.py linux --asset-name bench
 python3 research/run.py android --asset-name bench --serial 98271FFBA0048D
 # After preparing lime in the same way:

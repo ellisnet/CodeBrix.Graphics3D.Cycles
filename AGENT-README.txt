@@ -67,7 +67,7 @@ PackageIds:
         MacOSArm64       osx-arm64
         Android          android-x64 and android-arm64
 
-A platform package is published once that platform has been validated. An
+A platform package exists only for a platform that has been validated. An
 application that targets several platforms references several platform packages;
 they share one Core package. All packages of one release have the same version.
 
@@ -108,11 +108,12 @@ Requirements:
 KEY NAMESPACES / USINGS
 =======================
     using CodeBrix.Graphics3D.Cycles;                     // CyclesScene, CyclesHost, CyclesImage,
-                                                          // CyclesBackend, Backend, ImageFormat,
+                                                          // UdimTile, HostFlags, CyclesBackend, Backend, ImageFormat,
+                                                          // ITiledImageReader, TiledImage,
                                                           // Transform3x4, CyclesException, CyclesVersion
     using CodeBrix.Graphics3D.Cycles.Rendering;           // RenderSettings, FilmBuffer, RenderProgress,
-                                                          // RenderEvent, RenderPassInfo, BakeSettings,
-                                                          // DenoiserGuides
+                                                          // RenderEvent, IntermediateFilm, RenderPassInfo,
+                                                          // BakeSettings, DenoiserGuides
     using CodeBrix.Graphics3D.Cycles.Generated.Scene;     // CameraNode, FilmNode, IntegratorNode,
                                                           // BackgroundNode, ObjectNode, ShaderNode, ...
     using CodeBrix.Graphics3D.Cycles.Generated.Geometry;  // GeometryBaseNode, MeshNode, HairNode,
@@ -136,6 +137,12 @@ TIER 1 - TYPED FACADE
 CyclesScene : IDisposable, IAsyncDisposable                     (sealed)
     CyclesScene(CyclesBackend backend, uint threads = 1)
     CyclesScene(Backend backend, uint threads = 1)    explicit native backend
+    CyclesScene(CyclesBackend backend, uint threads, HostFlags flags)
+    CyclesScene(Backend backend, uint threads, HostFlags flags)
+                                                      options fixed for the
+                                                      scene's lifetime
+                                                      (provisional; see
+                                                      PROGRESSIVE RESULTS)
     static Backend ResolveBackend(CyclesBackend)      asks the native binary:
                                                       Gpu -> Metal in the osx-arm64
                                                       build, WebGpu in every other
@@ -151,6 +158,10 @@ CyclesScene : IDisposable, IAsyncDisposable                     (sealed)
     event EventHandler<RenderEvent> RenderEventReceived
                                native status/progress/error events while a
                                render runs (see CALLBACKS AND THREADING)
+    event EventHandler<IntermediateFilm> IntermediateFilmReceived
+                               (provisional) intermediate films of a scene
+                               created with HostFlags.ProgressiveResults (see
+                               PROGRESSIVE RESULTS)
     CameraNode Camera / FilmNode Film / IntegratorNode Integrator /
     BackgroundNode Background  the scene singletons (typed)
     SceneAttributesNode SceneAttributes
@@ -161,6 +172,18 @@ CyclesScene : IDisposable, IAsyncDisposable                     (sealed)
                                every sample, otherwise a render stops after
                                the limit with the samples done by then (such
                                a film is not reproducible)
+    uint TextureLimit          (provisional) Cycles' texture limit: an image
+                               whose larger side exceeds it is halved when a
+                               render loads it, until it fits; 0 (default)
+                               keeps every size; fixed once a render has
+                               loaded images (see TEXTURE LIMIT)
+    bool UseBvhSpatialSplit    (provisional) Cycles' BVH spatial splits, a
+                               speed setting that changes no film (see BVH
+                               SPATIAL SPLITS); false by default
+    uint TileSize              (provisional) Cycles' tiled rendering: renders
+                               and bakes in tiles of this many pixels square,
+                               the finished tiles kept in memory; 0 (default)
+                               renders one tile (see TILED RENDERING)
     T Create<T>() where T : CyclesNode
                                objects, geometry, lights, shader graphs,
                                particle systems, passes (NodeCreation.Scene);
@@ -180,6 +203,12 @@ CyclesScene : IDisposable, IAsyncDisposable                     (sealed)
                                ReadOnlySpan<T> pixels) where T : unmanaged
                                T = float, Half, byte or ushort (the format's
                                component type) or byte for raw bytes
+    CyclesImage CreateTiledImage(uint width, uint height, ImageFormat format,
+                               ITiledImageReader reader, uint tileSize = 64)
+                               (provisional) Cycles' texture cache: renders
+                               read only the tiles (tileSize x tileSize) and
+                               mip levels they sample, from YOUR reader (see
+                               TILED IMAGES)
     static int ComponentBytes(ImageFormat) / static int Channels(ImageFormat)
     CyclesNode Wrap(Node) / T Wrap<T>(Node)
                                typed view of a node created through Host;
@@ -242,6 +271,13 @@ FilmBuffer                                              (sealed)
   rows bottom to top (lower-left origin), unclamped, not display-encoded,
   alpha = coverage. Flip rows and encode with CodeBrix.Imaging for files.
   Other passes follow the same layout with Components floats per pixel.
+  (Provisional) The native host checks that what Cycles delivers is exactly
+  that film, at the size and with the passes you asked for, before it hands it
+  over; otherwise the render or bake throws NativeFailure (NativeStatus.Failed,
+  "The film the output driver delivered is not the one requested: ...") and
+  the destination is untouched. No accepted scene triggers it; it guards
+  against a film rendered at another resolution (for example a Metal bake with
+  GPU denoising and IntegratorNode.DenoiserUpscaleFactor other than 1).
 
 PASSES, LIGHT GROUPS, AOVS AND CRYPTOMATTE. Enable each pass with
 AddPass(type, name) and read it with ReadPass(name) after the render; the
@@ -294,11 +330,18 @@ RenderPass    Combined, Named (a pass enabled with AddPass)
 RenderPassInfo(string Name, string Type, int Components, bool Written)
 RenderEvent(RenderEventKind Kind, ulong SamplesDone, ulong SamplesTotal,
             TimeSpan Elapsed, string Message)
-RenderEventKind  Status, Progress, Error   (= CBC_EVENT_*)
+RenderEventKind  Status, Progress, Error, Film (= CBC_EVENT_*; Film provisional,
+                 raised only as IntermediateFilmReceived)
+IntermediateFilm(FilmBuffer Film, uint SamplesDone, uint SamplesTotal,
+                 TimeSpan Elapsed)          (provisional; a copy of the film so far)
+HostFlags        None, ProgressiveResults   ([Flags]; provisional; = CBC_HOST_*)
   Progress comes from the native progress callback: one Rendering report per
   native progress event, with CompletedSamples and Fraction filled; Completed
   reports Fraction = 1. Reports arrive on a native render thread unless your
-  IProgress<T> marshals them.
+  IProgress<T> marshals them. A cancellation stops the render at once, also in
+  the middle of a batch of samples; CompletedSamples then stays at its last
+  value (the samples of a batch the cancellation stopped are not counted), and
+  the Cancelled report carries it.
 
 BakeSettings(uint Width, uint Height, uint Samples, BakeType Type)  (record struct)
     string UvAttribute, string AovName, bool UseCamera, bool IncludeAlbedo   (init)
@@ -315,12 +358,32 @@ BakeMap         (from scene.ReadBakeMap)
 
 CyclesImage : IDisposable                               (sealed)
     Image Handle, uint Width, uint Height, ImageFormat Format, bool IsReleased
+    bool IsTiled               (provisional) made by CreateTiledImage
     void Update<T>(ReadOnlySpan<T> pixels)             same size and format
     void Update<T>(uint w, uint h, ImageFormat, ReadOnlySpan<T> pixels)
                                re-uploads raw pixels; every texture still
                                bound to the image renders them next time
+                               (a tiled image: InvalidOperationException)
     Dispose() releases YOUR reference; bound textures keep the pixels
     (textures bound before Dispose keep the pixels they had).
+ITiledImageReader                                       (provisional interface)
+    void ReadTile(int level, int x, int y, int width, int height,
+                  Span<byte> destination, int rowBytes)
+                               write that rectangle of that mip level, rows
+                               bottom first, rowBytes apart, in the image's
+                               ImageFormat; throw to fail the render (see
+                               TILED IMAGES)
+TiledImage (static)                                     (provisional)
+    const int TileSize = 64    the default tile size
+    const int MinTileSize = 64, MaxTileSize = 1024
+    int LevelCount(uint width, uint height, int tileSize = 64)
+    (uint Width, uint Height) LevelSize(uint width, uint height, int level,
+                               int tileSize = 64)
+                               the level sizes your reader must produce, for
+                               the image's tile size
+UdimTile(int Number, CyclesImage Image)                 readonly record struct
+                               (provisional) one UDIM tile for
+                               ImageTextureNode.BindTiles (see UDIM TILES)
 
 CyclesBackend   Gpu, CpuReference, Cpu (the CPU device with Embree ray
                 tracing; CpuReference keeps BVH2 and stays the reference)
@@ -352,10 +415,22 @@ native report states, nothing inferred)
     IReadOnlyDictionary<string, bool> OptionalLibraries (osl, embree, ...)
     IReadOnlyList<string> ImageFormats, Events
     IReadOnlyDictionary<string, int> PassTypes      registered pass types
-    IReadOnlyDictionary<string, long> Limits        maxRenderWidth, maxMotionSteps...
+    IReadOnlyDictionary<string, long> Limits        maxRenderWidth, maxMotionSteps,
+                                                    maxImageDimension (the largest
+                                                    side CreateImage accepts)...
     string DeterminismReference, string Json (the full native report)
 BackendScope: Device, CameraTypes, Primitives, WrittenPasses, PassesNote,
-    RenderTimeRejections (see RENDER-TIME REJECTIONS), Reference
+    RenderTimeRejections (see RENDER-TIME REJECTIONS), Reference,
+    long? MaxImageDimension (provisional): the largest width or height the
+    backend's device renders for an image from CreateImage: 16384 on Metal
+    (Cycles' Metal device fails a render with a larger one; see DEVICE ERRORS and
+    TEXTURE LIMIT), 1073741823 on WebGPU (whose storage binding also bounds an
+    image's bytes) and on the CPU backends (Cycles' CPU kernels compute twice
+    the side in int for the Mirror extension; a render or bake with a larger
+    image fails with NativeStatus.Unsupported, "Unsupported feature: an image
+    wider or taller than 1073741823 pixels on the CPU backends ..."),
+    long? MaxImageTileSize (provisional): the largest tile side of a tiled
+    image (TILED IMAGES): 128 on Metal, 1024 on the CPU backends and WebGPU
 Warnings also carries a notice when a scene compiles to an unusually large GPU
 program that some older Intel graphics drivers may fail to compile; the notice
 never changes the rendered result.
@@ -421,6 +496,8 @@ Hand-maintained conveniences on a few generated classes:
   ReadOnlySpan<Vector3>) / ClearMotionPositions()   deformation motion
   (before or after a render; see MOTION)
   ImageTextureNode / EnvironmentTextureNode .Bind(CyclesImage) / .Unbind()
+  ImageTextureNode.BindTiles(ReadOnlySpan<UdimTile>)   several images as UDIM
+    tiles (provisional; see UDIM TILES)
   ObjectNode.RayVisibility / BackgroundNode.RayVisibility   the Visibility
     socket as RayVisibility flags (Camera, Transmit, Diffuse, Glossy,
     VolumeScatter, ShadowOpaque, ShadowTransparent, Shadow, Raycast, All)
@@ -449,6 +526,7 @@ TIER 3 - INTEROP (STABLE LOW-LEVEL TIER)
 ----------------------------------------
 CyclesHost : IDisposable  (root namespace; by name, throws NativeFailure)
     CyclesHost(Backend backend, uint threads = 1); Dispose; IsRendering; Cancel
+    CyclesHost(Backend backend, uint threads, HostFlags flags)   (provisional)
     Node SceneNode(string) / CreateNode(string type) / ShaderOutput(Node) /
          ShaderNode(Node shader, string type)
     void Connect(Node from, string output, Node to, string input)
@@ -463,8 +541,22 @@ CyclesHost : IDisposable  (root namespace; by name, throws NativeFailure)
     string NodeTypeName(Node)
     Mesh, SetAttribute, SetAttributeBytes, GetAttribute, GetAttributeBytes,
     RemoveAttribute, CreateImage, BindImage, ReleaseImage
+    void BindImageTiles(Node texture, ReadOnlySpan<uint> tiles, ReadOnlySpan<Image> images)
+                               UDIM tiles (provisional; see UDIM TILES)
+    Image CreateTiledImage(uint w, uint h, ImageFormat,
+        delegate* unmanaged[Cdecl]<nint, uint, uint, uint, uint, uint, void*, ulong, int> read,
+        delegate* unmanaged[Cdecl]<nint, void> release, nint userData,
+        uint tileSize = 0)     (provisional) a tiled image read through an
+                               unmanaged callback; release runs exactly once;
+                               tileSize 0 is 64 (see TILED IMAGES)
     void Render(uint w, uint h, uint samples, Span<float> rgba)
     void SetRenderTimeLimit(double seconds)   0 = every sample
+    void SetTextureLimit(uint maxSize)        (provisional) see TEXTURE LIMIT;
+                               NativeStatus.NotReady for a change after a
+                               render has loaded images
+    void SetBvhSpatialSplit(bool enabled)     (provisional) see BVH SPATIAL SPLITS
+    void SetTileSize(uint tileSize)           (provisional) see TILED RENDERING;
+                               NativeStatus.Invalid for a size Cycles would change
     void SubdivisionMesh(Node mesh, positions, faceCorners, corners)   a subdivision cage
     bool Bake(Node, in BakeSettings, Span<float>, out required, out components)
     bool BakeMap(Node, in BakeSettings, Span<int>, Span<float>, out required)
@@ -487,6 +579,8 @@ CyclesHost : IDisposable  (root namespace; by name, throws NativeFailure)
 
 Interop.CyclesAbi (static) - one method per cbc_host_* C function
     NativeStatus Create(Backend, uint threads, out ulong host) / Destroy(host)
+    NativeStatus Create(Backend, uint threads, HostFlags flags, out ulong host)
+                                             (provisional host options)
     NativeStatus SceneNode / CreateNode / ShaderOutput / ShaderNode / Connect
     NativeStatus SetFloats / SetInts / SetUInts / SetString / SetStrings /
                  SetNodes
@@ -494,7 +588,7 @@ Interop.CyclesAbi (static) - one method per cbc_host_* C function
                  GetNodes / NodeType / RegistryJson / DeviceReportJson
     NativeStatus SetAttributeFloats / SetAttributeBytes / GetAttributeFloats /
                  GetAttributeBytes / RemoveAttribute
-    NativeStatus CreateImage / BindImage / ReleaseImage / Mesh / Render /
+    NativeStatus CreateImage / CreateTiledImage / BindImage / BindImageTiles / ReleaseImage / Mesh / Render /
                  Cancel / IsRendering / ConfigureColor / ConfigureTiers /
                  ConfigurePipelineCache
     NativeStatus Version(out uint abi, out string library, out string revision)
@@ -508,9 +602,10 @@ Interop.CyclesAbi (static) - one method per cbc_host_* C function
   Destroy it exactly once.
 
 Interop.Native (static) - the raw [DllImport] declarations and ABI structs
-(HostConfig, RenderConfig, PropertyInfo, AttributeConfig, ImageConfig,
-TierConfig: 32 bytes each; VersionInfo: 96 bytes; Event: 40 bytes; Size is
-always first). Use it to write your own binding; the C header
+(RenderConfig, PropertyInfo, AttributeConfig, ImageConfig, TierConfig: 32
+bytes each; HostConfig: 40 bytes with the provisional trailing Flags, the
+native library also accepting 32; VersionInfo: 96 bytes; Event: 56 bytes with
+the provisional trailing Film, Width and Height; Size is always first). Use it to write your own binding; the C header
 native/host/cycles_host.h and native/host/ABI.md are the contract.
 
 Shared value types and enums (root namespace)
@@ -524,7 +619,8 @@ Shared value types and enums (root namespace)
                     SmallBuffer
     ValueKind       Unsupported, Boolean, Int, UInt, UInt64, Float, Color,
                     Vector, Point, Normal, Point2, String, Enum, Transform,
-                    Node, Closure, Float4, Byte4
+                    Node, Closure, Float4, Byte4, Quaternion,
+                    SphericalHarmonicsRest (the last two provisional)
     PropertyFlags   None, Array, Linkable, Internal, Readable, Writable
     AttributeValue, AttributeDomain, AttributeFlags (geometry attributes)
     CurveShape      Ribbon, Thick, ThickLinear
@@ -745,7 +841,7 @@ SpecularMotion; Open Image Denoise reads Albedo and Normal, the default; a
 DenoiserPasses value with a bit outside these fails a denoising render).
 DenoiseUseGpu lets Open Image Denoise use the GPU where it can (Metal); the
 CPU and WebGPU backends denoise on the CPU (GetCapabilities().DenoiseDevices).
-DenoiserUpscaleFactor other than 1 is refused on the CPU and WebGPU backends
+DenoiserUpscaleFactor other than 1 is refused on every backend when denoising
 (RENDER-TIME REJECTIONS).
 
 Lights (CreateLight<T>, placed by an object; see A light): every LightNode has
@@ -785,8 +881,32 @@ AttributeFlags.Standard these names are Cycles' standard attributes:
     (compute them yourself; Cycles does not);
   - curves (HairNode): uv, generated, radius, curve_intercept (per key),
     curve_length and curve_random (per curve), for the Hair Info node;
-  - point clouds: uv, generated, radius, point_random (the Point Info node).
+  - point clouds: uv, generated, radius, point_random (the Point Info node),
+    and radiance:base, scale, rotation and radiance:sh, the attributes of a
+    Gaussian splat (provisional; GAUSSIAN SPLATS below).
   Any other name is a custom attribute, read by the Attribute node.
+  Quaternion and spherical-harmonics attributes (AttributeValue.Quaternion and
+  .SphericalHarmonicsRest; provisional) go on meshes (the Mesh, Face, Vertex
+  and Corner domains) and point clouds (Mesh and Vertex), as custom attributes;
+  quaternions also on curves (HairNode: the Mesh, Curve and CurveKey domains,
+  per key interpolated along each segment as Cycles reads them):
+  - Quaternion: four floats per element in Cycles' order w, x, y, z, read back
+    exactly. An AttributeNode returns w, x, y as Color and Vector, their
+    average as Fac and z as Alpha (Cycles' own reading); between vertices the
+    four components are interpolated one by one, not normalized.
+  - SphericalHarmonicsRest: the coefficients of bands 1 to 3 (band 0 is not
+    included), 45 floats per element: 15 RGB coefficients in Cycles' order
+    (L1 M-1, L1 M0, L1 M1, L2 M-2, ..., L3 M3), each in [-1, 1]. A value
+    outside that range throws (NativeStatus.Invalid; it is never clipped).
+    Cycles stores each coefficient at 8 bits over [-1, 1], so GetAttribute
+    returns the stored value, which is at most 1/255 (half a step) from the
+    value set. An AttributeNode finds the attribute and returns black with
+    alpha 1: Cycles has no shader reading of these coefficients. Not a
+    subdivision attribute (AttributeFlags.Subdivision throws).
+  Both throw NativeStatus.Unsupported on volume geometry, and spherical
+  harmonics on hair too (Cycles reads them only for Gaussian splats); the
+  WebGPU backend refuses a scene in which a shader reads one (RENDER-TIME
+  REJECTIONS).
   A node that asks for an attribute by name (AttributeNode, UvMapNode) gets
   the attribute of that name, also when it is one of the names above set
   without AttributeFlags.Standard; a node that asks for a standard attribute
@@ -797,8 +917,6 @@ AttributeFlags.Standard these names are Cycles' standard attributes:
   MissingAlpha: the colour and alpha the node returns when its attribute or
   image does not exist (by default alpha 1 with black for the attribute and
   magenta 1, 0, 1 for the textures).
-  PointCloudNode.RenderAs stays Points (GaussianSplats is refused:
-  RENDER-TIME REJECTIONS).
 
 Shader graphs: a link between different value types (a colour into a float
 input, a float into a colour or vector input, a value into a shader input)
@@ -806,7 +924,8 @@ gets Cycles' own conversion node, as in Blender; the Convert*Node classes do
 the same explicitly. A shader output links only into a shader input.
 Displacement: ShaderNode.DisplacementMethod Bump, True or Both, with a
 DisplacementNode or VectorDisplacementNode into OutputNode.DisplacementInput;
-BumpNode for bump mapping inside a graph.
+BumpNode for bump mapping inside a graph. Both is for meshes: curves and points
+with a Both displacement shader are refused (RENDER-TIME REJECTIONS).
 
 Volumes: a volume shader (ScatterVolumeNode, AbsorptionVolumeNode,
 PrincipledVolumeNode, VolumeCoefficientsNode, emission) into
@@ -824,10 +943,277 @@ adaptive dicing (SubdDicingRate, in pixels of the render camera with
 SubdAdaptiveSpace Pixel or in object units with Object, and SubdMaxLevel).
 Subdivision attributes go on the cage with
 AttributeFlags.Subdivision. Catmull-Clark needs OpenSubdiv and is refused.
+Editing a subdivision attribute, or setting a new cage, after a render makes
+the next render or bake tessellate the cage again (provisional). A cage can be
+baked (provisional; BAKING TEXTURES), diced in object space.
 
 Subsurface: SubsurfaceScatteringNode or PrincipledBsdfNode with the
 RandomWalk, RandomWalkLegacy or Burley (Christensen-Burley) method, also on a
 thin-walled PrincipledBsdfNode.
+
+GAUSSIAN SPLATS (provisional). A PointCloudNode with RenderAs =
+PointCloudRenderAs.GaussianSplats renders each point as a 3D Gaussian, on the
+CPU and Metal backends (the WebGPU backend refuses it: RENDER-TIME
+REJECTIONS). Set these point attributes after SetPoints, each with
+AttributeDomain.Vertex and AttributeFlags.Standard (Cycles finds them only as
+standard attributes):
+  - radiance:base, AttributeValue.Float4: the band-0 spherical-harmonics
+    coefficient of red, green and blue, then the opacity (0 to 1; below 0.01
+    Cycles bounds the splat with a radius of 0 and it is not drawn). Cycles
+    adds 0.5 to the evaluated coefficients and reads the sum as sRGB, so the
+    coefficient (c - 0.5) / 0.28209479 gives the colour c from every
+    direction.
+  - scale, AttributeValue.Vector: the Gaussian's standard deviation along its
+    three axes, in the cloud's object space.
+  - rotation, AttributeValue.Quaternion: its orientation, w, x, y, z, of any
+    length but zero (Cycles normalizes it).
+  - radiance:sh (optional), AttributeValue.SphericalHarmonicsRest: bands 1 to
+    3 (each coefficient in [-1, 1]), a colour that changes with the view
+    direction.
+  A splat cloud without radiance:base, scale or rotation (or with one of them
+  set without AttributeFlags.Standard) throws when it renders
+  (NativeStatus.Invalid, "Gaussian splats need the standard point attributes
+  radiance:base, scale and rotation, ... (missing: scale)"); so does a
+  rotation of zero length ("Gaussian splat rotation of point 3 has zero
+  length", also when no component's square is a normal float), or one so long
+  that its squared length overflows. Another value kind or domain for these
+  names throws when it is set (Invalid).
+  - Shading: without a shader (CreatePointCloud with no shader, UsedShaders
+    empty) Cycles' default splat shader emits the radiance, evaluated from
+    the coefficients for the view direction in the cloud's object space. A
+    shader of your own reads the same radiance through an AttributeNode whose
+    Attribute is "radiance" (Color; Alpha is 1), for example as an emission
+    or as the colour of a BSDF lit by the scene (the splat's normal is its
+    axis of smallest scale). Point clouds are not lights: splat emission is
+    seen by camera rays and by bounces that hit the splats.
+  - Each ray hits a splat with a probability that follows its opacity and
+    shape (Cycles' stochastic test). A shadow ray stops at a splat it hits
+    unless the splat's shader is transparent (TransparentBsdfNode).
+  - Radius: Cycles bounds every splat with a radius it computes from the
+    opacity and the scale, at each render; the radii given to SetPoints are
+    kept: GetAttribute("radius") returns them and SetMotion takes them as the
+    center step. GetAttribute("radius", AttributeFlags.SplatBoundingRadius)
+    (provisional) returns the radius Cycles computed for each splat at the
+    last render or bake instead: 0 for an opacity below 0.01, else the largest
+    component of |sqrt(2 ln(opacity / 0.01)) * scale|. It throws
+    (NativeStatus.NotReady, "The bounding radius of a Gaussian splat cloud is
+    Cycles' and is read after a render or bake has computed it ...") before
+    the first render and after an edit of the cloud, until the next render;
+    Invalid for any other geometry or name ("... reads the bounding radius of
+    a Gaussian splat cloud only"); Unsupported on the WebGPU backend ("WebGPU
+    Gaussian splats not implemented").
+  - Motion: object motion (ObjectNode.Motion) and PointCloudNode.SetMotion
+    (positions; Cycles bounds each step itself). The splat attributes
+    themselves have no motion here.
+  - Transforms: a splat cloud is never baked into world space; object
+    transforms and instancing apply as for any geometry.
+
+    PointCloudNode splats = scene.CreatePointCloud(xyz, radii);   // no shader: Cycles' splat emission
+    splats.RenderAs = PointCloudRenderAs.GaussianSplats;
+    splats.SetAttribute("radiance:base", AttributeValue.Float4, AttributeDomain.Vertex, AttributeFlags.Standard, colourAndOpacity);
+    splats.SetAttribute("scale", AttributeValue.Vector, AttributeDomain.Vertex, AttributeFlags.Standard, scales);
+    splats.SetAttribute("rotation", AttributeValue.Quaternion, AttributeDomain.Vertex, AttributeFlags.Standard, wxyz);
+    splats.SetAttribute("radiance:sh", AttributeValue.SphericalHarmonicsRest, AttributeDomain.Vertex, AttributeFlags.Standard, rest);
+    scene.CreateObject(splats);
+
+UDIM TILES (provisional). ImageTextureNode.BindTiles binds several images to
+one Image Texture node as Cycles' UDIM tiles: the tile covering UV
+[u, u + 1) x [v, v + 1) is 1001 + 10 * v + u, with u from 0 to 9 (1001 is the
+unit square, 1002 the square to its right, 1011 the one above it). Cycles
+takes the tile from the integer parts of u and v, truncated toward zero (a u
+or v between -1 and 0 counts as 0), and samples that tile's image at the UV
+minus those integer parts, with the node's Interpolation and Extension. A u
+of 10 or more, a u or v of -1 or less and a UV over a tile you did not bind
+read the node's Missing and MissingAlpha.
+  - Tile numbers are distinct and at least 1001; every image has the same
+    ImageFormat (Cycles decodes every tile with the first tile's settings);
+    the images may differ in size. Each violation throws NativeFailure
+    (status 1) naming the tile, and nothing changes.
+  - EnvironmentTextureNode has no tiles (Cycles builds UDIM textures for Image
+    Texture nodes only); the call does not exist there.
+  - A new BindTiles or Bind replaces the binding, Unbind removes it, and
+    CyclesImage.Update of a member image applies to the next render. The
+    binding keeps the pixels after the images are disposed.
+  - (Provisional) The node's Tiles property is Cycles' list of UDIM tiles read
+    from image files, which this library does not read: it stays empty, and
+    setting any other value throws NativeFailure (NativeStatus.Invalid, "...
+    bind images as UDIM tiles with cbc_host_image_bind_tiles"); use BindTiles.
+  - The CPU and Metal backends render them; the WebGPU backend refuses a
+    scene with a tiles binding (RENDER-TIME REJECTIONS).
+
+    ImageTextureNode texture = material.Add<ImageTextureNode>();
+    using CyclesImage left = scene.CreateImage<byte>(w, h, ImageFormat.Byte4, leftRgba8);
+    using CyclesImage right = scene.CreateImage<byte>(w, h, ImageFormat.Byte4, rightRgba8);
+    texture.BindTiles([new UdimTile(1001, left), new UdimTile(1002, right)]);   // UVs 0..2 across
+
+TEXTURE LIMIT (provisional). CyclesScene.TextureLimit is Cycles' texture
+limit: when a render or bake loads an image whose larger side exceeds it,
+Cycles halves the image on the host, before any device sees it, as often as
+that side needs to be at most the limit (a box filter of 2 x 2, 4 x 4, ...
+pixels; each side is multiplied by the power-of-two scale and rounded down,
+at least 1). A 64 x 64 image under a limit of 40 loads as 32 x 32.
+  - It covers every image of the scene: images bound with Bind or BindTiles
+    and Cycles' own (the Sky Texture's 512 x 256 image).
+  - It brings an image within Metal's texture limit: Cycles' Metal device
+    refuses an image wider or taller than 16384 pixels (DEVICE ERRORS;
+    GetCapabilities().Scope.MaxImageDimension states each backend's limit); a
+    limit of 16384 or less halves it until it fits. Likewise on the CPU
+    backends, whose limit is 1073741823 (Cycles computes the reduction in
+    binary32, in which a limit of 1073741823 is 2^30 and may leave a side of
+    2^30; a limit of 536870912 or less always brings an image within it).
+  - 0, the default, keeps every image at its size; the largest limit is
+    int.MaxValue (ArgumentOutOfRangeException above it).
+  - Set it before the first render or bake that loads images. Cycles never
+    loads an image again once it has loaded it, so a different value after
+    that throws InvalidOperationException (the same value is accepted); create
+    a new scene for another limit.
+  - The CPU and Metal backends render with it; the WebGPU backend refuses a
+    render with a limit (RENDER-TIME REJECTIONS).
+
+    scene.TextureLimit = 2048;                      // before the first render
+    using CyclesImage image = scene.CreateImage<byte>(8192, 8192, ImageFormat.Byte4, rgba8);
+    texture.Bind(image);                            // loads as 2048 x 2048
+
+TILED IMAGES (provisional). CyclesScene.CreateTiledImage creates an image that
+the library never holds whole: Cycles' texture cache loads only the tiles
+(64 x 64 by default) and the mip levels a render or bake samples, and asks YOUR
+ITiledImageReader for each. The reader does the file I/O and decoding (use
+CodeBrix.Imaging; this library reads no image files) and decides how it keeps
+or reads its levels; the library holds only the tiles a render samples (a
+large texture seen small costs a few tiles of its small levels). Bind it with
+Bind (ImageTextureNode, EnvironmentTextureNode) or as UDIM tiles of tiled
+images only.
+  - Tile size (provisional): CreateTiledImage(..., tileSize) chooses the side of
+    the square tiles: a power of two from 64 to 128 on the Metal backend
+    (Cycles' Metal tile pool, 64 tiles of tileSize + 4 pixels in a row, is at
+    most 16384 wide) and from 64 to 1024 on the CPU backends;
+    GetCapabilities().Scope.MaxImageTileSize states the backend's largest.
+    Anything else throws (NativeFailure, NativeStatus.Invalid, "Invalid tiled
+    image tile size N: 0 (the default, 64) or a power of two from 64 to M ...").
+    Larger tiles mean fewer, larger reads, and memory: Cycles allocates the
+    tiles of one format and interpolation in pools of 64 tiles of
+    (tileSize + 4)^2 pixels, whole (271 MB for byte4 tiles of 1024, 1.1 GB for
+    float4; the CPU limit keeps the pool within that), and each tile is read
+    whole (tileSize x tileSize pixels of a level that large). Measured at every
+    size: the mip levels are selected and read in tiles of that size, and
+    Closest renders bit for bit like the same pixels from CreateImage.
+  - Levels: level 0 is the image; level L has TiledImage.LevelSize(width,
+    height, L, tileSize) (each side shifted right by L, at least 1), and there
+    are TiledImage.LevelCount(width, height, tileSize) of them, down to the
+    first whose sides are both at most the tile size. An image smaller than the
+    tile size in both sides has only level 0 and is read once, whole. The levels
+    are your pixels: make them with
+    a 2 x 2 box reduction of the level above, as Cycles does for its own files.
+    Cycles picks a level per sample from the ray footprint (a minified texture
+    reads the small levels only); CyclesScene.TextureLimit skips the top levels.
+  - ReadTile(level, x, y, width, height, destination, rowBytes): write that
+    rectangle of the level, rows bottom first (row y at v = y / level height,
+    the order of CreateImage), rowBytes apart, in the image's ImageFormat;
+    float and half values must be finite (a value that is not fails the render
+    with a NativeFailure naming it, as CreateImage refuses it).
+    The library asks for each tile with a 2-pixel border; the border outside
+    the image follows the texture's Extension.
+  - Threading: ReadTile runs on native render threads, only while a render or
+    bake of the scene runs, ONE CALL AT A TIME per scene (never concurrently
+    with itself or the scene's other tiled images), so a reader needs no locks
+    of its own. It must not call the scene, its host, nodes or images
+    (NativeFailure, NativeStatus.NotReady) and must not wait for the thread that
+    renders. The scene keeps the reader alive until the image is released,
+    unbound and freed (at the next render), or the scene is disposed.
+  - Failure: a reader that throws fails the render or bake with a
+    CyclesException (NativeStatus.Failed) whose message names the image, the
+    level and the rectangle and whose InnerException is your exception; the
+    destination is untouched, IsFaulted does not change (no device failed),
+    and the next render reads
+    those tiles again. The texture's Missing colour is never returned for a tile
+    that did not load. A cancelled render stops reading after the call in
+    progress.
+  - Cycles keeps the tiles it loaded for later renders of the scene. Closest
+    filtering renders bit for bit like the same pixels from CreateImage, also
+    in a render in tiles (TileSize) and with a camera border; Linear
+    and Cubic agree with it within rounding inside the image. Outside the
+    image (UVs beyond 0..1) Cycles' tiled path wraps the UV before filtering, so
+    Linear with Extension Black and Cubic with Black or Clamp differ from a
+    plain image there, as in Cycles.
+  - CyclesImage.Update is refused (InvalidOperationException).
+  - The CPU and Metal backends render it; the WebGPU backend refuses a render
+    with a tiled image (RENDER-TIME REJECTIONS).
+
+    sealed class LevelFiles(string[] levelPaths) : ITiledImageReader
+    {
+        // One decoded RGBA8 array per level, rows bottom first (CodeBrix.Imaging; flip its top-down rows).
+        private readonly byte[][] levels = [.. levelPaths.Select(DecodeBottomUpRgba8)];
+        private readonly uint width0 = ..., height0 = ...;
+        public void ReadTile(int level, int x, int y, int width, int height, Span<byte> destination, int rowBytes)
+        {
+            (uint levelWidth, _) = TiledImage.LevelSize(width0, height0, level);
+            for (int row = 0; row < height; row++)
+                levels[level].AsSpan(((y + row) * (int)levelWidth + x) * 4, width * 4).CopyTo(destination[(row * rowBytes)..]);
+        }
+    }
+    using CyclesImage image = scene.CreateTiledImage(8192, 8192, ImageFormat.Byte4, new LevelFiles(paths));
+    texture.Bind(image);                            // reads what the render samples
+
+BVH SPATIAL SPLITS (provisional). CyclesScene.UseBvhSpatialSplit switches
+Cycles' spatial splits on: its BVH2 builder may then split a primitive
+between nodes in the BVH of each geometry Cycles keeps in object space (one
+that several objects use, or one with true displacement, subsurface
+scattering or subdivision; never in the scene's top level, for curves or for
+geometry with motion blur), and Backend.Cpu builds
+its Embree BVH at Embree's high quality. MetalRT ignores it, as in Cycles; the
+Metal backend's BVH2 (GPUs without ray-tracing hardware, the default before
+M3) honours it.
+  - A speed setting: it changes how rays find the closest hit, not which one,
+    so a film does not change by design (measured: the CPU reference and
+    Backend.Cpu render bit for bit the same film with and without it; Metal
+    within its repeat noise). Whether it is faster depends on the scene: long
+    thin or overlapping triangles in instanced meshes are where it can help.
+  - false, the default, keeps Cycles' default. A change after a render has
+    every BVH built again at the next render or bake.
+  - The WebGPU backend refuses a render with it on (RENDER-TIME REJECTIONS).
+
+    scene.UseBvhSpatialSplit = true;
+
+TILED RENDERING (provisional). CyclesScene.TileSize renders the film in
+Cycles' tiles of TileSize x TileSize pixels, one after another, so the device
+holds the render buffers of one tile at a time (for a film whose render
+buffers the GPU could not hold whole). The library keeps the finished tiles in system memory (no
+file is written), and once the last tile is done it returns the whole film as
+an untiled render does: every pass, a camera border's region at its place, and
+with UseDenoise the whole film denoised once.
+  - Sizes: 0 (the default: one tile, the whole film or its camera border), 8 to
+    128, or a multiple of 128 up to 8192 (the sizes Cycles uses as given);
+    another value throws ArgumentOutOfRangeException. Cycles uses one tile
+    when the tile's area is at least the film's and no side exceeds 8192.
+  - With tiles Cycles adds a sample count pass (each pixel is normalised by its
+    own sample count), renders 4 pixels beyond each tile's edges for adaptive
+    sampling, and applies RenderTimeLimit to each tile.
+  - Results on the CPU reference backend: a tiled film and every pass are bit
+    for bit the untiled ones (measured: plain, named passes with light groups
+    and Cryptomatte, camera border, adaptive sampling, bakes). With UseDenoise,
+    Open Image Denoise then receives the image divided by each pixel's sample
+    count, so the film is bit for bit that of an untiled render with a
+    SampleCount pass and agrees with a plain untiled render within the
+    practical criterion, not always bit for bit.
+  - Results on Metal: within the practical criterion of the untiled Metal film
+    (GPU accumulation is atomic), except with adaptive sampling: Cycles' Metal
+    device decides when pixels of a small render buffer stop differently from
+    the CPU device, and tiles are small buffers, so a tiled adaptive render can
+    stop some pixels at other sample counts than the untiled one (measured: 327
+    of 3,072 pixels stopped at 16 of 32 samples in tiles of 16).
+  - Bakes render in tiles too (scene.Bake with the same TileSize).
+  - Memory: the finished tiles take one full-film copy of the render buffers in
+    system memory (every pass; two for a moment while they are read back),
+    freed before the render returns; a cancelled render leaves nothing behind. scene.Host.DeviceReportJson() states
+    tiledRendering (tileSize, tilesKeptInMemory, framesReadBack, tilesHeld).
+  - A scene created with HostFlags.ProgressiveResults sends intermediate films
+    with the tiles rendered so far (zero where no tile has rendered yet) and
+    ends with the returned film.
+  - The CPU and Metal backends render with tiles; the WebGPU backend refuses a
+    render with a tile size other than 0 (RENDER-TIME REJECTIONS).
+
+    scene.TileSize = 512;                           // 0 renders one tile
+    FilmBuffer film = scene.Render(new RenderSettings(8192, 8192, 256));
 
 MOTION
 ------
@@ -851,9 +1237,28 @@ render exactly as if the scene had been built with it: on the CPU reference the
 film is bit-identical to a new scene built with the edits. The native host
 restores a baked mesh's authored positions first (the pinned Cycles static BVH
 bakes single-user meshes with their object transform), so such an edit rebuilds
-the BVH. The one refused edit: a baked volume (voxel data), its object's Tfm,
-Motion or Geometry; that throws (NativeStatus.NotReady): remove and recreate the
-object and volume.
+the BVH. A mesh with true displacement (ShaderNode.DisplacementMethod True or
+Both) gets its authored positions back before Cycles displaces it again
+(provisional): after an edit of the mesh, of its displacement shader, of the
+object it is displaced with (the first object that uses it), and after a device
+recovery (DEVICE ERRORS); GetAttribute returns the authored values, not the
+displaced ones. A material assigned after a render that no node used before
+renders as in a new scene too. A call that throws is no edit (provisional):
+SetAttribute, SetAttributeBytes and RemoveAttribute check every argument
+before they restore anything, so a refused one changes nothing (a Gaussian
+splat cloud's AttributeFlags.SplatBoundingRadius read keeps working). The one
+refused edit: a baked volume (voxel data), its object's Tfm, Motion or
+Geometry; that throws
+(NativeStatus.NotReady): remove and recreate the object and volume.
+Known limitations of displaced meshes: a displacement shader that reads a scene
+value (scene.SceneAttributes.Time or Frame, read by a Scene Time node) is not
+displaced again when only that value changes; the mesh keeps the earlier
+displacement until the mesh, its shaders or its object are edited (create a new
+scene for another time). And on Metal with MetalRT, a scene that grows beyond
+16,777,216 instances or 268,435,456 primitives makes Cycles rebuild every
+geometry with MetalRT's extended limits, which could displace a displaced mesh a
+second time; this is known from reading Cycles' source only, no render has shown
+it.
 
 SHADOW CATCHER
 --------------
@@ -888,6 +1293,19 @@ falls back to the CPU. On Apple Silicon it runs Cycles' Metal bake kernel,
 which is not validated yet.
 GetCapabilities().BakingBackends states which (validated, unvalidated),
 BakeTypes the types.
+
+Subdivision surfaces bake (provisional): a mesh with a subdivision cage and
+SubdivisionType Linear is baked through the triangles Cycles dices from the
+cage for that bake (SubdDicingRate, SubdMaxLevel), the texels found through
+the diced UV layout, which Cycles interpolates over each face from the cage's;
+then as any mesh, every BakeType on every backend, true displacement included.
+Its UV layout is a subdivision attribute (AttributeFlags.Subdivision with
+Standard for "uv"). Set SubdAdaptiveSpace Object: Pixel, the default, measures
+the dicing in pixels of a render camera, which a bake does not have, so it is
+refused (RENDER-TIME REJECTIONS), as is Catmull-Clark; a bake of any object is
+refused the same way while another subdivision surface of the scene is diced
+in Pixel space. ReadBakeMap's triangle indices are those of Cycles'
+tessellation.
 
     // The mesh needs a UV layout: a "uv" corner attribute (standard), or any
     // float2 corner or vertex attribute named by BakeSettings.UvAttribute.
@@ -929,23 +1347,49 @@ clears the last render's passes (ReadPass throws InvalidOperationException until
 render succeeds), and a later render is unaffected. Pass nodes other than AOVs take no
 part in a bake. With UseDenoise the Combined bake is denoised as an image of the UV
 layout, so values bleed across island edges and into empty pixels: for bakes
-you will sample, denoise with care. In a scene with an approximate shadow catcher and an
+you will sample, denoise with care; a DenoiserUpscaleFactor other than 1 throws
+before the bake starts, as for a render (RENDER-TIME REJECTIONS). In a scene with an approximate shadow catcher and an
 opaque background a Combined bake is the world's, not the object's, as Cycles bakes it: each
 covered texel holds the background in the direction of its surface point seen from the origin,
 and every alpha is 1. Baked normals are world space; tangent or object
 space is yours to convert.
 
+PROGRESSIVE RESULTS (provisional). A scene created with
+HostFlags.ProgressiveResults raises IntermediateFilmReceived with a copy of
+the film at each of Cycles' display updates while a render runs: after the
+first sample, then about every 1 to 2 seconds, and at the end (the last one of
+a completed render is the returned film). Each IntermediateFilm holds the
+Combined film so far (the layout of the returned film, zero outside a camera
+border) and the samples in it; until a denoised result exists the films are
+noisy (with UseDenoise only the last one is denoised). The option is fixed per
+scene because Cycles then schedules the render's work for display updates (in
+smaller batches; a plain scene renders in the batches of Cycles' headless
+renders): on the CPU the returned film is bit for bit that of a plain scene, on
+Metal within the practical criterion; each update copies the film from the
+device once. Film events are not raised through RenderEventReceived and not for
+bakes. The handler rules of CALLBACKS AND THREADING apply. The WebGPU backend
+refuses a render of such a scene (RENDER-TIME REJECTIONS). With TileSize (TILED
+RENDERING) each film holds the tiles rendered so far.
+
+    await using CyclesScene scene = new(CyclesBackend.Gpu, 1, HostFlags.ProgressiveResults);
+    scene.IntermediateFilmReceived += (_, film) => ShowPreview(film.Film, film.SamplesDone);   // return quickly
+    FilmBuffer final = await scene.RenderAsync(new RenderSettings(1920, 1080, 1024));
+
 CALLBACKS AND THREADING
 -----------------------
-RenderEventReceived handlers and RenderAsync progress reports run on a native
-render thread (or the rendering thread) and only while a render runs, never
-concurrently with each other for one scene. They must return quickly and must
+RenderEventReceived and IntermediateFilmReceived handlers and RenderAsync
+progress reports run on a native render thread (or the rendering thread) and
+only while a render runs, never concurrently with each other for one scene. They must return quickly and must
 NOT call the scene, its host or its nodes: the native host refuses every
 re-entrant call (NativeStatus.NotReady). To stop a render from a handler,
 cancel the RenderAsync CancellationToken; the native event callback returns
 the request and the render stops with OperationCanceledException. A handler
 that throws cancels the render and the render rethrows that exception. Renders
 on one scene run one at a time; edits serialize with rendering.
+An ITiledImageReader (provisional, TILED IMAGES) also runs on native render
+threads while a render or bake runs, one call at a time per scene, and must not
+call the scene either; its exception fails the render as a CyclesException with
+the reader's exception inside.
 
 DETERMINISM
 -----------
@@ -1194,6 +1638,9 @@ COMMON PITFALLS TO AVOID
 - EXPECTING CHEAP EDITS OF SINGLE-USER MESHES. Moving, adding motion to or
   editing the data of a rendered single-user mesh rebuilds the BVH on the next
   render (the host keeps one extra copy of such meshes' authored attributes).
+  The same holds for a mesh with true displacement: an edit of it, of its
+  displacement shader or of its object displaces it again from the authored
+  positions on the next render (one extra copy of its attributes).
 - EXPECTING DISTINCT CRYPTOMATTE IDS WITHOUT NAMES. The ids hash the object
   and shader names (ObjectNode.Name, ShaderNode.Name, ObjectNode.AssetName);
   unnamed nodes all share one id.
@@ -1209,6 +1656,8 @@ COMMON PITFALLS TO AVOID
   IntegratorNode.AaSamples come from RenderSettings, FilmNode.UseSampleCount
   is Cycles' session state, and FilmNode.DisplayPass and ShowActivePixels are
   viewport settings: setting a different value throws (NativeStatus.Invalid).
+  So does ImageTextureNode.Tiles (provisional; Cycles' file-name UDIM list: use
+  BindTiles).
   Set the size and samples in RenderSettings; read the sample count through a
   SampleCount pass.
 - JUDGING ANDROID GPU OUTPUT AGAINST AN ON-DEVICE CPU RENDER. Android's C
@@ -1368,21 +1817,28 @@ GetBinaryCapabilities().BackendScopes those of every backend in the library.
 
 Every backend:
   - Catmull-Clark subdivision surfaces (they need OpenSubdiv, which this library does not include)
+  - bakes of subdivision surfaces diced in pixel space (a bake has no render camera to measure pixels in)
   - the dlss denoiser
-  - point clouds rendered as Gaussian splats
-The CPU backends and the WebGPU backend:
   - a denoiser upscale factor other than 1
+  - curves and points with a Both displacement shader
+  - area lights with an axis of infinities (an axis with no zero component whose length underflows to zero)
 The WebGPU backend:
+  - tiled rendering (a tile size other than 0)
+  - BVH spatial splits
+  - a texture limit (images reduced when they load)
+  - progressive results (intermediate films during a render)
+  - UDIM tiles (several images bound to one Image Texture node)
+  - point clouds rendered as Gaussian splats
+  - quaternion and spherical-harmonics attributes read by a shader
   - dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0)
   - custom (OSL) cameras
   - path guiding (the integrator's use_guiding) and its passes
-  - curves and points with a Both displacement shader
   - a Radial Tiling node with at most two sides and a roundness strictly between 0 and 1
   - scenes whose device data does not fit the GPU (there is no host-memory fallback)
   - BVH time steps
   - volume velocity motion blur
   - sparse or tiled images
-  - area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, with an axis of infinities, or reached by the light tree at a transmissive surface
+  - area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, or reached by the light tree at a transmissive surface
   - background light portals of zero extent
   - bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)
   - texture, colour and utility shader nodes on Adreno 650 GPUs
@@ -1392,30 +1848,84 @@ The WebGPU backend:
   - shadow caustics (manifold next-event estimation) on Adreno 650 GPUs
 
 Why. OSL, OpenSubdiv and OpenVDB/NanoVDB (whose sparse images and velocity
-grids two of the WebGPU entries concern) are outside this package. Dispersion
+grids two of the WebGPU entries concern) are outside this package. A bake of
+a subdivision surface whose SubdAdaptiveSpace is Pixel (the default) fails
+with "Unsupported feature: bakes of subdivision surfaces diced in pixel
+space": pixel-space dicing measures in the render camera, so the diced
+triangles would depend on the scene's last render; set it to Object for the
+bake. The same holds for every other subdivision surface of the scene you
+bake (provisional): a bake of any object fails with those words while another
+object's subdivision surface is diced in Pixel space, which the bake would see
+diced in the camera of the last render; give every subdivision surface of a
+scene you bake SubdAdaptiveSpace Object (ReadBakeMap is not affected). Dispersion
 (a Principled BSDF with TransmissionDispersionScale and TransmissionWeight
 each linked or not 0) renders on the CPU and Metal backends and is not
 implemented by the WebGPU device, whose message is "WebGPU dispersion not
 implemented"; there, leave TransmissionDispersionScale at 0 and unlinked (with
 TransmissionWeight at 0 and unlinked nothing disperses, and the scale is not
 refused). The dlss denoiser is not part of
-the library (use Openimagedenoise). A Gaussian splat needs radiance, scale and
-rotation attributes of value kinds this API cannot create, and Cycles would
-render the cloud as plain points. BooleanMathNode, IntegerMathNode and
+the library (use Openimagedenoise). Progressive results are delivered on the
+CPU and Metal backends; the WebGPU device has not been validated with
+intermediate reads of its render buffers, and a render of a scene created with
+HostFlags.ProgressiveResults fails there with "WebGPU progressive results not
+implemented" (create the scene without it). The texture limit reduces images
+before any device sees them; it is refused on the WebGPU backend until a
+WebGPU run has validated it, and a render with CyclesScene.TextureLimit other
+than 0 fails there with "WebGPU texture limit not implemented" (pass images at
+the size you want there). UDIM tiles render on the CPU and Metal
+backends (UDIM TILES); the WebGPU device reads the UDIM table but has not been
+validated with it, and the render fails with "WebGPU UDIM tiles not
+implemented" (bind one image per texture there). Gaussian splats render on the CPU and
+Metal backends (GAUSSIAN SPLATS); the WebGPU device does not implement them
+and the render fails with "WebGPU Gaussian splats not implemented" (render the
+cloud as Points there). Quaternion and
+spherical-harmonics attributes render on the CPU and Metal backends; the
+WebGPU device has no tables for them and refuses a scene in which a shader
+reads one ("WebGPU quaternion attributes not implemented", "WebGPU spherical
+harmonics attributes not implemented"); an attribute that no shader reads is
+not sent to the device and is not refused. BooleanMathNode, IntegerMathNode and
 GetVectorComponentNode are not implemented by the WebGPU device; with constant
 inputs Cycles folds them away and every backend renders them, with a linked
 input the CPU and Metal backends render them. Path
 guiding is not part of Cycles' Metal device either. A Both displacement shader
-on curves or points makes Cycles' own kernels read values they never set, so
-that scene has no defined result. The Radial Tiling case is binary32 rounding
+(DisplacementMethod Both with OutputNode.DisplacementInput linked) on curves or
+points makes Cycles' own kernels read values they never set, so that scene has
+no defined result on any backend; give curves and points a shader with
+DisplacementMethod Bump or True. The Radial Tiling case is binary32 rounding
 residue in Cycles' CPU kernels that Cycles' Metal device does not reproduce
 either; when Sides or Roundness is linked, the render fails at run time with an
 unsupported-parameter error instead. BVH time steps and volume velocity cannot
-be set through this API; the entries name what the device would refuse. A
+be set through this API; the entries name what the device would refuse. BVH
+spatial splits (CyclesScene.UseBvhSpatialSplit) apply on the CPU and Metal
+backends (MetalRT ignores them, as in Cycles); a split BVH references one
+primitive from several leaves, which the WebGPU device's traversal has not
+been validated with, and a render with them fails there with "WebGPU BVH
+spatial splits not implemented" (leave the setting off there). Tiled
+rendering (CyclesScene.TileSize) renders on the CPU and Metal backends; the
+WebGPU device has not been validated with tile offsets and overscan, and a
+render with tiles fails there with "WebGPU tiled rendering not implemented"
+(leave TileSize at 0 there). Tiled
+images (CyclesScene.CreateTiledImage, Cycles' texture cache) render on the CPU
+and Metal backends; the WebGPU device has no tile cache, and a render with one
+fails there with "WebGPU tiled images not implemented" (bind an image from
+CreateImage there). A
 scene larger than the GPU's storage binding fails (see EXCEEDING THE GPU
 STORAGE-BINDING LIMIT) instead of moving device data to host memory, as on
 Cycles' Metal device. Open Image Denoise on the CPU, which the CPU and WebGPU
-backends use, does not upscale. For the area light, portal and bake entries
+backends use, does not upscale, and with GPU denoising on the Metal backend
+Cycles leaves the render at the reduced resolution: no backend returns an
+upscaled film; a bake with the factor fails the same way before it starts
+(provisional). An area light with an axis of infinities fails on every
+backend with "Unsupported feature: area lights with an axis of infinities"
+(provisional): when a column of the light object's Tfm times Sizeu or Sizev
+has no zero component but a length that underflows to zero (a rotated light
+scaled down to about 1e-23), Cycles divides it by that zero length, and the
+kernels' comparisons with the resulting infinities depend on the signs of each
+ray's components, so the CPU and Metal films disagree widely; give the light a
+larger size or scale. An axis that underflows with a zero component (for
+example Sizeu 1e-23 on an unrotated light) holds a NaN instead and renders as
+Cycles renders it, an unlit strip or an emitting plane that casts no light, on
+the CPU and Metal backends; portals are not refused. For the area light, portal and bake entries
 Cycles' own kernels evaluate the light or the texel at a direction that is not
 a number, and the CPU result depends on how each comparison and minimum drops
 that value, which WGSL does not define. The Adreno 650 entries (for example the
@@ -1433,11 +1943,14 @@ WHAT THIS PACKAGE DOES NOT DO
 =============================
 - It does not encode or decode image or video files (PNG, JPEG, JPEG XL, TIFF,
   EXR, ...). It accepts and returns raw pixel buffers; use CodeBrix.Imaging.
+  For textures you would rather not hold whole, a tiled image
+  (CyclesScene.CreateTiledImage, provisional) asks your reader for the tiles
+  and mip levels a render samples.
 - It does not import model formats (glTF and others); convert their data into
   nodes, meshes and attributes yourself (see BRINGING GLTF SCENES).
-- It does not display images or present to a window or swap chain, and a
-  render returns its film only when it completes (render events carry
-  progress, not pixels).
+- It does not display images or present to a window or swap chain. A render
+  returns its film when it completes; intermediate films come only from a
+  scene created with HostFlags.ProgressiveResults (PROGRESSIVE RESULTS).
 - It never renders OSL shaders or OSL cameras, VDB volume files (OpenVDB or
   NanoVDB grids) or Catmull-Clark subdivision surfaces (OpenSubdiv), and it never imports
   USD or Alembic files or acts as a Hydra render delegate, on any backend.
@@ -1446,11 +1959,12 @@ WHAT THIS PACKAGE DOES NOT DO
 - It does not fill a margin around baked UV islands, project a bake from other
   meshes (selected to active), or convert baked normals to tangent or object
   space. See BAKING TEXTURES.
-- It does not render in tiles (a render is one tile, the whole film or its
-  camera border), bind several images to one texture node (UDIM tiles),
-  or offer Cycles' BVH build and texture-size settings (spatial splits,
-  texture limit): every backend builds its BVH with Cycles' defaults and uses
-  the full images you pass.
+- It does not render in tiles unless CyclesScene.TileSize (provisional) is
+  set (a render is otherwise one tile, the whole film or its camera border),
+  and it does not offer Cycles' other BVH build settings (BVH time steps):
+  every backend builds its BVH with Cycles' defaults unless
+  CyclesScene.UseBvhSpatialSplit (provisional) is set. Images keep the size
+  you pass unless CyclesScene.TextureLimit (provisional) is set.
 - It never falls back from a GPU backend to the CPU.
 - The Core package does not contain the native host library; that is the
   platform package's job (see INSTALLATION).
@@ -1504,8 +2018,14 @@ Render:        FilmBuffer film = await scene.RenderAsync(new RenderSettings(w, h
 Into buffer:   scene.Render(new RenderSettings(w, h, spp), rgbaFloats);
 Capabilities:  ICapabilityReport caps = scene.GetCapabilities();   // caps.Scope.RenderTimeRejections
 Time limit:    scene.RenderTimeLimit = TimeSpan.FromSeconds(30);
+Texture size:  scene.TextureLimit = 2048;   // provisional; before the first render
+BVH splits:    scene.UseBvhSpatialSplit = true;   // provisional; a speed setting
+Tiles:         scene.TileSize = 512;   // provisional; finished tiles kept in memory
+Tiled image:   scene.CreateTiledImage(w, h, ImageFormat.Byte4, reader);   // provisional; reader serves tiles
 Version:       CyclesVersion.NativeLibraryVersion, CyclesRevision, IsAbiCompatible
 Progress:      scene.RenderEventReceived += (s, e) => Log(e.Kind, e.SamplesDone);  // no scene calls inside
+Previews:      CyclesScene s = new(CyclesBackend.Gpu, 1, HostFlags.ProgressiveResults);
+               s.IntermediateFilmReceived += (_, f) => ShowPreview(f.Film);   // provisional
 Passes:        scene.AddPass(PassType.Depth, "Depth"); scene.Render(s); scene.ReadPass("Depth");
 Bake:          FilmBuffer film = scene.Bake(target, new BakeSettings(w, h, spp, BakeType.Combined));
 Remove:        scene.Remove(obj); scene.Remove(mesh);   // referrers first

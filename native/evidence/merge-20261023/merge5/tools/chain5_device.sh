@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 5, part 2: device chain for a reference device (adapted from merge wave 4's chain_device.sh; nothing is built,
 # every input is staged by part 1). Usage: chain5_device.sh DEVICE (samsung | hp)
-cd "$(dirname "$0")"; dev=$1; M=$(realpath ..); L=/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
-ref=$M/reference/linux-x64; V=$M/validation; R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles
+cd "$(dirname "$0")"; dev=$1; M=$(realpath ..); L=<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
+ref=$M/reference/linux-x64; V=$M/validation; R=<home>/GitHome/CodeBrix.Graphics3D.Cycles
 case $dev in
   hp) serial=192.168.86.225:5555; rid=android-x64; F="--reference $ref --device-scene"; FM="--reference $ref --device-scene --mesa-scratch-cache";;
   samsung) serial=R52W207XQ1V; rid=android-arm64; F="--reference $ref --device-scene"; FM="--reference $ref --device-scene";;
 esac
-A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"
+A="<home>/Android/Sdk/platform-tools/adb -s $serial"
 lg(){ echo "[$(date +%H:%M:%S)] $dev $*" >> $M/timeline.log; }
 mkdir $L/$dev 2>/dev/null || { lg "lock HELD, chain not started"; exit 2; }
 echo "merge-wave-5 evidence agent $(date -Iseconds) chain5_device.sh $dev" > $L/$dev/owner.txt; lg "lock taken"

@@ -44,25 +44,34 @@ host, and for the Linux ARM64 and Android builds, before the next build:
      (build trees, generated overlays and any copied Cycles source). The
      dependency snapshots (third_party/deps) did not change with the re-pin, so
      a dependency prefix built after step 3 above stays valid.
-  5. The payloads native/binaries/osx-arm64, osx-x64, win-x64 and win-arm64 were
-     REMOVED: they were built from the previous pinned revision. Only linux-x64
-     is present. A platform's payload comes back when that platform has been
-     rebuilt, validated and restaged on its own machine (native/binaries/README.md;
-     PACKAGING AND PUBLISHING, "Adding a platform").
-  6. None of these recipes has been built or run on v5.3.0 (Linux x64 is the only
-     platform built on it). Every film, reference, hash and result recorded for
-     another platform belongs to the previous revision and is void as evidence:
-     the Metal reference films of the managed tests
-     (tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64), the
-     oracle films under native/evidence/ and the device-gate exchange records
-     are recorded again as part of the first run. The CPU oracle's films
+  5. The payloads native/binaries/osx-x64, win-x64 and win-arm64 were
+     REMOVED: they were built from the previous pinned revision. linux-x64 is
+     present, and osx-arm64 is present again: restaged on 2026-11-15 from the
+     v5.3.0 build of commit 24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c, validated on
+     an Apple Silicon Mac (native/evidence/device-macos-arm64-20261115/). A
+     platform's payload comes back when that platform has been rebuilt,
+     validated and restaged on its own machine (native/binaries/README.md;
+     PACKAGING, "Adding a platform").
+  6. Built and validated on v5.3.0: Linux x64, osx-arm64 (2026-11-13 and
+     2026-11-15: host gate, managed tests, oracle corpus on CPU-arm64, Metal and
+     MetalRT; native/evidence/device-macos-arm64-20261115/ and
+     cycles-oracles-macos-20261115/) and the Linux ARM64 CPU oracle (Debian arm64
+     container; native/evidence/linux-arm64-cpu-oracle-20261113/ and -20261115/).
+     The Metal reference films of the managed tests
+     (tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64) were
+     recorded again from v5.3.0 builds. None of the other recipes has been built
+     or run on v5.3.0: every film, reference, hash and result recorded for those
+     platforms belongs to the previous revision and is void as evidence, and
+     their oracle films under native/evidence/ and device-gate exchange records
+     are recorded again as part of their first run. The CPU oracle's films
      changed with the pin, so old and new films must never be compared.
   7. osx-arm64 only: the overlay now holds one header that is also in the
      Metal kernel include closure (util/types_gpu_compressed.h). The recipe
      accepts it only after proving that it is the pinned text plus one
      recorded addition that is inert in this profile (native/host/MACOS_ARM64.md, "Overlay files in the Metal kernel
      closure"); the Metal kernels are still compiled from the pinned files.
-     UNTESTED on a Mac.
+     Built and validated on a Mac (2026-11-13 and 2026-11-15): kernel-sources.json
+     lists exactly that header under overlaidInClosure.
 ********************************************************************************
 
 
@@ -71,8 +80,6 @@ STANDING INSTRUCTIONS
 These apply to every person and agent changing this repository. Read them
 before anything else.
 
-- Never create a Git commit or perform `git push`. Leave changes uncommitted
-  for Jeremy to review.
 - Use exactly `Copyright (c) 2026 Jeremy Ellis and contributors` for original
   contributions; preserve required third-party copyright and license notices.
 - Never import code or dependencies incompatible with the repository's Apache 2.0
@@ -80,10 +87,11 @@ before anything else.
   source; availability or a passing build is not license clearance.
 - Maintain the root `THIRD-PARTY-NOTICES.txt` when adding or upgrading imported
   code or dependencies. Record origins, pinned revisions, license/notices and
-  how the code is used. Tell Jeremy immediately about licensing that conflicts
-  with, or is not established as compatible with, the intended Apache 2.0 release.
-- Jeremy explicitly authorized independent replacements for excluded atomic
-  headers and build helpers. Implement from required APIs and behavior, never
+  how the code is used. Tell the maintainer immediately about licensing that
+  conflicts with, or is not established as compatible with, the intended Apache
+  2.0 release.
+- Independent replacements for excluded atomic headers and build helpers are
+  explicitly authorized by the maintainer. Implement from required APIs and behavior, never
   by editing, translating or paraphrasing excluded implementation bodies.
   Preserve the existing rendering functionality and immutable historical evidence.
 - All renderer, dependency and WGSL translation implementation sources needed
@@ -96,9 +104,9 @@ before anything else.
   preserve the intentional platform binaries in Git, including applicable
   unstripped binaries and debug symbols. Use `native/binaries/<rid>/` with
   runtime, unstripped and symbols subdirectories and reviewed provenance/hashes.
-  Ordinary build intermediates remain ignored. Jeremy performs every commit/push.
+  Ordinary build intermediates remain ignored.
   Exception for now: native/binaries/linux-x64/unstripped/ is git-ignored while the
-  library is a work in progress, and is committed with the final payload.
+  library is a work in progress, and is added with the final payload.
 
 
 PURPOSE AND SCOPE
@@ -108,7 +116,7 @@ This repository produces a family of NuGet packages at one version:
     PackageId:  CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever
                 (the managed assembly, no native binaries)
     PackageId:  CodeBrix.Graphics3D.Cycles.<Platform>.ApacheLicenseForever
-                (one platform's native binaries; see PACKAGING AND PUBLISHING)
+                (one platform's native binaries; see PACKAGING)
     Assembly:   CodeBrix.Graphics3D.Cycles
     Namespace:  CodeBrix.Graphics3D.Cycles (sub-namespaces Rendering,
                 Diagnostics, Nodes, Generated.*, Interop)
@@ -153,8 +161,9 @@ Only the first two folders below are .NET family-standard; everything else is
 the native source, its build and licensing tooling, and the evidence and
 research that back it.
 
-    build/                                the pack driver, the pack shim and the
-                                          platform nuspecs (nuget/)
+    build/                                the pack driver, the pack shim, the
+                                          platform nuspecs and the MacOSArm64
+                                          package's buildTransitive targets (nuget/)
     nugets/                               ignored pack output
     src/CodeBrix.Graphics3D.Cycles/       the library project (the Core package)
       CyclesScene.cs                      the typed facade entry point
@@ -485,9 +494,11 @@ put ispc on PATH; tools/dependencies/build.py refuses any other version. Windows
 machine with Visual Studio's clang-cl) is described in native/host/WINDOWS_X64.md:
 `python -I -X utf8 tools/dependencies/build_windows.py --rid <rid>`, then
 `python -I -X utf8 native/tools/build_cycles_windows.py --rid <rid>`.
-The Windows, osx-x64 and osx-arm64 payloads are NOT in native/binaries/ at
-present: they were built from the previous pinned Cycles revision and were
-removed with the re-pin to Cycles v5.3.0 (see the note at the top of this file).
+The Windows and osx-x64 payloads are NOT in native/binaries/ at present: they
+were built from the previous pinned Cycles revision and were removed with the
+re-pin to Cycles v5.3.0 (see the note at the top of this file). The osx-arm64
+payload is staged again (2026-11-15, from the validated v5.3.0 build of commit
+24b74e09; native/host/MACOS_ARM64.md).
 The rest of this paragraph is each platform's last validated state at the
 previous revision, and what its payload looks like once it is staged again.
 Both reviewed Windows payloads are staged in native/binaries/<rid>/ with the
@@ -511,7 +522,7 @@ LINUX X64 REFERENCE: the Linux x64 binaries are built in the manylinux
 container (native/manylinux, above), and rendered and judged only on the
 dedicated Linux x64 machine; Linux x64 and Android testing and validation are
 done on that machine ONLY, and every Linux x64 reference other platforms compare
-against comes from it and is committed:
+against comes from it:
 the newest native/evidence/linux-x64-reference-<date>/ (now
 linux-x64-reference-20261114, recorded by the first full pass on Cycles v5.3.0
 (native/DEVICE.md, "First full pass on Cycles v5.3.0"): the oracle and bench
@@ -1021,8 +1032,8 @@ are local diagnostic APKs, not release packages or proof of 16-KiB-page
 execution.
 
 
-PACKAGING AND PUBLISHING
-========================
+PACKAGING
+=========
 Packages:
 
     CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever
@@ -1035,6 +1046,22 @@ Packages:
         native/binaries/<rid>/runtime/ as runtimes/<rid>/native/, and the documents
         below. Depends on Core at exactly its own version and, unless the platform's
         GPU backend does not use it, on the exact CodeBrix.WebGpu.Native version.
+    CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever
+        The osx-arm64 platform package: Cycles' own Metal device, so it depends on
+        Core only. The dylibs of native/binaries/osx-arm64/runtime/ are
+        runtimes/osx-arm64/native/. The Metal kernel sources
+        (runtime/codebrix-cycles/source) are at the package root as
+        codebrix-cycles/source, and buildTransitive/<package id>.targets
+        (build/nuget/CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever.targets)
+        copies them beside the host library in the consumer's output, for build,
+        run and publish: under runtimes/osx-arm64/native/ without a runtime
+        identifier, beside the application for osx-arm64. The host compiles its
+        Metal kernels at run time from that folder and nowhere else. They are not
+        native assets because NuGet keeps native-asset subfolders only without a
+        runtime identifier: with one it flattens them into the output folder, and
+        `dotnet publish -r osx-arm64` fails with NETSDK1152 because kernel header
+        names repeat. package_check.py checks the kernel files against the approved
+        payload like the dylibs, and the .targets file against the repository file.
 
 Every package carries icon-codebrix-128.png, README.md, AGENT-README.txt,
 THIRD-PARTY-NOTICES.txt, LICENSE and NOTICE.
@@ -1053,18 +1080,21 @@ The driver is part of the solution, so ANY Release build or test of the solution
 is a full pack that writes a new version folder under nugets/Release/. Build Debug
 when you only want binaries, and delete unwanted version folders (git-ignored). The
 library csproj also keeps its own GeneratePackageOnBuild, so a build of it writes a
-Core .nupkg under its bin/ folder; that one is not part of a family set and is
-never published.
+Core .nupkg under its bin/ folder; that one is not part of a family set.
 
-Publishing model: only validated platforms are in the _Nuspec list, so publishing
-one platform does not wait for another. Each publish republishes the whole family
-at one new version, with any newly validated platform added. Jeremy publishes;
-nobody else pushes packages.
+Only validated platforms are in the _Nuspec list. Every pack writes the whole family
+at one new version, with any newly validated platform added.
+
+The MacOSArm64 line of the _Nuspec list is conditional on its payload: it is packed
+when native/binaries/osx-arm64/provenance.json exists (the committed payload) or
+when MacOSArm64Payload names a scratch stage. A pack therefore works before that
+payload is present, and packs MacOSArm64 with the rest of the family as soon as it
+is.
 
 Adding a platform: stage and review its payload in native/binaries/<rid>/, add
 build/nuget/CodeBrix.Graphics3D.Cycles.<Platform>.nuspec, add it to the driver's
 _Nuspec list and to PLATFORMS in tools/licensing/package_check.py. Windows hosts skip
-the driver's packing, so pack from Linux or macOS once the payload is committed.
+the driver's packing, so pack from a Linux or macOS checkout that holds the payload.
 
 Linux x64 payload: python3 native/tools/stage_linux_binaries.py. It builds the host
 at the current commit in the manylinux build container (BUILDING), refuses a build
@@ -1074,22 +1104,79 @@ film must equal the newest Linux x64 reference film) and records the container's
 toolchain, the system library floor (minimumSystemVersions) and every system symbol
 version the payload references (systemSymbolVersions) in provenance.json. Remove the
 old payload first; a payload is only replaced on purpose. package_check.py warns
-when native sources changed after the payload's commit: restage before publishing,
-and validate on the commit you stage from.
+when native sources changed after the payload's commit: such a payload is not
+publishable until it is restaged and validated on the commit it is staged from.
 
-Scratch staging (for checks before a payload is committed):
+macOS ARM64 payload: staged on the Apple Silicon Mac from the build that a passed
+host gate and an oracle run validated (native/host/MACOS_ARM64.md;
+docs/TESTING-MACOS-ARM64.md, step 9):
+
+    python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation-<n> --oracles native/work/oracles/<run>
+
+It never rebuilds: it stages exactly the files the gate and the oracle run
+validated. A rebuild of the same Cycles-with-Metal sources with the same toolchain
+gives the same bytes at any checkout path (native/host/MACOS_ARM64.md,
+"Reproducible builds"), so a fresh build can be checked against a committed payload
+by hash (docs/TESTING-MACOS-ARM64.md, step 9). That needs CMake 4.2 or newer for the
+osx-arm64 recipe (OBJECT_NAME), and inject_cycles_macos.cmake refuses an older CMake
+when it configures the host build: the host library, its executables and its dSYM
+would otherwise differ with the checkout path, and the dSYM would lack the line
+tables of objects whose file names repeat within a Cycles static library. To tie a build to a commit, native/tools/build_cycles_macos.py
+records the commit it builds from and the git status of the Cycles-with-Metal
+sources when it starts and when it completes (sourceCommit and metalSourceStatus in
+host/invocation.json, sourceAtEnd in host/status.json; a --target build records
+none). The stager refuses unless both records name one commit with a clean status,
+HEAD descends from that commit with no Cycles-with-Metal source change since, and the
+working tree has none. The build is therefore made from a clean commit, and the order
+on the Mac is: build (python3 tools/build_macos.py), gate, render the oracles, stage,
+review. provenance.json records that commit as sourceCommit (and HEAD as
+stagedAtCommit), the notices of every library (OIDN's core and its CPU and Metal
+device modules included; Embree is linked statically into the host), and the render
+of a copy of runtime/ alone on CPU and Metal, whose CPU film must equal the oracle
+run's. It refuses an existing payload (remove it first) and any file or folder whose
+name starts with '.' (Finder's .DS_Store: git ignores it, so it could never be
+committed with its approval). runtime/, unstripped/ and symbols/ are committed in
+full.
+
+Payload staleness is judged per build profile: package_check.py reports a payload
+as STALE when a source of its profile changed after the payload's sourceCommit.
+
+    Cycles-with-Metal (osx-arm64)        METAL_SOURCES in tools/licensing/metal_sources.py:
+                                         what the macOS recipe reads (native/host,
+                                         native/cycles/cpu_arithmetic.cpp, the macOS
+                                         recipes and the dependency tools they import,
+                                         third_party/cycles, third_party/deps and their
+                                         manifests, and the oracle runner with its
+                                         json.h, sha256.h and CMakeLists.txt)
+    Cycles-with-WGSL (every other RID)   NATIVE_SOURCES in package_check.py (also in
+                                         stage_linux_binaries.py)
+
+A WGSL-only change (native/shaders, native/manylinux) leaves the osx-arm64 payload
+current; a change to a source both lists share (native/host, third_party/cycles)
+makes both payloads stale. A stale payload can be packed but is not publishable. When
+osx-arm64 is stale, native/binaries/osx-arm64/ is rebuilt, validated and restaged on
+the Apple Silicon Mac at a commit that contains the change.
+
+Scratch staging (for checks of a payload that is not staged in native/binaries/):
 
     python3 native/tools/stage_linux_binaries.py --output native/work/staging/linux-x64
     dotnet build build/CodeBrix.Graphics3D.Cycles.Build.csproj -c Release -p:LinuxX64Payload=native/work/staging/linux-x64
+
+    python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation-<n> \
+        --oracles native/work/oracles/<run> --output native/work/staging/osx-arm64
+    dotnet build build/CodeBrix.Graphics3D.Cycles.Build.csproj -c Release -p:MacOSArm64Payload=native/work/staging/osx-arm64
 
 The scratch folder must be outside the tracked tree (git-ignored, or outside the
 checkout); native/binaries/ is not touched. A scratch stage may be made with
 uncommitted native changes: it records the SHA-256 of `git diff --binary` and the
 changed paths, and it is never approved ("approved": false, an empty
-approvedPayload, the staged files in payloadFiles). The pack driver then packs
-.LinuxX64 from that folder, and package_check.py (--payload linux-x64=<folder>)
-checks the package against it and reports it as NOT PUBLISHABLE. Delete the
-nugets/Release/<version>/ folder such a run writes.
+approvedPayload, the staged files in payloadFiles). A macOS scratch stage may also
+be made from a build that a real stage refuses (for example one that recorded no
+commit); provenance.json lists the reasons under buildSource. The pack driver then
+packs .LinuxX64 or .MacOSArm64 (or both, given both properties) from those folders,
+and package_check.py (--payload linux-x64=<folder>, --payload osx-arm64=<folder>)
+checks each package against its stage and reports it as NOT PUBLISHABLE. Delete
+the nugets/Release/<version>/ folder such a run writes.
 
 
 CODING CONVENTIONS
@@ -1202,7 +1289,8 @@ What the importer does to the upstream tree (tools/licensing/import_cycles.py):
   third_party/dependencies.json and third_party/additional-license-origins.json.
 - The Gaussian-splat files (src/kernel/geom/gsplat*.h and the scene code) are
   imported as they are (the maintainer's ruling, after a review of what they
-  cite). The library refuses to render splats (native/DEVICE.md, item 186).
+  cite). The CPU and Metal backends render splats; the WebGPU device does not
+  implement them and the host refuses them there (native/DEVICE.md, item 186).
 
 Beside the import:
 - The WITH_EMBREE guard. The Cycles build files test WITH_EMBREE, which the
@@ -1216,7 +1304,29 @@ Beside the import:
     device/device.h, device/device.cpp    the WebGPU device type and its
                                           registration
     integrator/path_trace.cpp             render scheduling and maintainer-tool
-                                          additions
+                                          additions; the IN-MEMORY TILE STORE
+                                          of tiled rendering: PathTrace's three
+                                          calls into Cycles' tile file
+                                          (TileManager::write_tile,
+                                          finish_write_tiles and
+                                          read_full_buffer_from_disk, which
+                                          need an OpenImageIO EXR writer) keep
+                                          the finished tiles in memory
+                                          instead, with what that file would
+                                          hold, on every platform;
+                                          codebrix_memory_tiles is the host's
+                                          bookkeeping call. The DELIVERED FILM:
+                                          during an output driver write,
+                                          codebrix_delivered_buffer_params
+                                          gives the host the parameters the
+                                          passes are read with (the full
+                                          frame, or the effective big tile the
+                                          resolution divider scales), for its
+                                          check of the film's size
+                                          (PROVISIONAL). session/tile.cpp
+                                          is not overlaid (no injection swaps
+                                          it), and none of this is in the
+                                          Metal kernel closure.
     util/types_gpu_compressed.h           FULL-PRECISION INTEGRATOR STATE: under
                                           WITH_WEBGPU the fields Cycles stores
                                           as half floats on GPU devices are
@@ -1337,7 +1447,8 @@ NOTES
   session, renders a camera border's region (BufferParams full_x/full_y,
   HostOutput placing the region in the film), keeps the dicing camera equal
   to the render camera when subdivision faces exist, and refuses Catmull-Clark
-  subdivision at render.
+  subdivision at render and bake and pixel-space dicing in bakes (a bake has no
+  render camera; host_bake.inc).
   When a new socket turns out to be inert, extend that rule and its tests
   (SceneSettingsTests, abi_consumer.c "apiReach").
 - Color configuration and pipeline-tier configuration are process-wide in the
@@ -1355,12 +1466,28 @@ NOTES
   cbc_host_delete_node -> CyclesScene.Remove (CBC_INVALID becomes
   InvalidOperationException; the wrapper and, for a shader, its graph nodes
   are marked removed); cbc_host_image_update -> CyclesImage.Update;
+  cbc_host_image_bind_tiles (provisional) -> ImageTextureNode.BindTiles
+  (CyclesHost.BindImageTiles, UdimTile); CBCHostConfig.flags with
+  CBC_HOST_PROGRESSIVE_RESULTS and CBC_EVENT_FILM (provisional) -> HostFlags,
+  the CyclesScene and CyclesHost constructors that take it, and
+  CyclesScene.IntermediateFilmReceived (IntermediateFilm);
   cbc_host_motion_positions -> MeshNode.SetMotionPositions (CBC_NOT_READY, a
   refused edit of a baked volume, becomes InvalidOperationException);
   cbc_host_set_event_callback -> CyclesScene.RenderEventReceived and
   RenderAsync progress/cancellation; cbc_host_pass_floats and
   cbc_host_render_passes_json -> AddPass, GetRenderedPasses, ReadPass;
   cbc_host_render_time_limit -> CyclesScene.RenderTimeLimit;
+  cbc_host_texture_limit (provisional) -> CyclesScene.TextureLimit
+  (CyclesHost.SetTextureLimit; CBC_NOT_READY, a change after a render loaded
+  images, becomes InvalidOperationException);
+  cbc_host_bvh_spatial_split (provisional) -> CyclesScene.UseBvhSpatialSplit
+  (CyclesHost.SetBvhSpatialSplit);
+  cbc_host_tile_size (provisional) -> CyclesScene.TileSize
+  (CyclesHost.SetTileSize; the facade refuses a size Cycles would change with
+  ArgumentOutOfRangeException before the native call);
+  cbc_host_image_create_tiled (provisional) -> CyclesScene.CreateTiledImage
+  with an ITiledImageReader (CyclesHost.CreateTiledImage, CyclesAbi.CreateTiledImage,
+  TiledImage, CyclesImage.IsTiled);
   cbc_host_subd_mesh -> MeshNode.SetSubdivisionCage (CyclesHost.SubdivisionMesh); the
   scene_attributes singleton -> CyclesScene.SceneAttributes.
 - Render event callback design: every render (sync and async) takes a
@@ -1372,6 +1499,16 @@ NOTES
   is cancelled or a handler threw (the exception is rethrown after the render).
   RenderAsync still re-sends cbc_host_cancel every ProgressInterval while the
   token is cancelled, for the window before the first native event.
+- Tiled image reader design (provisional): CyclesScene.CreateTiledImage
+  allocates a GCHandle to a per-image state (the reader, its format and the
+  scene's failure box, never the scene itself, so an undisposed scene stays
+  collectable) and passes two static [UnmanagedCallersOnly] functions. The
+  native release callback frees the handle exactly once, also when the create
+  call fails. A reader exception is kept in the box, the read returns nonzero,
+  the native host fails the render by name, and RenderCore/BakeCore throw a
+  CyclesException (Failed) with the reader's exception as InnerException.
+  IsFaulted does not change for any failed tile read (its native message starts
+  "Tiled image N:"), since no device failed.
 - Device errors (ABI.md "Device errors"): the next render recovers a WebGPU
   device that is intact and re-uploads the scene; CyclesScene sets IsFaulted on
   a CBC_FAILED render and clears it on a successful one. Edits after a render

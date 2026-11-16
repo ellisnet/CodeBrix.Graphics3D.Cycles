@@ -5,7 +5,7 @@
 usage: manifest.py check <baseline.json> | write <out.json> <scope text>"""
 import datetime, hashlib, json, subprocess, sys
 from pathlib import Path
-root = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles')
+root = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles')
 def current():
     files = [n for n in subprocess.check_output(['git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z'], cwd=root).decode().split('\0') if n and (root / n).is_file()]
     return {n: hashlib.sha256((root / n).read_bytes()).hexdigest() for n in files}

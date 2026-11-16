@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+-->
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+	<metadata minClientVersion="5.0">
+		<id>CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever</id>
+		<version>$codebrixversion$</version>
+		<title>CodeBrix.Graphics3D.Cycles.MacOSArm64</title>
+		<authors>Jeremy Ellis and contributors</authors>
+		<requireLicenseAcceptance>true</requireLicenseAcceptance>
+		<projectUrl>https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles</projectUrl>
+		<license type="expression">Apache-2.0</license>
+		<icon>icon-codebrix-128.png</icon>
+		<readme>README.md</readme>
+		<description>The native Cycles scene host, its native dependencies and the Metal kernel sources for CodeBrix.Graphics3D.Cycles on macOS on Apple Silicon (osx-arm64, macOS 15 or later), rendering with Cycles' own Metal device. Referencing this package brings in CodeBrix.Graphics3D.Cycles.Core.</description>
+		<copyright>Copyright (c) 2026 Jeremy Ellis and contributors</copyright>
+		<tags>3d;rendering;path-tracing;cycles;metal;graphics;native;runtime;macos;osx;arm64;apple-silicon;CodeBrix</tags>
+		<repository type="git" url="https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles.git" branch="$branch$" commit="$commitid$" />
+		<dependencies>
+			<group targetFramework="net10.0">
+				<dependency id="CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever" version="[$codebrixversion$]" />
+			</group>
+		</dependencies>
+	</metadata>
+	<files>
+		<file src="..\..\icon-codebrix-128.png" target="/" />
+		<file src="..\..\README.md" target="/" />
+		<file src="..\..\AGENT-README.txt" target="/" />
+		<file src="..\..\THIRD-PARTY-NOTICES.txt" target="/" />
+		<file src="..\..\LICENSE" target="LICENSE" />
+		<file src="..\..\NOTICE" target="NOTICE" />
+		<!-- The dylibs are the native assets. The Metal kernel sources go to the package root, and the
+		     buildTransitive targets copy them beside the host library (see that file for why). -->
+		<file src="$macosarm64payload$\runtime\*" target="runtimes\osx-arm64\native" />
+		<file src="$macosarm64payload$\runtime\codebrix-cycles\**" target="codebrix-cycles" />
+		<file src="CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever.targets" target="buildTransitive" />
+	</files>
+</package>

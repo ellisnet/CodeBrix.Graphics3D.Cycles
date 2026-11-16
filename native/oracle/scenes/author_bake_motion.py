@@ -6,7 +6,9 @@
 The sampling family room of author_bake.py: the UV-mapped sphere baked under motion blur with deformation motion (three
 position steps; the kernel places every texel on the static positions, while the rays that leave it meet the sphere's
 motion triangles at the ray's time), and the sphere with its zero-area pole triangles kept in the UV layout, baked
-with the smooth Normal type (the interpolated normal is defined there).
+with the smooth Normal type (the interpolated normal is defined there) and with the shading bake types that are finite
+there (bake/zero-area-<type>; the flat Normal type and the direct-light types fail with "Nonfinite bake output" on every
+backend, so they have no scene).
 Usage: python3 native/oracle/scenes/author_bake_motion.py [--check]."""
 import argparse
 import json
@@ -65,8 +67,28 @@ def zero_area_normal():
     return document
 
 
+# The diffuse, diffuse_direct, glossy, glossy_direct, transmission and transmission_direct bakes of this sphere fail on every
+# backend with "Nonfinite bake output" (the direct light at a zero-area texel), so they have no scene.
+ZERO_AREA_TYPES = [('combined', None), ('emission', None), ('ao', None), ('diffuse_indirect', None), ('diffuse_color', None),
+                   ('glossy_indirect', None), ('glossy_color', None), ('transmission_indirect', None), ('transmission_color', None),
+                   ('roughness', None), ('uv', None), ('object_id', None), ('material_id', None), ('depth', None), ('mist', None),
+                   ('aov_color', 'Tint'), ('aov_value', 'Mask')]
+
+
+def zero_area(kind, aov):
+    """The kind bake of the pole sphere (zero-area pole triangles in the UV layout)."""
+    request = {'type': kind, **({'aov': aov} if aov else {})}
+    document = bake.bake_scene('bake/zero-area-'+kind.replace('_', '-'), 'The '+kind+' bake of a sphere whose zero-area pole triangles are in the UV layout', request)
+    document['sourceFixture'] = 'native/oracle/scenes/author_bake_motion.py (bakes in the sampling family room)'
+    document['nodes'] = [pole_sphere('ball', 'textured', (0.0, -0.9, 0.4), 1.0) if n['handle'] == 'ball' else n for n in document['nodes']]
+    return document
+
+
 def scenes():
-    return {'deformation-motion.json': deforming(), 'zero-area-smooth-normal.json': zero_area_normal()}
+    out = {'deformation-motion.json': deforming(), 'zero-area-smooth-normal.json': zero_area_normal()}
+    for kind, aov in ZERO_AREA_TYPES:
+        out['zero-area-'+kind.replace('_', '-')+'.json'] = zero_area(kind, aov)
+    return out
 
 
 def main():

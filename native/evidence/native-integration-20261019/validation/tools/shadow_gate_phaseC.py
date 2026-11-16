@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Run registered shadow stages and affected traversal/render regressions."""
 import argparse,json,subprocess,sys
-sys.path.insert(0,"/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools")
+sys.path.insert(0,"<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/tools")
 # Phase C copy: closest coverage expectation 16 -> 21 (current closest gate rejects 21 invalid cases;
 # the maintained script predates the added rejections). Everything else unchanged.
 from pathlib import Path

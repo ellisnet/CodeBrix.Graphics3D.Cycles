@@ -2,9 +2,9 @@
 
 Copyright (c) 2026 Jeremy Ellis and contributors
 
-Jeremy requires intentional native platform binaries to be checked into Git
-when the .NET 10 assembly/NuGet delivery work begins. Retain applicable
-unstripped builds and symbols alongside the runtime binaries:
+Intentional native platform binaries are checked into Git for the .NET 10
+assembly/NuGet delivery. Retain applicable unstripped builds and symbols
+alongside the runtime binaries:
 
 ```
 native/binaries/<rid>/runtime/
@@ -17,9 +17,12 @@ linux-arm64, linux-riscv64, android-arm64 and android-x64. An empty or absent
 directory does not imply a completed port. A payload is built from the pinned
 Cycles source of the commit that carries it: a payload built from another
 revision is removed, not kept, and comes back when its platform is rebuilt and
-reviewed on that platform's own machine. Only `linux-x64` is present. The
-`osx-arm64` payload (Cycles with its Metal device; see
-[MACOS_ARM64.md](../host/MACOS_ARM64.md)), the `win-x64` and `win-arm64`
+reviewed on that platform's own machine. Two payloads are present: `linux-x64`
+and `osx-arm64` (Cycles with its Metal device; see
+[MACOS_ARM64.md](../host/MACOS_ARM64.md)), staged on 2026-11-15 from the Cycles
+v5.3.0 build of commit `24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c` that its host
+gate, managed tests and oracle corpus validated on an Apple Silicon Mac
+(`native/evidence/device-macos-arm64-20261115/`). The `win-x64` and `win-arm64`
 payloads (the WGSL/WebGPU device on Direct3D 12 with the pinned DXC compiler, or
 Vulkan; see [WINDOWS_X64.md](../host/WINDOWS_X64.md)) and the `osx-x64` payload
 (the WGSL/WebGPU device through the runtime's Metal route; see
@@ -31,10 +34,17 @@ so there is no `unstripped/` copy; their line tables are in `symbols/*.pdb`.
 `linux-x64` holds the Linux x64 payload (the WGSL/WebGPU device;
 `native/tools/stage_linux_binaries.py`); the Linux build has no DWARF, so there
 is no `symbols/` folder. Its `unstripped/` folder is git-ignored while the
-library is a work in progress, and is committed with the final payload (remove
+library is a work in progress, and is added with the final payload (remove
 the line from `.gitignore` and stage again, which also approves it for the
 audit); until then `provenance.json` records its hashes under `binaries` only,
-and staging recreates it. No NuGet release has been made.
+and staging recreates it. `osx-arm64`, staged by
+`native/tools/stage_macos_binaries.py` on an Apple Silicon Mac from the build
+that its host gate and oracle run validated, keeps `runtime/`,
+`unstripped/` and `symbols/` in Git in full, with no `.gitignore` line; the Metal
+kernel sources in `runtime/codebrix-cycles/source` are `snapshotCopies` of
+`third_party/cycles/src`. Its `provenance.json` names as `sourceCommit` the
+commit that build was made from, which the stager requires to be clean and
+current for the Cycles-with-Metal sources (MAINTAINER-README.txt, "PACKAGING").
 
 Each delivery must carry source/dependency manifest hashes, toolchain and build
 options, binary hashes, a passing dependency/license audit and the applicable
@@ -47,5 +57,7 @@ the pinned snapshot. `tools/licensing/audit.py` rejects anything else.
 
 This location is deliberately unignored. Build work stays in ignored `work/`,
 `bin/` and `obj/` directories. A platform package carries its RID's `runtime/`
-folder only (`build/nuget/`, see MAINTAINER-README.txt, "PACKAGING AND PUBLISHING");
-unstripped and symbol files stay in Git. Jeremy handles commits and pushes.
+folder only, with its subfolders: the `osx-arm64` kernel sources go to the
+package root and are copied beside the host library by the package's
+buildTransitive targets (`build/nuget/`, see MAINTAINER-README.txt,
+"PACKAGING"); unstripped and symbol files stay in Git.

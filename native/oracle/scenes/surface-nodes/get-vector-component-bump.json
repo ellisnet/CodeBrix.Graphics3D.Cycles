@@ -1,0 +1,533 @@
+{
+ "cbcOracleScene": 1,
+ "id": "surface-nodes/get-vector-component-bump",
+ "description": "Get Vector Component of the position (the index 0, 1, 2, -1 or 3 from a face attribute per strip) times 8 as the height of a Bump node on a tilted panel (the derivative form of the node)",
+ "sourceFixture": "native/cycles/raytrace_nodes_fixture.h and bsdf_fixture.h (the same nodes)",
+ "render": {
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "filter_glossy": 0.0,
+    "caustics_reflective": true,
+    "caustics_refractive": true
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 0.9,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "handle": "wall",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.62,
+        0.65
+       ],
+       "roughness": 0.25
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "floor-material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.5,
+        0.45,
+        0.35
+       ],
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "component-bump",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "geo",
+      "type": "geometry",
+      "set": {}
+     },
+     {
+      "handle": "index",
+      "type": "attribute",
+      "set": {
+       "attribute": "index"
+      }
+     },
+     {
+      "handle": "gvc",
+      "type": "get_vector_component",
+      "set": {}
+     },
+     {
+      "handle": "m",
+      "type": "math",
+      "set": {
+       "math_type": "multiply",
+       "value2": 8.0
+      }
+     },
+     {
+      "handle": "bump",
+      "type": "bump",
+      "set": {
+       "strength": 0.8,
+       "distance": 0.3
+      }
+     },
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.55,
+        0.4
+       ],
+       "roughness": 0.2
+      }
+     }
+    ],
+    "connect": [
+     [
+      "geo",
+      "Position",
+      "gvc",
+      "Vector"
+     ],
+     [
+      "index",
+      "Fac",
+      "gvc",
+      "Index"
+     ],
+     [
+      "gvc",
+      "Value",
+      "m",
+      "Value1"
+     ],
+     [
+      "m",
+      "Value",
+      "bump",
+      "Height"
+     ],
+     [
+      "bump",
+      "Normal",
+      "d",
+      "Normal"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "back",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -3,
+     3,
+     4,
+     -3,
+     3,
+     4,
+     3,
+     3,
+     -4,
+     3,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "wall"
+    ]
+   }
+  },
+  {
+   "handle": "back-object",
+   "create": "object",
+   "set": {
+    "geometry": "back"
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -2,
+     -2,
+     4,
+     -2,
+     -2,
+     4,
+     -2,
+     3,
+     -4,
+     -2,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "floor-material"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor"
+   }
+  },
+  {
+   "handle": "panel",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -3.5999999,
+     -2.0,
+     1.0,
+     -2.1600001,
+     -2.0,
+     1.0,
+     -2.1600001,
+     1.5,
+     0.4,
+     -3.5999999,
+     1.5,
+     0.4,
+     -2.1600001,
+     -2.0,
+     1.0,
+     -0.72,
+     -2.0,
+     1.0,
+     -0.72,
+     1.5,
+     0.4,
+     -2.1600001,
+     1.5,
+     0.4,
+     -0.72,
+     -2.0,
+     1.0,
+     0.72,
+     -2.0,
+     1.0,
+     0.72,
+     1.5,
+     0.4,
+     -0.72,
+     1.5,
+     0.4,
+     0.72,
+     -2.0,
+     1.0,
+     2.1600001,
+     -2.0,
+     1.0,
+     2.1600001,
+     1.5,
+     0.4,
+     0.72,
+     1.5,
+     0.4,
+     2.1600001,
+     -2.0,
+     1.0,
+     3.5999999,
+     -2.0,
+     1.0,
+     3.5999999,
+     1.5,
+     0.4,
+     2.1600001,
+     1.5,
+     0.4
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3,
+     4,
+     5,
+     6,
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     8,
+     10,
+     11,
+     12,
+     13,
+     14,
+     12,
+     14,
+     15,
+     16,
+     17,
+     18,
+     16,
+     18,
+     19
+    ],
+    "attributes": [
+     {
+      "name": "index",
+      "value": "float",
+      "domain": "face",
+      "data": [
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       2.0,
+       2.0,
+       -1.0,
+       -1.0,
+       3.0,
+       3.0
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "component-bump"
+    ]
+   }
+  },
+  {
+   "handle": "panel-object",
+   "create": "object",
+   "set": {
+    "geometry": "panel"
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.3,
+        0.35,
+        0.42
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "emitter",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "lamp",
+   "create": "pointlight",
+   "set": {
+    "radius": 0.45,
+    "is_sphere": true,
+    "use_mis": true,
+    "strength": [
+     110,
+     90,
+     70
+    ],
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "lamp-object",
+   "create": "object",
+   "set": {
+    "geometry": "lamp",
+    "tfm": [
+     1.0,
+     0.0,
+     0.0,
+     2.2,
+     0.0,
+     1.0,
+     0.0,
+     2.0,
+     0.0,
+     0.0,
+     1.0,
+     -2.0
+    ]
+   }
+  }
+ ],
+ "images": []
+}

@@ -1,0 +1,23 @@
+Traceback (most recent call last):
+  File "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/build_cycles_macos.py", line 219, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/build_cycles_macos.py", line 135, in main
+    prefix=deps.prefix();marker=prefix/'codebrix-osx-arm64-build.json';dependency=json.loads(marker.read_text())
+  File "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tools/dependencies/build_macos.py", line 128, in prefix
+    if report['identity']!=identity():raise RuntimeError('macOS ARM64 dependency inputs/toolchain changed; rebuild the prefix')
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: macOS ARM64 dependency inputs/toolchain changed; rebuild the prefix
+Traceback (most recent call last):
+  File "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/tools/build_macos.py", line 14, in <module>
+    subprocess.run([sys.executable,str(ROOT/'native/tools/build_cycles_macos.py'),'--jobs',str(args.jobs)],cwd=ROOT,check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.15/lib/python3.15/subprocess.py", line 692, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command ['/Library/Frameworks/Python.framework/Versions/3.15/bin/python3', '/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/build_cycles_macos.py', '--jobs', '8'] returned non-zero exit status 1.
+real 8.58
+user 1.27
+sys 1.70
+exit 
+exit 1 (CalledProcessError, non-zero 1; wall 8.58 s)

@@ -1,0 +1,139 @@
+starter/diffuse-triangle                 cpu-arm64-macos        [0.00430167, 0.000296542]
+survey/curves-thick-diffuse-both         cpu-arm64-macos        [0.00742075, 0.00522367]
+survey/points-diffuse-both               cpu-arm64-macos        [0.00584604, 0.00431904]
+survey/bake-subdivision                  cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_bake (size) returned 2: A subdivision surface cannot be baked
+survey/bake-zero-area-flat-normal        cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/denoise-upscale-1-gpu             cpu-arm64-macos        [0.205508, 0.00668492]
+survey/denoise-upscale-2-gpu             cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)
+survey/denoise-upscale-4-gpu             cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)
+survey/denoise-upscale-1.5-gpu           cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)
+survey/denoise-upscale-2-cpu-oidn        cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)
+survey/denoise-upscale-1-gpu-catcher     cpu-arm64-macos        [0.0563252, 0.0198928]
+survey/denoise-upscale-2-gpu-catcher     cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)
+survey/points-gaussian-splats            cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: Gaussian splats are not available in this library (the point cloud input render_as must be points)
+survey/denoise-dlss                      cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: the dlss denoiser is not available in this library (use openimagedenoise)
+survey/denoise-passes-128                cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)
+survey/denoise-passes-albedo-normal-256  cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)
+starter/diffuse-triangle                 metal-m2pro            [0.668159, 0.0414617]
+survey/curves-thick-diffuse-both         metal-m2pro            [0.564414, 0.238642]
+survey/points-diffuse-both               metal-m2pro            [0.682702, 0.0999285]
+survey/bake-subdivision                  metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_bake (size) returned 2: A subdivision surface cannot be baked
+survey/bake-zero-area-flat-normal        metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/denoise-upscale-1-gpu             metal-m2pro            [1.85276, 0.504954]
+survey/denoise-upscale-2-gpu             metal-m2pro            [2.88437, 0.914484]
+survey/denoise-upscale-4-gpu             metal-m2pro            [2.03318, 0.0594553]
+survey/denoise-upscale-1.5-gpu           metal-m2pro            [4.01883, 0.068098]
+survey/denoise-upscale-2-cpu-oidn        metal-m2pro            [0.97739, 0.600211]
+survey/denoise-upscale-1-gpu-catcher     metal-m2pro            [2.12358, 0.169012]
+survey/denoise-upscale-2-gpu-catcher     metal-m2pro            [1.98861, 0.352409]
+survey/points-gaussian-splats            metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: Gaussian splats are not available in this library (the point cloud input render_as must be points)
+survey/denoise-dlss                      metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: the dlss denoiser is not available in this library (use openimagedenoise)
+survey/denoise-passes-128                metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)
+survey/denoise-passes-albedo-normal-256  metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)
+starter/diffuse-triangle                 metal-m2pro-metalrt    [0.449339, 0.237639]
+survey/curves-thick-diffuse-both         metal-m2pro-metalrt    [1.31795, 0.114682]
+survey/points-diffuse-both               metal-m2pro-metalrt    [1.60506, 0.175967]
+survey/bake-subdivision                  metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_bake (size) returned 2: A subdivision surface cannot be baked
+survey/bake-zero-area-flat-normal        metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/denoise-upscale-1-gpu             metal-m2pro-metalrt    [1.27993, 0.202246]
+survey/denoise-upscale-2-gpu             metal-m2pro-metalrt    [1.03053, 0.140335]
+survey/denoise-upscale-4-gpu             metal-m2pro-metalrt    [1.1781, 0.247025]
+survey/denoise-upscale-1.5-gpu           metal-m2pro-metalrt    [1.32318, 0.0434848]
+survey/denoise-upscale-2-cpu-oidn        metal-m2pro-metalrt    [0.574894, 0.285141]
+survey/denoise-upscale-1-gpu-catcher     metal-m2pro-metalrt    [0.942484, 0.218697]
+survey/denoise-upscale-2-gpu-catcher     metal-m2pro-metalrt    [1.28179, 0.281957]
+survey/points-gaussian-splats            metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: Gaussian splats are not available in this library (the point cloud input render_as must be points)
+survey/denoise-dlss                      metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: the dlss denoiser is not available in this library (use openimagedenoise)
+survey/denoise-passes-128                metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)
+survey/denoise-passes-albedo-normal-256  metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_render returned 1: Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)
+starter/diffuse-triangle (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.49e-08 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.49e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              2.98e-08   2.51e-07   2.78e-09             0          0
+      worst x=19 y=8 R: ref 0.13709569 got 0.13709572 (0.000385x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      2.98e-08   2.51e-07   2.78e-09             0          0
+      worst x=19 y=8 R: ref 0.13709569 got 0.13709572 (0.000385x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]          1.49e-08   1.09e-07   6.45e-10             0          0
+      worst x=10 y=8 R: ref 0.136359721 got 0.136359707 (0.000193x tolerance)
+  verdict: perfect
+
+survey/curves-thick-diffuse-both (64x48)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=False repeatMaxAbs=0.00669 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=0.148 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=0.147 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]                 0.115      0.527    0.00452           994       2683
+      worst x=36 y=29 B: ref 0.218859941 got 0.104225002 (1.22e+03x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]         0.115      0.656    0.00425          1125       2814
+      worst x=32 y=16 B: ref 0.172097325 got 0.0592180081 (1.34e+03x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]            0.0892       1.11    0.00348           935       1296
+      worst x=30 y=9 G: ref 0.0929653347 got 0.177705437 (1.24e+03x tolerance)
+  verdict: perfect
+
+survey/points-diffuse-both (64x48)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=False repeatMaxAbs=0.0233 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=0.388 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=0.249 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]                 0.148       1.05    0.00707          1697       3029
+      worst x=26 y=22 R: ref 0.196189299 got 0.0482886583 (1.66e+03x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]         0.247      0.886    0.00991          1668       3044
+      worst x=28 y=27 R: ref 0.308051169 got 0.0946667045 (1.91e+03x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]             0.249        2.7     0.0103          1222       1330
+      worst x=28 y=27 R: ref 0.29793328 got 0.0946667045 (1.85e+03x tolerance)
+  verdict: perfect
+
+survey/denoise-upscale-1-gpu (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]                0.0541    0.00447    0.00304          1502       2303
+      worst x=28 y=23 B: ref 9.65629387 got 9.61312103 (21.8x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]        0.0541    0.00447    0.00304          1502       2303
+      worst x=28 y=23 B: ref 9.65629387 got 9.61312103 (21.8x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]                 0          0          0             0          0
+      worst x=0 y=0 R: ref 0.324848622 got 0.324848622 (0x tolerance)
+  verdict: perfect
+
+survey/denoise-upscale-1-gpu-catcher (64x48)
+  cpu-arm64-macos            cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]               0.00874       1.25   0.000197           509        928
+      worst x=41 y=19 R: ref 1.79153061 got 1.783517 (19.6x tolerance)
+      pass Shadow Catcher           shadow_catcher         maxAbs=    0.0046 practicalFail=7716 strictDiff=9216
+      pass Shadow Catcher Matte     shadow_catcher_matte   maxAbs=   0.00874 practicalFail=509 strictDiff=928
+      pass Shadow Catcher Sample Count shadow_catcher_sample_count maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Noisy Image              combined               maxAbs=  4.84e-05 practicalFail=0 strictDiff=486
+      pass Shadow Catcher Noisy     shadow_catcher         maxAbs=  5.66e-06 practicalFail=0 strictDiff=882
+      pass Shadow Catcher Matte Noisy shadow_catcher_matte   maxAbs=  4.84e-05 practicalFail=0 strictDiff=486
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]       0.00874       1.25   0.000197           509        928
+      worst x=41 y=19 R: ref 1.79153061 got 1.783517 (19.6x tolerance)
+      pass Shadow Catcher           shadow_catcher         maxAbs=    0.0046 practicalFail=7716 strictDiff=9216
+      pass Shadow Catcher Matte     shadow_catcher_matte   maxAbs=   0.00874 practicalFail=509 strictDiff=928
+      pass Shadow Catcher Sample Count shadow_catcher_sample_count maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Noisy Image              combined               maxAbs=  4.82e-05 practicalFail=0 strictDiff=489
+      pass Shadow Catcher Noisy     shadow_catcher         maxAbs=  5.72e-06 practicalFail=0 strictDiff=876
+      pass Shadow Catcher Matte Noisy shadow_catcher_matte   maxAbs=  4.82e-05 practicalFail=0 strictDiff=489
+  metal-m2pro-metalrt vs metal-m2pro [reported]                 0          0          0             0          0
+      worst x=0 y=0 R: ref 0 got 0 (0x tolerance)
+      pass Shadow Catcher           shadow_catcher         maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Shadow Catcher Matte     shadow_catcher_matte   maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Shadow Catcher Sample Count shadow_catcher_sample_count maxAbs=         0 practicalFail=0 strictDiff=0
+      pass Noisy Image              combined               maxAbs=  3.34e-06 practicalFail=0 strictDiff=24
+      pass Shadow Catcher Noisy     shadow_catcher         maxAbs=  2.74e-06 practicalFail=0 strictDiff=258
+      pass Shadow Catcher Matte Noisy shadow_catcher_matte   maxAbs=  3.34e-06 practicalFail=0 strictDiff=24
+  verdict: perfect
+
+
+
+
+
+
+real 54.90
+user 12.29
+sys 22.58

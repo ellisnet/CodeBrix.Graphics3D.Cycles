@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 6, Linux slot A: all-lanes, host gate, .NET Release and Debug build/test/pack (managed Linux reference films
 # from the Release test run, as merge wave 4).
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh
 cd $R
 $S a-dotnet-build 900 dotnet build --configuration Release CodeBrix.Graphics3D.Cycles.slnx
 CODEBRIX_CYCLES_REFERENCE_EXPORT=$M/reference/managed-linux-x64 $S a-dotnet-test 1500 dotnet test --solution CodeBrix.Graphics3D.Cycles.slnx --configuration Release --no-build

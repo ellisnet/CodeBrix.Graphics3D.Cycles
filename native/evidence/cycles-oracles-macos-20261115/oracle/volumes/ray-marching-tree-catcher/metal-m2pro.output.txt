@@ -1,0 +1,35 @@
+{
+  "sceneId": "volumes/ray-marching-tree-catcher",
+  "sceneSha256": "de74aa09704d147d72eec6bf57a4cf529724c95bb3693835d8333235b8571a52",
+  "backend": "metal-m2pro",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 2.384185791015625e-07,
+  "renderSeconds": [1.49346,1.14213],
+  "filmSha256": ["3c8061b5e0e375c125d9a6520e443e22b02455567e3721a1c59caf798f090a8b","f8680569d8270403f79591acd564d65f110f6687fe671ddda27984e4cb67d908"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "volume_direct", "type": "volume_direct", "components": 3, "written": true, "filmSha256": ["deaa931bdc1907ee18eb6bc17752fa0823480c69889ca554d7bb2d82bc8bde1a","d11da25567e2a2b0509b8760d37b5f2698bee509069600f00f71ccfc5bfee39e"]},
+    {"index": 1, "name": "volume_indirect", "type": "volume_indirect", "components": 3, "written": true, "filmSha256": ["07739af97afc60a78f557a9d41f1f7c738a43b2742e598c4a87b845e1628d662","9d6d3d224223303b9f0b962e26f0fa11180bfa4f2b26ecb08192c410d8f3a805"]},
+    {"index": 2, "name": "diffuse_direct", "type": "diffuse_direct", "components": 3, "written": true, "filmSha256": ["466fabd758b72724c98a1e190592505292d72e4e16502fda901495ffccd22c9e","b9b53d42273a6220e392d9553c8b5ff1cfd70dab89321da24cde99bdaee0870d"]},
+    {"index": 3, "name": "diffuse_indirect", "type": "diffuse_indirect", "components": 3, "written": true, "filmSha256": ["d977451ff405722c16a09e080e2b3fd6d544aa2e2f2d2cbdbd63ae9c63bfac8e","ad3248772b66036cd13a307e1859702daf1201177120421a9c018cb31a51ec0a"]},
+    {"index": 4, "name": "glossy_direct", "type": "glossy_direct", "components": 3, "written": true, "filmSha256": ["12b0b3621d8bce303eda55276cb3521702007f3746d4a8e990433200f6fb71c9","7c3fc2b28203fc4656ee37c79d23f3157958fed2c2c0d2de4d6779cd2cacdd00"]},
+    {"index": 5, "name": "glossy_indirect", "type": "glossy_indirect", "components": 3, "written": true, "filmSha256": ["212f8910ae6b8539579c6d33fb81acb0caa289408398086d73e841d05ce8c8ce","a94cc5a4fa7dc3c33f6c595b3d26ee0b1a574a1aad610155101edda8494518f3"]},
+    {"index": 6, "name": "transmission_direct", "type": "transmission_direct", "components": 3, "written": true, "filmSha256": ["2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae","2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"]},
+    {"index": 7, "name": "transmission_indirect", "type": "transmission_indirect", "components": 3, "written": true, "filmSha256": ["2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae","2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"]},
+    {"index": 8, "name": "emission", "type": "emission", "components": 3, "written": true, "filmSha256": ["178d73f5cb49e95d8c06f55b156e2c8895444b67e667a6d94d84461ea4ae076e","178d73f5cb49e95d8c06f55b156e2c8895444b67e667a6d94d84461ea4ae076e"]},
+    {"index": 9, "name": "background", "type": "background", "components": 3, "written": true, "filmSha256": ["79553810587678742dbc8f56d92df562716fd9fabb8897298120dc9039bc09ea","79553810587678742dbc8f56d92df562716fd9fabb8897298120dc9039bc09ea"]},
+    {"index": 10, "name": "Shadow Catcher", "type": "shadow_catcher", "components": 3, "written": true, "filmSha256": ["66cb25541254f0d6d66ed3a89b96d47674affea122afcd41d3a5e0e8ab8f7a73","97540333ba7e3939515d1c08a023e93d94429b189bda5e27160dfa41e07148e8"]},
+    {"index": 11, "name": "Shadow Catcher Matte", "type": "shadow_catcher_matte", "components": 4, "written": true, "filmSha256": ["3c8061b5e0e375c125d9a6520e443e22b02455567e3721a1c59caf798f090a8b","f8680569d8270403f79591acd564d65f110f6687fe671ddda27984e4cb67d908"]},
+    {"index": 12, "name": "Shadow Catcher Sample Count", "type": "shadow_catcher_sample_count", "components": 1, "written": true, "filmSha256": ["8ee23387e40374ccef4b1378e52ae6e0f949c09f7f4a3e595ad39908e41c06d8","8ee23387e40374ccef4b1378e52ae6e0f949c09f7f4a3e595ad39908e41c06d8"]}
+  ],
+  "warnings": []
+}
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)

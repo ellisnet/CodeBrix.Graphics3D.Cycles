@@ -3,7 +3,7 @@ set confirm off
 set print thread-events off
 set breakpoint pending on
 set libthread-db-search-path /nonexistent
-set debug-file-directory /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/debug
+set debug-file-directory <home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/debug
 handle SIGPIPE nostop noprint pass
 break brw_opt_combine_constants
 commands

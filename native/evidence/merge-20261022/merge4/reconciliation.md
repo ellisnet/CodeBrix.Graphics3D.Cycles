@@ -30,7 +30,7 @@ Base: main clean at 3392df3d (manifest check against baseline-session-close.json
 - AGENT-README.txt: three-way (main after L+S, base, P): clean (L's Gabor lines + P's new Adreno 640 section).
 - native/DEVICE.md: three-way: 2 conflicts, both in the open-items list (items 1-2 and 8-10). Interim resolution:
   lane S's updated items 1, 8, 9 and lane P's "closed / partly closed" leads for items 2 and 10. The list is then
-  consolidated by hand (Jeremy's doc edit (e)); see the docs section at the end of this file.
+  consolidated by hand (the maintainer's doc edit (e)); see the docs section at the end of this file.
 
 ## Lane Q (changes.patch 3aeba5d1f2de40c027467bbc2ab0a90af7494829b2610d5f57a5f1f1a9c80ce9, DEVICE.md only)
 - Not applied mechanically (DEVICE.md moved under it, as the coordinator expected). Its single hunk is a pure addition

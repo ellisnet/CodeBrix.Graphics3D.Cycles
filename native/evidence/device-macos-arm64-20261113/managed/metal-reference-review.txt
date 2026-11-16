@@ -1,0 +1,11 @@
+Metal reference review: new film (v5.3.0, this run) against the previous-revision film at HEAD, practical abs<=5e-5+2e-4*|old|, strict abs<=1e-7+1e-7*|old|
+diffuse-sun: floats 3072, non-finite 0, distinct R values 489; new vs old Metal film: max abs 1.13249e-06, practical 0, strict 36
+   CPU comparison recorded: before max 2.98023e-07 practical 0 strict 168 -> after max 1.13249e-06 practical 0 strict 270; max GREW (x3.8)
+glass: floats 3072, non-finite 0, distinct R values 508; new vs old Metal film: max abs 0.0302477, practical 15, strict 55
+   CPU comparison recorded: before max 9.41753e-06 practical 0 strict 203 -> after max 1.09076e-05 practical 0 strict 276; max GREW (x1.16)
+textured-plane: floats 3072, non-finite 0, distinct R values 488; new vs old Metal film: max abs 1.78814e-07, practical 0, strict 4
+   CPU comparison recorded: before max 2.98023e-07 practical 0 strict 73 -> after max 2.98023e-07 practical 0 strict 63; max not grown (x1)
+gltf-sample: floats 6144, non-finite 0, distinct R values 270; new vs old Metal film: max abs 0.00521946, practical 3, strict 19
+   CPU comparison recorded: before max 9.53674e-07 practical 0 strict 471 -> after max 9.20892e-06 practical 0 strict 482; max GREW (x9.66)
+gltf-textured-plane-blender: floats 6144, non-finite 0, distinct R values 556; new vs old Metal film: max abs 0.0071179, practical 4, strict 1599
+   CPU comparison recorded: before max 0.00657463 practical 162 strict 1653 -> after max 0.00657558 practical 162 strict 1660; max GREW (x1)

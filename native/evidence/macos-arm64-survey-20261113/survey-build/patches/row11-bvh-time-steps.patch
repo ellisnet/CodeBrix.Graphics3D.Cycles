@@ -1,0 +1,21 @@
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+
+Survey row 11 (KIT-MACOS-ARM64 section 6): sets SceneParams::num_bvh_time_steps from the environment variable
+CODEBRIX_SURVEY_BVH_TIME_STEPS (native/host/cycles_host.cpp, cbc_host_create); unset keeps Cycles' default 0.
+
+SURVEY BUILD ONLY, NEVER PRODUCT CODE. Scratch change for the Apple Silicon feature survey; applied with
+`patch -p1 -d <survey copy>` to a git-archive copy of the base tree under native/work/, never to the repository.
+Base: branch cycles-with-metal-v5.3.0, commit 0b19d87507ac24f1e55ba6a50d1ac6b05c8d417c (host sources identical to 828f6c2f9).
+
+--- a/native/host/cycles_host.cpp
++++ b/native/host/cycles_host.cpp
+@@ -612,6 +612,8 @@
+     // Unaligned BVH2 nodes for curves, as the pinned default: the BVH2 traversal of the CPU reference, of the Metal
+     // kernels and of the WGSL device all read them; only scenes with curves can have them (scene/geometry_bvh.cpp).
+     scene.use_bvh_unaligned_nodes = true; scene.use_texture_cache = false;
++    // SURVEY BUILD ONLY (KIT-MACOS-ARM64 row 11): BVH time steps from the environment; unset keeps Cycles' default 0.
++    if (const char *steps = std::getenv("CODEBRIX_SURVEY_BVH_TIME_STEPS")) scene.num_bvh_time_steps = std::atoi(steps);
+     host->session = std::make_unique<Session>(params, scene);
+     require(!host->session->progress.get_error(), host->session->progress.get_error_message().c_str(), CBC_FAILED);
+     require(host->session->device->info.type == type, "Device selection changed unexpectedly", CBC_FAILED);

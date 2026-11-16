@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 8 part 2: device lock helpers (sourced). acquire DEV CHAIN: mkdir lock, retry every 120 s up to 60 min (never deletes a lock). release DEV.
-L=/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
+L=<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks
 acquire(){ local dev=$1 chain=$2 w=0
   until mkdir $L/$dev 2>/dev/null; do
     [ $w -eq 0 ] && echo "[$(date +%H:%M:%S)] $dev lock HELD by $(cat $L/$dev/owner.txt 2>/dev/null | head -c 120); waiting ($chain)" >> $M/timeline.log

@@ -5,7 +5,8 @@
 
 Smooth spheres with the Metallic, Beckmann (glossy, anisotropic, refraction,
 glass, metallic), Ashikhmin-Shirley, Ashikhmin velvet and Toon BSDFs, the
-anisotropic Glass BSDF, and the Principled BSDF's anisotropic transmission, its
+anisotropic Glass BSDF, the Glass BSDF with the multiscatter GGX distribution, and the Principled BSDF's anisotropic
+transmission, its
 dispersion and its coat, sheen, emission and thin-wall layers, on a diffuse floor and wall, lit by a sphere lamp with MIS (BSDF evaluation through
 next-event estimation) and a constant world, through the public C API.
 Usage: python3 native/oracle/scenes/author_bsdf.py [--check]."""
@@ -140,6 +141,10 @@ def scenes():
         tangent_shader('g-ggx', 'glass_bsdf', {'distribution': 'ggx', 'roughness': 0.35, 'anisotropy': 0.6, 'rotation': 0.2, 'IOR': 1.5, 'color': [0.9, 0.95, 1.0]}),
         tangent_shader('g-beckmann', 'glass_bsdf', {'distribution': 'beckmann', 'roughness': 0.4, 'anisotropy': -0.5, 'IOR': 1.45, 'color': [0.95, 0.9, 0.8]}),
         tangent_shader('g-tinted', 'glass_bsdf', {'distribution': 'ggx', 'roughness': 0.2, 'anisotropy': 0.8, 'IOR': 1.33, 'color': [0.6, 0.85, 0.7]})])
+    out['glass-multiscatter.json'] = scene('bsdf/glass-multiscatter', 'Glass BSDF with the multiscatter GGX distribution: roughness 0.3 (IOR 1.5), roughness 0.7 (IOR 1.33), and anisotropic with a tangent (anisotropy 0.5, rotation 0.15)', [
+        single('gm-smooth', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.3, 'IOR': 1.5, 'color': [0.9, 0.95, 1.0]}),
+        single('gm-rough', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.7, 'IOR': 1.33, 'color': [0.95, 0.85, 0.7]}),
+        tangent_shader('gm-aniso', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.4, 'anisotropy': 0.5, 'rotation': 0.15, 'IOR': 1.45, 'color': [0.85, 0.95, 0.9]})])
     out['principled-anisotropic-transmission.json'] = scene('bsdf/principled-anisotropic-transmission', 'Principled BSDF with Anisotropic and Transmission Weight (the anisotropic transmission lobe): GGX, multiscatter GGX with a rotated tangent and a partial transmission, and a part-metallic tinted one', [
         tangent_shader('p-ggx', 'principled_bsdf', {'distribution': 'ggx', 'base_color': [0.9, 0.95, 1.0], 'roughness': 0.3, 'ior': 1.5, 'anisotropic': 0.7, 'transmission_weight': 1.0}),
         tangent_shader('p-multi', 'principled_bsdf', {'distribution': 'multi_ggx', 'base_color': [0.85, 0.6, 0.4], 'roughness': 0.4, 'ior': 1.45, 'anisotropic': 0.5,

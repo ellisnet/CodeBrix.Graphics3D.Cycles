@@ -13,7 +13,8 @@ namespace CodeBrix.Graphics3D.Cycles.Diagnostics;
 public sealed class BackendScope
 {
     internal BackendScope(string device, IReadOnlyList<string> cameraTypes, IReadOnlyList<string> primitives,
-        IReadOnlyList<string> writtenPasses, string passesNote, IReadOnlyList<string> renderTimeRejections, string reference)
+        IReadOnlyList<string> writtenPasses, string passesNote, IReadOnlyList<string> renderTimeRejections, string reference,
+        long? maxImageDimension = null, long? maxImageTileSize = null)
     {
         Device = device;
         CameraTypes = cameraTypes;
@@ -22,6 +23,8 @@ public sealed class BackendScope
         PassesNote = passesNote;
         RenderTimeRejections = renderTimeRejections;
         Reference = reference;
+        MaxImageDimension = maxImageDimension;
+        MaxImageTileSize = maxImageTileSize;
     }
 
     /// <summary>Gets the device description.</summary>
@@ -44,4 +47,20 @@ public sealed class BackendScope
 
     /// <summary>Gets the reference document the report points to, or <see langword="null"/>.</summary>
     public string Reference { get; }
+
+    /// <summary>
+    /// (Provisional) Gets the largest image width or height the backend's device takes for an image loaded whole
+    /// (<see cref="CyclesScene.CreateImage{T}"/>): 16384 on Cycles' Metal device, 1073741823 on the WebGPU device and on
+    /// the CPU backends (whose kernels compute twice the side in <c>int</c> for the Mirror extension); <see langword="null"/>
+    /// when the report does not state it. A larger image fails the render, on the CPU backends by name (a
+    /// <see cref="CyclesScene.TextureLimit"/> that reduces it below the limit brings it within).
+    /// </summary>
+    public long? MaxImageDimension { get; }
+
+    /// <summary>
+    /// (Provisional) Gets the largest tile side of a tiled image (<see cref="CyclesScene.CreateTiledImage"/>) on the
+    /// backend: 128 on Cycles' Metal device, 1024 on the CPU backends and on WebGPU (which refuses tiled images at
+    /// render); <see langword="null"/> when the report does not state it. See <see cref="TiledImage"/>.
+    /// </summary>
+    public long? MaxImageTileSize { get; }
 }

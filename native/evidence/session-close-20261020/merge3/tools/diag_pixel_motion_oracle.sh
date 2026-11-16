@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 3 diagnostic on the Pixel 4 XL: object_motion_render (moving images) from the merged tree vs from the
 # sealed E4 worktree (baseline-merge1 + E4, no M3/M4), same staged libraries and runtime. Lock protocol applies.
-cd "$(dirname "$0")"; M=$(realpath ..); L=/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks; serial=98271FFBA0048D
-A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"; R=/data/local/tmp/codebrix-mw3-diag; S=/data/local/tmp/codebrix-mw3-stage
+cd "$(dirname "$0")"; M=$(realpath ..); L=<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks; serial=98271FFBA0048D
+A="<home>/Android/Sdk/platform-tools/adb -s $serial"; R=/data/local/tmp/codebrix-mw3-diag; S=/data/local/tmp/codebrix-mw3-stage
 lg(){ echo "[$(date +%H:%M:%S)] pixel diag2 $*" >> $M/timeline.log; }
 mkdir $L/$serial 2>/dev/null || { lg "lock HELD"; exit 2; }
 echo "merge-wave-3 agent diag_pixel_motion.sh $(date -Iseconds)" > $L/$serial/owner.txt; lg "lock taken"

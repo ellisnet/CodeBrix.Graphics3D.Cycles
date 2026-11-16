@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Phase E5 Linux validation of the final tree, sequential (one GPU gate at a time).
-R=/home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler; M=$R/native/work/e5; V=$M/linux; S=$M/tools/slot.sh; T=$R/native/tools; B=$R/native/work/cycles-build/bin
+R=<home>/ClaudeHome/cycles-worktrees/e5-pixel-sampler; M=$R/native/work/e5; V=$M/linux; S=$M/tools/slot.sh; T=$R/native/tools; B=$R/native/work/cycles-build/bin
 cd $R
 $S triangle 900 python3 $T/triangle_lighting_gate.py --skip-build --output $V/triangle/out
 $S emitter-sample 600 $B/codebrix_cycles_emitter_sample_gate $V/emitter-sample/run

@@ -2,7 +2,7 @@
 
 Copyright (c) 2026 Jeremy Ellis and contributors
 
-Jeremy requires intentional native platform binaries to be checked into Git
+The maintainer requires intentional native platform binaries to be checked into Git
 when the .NET 10 assembly/NuGet delivery work begins. Retain applicable
 unstripped builds and symbols alongside the runtime binaries:
 
@@ -25,4 +25,4 @@ reviewed payload before adding it; arbitrary compiled files remain rejected.
 This location is deliberately unignored. Build work stays in ignored `work/`,
 `bin/` and `obj/` directories. NuGet payloads should include the selected runtime
 artifacts; retaining unstripped/symbol artifacts in Git does not require bundling
-them in every runtime package. Jeremy handles commits and pushes.
+them in every runtime package. The maintainer handles commits and pushes.

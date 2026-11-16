@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 8 part 2, Linux stream F: environment gate, camera gate (static + motion), environment envelope, ledger gate for environment-light.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh
 T=$R/native/tools; B=$R/native/work/cycles-build/bin
 cd $R; mkdir -p $V/p8-environment-dump $V/p8-camera-gate $V/p8-camera-motion
 CODEBRIX_CYCLES_WGSL_DUMP=$V/p8-environment-dump $S p8-environment-gate 1200 $B/codebrix_cycles_environment_gate $V/p8-environment-gate/out

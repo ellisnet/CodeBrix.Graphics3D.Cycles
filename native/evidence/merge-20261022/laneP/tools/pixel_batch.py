@@ -7,8 +7,8 @@ Usage: pixel_batch.py STEP [STEP ...]   (step ids below; 'list' prints them)"""
 import json, subprocess, sys, time, datetime, os
 from pathlib import Path
 P = Path(__file__).resolve().parents[1]; T = P/'tools'
-ADB = '/home/jeremy/Android/Sdk/platform-tools/adb'; SERIAL = '98271FFBA0048D'
-LOCKS = Path('/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks'); LOCK = LOCKS/'pixel'
+ADB = '<home>/Android/Sdk/platform-tools/adb'; SERIAL = '98271FFBA0048D'
+LOCKS = Path('<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks'); LOCK = LOCKS/'pixel'
 REF = str(P/'reference/linux-x64')
 F = ['--reference', REF, '--device-scene', '--pipeline-budget-ms', '20000']   # merge wave 3 Pixel image/sample flags
 FM = ['--reference', REF, '--pipeline-budget-ms', '20000']                   # merge wave 3 Pixel materials flags

@@ -6,7 +6,7 @@ takes that side; changed on both sides identically is fine; a real conflict abor
 usage: json3.py <lane> <path> [old=new string replacement applied to theirs ...]"""
 import json, sys
 from pathlib import Path
-root = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge8'
+root = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge8'
 lane, path = sys.argv[1:3]; reps = [a.split('=', 1) for a in sys.argv[3:]]
 D = w / f'merge-{lane}' / path
 load = lambda s: json.loads(D.with_name(D.name + '.' + s).read_text())

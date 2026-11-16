@@ -1,6 +1,6 @@
 #!/bin/bash
 # Merge wave 8 part 2: film identity of every Linux slot against wave 7 part 2 (merge7 p2-*) and against part 1b (b8-*); plus reference/oracle trees.
-M=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8; M7=$M/../merge7; O=$M/validation/film-compare-p2; T=$M/tools
+M=<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8; M7=$M/../merge7; O=$M/validation/film-compare-p2; T=$M/tools
 : > $O/summary-vs-wave7.txt; : > $O/summary-vs-part1b.txt
 for d in $M/validation/p8-* $M/validation/p8v-*; do l=$(basename $d); suffix=${l#p8}; suffix=${suffix#v}; 
   # wave 7 label: p8-X -> p2-X, p8v-X -> p2v-X ; part 1b label: b8-X / b8v-X

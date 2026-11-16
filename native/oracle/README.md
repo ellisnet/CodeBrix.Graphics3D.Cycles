@@ -49,8 +49,12 @@ reciprocal math and are not comparable bit for bit.
 ## Scene files (`cbcOracleScene` version 1)
 
 `scenes/<family>/<name>.json` holds `id`, `description`, `sourceFixture`,
-`render` (`width`, `height`, `samples`, `repeats`, default 2), `colorConfig`
-(`null` or an OCIO config path relative to the scene), `nodes` and `images`.
+`render` (`width`, `height`, `samples`, `repeats`, default 2; optional
+`textureLimit`, provisional: Cycles' texture limit, set before any image loads,
+`cbc_host_texture_limit`; optional `bvhSpatialSplit`, provisional, a boolean:
+Cycles' BVH spatial splits, `cbc_host_bvh_spatial_split`; optional `tileSize`, provisional:
+Cycles' tile size, 0 or 8 to 128 or a multiple of 128 up to 8192, `cbc_host_tile_size`), `colorConfig` (`null`
+or an OCIO config path relative to the scene), `nodes` and `images`.
 `scenes/author_starters.py` regenerates the starter scenes exactly.
 
 Each node entry has a unique `handle` and either `scene` (a singleton:
@@ -69,6 +73,9 @@ Each node entry has a unique `handle` and either `scene` (a singleton:
   arrays whose center equals `positions`; `cbc_host_motion_positions`). Face
   material indices and smoothing are the mesh sockets `shader` and `smooth` in
   `set`; object and camera motion are their `motion` transform arrays.
+  An attribute's `value` is one of `float`, `color`, `vector`, `point`, `normal`, `point2`, `transform`, `float4`,
+  `byte4`, `quaternion` (4 floats, w, x, y, z) and `spherical_harmonics_rest` (45 floats in [-1, 1]); the last two are the
+  provisional value kinds of `native/host/ABI.md`.
 - `subdivision` (on a `mesh`, instead of `mesh`): a control cage, `positions` (x, y, z triples), `faceCorners` (the
   corner count of each face) and `corners` (vertex indices in face order), `cbc_host_subd_mesh`, with optional
   `attributes` as for a mesh; `subdivision_type` and the `subd_*` dicing sockets go in `set`.
@@ -89,7 +96,10 @@ Each node entry has a unique `handle` and either `scene` (a singleton:
   nested number arrays, and node handles. The pseudo-socket `image` binds an
   entry of `images` to an image or environment texture node; set that node's
   `colorspace` (`__builtin_srgb`, `scene_linear`, `data`) and `alpha_type`
-  (`unassociated`, `associated`, ...) explicitly.
+  (`unassociated`, `associated`, ...) explicitly. Its object form,
+  `{"1001": HANDLE, "1002": HANDLE, ...}`, binds the entries to an image texture
+  node as UDIM tiles (provisional; `cbc_host_image_bind_tiles`, in document
+  order).
 
 `images` entries name a raw pixel file beside the scene: tightly packed rows,
 bottom row first, in one of `float`, `float4`, `half`, `half4`, `byte`, `byte4`,
@@ -272,6 +282,102 @@ The description of `passes/motion` was corrected: it said "and background motion
 writes no motion vector", because the release writes no background motion to the Motion pass. The scene file's bytes are
 its identity, so its hash changed with the description.
 
+## Scenes added by the Apple Silicon feature survey
+
+One scene per case of the feature survey (docs/KIT-MACOS-ARM64.md, section 6) that no committed scene reached and whose
+pinned result is defined. Each is written by its family's script, whose `--check` still reproduces every committed scene:
+
+- `author_surface_nodes.py`: `surface-nodes/integer-math`, `surface-nodes/boolean-math` and
+  `surface-nodes/get-vector-component` (the nodes with linked inputs, which the WebGPU device refuses by name): table scenes
+  of one 4x4-pixel cell per case under an orthographic camera that maps one world unit to one pixel, with a box pixel filter
+  of width 1, so each cell's AOVs hold the case's values exactly. Each operand is the Integer Math sum of two face
+  attributes that binary32 holds exactly; an integer result leaves through the AOVs `D0`..`D3` (base-256 digits, `D3`
+  signed), `R` (the result as a float) and `CELL` (the cell number, from 1). Only cases whose pinned evaluation is defined
+  are committed (`pinned_integer_math` in the script checks each one); the cases with a signed overflow, `INT_MIN / -1` or
+  `divide_round` by `INT_MIN` are undefined in C++ and MSL and have no committed scene. `surface-nodes/get-vector-component-bump`
+  (the node's derivative form, as a Bump height) and `surface-nodes/image-missing` (the Missing and Missing Alpha inputs of
+  Image Texture nodes with no image, constant and linked, of an Attribute node asking for an absent name, and of an
+  Environment Texture world with no image).
+- `author_bsdf.py`: `bsdf/glass-multiscatter` (the Glass BSDF with the multiscatter GGX distribution).
+- `author_points.py`: `points/geometry-tangent` and `points/geometry-tangent-bump` (the Geometry node's Tangent output on
+  points, as a colour and as a Bump height).
+- `author_degenerate_lights.py`: `lamps/area-degenerate-spread-zero`, `-ellipse-spread-zero` (with the Glossy Direct pass),
+  `-spread-tiny`, `-spread-tiny-volume` and `-tree-transmissive` (the degenerate area light cases the WebGPU device refuses
+  by name, native/DEVICE.md item 148). The axes of infinities without a NaN (`lamps/area-degenerate-infinite-axis`) are
+  refused by the host on every backend and have no committed scene; `--scratch DIR` writes that document outside the
+  corpus, for a survey build that lifts the refusal.
+- `author_world.py`: `world/portal-zero-u`, `world/portal-zero` and `world/portal-underflow` (the window portal of zero
+  extent).
+- `author_bake_motion.py`: `bake/zero-area-<type>` (the shading bake types that are finite on the sphere whose zero-area
+  pole triangles are in the UV layout; its flat Normal bake and its diffuse, diffuse direct, glossy, glossy direct,
+  transmission and transmission direct bakes fail with "Nonfinite bake output" on every backend and have no scene).
+
+## Attribute value kind scenes (`scenes/attributes/`)
+
+`author_attributes.py` (`--check`) writes `scenes/attributes/`: the quaternion and spherical-harmonics attribute kinds
+(provisional, `native/host/ABI.md`) on meshes and point clouds, and quaternions on curves, in the sampling family's room,
+read through Attribute nodes.
+`quaternion-mesh` puts a quaternion on the mesh, face, vertex (not all of unit length) and corner domains of four spheres,
+`quaternion-points` on the vertex domain of one cloud and the mesh domain of another, `quaternion-curves` on the curve
+key domain (mixed along each segment) and the curve domain of two tufts of thick curves and the mesh domain of a tuft of
+ribbons; one graph uses its Color (w, x, y), Fac (their average) and Alpha (z). `spherical-harmonics-mesh` and `spherical-harmonics-points` put coefficients on the
+mesh, face and vertex domains of spheres and the vertex and mesh domains of clouds, beside a sphere and a cloud with none:
+the found attributes read black with alpha 1, the missing ones the Missing inputs. `quaternion-and-spherical-harmonics`
+reads both kinds and a colour and a float attribute in one graph, on a sphere and on a cloud on two objects. The WebGPU
+device refuses all six by name ("WebGPU quaternion attributes not implemented", "WebGPU spherical harmonics attributes not
+implemented"); the CPU and Metal backends render them.
+
+## Image binding scenes (`scenes/images/`)
+
+`author_images.py` (`--check`, which also compares the raw pixel files) writes `scenes/images/` and the raw files beside
+its documents: UDIM tiles (provisional, `native/host/ABI.md` "Images") on the diffuse plane of `starter/textured-plane`
+under its constant world, through the object form of the `image` pseudo-socket. `udim-three-tiles` binds three solid
+float4 tiles (1001 to 1003) with Closest interpolation to a plane whose UVs run from 0 to 3 across; `udim-checker-linear`
+six 16x16 sRGB byte4 checkers (1001 to 1003 and 1011 to 1013) with Linear interpolation and Periodic extension, UVs 0 to 3
+by 0 to 2; `udim-missing-tile` one image at tiles 1003 and 1001 (two device images of one image) and none at 1002 on an
+upper quad, and two images at 1019 and 1020 on a lower quad whose UVs reach u 11.5, where no tile exists: the UVs without
+an image read the texture's Missing colour. The WebGPU backend refuses all three by name ("WebGPU UDIM tiles not
+implemented"); the CPU and Metal backends render them.
+
+The texture limit (provisional, `render.textureLimit`) on the same plane, UVs 0 to 1, Linear interpolation:
+`texture-limit-blocks` binds a 64x64 byte4 image of uniform 2x2 blocks under a limit of 32, which Cycles halves when it
+loads it, and `texture-limit-blocks-halved` is its twin without a limit, the 32x32 image of the block colours: their CPU
+films are equal bit for bit. `texture-limit-checker` binds a 64x64 checker of 16x16 squares, each a checker of single
+pixels 24 levels lighter and darker, under a limit of 16: quartered, the single-pixel pattern averages away and a flat
+checker of 4x4 squares renders. The WebGPU backend refuses the two with a limit by name ("WebGPU texture limit not
+implemented"); the CPU and Metal backends render them.
+
+## Render-setting scenes (`scenes/render-settings/`)
+
+`author_render_settings.py` (`--check`) writes `scenes/render-settings/`: tiled rendering (provisional, `native/host/ABI.md`
+"Tiled rendering", `render.tileSize`) in twins. `tiles-glass-passes` renders the starter glass slab, a glossy sphere and a
+diffuse floor under an area light in a light group, with adaptive sampling and named passes (depth, normal, diffuse colour,
+transmission direct, glossy indirect, sample count, the light group), 64x48 at 32 samples, in 12 tiles of 16 pixels;
+`tiles-border-denoise` the starter glossy sphere and a floor under a point light with a camera border and Open Image Denoise
+(the noisy image and the denoising guides as passes), 64x48 at 16 samples, the region in 18 tiles of 8. Each has a twin
+without the key (`-untiled`), rendered in one tile. On the CPU reference the twins' films and passes are bit for bit the
+same, except the denoised film of `tiles-border-denoise` (Open Image Denoise reads the per-pixel-normalised image with
+tiles; practical criterion). The WebGPU backend refuses the tiled scenes by name ("WebGPU tiled rendering not
+implemented").
+
+## Gaussian splat scenes (`scenes/gsplat/`)
+
+`author_gsplat.py` (`--check`) writes `scenes/gsplat/`: point clouds with `render_as` `gaussian_splats` in the sampling
+family's room, with the standard point attributes a splat needs (provisional, `native/host/ABI.md`): `radiance:base`
+(`float4`: band-0 colour coefficients and an opacity), `scale` (`vector`) and `rotation` (`quaternion`, from an axis and an
+angle, of lengths 0.6 to 1.4), and `radiance:sh` (`spherical_harmonics_rest`, bands 1 to 3) where named. `band0` uses
+Cycles' default splat shader with band 0 only, two of its splats below the opacity 0.01 that Cycles bounds;
+`spherical-harmonics` adds bands 1 to 3; `caller-shader` reads the radiance through an Attribute node as a lit diffuse
+colour plus an emission. `single-user-transform` puts a cloud on one object under a uniform scale and a rotation (a plain
+point cloud would be baked; splats never are), `instanced` on three objects (rotated, non-uniformly scaled, mirrored).
+`object-motion` moves one of two objects and `deform-3` moves the positions (`cbc_host_point_motion`), both with motion
+blur. `beside-meshes` puts splats in the room with its spheres, `beside-volume` inside the absorbing box of
+`volumes/absorption-point`, `transparent-shadows` behind a transparent sheet with an opaque and a transparent splat shader,
+and `with-points` beside a plain point cloud. Whether a ray hits a splat depends on a hash of the hit position, which the
+last bit of that position changes, so the CPU films and the two Metal films of these scenes differ pixel by pixel as
+renders with different random numbers do; the comparisons are reported. The WebGPU backend refuses all eleven by name
+("WebGPU Gaussian splats not implemented").
+
 ## Denoising scenes (`scenes/denoise/`)
 
 `author_denoise.py` (`--check`) writes `scenes/denoise/` from committed scenes:
@@ -353,6 +459,13 @@ render's size and samples for every repeat, and each `film-N.f32` holds the bake
 (meta.json), row 0 at v = 0. Every bake type the host exposes, the two flags, a named vertex-domain UV layout, an
 instanced target, the AOVs, adaptive sampling, denoising and a shadow catcher target. `compare.py` judges bake films
 like render films, per component; `--previews` handles RGBA render films only.
+
+`author_bake_subdivision.py` (`--check`) writes `scenes/bake/subdivision-*`: the same room with the target a linear
+subdivision cage (provisional, `native/host/ABI.md` "Baking"), the quad and pentagon of `author_subdivision.py` scaled into
+the sphere's place, the quad smooth and the pentagon flat, with a corner UV layout among its subdivision attributes and
+diced in object space; the host bakes the triangles Cycles dices from it. `subdivision-combined`, `-diffuse-color`,
+`-normal` and `-position`, and `subdivision-displaced-combined`, `-normal` and `-position` with true displacement (a wave
+in the UV layout) on the diced mesh.
 
 ## Run, compare and bundle
 

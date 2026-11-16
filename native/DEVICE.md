@@ -1008,7 +1008,7 @@ native-render regressions. Point/sun NEE and shadow-path creation now have bound
 native-render coverage below. Next are transparent shadows, remaining emitters,
 forward/MIS and broader rendering features.
 Use the existing Linux and Android hosts for relevant feature regressions.
-Jeremy's 2026-10-19 priority defers additional platform ports and release packaging
+The maintainer's 2026-10-19 priority defers additional platform ports and release packaging
 until rendering functionality is complete, unless a concrete feature needs them.
 The existing WGSL rendering functions provide tested behavior to adapt, but
 the existing complete-path shader must not be disguised as those individual
@@ -1185,8 +1185,8 @@ The main source now includes three separately validated Linux slices: registered
 point/sun forward lighting and MIS; single-scatter GGX glass/refraction; and native
 perspective camera motion. Their isolated gate results and sealed source deltas
 are recorded in the sibling `.parallel/{lighting,materials,geometry}` worktrees.
-The primary agent has merged their shared scene layouts, canonical closure records,
-shader assembly and recorder entries. Main-source regression and combined-scene
+Their shared scene layouts, canonical closure records, shader assembly and recorder
+entries are combined in the main source. Main-source regression and combined-scene
 validation passes in `native/work/parallel-integration/validation-v1`: the full
 point/sun MIS and no-MIS corpus, glass/GGX state and image checks, camera-motion
 corpus and 24 complete command replays. The eight combined scenes check 49,152
@@ -1229,7 +1229,7 @@ point/sun and combined glass/camera regressions, and 20 complete command replays
 Its first rectangle-image mismatch was fixed by preserving native float operation
 order and bounded trigonometric evaluation; failed attempts remain retained.
 
-The source delta is merged into main with reviewed in-repository derivations and
+The source delta is integrated with reviewed in-repository derivations and
 attribution. `python3 native/tools/broad_lighting_gate.py --output NEW_DIRECTORY`
 builds and executes the maintained corpus. Main validation passes all 26 reports
 in `native/work/parallel-integration/lighting-round2-v1`, with source, executable
@@ -1292,14 +1292,14 @@ and 14 (homogeneous density); earlier capture formats remain supported.
 
 ## Wrap-up: triangle-light candidate deferred (2026-10-19)
 
-All completed sub-agent handoffs above remain integrated and uncommitted.
+All completed sub-agent handoffs above remain integrated.
 A subsequent primary-agent triangle-light/MIS candidate passes focused sampler,
 surface and four static-image/replay checks, but its final transparent-lighting
 regression crashes. The candidate and failure evidence are preserved under
 `native/work/mesh-light-v1/deferred-candidate`; it is excluded from production.
 The validated pre-extension source was restored by exact hash, retaining the
 original triangle-light guards and recorder v5. Restoration and follow-up results
-are recorded under `native/work/mesh-light-v1` and in section 44 of Jeremy's plan.
+are recorded under `native/work/mesh-light-v1` and in section 44 of the maintainer's plan.
 Before reintegration, resolve the transparent-lighting regression and the retained
 instanced-emitter image mismatch, then validate moving emitters and broader
 interactions. Environment/textured emission, light trees and remaining full MIS
@@ -1975,7 +1975,7 @@ this policy, before the platform package for its RID is published: every host-ga
 step, every device gate, every oracle scene and bench scene the device renders, and
 the managed tests. "Not ready to publish" is that platform's answer while any of them
 fails there; it does not hold back the packages of other platforms (2026-11-08,
-MAINTAINER-README.txt, "PACKAGING AND PUBLISHING").
+MAINTAINER-README.txt, "PACKAGING").
 Functionality not yet ported (volume rendering on the WebGPU device) is outside
 "ported so far"; a driver workaround that gives the CPU kernels' images (W1,
 M2) counts as passing, a refused or masked feature does not.
@@ -2009,10 +2009,9 @@ Debian 13, GCC 14.2.0, clang 19.1.7, CMake 3.31.6, glibc 2.41), with
 `native/tools/macos_x64_reference_exchange.py` running the exchanges against the
 container of `native/tools/linux_reference/`.
 
-**Linux x64 reference rule (the maintainer, 2026-10-29).** Linux x64 and Android testing
+**Linux x64 reference rule (2026-10-29).** Linux x64 and Android testing
 and validation are done on the dedicated Linux x64 machine only, and every Linux
-x64 reference other platforms compare against comes from that machine and is
-committed: the newest `native/evidence/linux-x64-reference-<date>/` (now
+x64 reference other platforms compare against comes from that machine: the newest `native/evidence/linux-x64-reference-<date>/` (now
 `linux-x64-reference-20261114`, recorded on Cycles v5.3.0, for the oracle and bench films and the host gate; see
 "First full pass on Cycles v5.3.0". Four further items are either supplied by 20261114 or have NOT been re-made on
 Cycles v5.3.0:
@@ -3413,7 +3412,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     `author_sampling.py` with an empty integrator block (8 samples, 64 x 48; now committed as `sampling/tabulated-sobol-room`)
     gave 3 practical failures at x=34, y=20 (1.88 times the tolerance); it is perfect since item 152.
 86. **Point clouds on the reference devices: not run yet.** Points pass on Linux in x64 arithmetic against the x64 CPU oracle (`native/tools/point_gate.py`, `scenes/points/`). `arm64-scalar` on Linux compiles and runs, judged against nothing here. No ARM64 oracle exists for this family, so that says nothing about correctness there. Checkpoint 1 and the ARM64 oracle films owe them.
-87. **The pinned kernel reads an uninitialized stack for a Both displacement shader on a point or a curve.** `svm_node_set_bump` loads `bump_state_offset + 4` and `+ 7`, which `svm_node_enter_bump_eval` only stores when `ATTR_STD_POSITION_UNDISPLACED` is found, and only meshes have it (`scene/mesh.cpp`). The WGSL stack check reports it (mask 8), so scenes with that combination are refused by name on the device; the CPU's result depends on what the stack held. Keep the refusal unless the kernel changes. Evidence (2026-11-11, `curves/thick-diffuse` and `points/diffuse` with displacement/both's Both shader on the curves or points, not committed): the CPU device (BVH2, 1, 2, 4 and 8 threads, 4 threads twice) and the Embree CPU device (twice), each process rendering twice, gave 13 distinct film hashes in 14 films per scene; the two films of one process differed in 12 of 14 processes; up to 2,481 (curves) and 3,105 (points) of 12,288 film components differed, by up to 0.173 and 0.432. FACT from the pinned source: `svm_eval_nodes` declares the stack `float stack[SVM_STACK_SIZE]` without initializer (`kernel/svm/svm.h`) and Cycles' Metal device compiles the same kernel source, so its result there is not defined by the source either.
+87. **The pinned kernel reads an uninitialized stack for a Both displacement shader on a point or a curve: refused by the host on every backend (the maintainer's ruling).** `svm_node_set_bump` loads `bump_state_offset + 4` and `+ 7`, which `svm_node_enter_bump_eval` only stores when `ATTR_STD_POSITION_UNDISPLACED` is found, and only meshes have it (`scene/mesh.cpp`). The WGSL stack check reports it (mask 8), so the device refuses that combination by name; the CPU's result depends on what the stack held. The host now refuses it before any device sees the scene, on the CPU, Metal and WebGPU backends alike (`validate_unavailable` in `native/host/host_scene.inc`: a `used_shaders` entry of a hair or point cloud geometry with `displacement_method` `both` and a linked `Displacement` output input; `CBC_UNSUPPORTED`, "Unsupported feature: curves and points with a Both displacement shader ..."; AGENT-README.txt "RENDER-TIME REJECTIONS", every backend). The device's own refusal (`validate_curves`, `validate_points`) stays as the device's second line, which `point_gate` exercises without the host. Keep both unless the kernel changes. Evidence (2026-11-11, `curves/thick-diffuse` and `points/diffuse` with displacement/both's Both shader on the curves or points, not committed): the CPU device (BVH2, 1, 2, 4 and 8 threads, 4 threads twice) and the Embree CPU device (twice), each process rendering twice, gave 13 distinct film hashes in 14 films per scene; the two films of one process differed in 12 of 14 processes; up to 2,481 (curves) and 3,105 (points) of 12,288 film components differed, by up to 0.173 and 0.432. FACT from the pinned source: `svm_eval_nodes` declares the stack `float stack[SVM_STACK_SIZE]` without initializer (`kernel/svm/svm.h`) and Cycles' Metal device compiles the same kernel source, so its result there is not defined by the source either. Evidence at Cycles v5.3.0 on Apple Silicon (`native/evidence/macos-arm64-survey-20261113/`, row 6): the CPU films were not repeat-identical, and two Metal runs disagreed with each other (BVH2 and MetalRT) far beyond Metal's repeat noise.
 98. **Device replays of Linux x64 captures: three scenes cannot pass bit for bit on another GPU (a known cross-GPU limitation;
     recorded, not fixed).** The device job `oracle-replays` replays 20 Linux x64 captures of oracle scenes on the device with every
     readback checked bit for bit. Three cannot pass on a GPU other than the one that captured them, and no product code is wrong:
@@ -3706,7 +3705,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     below 1e-5 not implemented": `area_light_valid_ray_segment`'s `angle_almost_zero` branch maps a volume ray into the light's
     frame with the NaN axis, so the segment depends on how each `min` and `max` drops a NaN lane; a probe with a spread of 1e-6
     in the world volume differed in 1,892 practical values before the refusal); an axis of infinities without a NaN (a rotated object scaled below about 1e-23:
-    its CPU comparisons depend on the signs of each ray's components); the light tree at a transmissive point (error bit 131072:
+    its CPU comparisons depend on the signs of each ray's components; since the maintainer's ruling of 2026-11-15 the host
+    refuses it on every backend, "Unsupported feature: area lights with an axis of infinities", before any device, so the
+    device's own refusal is no longer reached; provisional); the light tree at a transmissive point (error bit 131072:
     `is_visible |= has_transmission` takes the CPU into the importance with `cos_theta_u = FLT_MAX`, whose weights overflow);
     and a background light portal of zero extent ("WebGPU degenerate background light portal not implemented": the pinned portal
     sampler returns NaN directions, which the world shader and the closures evaluate). Covered by `emitter_sample` (an area
@@ -3787,7 +3788,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     which this host never reaches (`use_texture_cache = false`, `cbc_host_create`). Evidence: scenes `cameras/border-inner`
     (practical 0, strict 94) and `cameras/border-corner` (practical 0, strict 26); the ABI test's `border` film, WebGPU
     against the CPU (practical 0, strict 0); on the CPU the region is bit-identical to the same pixels of a whole-film render.
-169. **Denoiser upscale factor other than 1: refused by name on the CPU and WebGPU backends: FOR THE MAINTAINER.** FACT from
+169. **Denoiser upscale factor other than 1: refused by name on every backend (the maintainer's ruling).** FACT from
     the pinned source: the factor is applied by `RenderScheduler` (`integrator/render_scheduler.cpp`, the render's
     resolution divider is multiplied by it when denoising) and undone by the GPU denoisers' shared postprocess
     (`integrator/denoiser_gpu.cpp`, `filter_color_postprocess` with `upscale_factor`, `kernel/device/gpu/kernel.h`); the
@@ -3799,8 +3800,15 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     CUDA, HIP, Metal), and the pinned CPU denoiser (`integrator/denoiser_oidn.cpp`) has no upscale path. What the CPU and
     WebGPU path would need: a render at the divided resolution and an upscaling step before Open Image Denoise on the CPU,
     which no pinned code provides (the GPU postprocess kernel is one of the denoise filter kernels, not ported), so the CPU
-    reference would have no Cycles behaviour to be judged against. A ruling is needed: an unfinished gap against Metal, or
-    a permanent refusal because the denoiser library has no device for this backend.
+    reference would have no Cycles behaviour to be judged against. FACT at Cycles v5.3.0 on Apple Silicon
+    (`native/evidence/macos-arm64-survey-20261113/`, row 9), contrary to the reading above: Cycles-with-Metal with GPU
+    denoising accepted factors 2, 4 and 1.5 and returned the reduced-resolution image packed into the first pixels of the
+    full-size film, zeros after it (INFERENCE of that report: the host's output driver read the reduced-size render, which
+    nothing upscaled). Ruling: the host refuses the factor on every backend when denoising (`cbc_host_render`,
+    `CBC_UNSUPPORTED`, "Unsupported feature: a denoiser upscale factor other than 1 (no backend of this library returns an
+    upscaled film)"; AGENT-README.txt "RENDER-TIME REJECTIONS", every backend), and, by the ruling of 2026-11-15, at bake
+    before anything bakes (`cbc_host_bake`; provisional), with the delivered-film check (native/host/ABI.md, Conventions)
+    behind both.
 170. **Linear subdivision surfaces: RESOLVED (implemented, every backend); Catmull-Clark stays refused under (b).** FACT
     (diagnosis): `Mesh::num_subd_faces` (`scene/mesh.h`) is a plain member that only `Mesh::resize_subd_faces` sets; the
     `subd_*` sockets the generic socket layer writes leave it at 0, so `Mesh::tessellate` returned at once
@@ -3813,6 +3821,23 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     triangles (`SceneSettingsTests`). Catmull-Clark: "Unsupported feature: Catmull-Clark subdivision needs OpenSubdiv"
     (FACT: without `WITH_OPENSUBDIV` the pinned `Mesh::tessellate` sets `subdivision_type = SUBDIVISION_LINEAR`,
     `scene/mesh_subdivision.cpp`), test (b).
+    Bakes (provisional, 2026-11-14): a linear cage is baked through Cycles' own tessellation. The bake's device update dices
+    it (`GeometryManager::device_update`, `Mesh::tessellate`); the host dices a copy of the cage with the same
+    `Mesh::tessellate` and `SubdParams` before it maps the texels, through the diced UV attribute
+    (`SubdAttributeInterpolation`), so the map's triangle indices are the device's. The pinned kernels have no subdivision
+    code: every device, the WGSL device included, receives the diced triangles of a mesh kept in object space, which the
+    WGSL bake places through the object transform (`wavefront_bake.wgsl`, the path of `bake/instanced`); no device work
+    (WebGPU unverified: no WebGPU run of a subdivision bake yet). Measured on the CPU reference: every bake type, also with
+    true displacement, bit for bit the bake of an ordinary mesh built from the same tessellation and kept in object space;
+    Metal within the practical criterion (`SubdivisionBakingTests`, `GpuRenderTests`, scenes `bake/subdivision-*`).
+    Pixel-space dicing is refused by name on every backend at bake time (it measures in the dicing camera, which a bake
+    does not set: "Unsupported feature: bakes of subdivision surfaces diced in pixel space"), for the bake target and, since
+    2026-11-15 (provisional), for any other object's subdivision surface in the baked scene, which the bake's device update
+    would dice in the camera of the last render. Two host fixes came with it
+    (provisional): an edit of a subdivision attribute tags the cage's positions, since Cycles dices again only when the
+    positions or the dicing settings change (`Mesh::need_tessellation`), and before the edit reached no later render; and
+    `cbc_host_subd_mesh` resets the count of vertices the last dicing added (`Mesh::clear_non_sockets`), which before sized
+    a new cage's attributes wrongly after a render (a later render could end the process).
 171. **`film.use_sample_count`: RESOLVED.** A changing set is refused (`fixed_socket`, `cbc_host_set_ints`), as for the other
     sockets the session owns. The six committed scenes that set it true (`passes/sample-count`, `sampling/adaptive-auto`,
     `adaptive-blue-noise`, `adaptive-coarse`, `adaptive-sobol-burley`, `adaptive-threshold`) no longer set it; FACT: their
@@ -3823,23 +3848,83 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     the count.
 172. **Scene-level settings the API does not offer: FOR THE MAINTAINER (a ruling each).** Each is stated in AGENT-README.txt
     "WHAT THIS PACKAGE DOES NOT DO". FACTS from the pinned source:
-    - Tiled rendering (`SessionParams::use_auto_tile`, `tile_size`; the host forces it off): the tile manager writes each
-      finished tile's buffers to a temporary EXR file through OpenImageIO and reads them back to merge
-      (`session/tile.cpp`, `ImageOutput::create`); session level, so Cycles-with-Metal has it. A memory feature (the image
-      is the same); it needs image file writing, which this library excludes by rule.
-    - UDIM tiles: `ImageManager::add_image(vector<unique_ptr<ImageLoader>>, ...)` builds a UDIM texture from loaders that
-      report their tile numbers (`scene/image.h`, `scene/image.cpp`, `ImageLoader::get_tile_number`), so no file is needed;
-      the WGSL image lookup already reads the UDIM table (`wavefront_images.wgsl`). Missing: a host export binding several
-      images with tile numbers to one texture node. Metal has it.
-    - BVH spatial splits (`SceneParams::use_bvh_spatial_split`): read by Cycles' BVH2 builder (`bvh/split.h`,
-      `scene/geometry_bvh.cpp`) and Embree's build quality (`bvh/embree.cpp`); MetalRT does not read it (no use in
-      `device/metal/bvh.mm`), Metal's BVH2 on GPUs without ray-tracing hardware does. A speed setting: the image differs
-      only by traversal order.
-    - Texture limit (`SceneParams::texture_limit`): applied when the image manager loads an image (`scene/image.cpp`,
-      a resolution scale or skipped mip levels), before any device, so every device including Metal. A memory setting.
-    - Progressive results: `PathTrace::update_display` calls `OutputDriver::update_render_tile` during a render
-      (`integrator/path_trace.cpp`); session level, so Metal has it. The host implements only `write_render_tile`; a
-      consumer API carrying intermediate films would be needed (host work only).
+    - Tiled rendering: RESOLVED on the CPU and Metal backends (provisional). `cbc_host_tile_size` sets
+      `SessionParams::use_auto_tile` and `tile_size` for later renders and bakes (0, 8 to 128, or a multiple of 128 up to
+      8192, the sizes `TileManager::compute_render_tile_size` keeps). Cycles' tile manager writes each finished tile to a
+      tile file through OpenImageIO (`session/tile.cpp`, an EXR writer, which several builds do not have) and reads it back
+      for the full frame; the shared overlay of `integrator/path_trace.cpp` (`native/tools/cycles_overlay.py`; every
+      platform's injection swaps that file in) replaces PathTrace's three calls into the file (`write_tile`,
+      `finish_write_tiles`, `read_full_buffer_from_disk`) with an in-memory store holding what the file would (the full
+      buffer's and the denoise parameters' sockets, the channels of the passes in use, zero where no tile was written), so no
+      file is written and no OpenImageIO plugin or `declare_imageio_format` handler is involved. The session names the
+      frame through `full_buffer_written_cb`; after `session.wait()` the host calls `Session::process_full_buffer_from_disk`
+      on the calling thread (full-frame denoising, one `write_render_tile`), and drops the frame of a cancelled or failed
+      render (`codebrix_memory_tiles`). Bakes tile too (each tile reads its region of the bake map). Measured: the CPU
+      reference renders every film and pass bit for bit like the untiled render (plain, passes, light groups,
+      Cryptomatte, camera border, adaptive sampling with its overscan, bakes; `TiledRenderingTests`,
+      `render-settings/tiles-*`); with denoising, Cycles' sample count pass for tiles has Open Image Denoise read the
+      per-pixel-normalised image (`integrator/denoiser_oidn.cpp`), bit for bit an untiled render with a `sample_count`
+      pass, practical against one without (maximum 2.7e-5). Metal: practical against the untiled Metal film without
+      adaptive sampling (`GpuRenderTests`, the host gate's `metal-tiles`). FINDING, for the maintainer: with adaptive
+      sampling Cycles' Metal device stops pixels of small render buffers at other sample counts than the CPU device, which
+      decides identically at every size: tiles of 16 on 64 x 48 stop 327 more pixels at the first check (16 of 32
+      samples; 806 practical failures against the untiled Metal film, `render-settings/tiles-glass-passes`), a camera
+      border in tiles stops every tile there, and small UNTILED films (20 x 20 to 40 x 30) never stop early on Metal
+      where the CPU stops most pixels. Not caused by the tile store (it copies a tile after its last sample; depth and
+      non-adaptive films are equal); INFERENCE: the Metal adaptive-sampling path for small buffers. The WGSL device has not
+      been run with tile offsets and overscan: refused on the WebGPU backend ("WebGPU tiled rendering not implemented").
+    - UDIM tiles: RESOLVED on the CPU and Metal backends (provisional). `cbc_host_image_bind_tiles` binds caller images
+      with tile numbers to one Image Texture node and the host hands them to Cycles' multi-loader
+      `ImageManager::add_image(vector<unique_ptr<ImageLoader>>, ...)` (`scene/image.cpp`); the host's memory loader reports
+      its tile (`ImageLoader::get_tile_number`) and compares it in `equals`, since `add_image_texture` reuses an equal
+      loader's image and reads the tile number from it. Tiles below 1001, repeated tiles, images of different formats and
+      Environment Texture nodes are refused by name (`native/host/ABI.md` "Images"). The WGSL image lookup reads the UDIM
+      table (`wavefront_images.wgsl`) but has not been run with one: the host refuses a tiles binding on the WebGPU backend
+      ("WebGPU UDIM tiles not implemented") until a WebGPU run validates it. Scenes `images/udim-*`.
+    - BVH spatial splits: RESOLVED on the CPU and Metal backends (provisional). `cbc_host_bvh_spatial_split` sets
+      `SceneParams::use_bvh_spatial_split`, read by Cycles' BVH2 builder (`bvh/split.h`, `scene/geometry_bvh.cpp`; off for
+      the top level, curves and motion blur, `bvh/build.cpp`) and Embree's build quality (`bvh/embree.cpp`); MetalRT does
+      not read it (no use in `device/metal/bvh.mm`), Metal's BVH2 on GPUs without ray-tracing hardware does. A speed
+      setting: measured, the CPU reference and the Embree backend render bit for bit the same film with and without it,
+      Metal within its repeat noise (`BvhSpatialSplitTests`, `GpuRenderTests`). A BVH keeps the parameters it was built
+      with, so a change sets `need_update_bvh_for_offset` and `need_update_rebuild` on every geometry (not `tag_modified`,
+      which would run true displacement again on displaced positions, `GeometryManager::displace`) and tags the geometry
+      manager `GEOMETRY_ADDED`, whose reallocation drops the scene BVH (`device_update_preprocess`). The WGSL traversal
+      has not been run with a split BVH2 (a primitive referenced from several leaves): refused on the WebGPU backend
+      ("WebGPU BVH spatial splits not implemented").
+    - Texture limit: RESOLVED on the CPU and Metal backends (provisional). `cbc_host_texture_limit` sets
+      `SceneParams::texture_limit`, which `ImageManager::device_load_image` (`scene/image.cpp`) reads when it loads an
+      image: a scale of limit / larger side, rounded down to a power of two and applied on the host by a box filter
+      (`ImageCache::load_full`, `util_image_resize_pixels`), before any device, so every device including Metal; it brings
+      an image within Metal's 16384-pixel texture limit. Cycles does not load an image again (`need_load`), so the host
+      refuses a change once a render or bake has loaded images (`CBC_NOT_READY`). Exact on the CPU: an image of uniform
+      2 x 2 blocks under half its side renders bit for bit like the image of the block colours (`TextureLimitTests`). The
+      WebGPU device has not been run with reduced images: the host refuses a limit on the WebGPU backend ("WebGPU texture
+      limit not implemented"). Scenes `images/texture-limit-*`.
+    - Progressive results: RESOLVED on the CPU and Metal backends (provisional). A host created with
+      `CBC_HOST_PROGRESSIVE_RESULTS` (`CBCHostConfig.flags`) has a session that is not headless, so
+      `RenderScheduler::work_need_update_display` schedules display updates, and `HostOutput::update_render_tile` reads the
+      Combined film of each `PathTrace::update_display` (`integrator/path_trace.cpp`); the host sends it as `CBC_EVENT_FILM`
+      after the progress event of its samples. On the CPU the final film equals a plain host's bit for bit (plain,
+      adaptive, volume, denoised and camera-border scenes, `ProgressiveResultTests`). The WebGPU device has not been
+      validated with intermediate reads of its render buffers: the host refuses a progressive host on the WebGPU backend
+      ("WebGPU progressive results not implemented").
+    - Texture cache (tiled, mip-mapped images): RESOLVED on the CPU and Metal backends (provisional). Cycles' cache
+      (`scene/image_cache.cpp`) loads tiles (64 x 64 by default; provisional, the consumer's choice of a power of two from
+      64 to 128 on Metal and to 1024 on the CPU, `CBCImageConfig::tile_size`) and mip levels on demand through the virtual
+      `ImageLoader::load_pixels_tile` (`scene/image_loader.h`), which the host's `TiledImageLoader`
+      (`native/host/host_scene_types.inc`) answers from the consumer's read callback (`cbc_host_image_create_tiled`); no file
+      and no OIIO reader is involved, and the consumer decodes its own files (CodeBrix.Imaging). `use_texture_cache` is on
+      for every host (the image manager copies it at construction); only a loader that reports tiles and mip levels takes
+      the cached path, so every other image is unchanged (rule-9 corpus run). The loader fills each tile's 2-pixel padding
+      pixel by pixel with the kernel's own wrap rules, the layout of `OIIOImageLoader::load_pixels_tile`
+      (`scene/image_oiio.cpp`) without its two edge cases. The callbacks are serialized per host; a cancel stops further
+      reads; a failed read fails the render by name instead of sampling the Missing colour (`KERNEL_TILE_LOAD_FAILED`) and
+      the image is loaded anew at the next render. Measured on the CPU: Closest bit for bit like the same pixels bound
+      plainly (every extension), Linear and Cubic within the practical criterion inside the image (`TiledImageTests`); on
+      Metal (cache misses restart the path) within its repeat noise of the recorded reference. The WGSL device has no tile
+      cache (kernel error 256, "tiled image cache not implemented"): the host refuses a tiled image on the WebGPU backend
+      ("WebGPU tiled images not implemented"; capability entry "sparse or tiled images").
 173. **The Light Path node's depth outputs in shadow evaluations, and its Backfacing, Ray Length and depth outputs in volume
     evaluations: RESOLVED.** They reported error 2 ("unsupported SVM opcode or scene-specialized handler") where the CPU renders.
     Bit 77 `LIGHT_PATH_STATE` (a Light Path output that reads path state or the shading point, Backfacing included, in a scene
@@ -4023,14 +4108,17 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     The CPU backend renders them. They are in the target (Cycles' Metal device has them): a gap to close, not a
     permanent refusal.
 186. **Gaussian splats, and quaternion and spherical-harmonics attributes: refused by name, OPEN (new in Cycles v5.3.0,
-    not ported).** The host refuses a point cloud whose `render_as` is `gaussian_splats` on every backend
-    ("Unsupported feature: Gaussian splats are not available in this library (the point cloud input render_as must be
-    points)"): it cannot author the three attributes a splat needs (it has no quaternion value kind), and Cycles would
-    render plain points without them. The device has its own refusals behind that, compiled and never reached through
-    the host: "WebGPU Gaussian splats not implemented" (`KERNEL_FEATURE_GSPLATS` is bit 32 of the 64-bit feature word, so
-    it is tested in C++, not in WGSL), "WebGPU quaternion attributes not implemented" and "WebGPU spherical harmonics
-    attributes not implemented" (non-empty `attributes_quaternion` / `attributes_spherical_harmonics_rest`). In the
-    target; a gap to close.
+    not ported).** The CPU and Metal backends render a point cloud whose `render_as` is `gaussian_splats`, with the
+    standard point attributes `radiance:base`, `scale` and `rotation` (and optionally `radiance:sh`; provisional,
+    `native/host/ABI.md`). On the WebGPU backend the host refuses such a cloud, whatever its attributes, in the device's
+    own words, "WebGPU Gaussian splats not implemented" (`CBC_UNSUPPORTED`, `validate_unavailable`). The device has the
+    same refusal behind that, compiled and not reached through the host (`KERNEL_FEATURE_GSPLATS` is bit 32 of the 64-bit
+    feature word, so it is tested in C++, not in WGSL). Quaternion and spherical-harmonics attributes are value kinds of
+    the host (`CBC_VALUE_QUATERNION`, `CBC_VALUE_SPHERICAL_HARMONICS_REST`, provisional; custom attributes on meshes and
+    point clouds, and the standard splat attributes `rotation` and `radiance:sh` of point clouds), rendered by the CPU
+    and Metal backends; the device refuses a scene in which a shader reads one, "WebGPU quaternion attributes not
+    implemented" and "WebGPU spherical harmonics attributes not implemented" (non-empty `attributes_quaternion` /
+    `attributes_spherical_harmonics_rest`, in `scene_tables()`). In the target; a gap to close.
 187. **Dispersion: not implemented by the device. The dlss denoiser: not available on any backend (by ruling).**
     Dispersion renders on the CPU device and on Cycles' Metal device: `__SPECTRAL__` is defined and the pinned dispersion
     code is compiled as the release wrote it; the illuminant table and its normalisation constant come from the CodeBrix
@@ -4105,6 +4193,17 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     changed in 892 values with the release's closures, so the chain at that sample is another one. Same class as items
     47, 180 and 182. The scene, the comparator and the criterion are unchanged; the corpus reports the scene as failing
     by this one pixel.
+191. **Displaced meshes edited after a render: two inputs the host does not track, KNOWN LIMITATION (deferred by the
+    maintainer's ruling, 2026-11-15; every device).** The host keeps a displaced mesh's authored attributes from a render to
+    the next edit and restores them before Cycles displaces the mesh again (native/host/ABI.md, "Edits after a render";
+    provisional). Not covered: (a) a displacement shader that reads a scene value the host does not watch, such as the
+    Scene Time node (`scene_attributes` `time` and `frame`): Cycles does not displace the mesh again when only that value
+    changes, so the mesh keeps the earlier displacement until the mesh, its shaders or its object are edited; (b) on the
+    Metal backend with MetalRT, when the scene grows beyond MetalRT's default limits (16,777,216 instances or 268,435,456
+    primitives), `MetalDevice::set_bvh_limits` (`device/metal/device_impl.mm`, called by `Scene::update_kernel_features`,
+    `scene/scene.cpp`) switches to its extended limits and tags every geometry modified inside the render's scene update,
+    without the host restoring the authored positions first, so a displaced mesh could be displaced twice. (b) is known
+    from reading the source only; no film shows it.
 
 Resolved, or closed under the device reference policy:
 - [34 and 18 of this list] **AO, Bevel and Raycast `only_local` from a transform-applied object beside instances: RESOLVED.**
@@ -4742,7 +4841,7 @@ Summary:
   Samsung walls of principled_render, nodes_svm and nodes_render are times to their (open) Samsung failures. Evidence:
   `native/work/merge4/runs/pixel/materials-p-*` and `native/work/merge4/device/pixel-cutoffs.json`.
 
-Dispositions DECIDED by Jeremy (2026-10-22): the following are definitively not supported on Pixel 4 level hardware
+Dispositions DECIDED by the maintainer (2026-10-22): the following are definitively not supported on Pixel 4 level hardware
 (Adreno 640) and will NOT be rerun: object and deformation motion blur, node-based world shaders, transparent shadows
 and transparent lighting, emissive triangle lights, feature combination, shadow terminator, stationary renders of
 motion-capable scenes, the managed validation app, and most on-device replays. A full functionality test on a Pixel 5
@@ -7804,7 +7903,8 @@ surface module's node tests and curve intersection, shared with MNEE: MNEE scene
 **Displacement.** A true displacement shader on curves renders (`scenes/curves-b/displacement-on-curves`). Method Both on a curve is refused by
 name, "WebGPU curves with a Both displacement shader not implemented": `svm_node_enter_bump_eval` finds no undisplaced position (only meshes have
 one), saves no differential, and `svm_node_set_bump` reads those stack entries uninitialized, so the pinned CPU result is undefined (open item
-87 found the same for points; checked here with a Both shader on a tuft: the CPU renders, the WGSL stack check reports it).
+87 found the same for points; checked here with a Both shader on a tuft: the CPU renders, the WGSL stack check reports it). Since open item 87's
+ruling the host refuses it first, on every backend, so a scene authored through the host never reaches this device refusal.
 
 **Gates.** `native/tools/curve_mixed_gate.py` runs the AO, raytrace node, subsurface, volume boundary, MNEE and shadow linking state gates
 with `CODEBRIX_CYCLES_GATE_CURVES=1`: tufts of every shape in their fixtures (`curve_gate_tuft.h`). Scenes: `scenes/curves-b/` (caustics,
@@ -7841,7 +7941,7 @@ previous pinned revision a point's `dPdu` and `dPdv` were zero, so `du` and `dv`
 oracle's NaN bit pattern in every component (`point_frame_nan`: 0xffc00000 on x86-64; the ARM64 pattern 0x7fc00000 is an inference, not run).
 
 **Refused by name:** "WebGPU points with a Both displacement shader not implemented": `svm_node_enter_bump_eval` finds no `ATTR_STD_POSITION_UNDISPLACED` on a point,
-saves no differential, and `svm_node_set_bump` then reads stack entries that nothing wrote (item 87). "WebGPU BVH time steps not implemented". At the previous pinned
+saves no differential, and `svm_node_set_bump` then reads stack entries that nothing wrote (item 87; the host refuses it first, on every backend). "WebGPU BVH time steps not implemented". At the previous pinned
 revision the Geometry node's Tangent output on a point reported error 16 (`primitive_tangent` was `normalize(0)` there, NaN on the oracle); at Cycles v5.3.0 it is
 `normalize(dPdu)` of the frame above and renders (`svm_geometry_tangent`).
 

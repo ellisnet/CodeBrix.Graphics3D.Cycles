@@ -40,13 +40,13 @@ Linux references used (r29-linux, not my own): webgpu mode `r29-linux/managed-li
 All tier full. 10-27: webgpu 897/901 strict, control 505/772, bench 116/210, HDRI 321/432 (tablet/HP). Compile-budget capability warnings present in some bundle runs (tablet 2/1/2, HP 2/1/1; webgpu 0); the app's own diagnostic in-app-CPU comparison (e.g. HP HDRI 48 practical) is not the gate verdict.
 
 ## DELIVERABLE C1 (tablet triangle_sample device-scene run, left in place)
-Run folder `/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-android/runs/samsung/triangle-r29/` (file names exactly as expected; paths relative to it). Hashes also in c1-sha256.txt.
+Run folder `<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-android/runs/samsung/triangle-r29/` (file names exactly as expected; paths relative to it). Hashes also in c1-sha256.txt.
 | File | sha256 |
 |---|---|
 | scenes/triangle_sample/samples.scene | 16b2f997a28f16421ad928462da21d2d101c7d0438583cff91e3c0aa8380ee33 |
 | scenes/triangle_sample/samples.local.f32 | 9f75625cce13129c24244c23398eeac05eb10b4b7b58152787ec06bbe1dbca05 |
 | device-scene-reference/references/triangle_sample/samples.f32 | 042c3d1c08be2fc31bdacd367220972be7bb427309797468c15c8871277d90b4 |
-| device-scene-reference/triangle_sample.provenance.json | 860e123b25634d48a4e5617e704efb7f2292fefa9834df0270fc75e647fb1ebb |
+| device-scene-reference/triangle_sample.provenance.json | ab4f2dd04c95a215d3bcd9287cb0fdc4c8ad370f9b6f369c8cb5976e64a120fd |
 | output/triangle_sample/run.actual.bin | d3b31384b8ad2f42191c09265c5ac03b6b6746d15ae995b4078202df41c459c1 |
 | output/triangle_sample/run.reference.bin | 9f75625cce13129c24244c23398eeac05eb10b4b7b58152787ec06bbe1dbca05 |
 | output/triangle_sample/run.reference-diagnostic.jsonl | 8c55c3fb888464d2e6683efa4f7887f6756ba163ff0f2dce0ec694d76196c933 |

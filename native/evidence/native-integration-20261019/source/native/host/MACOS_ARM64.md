@@ -48,7 +48,7 @@ same build also produces CPU-arm64 and Metal oracle films for validating WGSL.
 - sse2neon is not imported; this build targets only macOS with Metal, and the
   CPU device uses Cycles' plain C++ kernels.
 - Reviewed deliverables go to `native/binaries/osx-arm64/` (runtime,
-  unstripped and symbols) with provenance. Jeremy creates every commit and push.
+  unstripped and symbols) with provenance. The maintainer creates every commit and push.
 
 ## Toolchain and isolation
 

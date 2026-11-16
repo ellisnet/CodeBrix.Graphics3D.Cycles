@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -78,8 +79,9 @@ public class GpuRenderTests(ITestOutputHelper output)
         File.WriteAllBytes(Path.Combine(folder, name + ".cpu.rgba.bin"), MemoryMarshal.AsBytes(film.Span).ToArray());
     }
 
-    // Judges a GPU film against its backend's authority (GpuReferences) and logs both comparisons.
-    private FilmComparison Judge(CyclesScene gpu, string name, FilmBuffer film, FilmBuffer cpu)
+    // Judges a GPU film against its backend's authority (GpuReferences) and logs both comparisons. A film that is not an RGBA
+    // render (a bake) names its layout for the recorded manifest.
+    private FilmComparison Judge(CyclesScene gpu, string name, FilmBuffer film, FilmBuffer cpu, string layout = null)
     {
         ICapabilityReport report = gpu.GetCapabilities();
         Dictionary<string, string> facts = new()
@@ -89,6 +91,7 @@ public class GpuRenderTests(ITestOutputHelper output)
             ["cyclesMetalRt"] = Environment.GetEnvironmentVariable("CYCLES_METALRT") ?? "unset (Blender's rule: MetalRT on M3 and later)",
             ["libraryVersion"] = CyclesScene.GetBinaryCapabilities().LibraryVersion,
         };
+        if (layout != null) facts["layout"] = layout;
         return GpuReferences.Judge(gpu.Backend, name, film.Span, cpu.Span, output.WriteLine, facts);
     }
 
@@ -157,6 +160,40 @@ public class GpuRenderTests(ITestOutputHelper output)
         await render.Should().ThrowAsync<OperationCanceledException>();
         gpu.IsFaulted.Should().BeFalse();
         gpu.RenderEventReceived -= CancelOnProgress;
+        FilmBuffer again = await gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
+        Judge(gpu, WebGpuValidationScenes.DiffuseSun, again, RenderCpu(WebGpuValidationScenes.DiffuseSun)).PracticalFailures.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task gpu_render_cancelled_during_a_batch_stops_it_and_the_scene_renders_again_afterwards()
+    {
+        //Arrange
+        using CyclesScene gpu = CreateGpuScene();
+        WebGpuValidationScenes.Build(gpu, WebGpuValidationScenes.DiffuseSun);
+        using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        ConcurrentQueue<RenderProgress> reports = new();
+
+        //Act
+        // One sample first, then a batch the headless scheduler sizes to about 30 seconds: 300 ms after the first count
+        // that batch is on the device, far from done.
+        Task<FilmBuffer> render = gpu.RenderAsync(WebGpuValidationScenes.Settings with { Samples = 1_000_000 }, new SynchronousProgress(reports), cancellation.Token);
+        Stopwatch wait = Stopwatch.StartNew();
+        while (!reports.Any(report => report.Stage == RenderStage.Rendering && report.CompletedSamples >= 1) && !render.IsCompleted &&
+               wait.Elapsed < TimeSpan.FromSeconds(60))
+            await Task.Delay(1, Token);
+        await Task.Delay(300, Token);
+        uint before = reports.Last(report => report.Stage == RenderStage.Rendering).CompletedSamples ?? 0;
+        Stopwatch cancelled = Stopwatch.StartNew();
+        cancellation.Cancel();
+        Func<Task> awaiting = () => render;
+
+        //Assert
+        await awaiting.Should().ThrowAsync<OperationCanceledException>();
+        cancelled.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10));
+        gpu.IsFaulted.Should().BeFalse();
+        before.Should().BeGreaterThan(0u);
+        reports.Last().Stage.Should().Be(RenderStage.Cancelled);
+        reports.Last().CompletedSamples.Should().Be(before);
         FilmBuffer again = await gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
         Judge(gpu, WebGpuValidationScenes.DiffuseSun, again, RenderCpu(WebGpuValidationScenes.DiffuseSun)).PracticalFailures.Should().Be(0);
     }
@@ -303,6 +340,177 @@ public class GpuRenderTests(ITestOutputHelper output)
 
         //Assert
         comparison.PracticalFailures.Should().Be(0);
+    }
+
+    // A mesh with true displacement after the device recovery's complete update, which tags every geometry modified (a
+    // rejected render first), and edited after a render (DisplacementEditTests: its smooth flags, its object's transform and
+    // its displacement shader): the host restores the authored attributes before Cycles displaces the mesh again each time.
+    // The recovered film is judged against the film before the rejection, the edited one by the reference policy (on Metal
+    // the recorded film `displacement-edit` of a scene built with the edits; on WebGPU the CPU film) and against that scene
+    // rendered in the same process.
+    [Fact]
+    public async Task a_displaced_mesh_after_a_device_recovery_and_edited_after_a_render_renders_like_a_new_scene()
+    {
+        //Arrange
+        RenderSettings settings = DisplacementEditTests.Settings;
+        string[] edits = ["smooth", "transform", "displacement-scale"];
+        FilmBuffer cpu;
+        using (CyclesScene cpuScene = TestScenes.CreateCpuScene())
+        {
+            DisplacementEditTests.Parts cpuParts = DisplacementEditTests.Build(cpuScene);
+            foreach (string edit in edits) DisplacementEditTests.Edit(cpuScene, cpuParts, edit);
+            cpu = cpuScene.Render(settings);
+        }
+        using CyclesScene fresh = CreateGpuScene();
+        DisplacementEditTests.Parts freshParts = DisplacementEditTests.Build(fresh);
+        foreach (string edit in edits) DisplacementEditTests.Edit(fresh, freshParts, edit);
+        FilmBuffer built = await fresh.RenderAsync(settings, null, Token);
+        using CyclesScene gpu = CreateGpuScene();
+        DisplacementEditTests.Parts parts = DisplacementEditTests.Build(gpu);
+        FilmBuffer first = await gpu.RenderAsync(settings, null, Token);
+        ConcurrentQueue<RenderEvent> events = new();
+        gpu.RenderEventReceived += (sender, e) => events.Enqueue(e);
+
+        //Act
+        Action removeCause;
+        if (gpu.Backend == Backend.Metal)
+        {
+            (ObjectNode quad, MeshNode mesh, ShaderNode material) = OversizedTexturedQuad(gpu);
+            removeCause = () => { gpu.Remove(quad); gpu.Remove(mesh); gpu.Remove(material); };
+        }
+        else
+        {
+            gpu.Camera.CameraType = CameraCameraType.Custom;
+            removeCause = () => gpu.Camera.CameraType = CameraCameraType.Perspective;
+        }
+        Func<Task> rejected = () => gpu.RenderAsync(settings, null, Token);
+        await rejected.Should().ThrowAsync<NativeFailure>();
+        removeCause();
+        FilmBuffer recovered = await gpu.RenderAsync(settings, null, Token);
+        foreach (string edit in edits) DisplacementEditTests.Edit(gpu, parts, edit);
+        FilmBuffer edited = await gpu.RenderAsync(settings, null, Token);
+        FilmComparison recoveredVersusFirst = FilmComparison.Compare(recovered.Span, first.Span);
+        FilmComparison editedVersusBuilt = FilmComparison.Compare(edited.Span, built.Span);
+        FilmComparison editedVersusFirst = FilmComparison.Compare(edited.Span, first.Span);
+        output.WriteLine($"after the device recovery vs before the rejected render: {recoveredVersusFirst}");
+        output.WriteLine($"edited after a render vs a scene built with the edits: {editedVersusBuilt}");
+        output.WriteLine($"edited vs the first render: {editedVersusFirst}");
+
+        //Assert
+        events.Should().Contain(e => e.Kind == RenderEventKind.Status && e.Message.StartsWith("Device recovered", StringComparison.Ordinal));
+        recoveredVersusFirst.PracticalFailures.Should().Be(0);
+        Judge(fresh, "displacement-edit", built, cpu).PracticalFailures.Should().Be(0);
+        Judge(gpu, "displacement-edit", edited, cpu).PracticalFailures.Should().Be(0);
+        editedVersusBuilt.PracticalFailures.Should().Be(0);
+        editedVersusFirst.PracticalFailures.Should().BeGreaterThan(100);
+        gpu.IsFaulted.Should().BeFalse();
+        parts.Mesh.GetAttribute("P").Should().Equal(parts.Positions);
+    }
+
+    // The largest image side the capability report states for the GPU backend (provisional BackendScope.MaxImageDimension):
+    // on Metal an image of exactly that width renders and one pixel more is refused by Cycles' Metal device by name. On
+    // WebGPU the stated side (INT32_MAX / 2) cannot be allocated as a test image; the report's value is checked.
+    [Fact]
+    public async Task the_reported_largest_image_side_renders_on_metal_and_one_pixel_more_is_refused()
+    {
+        //Arrange
+        using CyclesScene gpu = CreateGpuScene();
+        long? stated = gpu.GetCapabilities().Scope.MaxImageDimension;
+        if (gpu.Backend != Backend.Metal)
+        {
+            stated.Should().Be(1073741823L);
+            return;
+        }
+        async Task<FilmBuffer> RenderWith(uint width)
+        {
+            using CyclesScene scene = CreateGpuScene();
+            WebGpuValidationScenes.Build(scene, WebGpuValidationScenes.DiffuseSun);
+            ShaderNode material = scene.CreateShader();
+            ImageTextureNode texture = material.Add<ImageTextureNode>();
+            DiffuseBsdfNode diffuse = material.Add<DiffuseBsdfNode>();
+            material.Connect(texture.ColorOutput, diffuse.ColorInput);
+            material.Connect(diffuse.BsdfOutput, material.Output.SurfaceInput);
+            material.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+            byte[] pixels = new byte[width * 4];
+            for (int i = 0; i < pixels.Length; i++) pixels[i] = (byte)(i % 4 == 3 ? 255 : 128 + i * 7 % 96);
+            using (CyclesImage image = scene.CreateImage<byte>(width, 1, ImageFormat.Byte4, pixels))
+                texture.Bind(image);
+            scene.CreateObject(scene.CreateMesh([-.3f, -.3f, 0, .3f, -.3f, 0, 0, .3f, 0], [0, 1, 2], material));
+            return await scene.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
+        }
+
+        //Act
+        FilmBuffer atLimit = await RenderWith(16384);
+        Func<Task> beyond = () => RenderWith(16385);
+
+        //Assert
+        stated.Should().Be(16384L);
+        atLimit.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        NativeFailure refused = (await beyond.Should().ThrowAsync<NativeFailure>()).Which;
+        refused.NativeStatus.Should().Be(NativeStatus.Failed);
+        refused.Message.Should().Contain("Texture exceeds maximum allowed size of 16384 x 16384 (requested: 16385 x 1)");
+    }
+
+    // A denoiser upscale factor other than 1 (provisional for bakes; DeliveredFilmTests): refused by name before the bake
+    // starts on the GPU backend as on every backend, with GPU denoising and with denoising on the CPU (with GPU denoising
+    // Cycles' Metal device would bake at half the resolution, which the delivered-film check stays behind to refuse); at a
+    // factor of 1 the GPU bakes.
+    [Fact]
+    public void a_gpu_bake_with_a_denoiser_upscale_factor_is_refused_by_name_before_it_bakes()
+    {
+        //Arrange
+        BakeSettings settings = new(32, 32, 8, BakeType.Combined);
+        FilmBuffer Bake(float factor, bool gpuDenoising)
+        {
+            using CyclesScene scene = CreateGpuScene();
+            (_, ObjectNode target) = DeliveredFilmTests.BuildBake(scene);
+            scene.Integrator.UseDenoise = true;
+            scene.Integrator.DenoiseUseGpu = gpuDenoising;
+            scene.Integrator.DenoiserUpscaleFactor = factor;
+            return scene.Bake(target, settings);
+        }
+
+        //Act
+        FilmBuffer plain = Bake(1, true);
+        Func<FilmBuffer> gpuUpscaled = () => Bake(2, true);
+        Func<FilmBuffer> cpuUpscaled = () => Bake(2, false);
+
+        //Assert
+        plain.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        foreach (Func<FilmBuffer> upscaled in new[] { gpuUpscaled, cpuUpscaled })
+        {
+            NativeFailure refused = upscaled.Should().Throw<NativeFailure>().Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("Unsupported feature: a denoiser upscale factor other than 1");
+        }
+    }
+
+    // Area lights with an axis of infinities (provisional; SceneSettingsTests): the host refuses them by name before the GPU
+    // device sees the scene, on Metal as on every backend (survey row 7: the CPU and Metal films of such a light differ in
+    // 879 practical values, up to 1.1e3); a degenerate area light whose axis holds a NaN renders on the GPU, as on the CPU.
+    [Fact]
+    public void gpu_area_lights_with_an_axis_of_infinities_are_refused_by_name_and_a_nan_axis_renders()
+    {
+        //Arrange
+        using CyclesScene gpu = CreateGpuScene();
+        TestScenes.BuildTyped(gpu);
+        AreaLightNode light = gpu.CreateLight<AreaLightNode>();
+        light.Strength = new System.Numerics.Vector3(6, 6, 6);
+        light.Sizeu = 1;
+        light.Sizev = 1;
+        ObjectNode holder = gpu.CreateObject(light, SceneSettingsTests.AreaLightTransform(1e-23f, 1e-23f, true));
+        RenderSettings settings = new(32, 24, 8);
+
+        //Act
+        Action infinite = () => gpu.Render(settings);
+
+        //Assert
+        CyclesException error = infinite.Should().Throw<CyclesException>().Which;
+        error.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        error.Message.Should().Contain("Unsupported feature: area lights with an axis of infinities");
+        holder.Tfm = SceneSettingsTests.AreaLightTransform(1e-23f, 1, false);
+        gpu.Render(settings).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        gpu.IsFaulted.Should().BeFalse();
     }
 
     // A shadow catcher plane over the diffuse-sun scene: the GPU writes Combined and the three shadow
@@ -507,9 +715,18 @@ public class GpuRenderTests(ITestOutputHelper output)
 
         //Assert
         gpu.IsFaulted.Should().BeFalse();
-        (double maximum, int practical, int strict) = WebGpuValidationScenes.Compare(film.Span, reference.Span);
-        output.WriteLine($"{variant}: max abs error {maximum:G6}, practical failures {practical}, strict differences {strict}");
-        practical.Should().Be(0);
+        if (gpu.Backend == Backend.Metal && variant == "adaptive-blue-noise")
+        {
+            // Cycles' Metal film of this case differs from the CPU film beyond the practical criterion, so on Metal it
+            // is judged against its recorded Metal reference and the CPU comparison is reported (GpuReferences).
+            Judge(gpu, "diffuse-sun-adaptive-blue-noise", film, reference).PracticalFailures.Should().Be(0);
+        }
+        else
+        {
+            (double maximum, int practical, int strict) = WebGpuValidationScenes.Compare(film.Span, reference.Span);
+            output.WriteLine($"{variant}: max abs error {maximum:G6}, practical failures {practical}, strict differences {strict}");
+            practical.Should().Be(0);
+        }
         // The feature changes the image: the reference differs from the same scene without it.
         WebGpuValidationScenes.Compare(reference.Span, unchanged.Span).Practical.Should().BeGreaterThan(0);
     }
@@ -672,9 +889,18 @@ public class GpuRenderTests(ITestOutputHelper output)
 
         //Assert
         gpu.IsFaulted.Should().BeFalse();
-        (double maximum, int practical, int strict) = WebGpuValidationScenes.Compare(film.Span, reference.Span);
-        output.WriteLine($"{variant}: max abs error {maximum:G6}, practical failures {practical}, strict differences {strict}");
-        practical.Should().Be(0);
+        if (gpu.Backend == Backend.Metal && variant == "sky-sun-guiding")
+        {
+            // Cycles' Metal film of this case differs from the CPU film beyond the practical criterion, so on Metal it
+            // is judged against its recorded Metal reference and the CPU comparison is reported (GpuReferences).
+            Judge(gpu, "diffuse-sun-sky-sun-guiding", film, reference).PracticalFailures.Should().Be(0);
+        }
+        else
+        {
+            (double maximum, int practical, int strict) = WebGpuValidationScenes.Compare(film.Span, reference.Span);
+            output.WriteLine($"{variant}: max abs error {maximum:G6}, practical failures {practical}, strict differences {strict}");
+            practical.Should().Be(0);
+        }
         // The feature changes the image: the reference differs from the same scene without it.
         WebGpuValidationScenes.Compare(reference.Span, unchanged.Span).Practical.Should().BeGreaterThan(0);
     }
@@ -867,15 +1093,57 @@ public class GpuRenderTests(ITestOutputHelper output)
             report.PipelineTier.Should().BeNull();
             report.Scope.CameraTypes.Should().Contain(["perspective", "orthograph", "panorama"]);
             report.Scope.RenderTimeRejections.Should().Equal(report.BackendScopes["metal"].RenderTimeRejections);
-            report.Scope.RenderTimeRejections.Should().NotContain(rejection => rejection.Contains("upscale"));
+            report.Scope.RenderTimeRejections.Should().Contain(["a denoiser upscale factor other than 1", "curves and points with a Both displacement shader",
+                "area lights with an axis of infinities (an axis with no zero component whose length underflows to zero)"]);
             report.Scope.PassesNote.Should().NotBeNullOrEmpty();
+            report.Scope.MaxImageTileSize.Should().Be(128L);
         }
         else
         {
             report.BackendName.Should().Be("webgpu");
             report.PipelineTier.Should().BeOneOf("full", "conservative");
             report.Scope.WrittenPasses.Should().Contain("combined");
+            report.Scope.MaxImageTileSize.Should().Be(1024L);
         }
+    }
+
+    // The host refuses both before the device sees the scene, on Metal as on every backend: Metal with GPU denoising
+    // would return the reduced-resolution render packed into the film, and a Both displacement shader on curves or
+    // points has no defined result there either.
+    [Fact]
+    public void gpu_denoiser_upscale_factor_and_both_displacement_on_curves_and_points_are_refused_by_name()
+    {
+        //Arrange
+        using CyclesScene gpu = CreateGpuScene();
+        (ShaderNode material, _, _) = TestScenes.BuildTyped(gpu);
+        RenderSettings settings = new(32, 24, 8);
+        gpu.Integrator.UseDenoise = true;
+        gpu.Integrator.DenoiseUseGpu = true;
+        gpu.Integrator.DenoiserUpscaleFactor = 2f;
+        ShaderNode displaced = TestScenes.BuildBothDisplacementShader(gpu);
+
+        //Act
+        Action upscaled = () => gpu.Render(settings);
+        Action curves = () => gpu.Render(settings);
+        Action points = () => gpu.Render(settings);
+
+        //Assert
+        CyclesException upscaleError = upscaled.Should().Throw<CyclesException>().Which;
+        upscaleError.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        upscaleError.Message.Should().Contain("a denoiser upscale factor other than 1");
+        gpu.Integrator.DenoiserUpscaleFactor = 1f;
+        gpu.Integrator.UseDenoise = false;
+        HairNode hair = gpu.CreateHair([-.5f, -.5f, -1f, 0f, 0f, -1f, .5f, .5f, -1f], [.1f, .1f, .1f], [0u], CurveShape.Thick, displaced);
+        gpu.CreateObject(hair);
+        CyclesException curvesError = curves.Should().Throw<CyclesException>().Which;
+        curvesError.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        curvesError.Message.Should().Contain("curves and points with a Both displacement shader");
+        hair.UsedShaders = [material];
+        gpu.CreateObject(gpu.CreatePointCloud([-.5f, .5f, -1f, .5f, -.5f, -1f], [.2f, .2f], displaced));
+        CyclesException pointsError = points.Should().Throw<CyclesException>().Which;
+        pointsError.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        pointsError.Message.Should().Contain("curves and points with a Both displacement shader");
+        gpu.IsFaulted.Should().BeFalse();
     }
 
     [Fact]
@@ -1153,6 +1421,759 @@ public class GpuRenderTests(ITestOutputHelper output)
 
         //Assert
         comparison.PracticalFailures.Should().Be(0);
+    }
+
+    // The lit triangle scene with a quad behind it and three points in front of it whose material reads a quaternion ("q",
+    // per vertex on the quad, per point on the cloud) and spherical-harmonics coefficients ("sh", per face and per point)
+    // through Attribute nodes: the quaternion's Color is the diffuse colour, its Vector the emission colour, and its Alpha
+    // times the coefficients' Alpha (1 when they are found) the emission strength.
+    private static (MeshNode Quad, PointCloudNode Points) BuildAttributeKinds(CyclesScene scene)
+    {
+        TestScenes.BuildTyped(scene);
+        ShaderNode material = scene.CreateShader();
+        AttributeNode q = material.Add<AttributeNode>();
+        q.Attribute = "q";
+        AttributeNode sh = material.Add<AttributeNode>();
+        sh.Attribute = "sh";
+        sh.Missing = new System.Numerics.Vector3(1f, 0f, 1f);
+        sh.MissingAlpha = 0f;
+        DiffuseBsdfNode diffuse = material.Add<DiffuseBsdfNode>();
+        EmissionNode emission = material.Add<EmissionNode>();
+        MathNode strength = material.Add<MathNode>();
+        strength.MathType = MathMathType.Multiply;
+        AddClosureNode add = material.Add<AddClosureNode>();
+        material.Connect(q.ColorOutput, diffuse.ColorInput);
+        material.Connect(q.VectorOutput, emission.ColorInput);
+        material.Connect(q.AlphaOutput, strength.Value1Input);
+        material.Connect(sh.AlphaOutput, strength.Value2Input);
+        material.Connect(strength.ValueOutput, emission.StrengthInput);
+        material.Connect(diffuse.BsdfOutput, add.Closure1Input);
+        material.Connect(emission.EmissionOutput, add.Closure2Input);
+        material.Connect(add.ClosureOutput, material.Output.SurfaceInput);
+        material.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+        MeshNode quad = scene.CreateMesh([-2.5f, -1.8f, 1f, 2.5f, -1.8f, 1f, 2.5f, 1.8f, 1f, -2.5f, 1.8f, 1f], [0, 1, 2, 0, 2, 3], material);
+        quad.SetAttribute("q", AttributeValue.Quaternion, AttributeDomain.Vertex, AttributeFlags.None,
+            [.9f, .2f, .1f, .3f, .2f, .8f, .3f, .1f, .3f, .3f, .9f, .6f, .7f, .7f, .2f, 0f]);
+        quad.SetAttribute("sh", AttributeValue.SphericalHarmonicsRest, AttributeDomain.Face, AttributeFlags.None,
+            Enumerable.Range(0, 2 * 45).Select(i => MathF.Sin(.37f * i)).ToArray());
+        scene.CreateObject(quad);
+        PointCloudNode points = scene.CreatePointCloud([-.9f, .4f, -.6f, 0f, -.3f, -.8f, .9f, .5f, -.5f], [.3f, .25f, .35f], material);
+        points.SetAttribute("q", AttributeValue.Quaternion, AttributeDomain.Vertex, AttributeFlags.None,
+            [.2f, .9f, .4f, .5f, .6f, .3f, .8f, .25f, .85f, .55f, .15f, .75f]);
+        points.SetAttribute("sh", AttributeValue.SphericalHarmonicsRest, AttributeDomain.Vertex, AttributeFlags.None,
+            Enumerable.Range(0, 3 * 45).Select(i => MathF.Cos(.29f * i)).ToArray());
+        scene.CreateObject(points);
+        return (quad, points);
+    }
+
+    // Quaternion and spherical-harmonics attributes (provisional value kinds) render on Cycles' Metal device, judged against
+    // its recorded reference; the WGSL device has no tables for them and refuses a scene that reads either, by name, until
+    // neither is read (RENDER-TIME REJECTIONS).
+    [Fact]
+    public async Task quaternion_and_spherical_harmonics_attributes_render_on_metal_and_are_refused_by_name_on_webgpu()
+    {
+        //Arrange
+        RenderSettings settings = new(48, 32, 8);
+        using CyclesScene gpu = CreateGpuScene();
+        (MeshNode quad, PointCloudNode points) = BuildAttributeKinds(gpu);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        BuildAttributeKinds(cpu);
+        FilmBuffer reference = cpu.Render(settings);
+        Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
+
+        //Act / Assert
+        reference.Span.ToArray().Where((value, index) => index % 4 == 0).Distinct().Count().Should().BeGreaterThan(10);
+        if (gpu.Backend == Backend.WebGpu)
+        {
+            (await render.Should().ThrowAsync<NativeFailure>()).Which.Message.Should().Contain("WebGPU quaternion attributes not implemented");
+            quad.RemoveAttribute("q");
+            points.RemoveAttribute("q");
+            (await render.Should().ThrowAsync<NativeFailure>()).Which.Message.Should().Contain("WebGPU spherical harmonics attributes not implemented");
+            quad.RemoveAttribute("sh");
+            points.RemoveAttribute("sh");
+            (await render()).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+            return;
+        }
+        FilmBuffer film = await render();
+        Judge(gpu, "attribute-quaternion-spherical-harmonics", film, reference).PracticalFailures.Should().Be(0);
+        gpu.IsFaulted.Should().BeFalse();
+    }
+
+    // Provisional (decision 23): a quaternion on the CurveKey, Curve and Mesh domains of a thick curve covering the view,
+    // read by an Attribute node as an emission (GeometryAttributeTests' output scene, one sample): on Metal each output
+    // pixel holds the quaternion's w, x, y (Color), their average (Fac) and z (Alpha) as on the CPU; on WebGPU the device
+    // refuses the attribute table by name.
+    [Theory]
+    [InlineData("curves-key")]
+    [InlineData("curves-curve")]
+    [InlineData("curves-mesh")]
+    public async Task quaternion_attributes_on_curves_render_on_metal_like_the_cpu_and_are_refused_by_name_on_webgpu(string domain)
+    {
+        //Arrange
+        float[] q = [.625f, .25f, .375f, .8125f];
+        RenderSettings settings = new(8, 8, 1);
+        Action<CyclesScene, ShaderNode> placed = GeometryAttributeTests.Place(domain, "q", AttributeValue.Quaternion, q);
+
+        //Act / Assert
+        foreach (string socket in new[] { "Color", "Fac", "Alpha" })
+        {
+            using CyclesScene gpu = CreateGpuScene();
+            GeometryAttributeTests.BuildOutputScene(gpu, placed, "q", socket);
+            using CyclesScene cpu = TestScenes.CreateCpuScene();
+            GeometryAttributeTests.BuildOutputScene(cpu, placed, "q", socket);
+            FilmBuffer reference = cpu.Render(settings);
+            Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
+            if (gpu.Backend == Backend.WebGpu)
+            {
+                (await render.Should().ThrowAsync<NativeFailure>()).Which.Message.Should().Contain("WebGPU quaternion attributes not implemented");
+                continue;
+            }
+            FilmBuffer film = await render();
+            FilmComparison comparison = FilmComparison.Compare(film.Span, reference.Span);
+            output.WriteLine($"{domain}, {socket}: Metal vs CPU {comparison}");
+            float[] centre = GeometryAttributeTests.Centre(film);
+            centre.Should().Equal(GeometryAttributeTests.Centre(reference));
+            if (socket == "Color") centre.Should().Equal(q[0], q[1], q[2]);
+            if (socket == "Alpha") centre.Should().Equal(q[3], q[3], q[3]);
+            comparison.PracticalFailures.Should().Be(0);
+            gpu.IsFaulted.Should().BeFalse();
+        }
+    }
+
+    // The lit triangle scene with two Gaussian splat clouds in front of it (provisional standard attributes radiance:base,
+    // scale and rotation): one with Cycles' default splat shader (an emission of the radiance of band 0), one with bands 1
+    // to 3 (radiance:sh) and a caller shader that reads the radiance as a diffuse colour plus an emission, on a rotated and
+    // uniformly scaled single-user object (never baked: splats stay in object space).
+    private static PointCloudNode[] BuildGaussianSplats(CyclesScene scene)
+    {
+        TestScenes.BuildTyped(scene);
+        ShaderNode material = scene.CreateShader();
+        AttributeNode radiance = material.Add<AttributeNode>();
+        radiance.Attribute = "radiance";
+        DiffuseBsdfNode diffuse = material.Add<DiffuseBsdfNode>();
+        EmissionNode emission = material.Add<EmissionNode>();
+        emission.Strength = .5f;
+        AddClosureNode add = material.Add<AddClosureNode>();
+        material.Connect(radiance.ColorOutput, diffuse.ColorInput);
+        material.Connect(radiance.ColorOutput, emission.ColorInput);
+        material.Connect(diffuse.BsdfOutput, add.Closure1Input);
+        material.Connect(emission.EmissionOutput, add.Closure2Input);
+        material.Connect(add.ClosureOutput, material.Output.SurfaceInput);
+        material.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+        PointCloudNode[] clouds = new PointCloudNode[2];
+        for (int c = 0; c < 2; c++)
+        {
+            const int count = 20;
+            float[] positions = Enumerable.Range(0, count).SelectMany(i => new[] { -.9f + .095f * i, .7f * MathF.Sin(1.7f * i + c), -1f + .3f * MathF.Cos(i + 2f * c) }).ToArray();
+            PointCloudNode cloud = scene.CreatePointCloud(positions, Enumerable.Repeat(.1f, count).ToArray(), c == 0 ? null : material);
+            cloud.RenderAs = PointCloudRenderAs.GaussianSplats;
+            cloud.SetAttribute("radiance:base", AttributeValue.Float4, AttributeDomain.Vertex, AttributeFlags.Standard,
+                Enumerable.Range(0, count).SelectMany(i => new[] { MathF.Sin(.9f * i + c), MathF.Cos(.7f * i), .8f * MathF.Sin(.4f * i - c), .3f + .033f * i }).ToArray());
+            cloud.SetAttribute("scale", AttributeValue.Vector, AttributeDomain.Vertex, AttributeFlags.Standard,
+                Enumerable.Range(0, count).SelectMany(i => new[] { .1f + .01f * i, .06f + .02f * (i % 4), .03f }).ToArray());
+            cloud.SetAttribute("rotation", AttributeValue.Quaternion, AttributeDomain.Vertex, AttributeFlags.Standard,
+                Enumerable.Range(0, count).SelectMany(i => new[] { MathF.Cos(.2f * i), .6f * MathF.Sin(.2f * i), .8f * MathF.Sin(.2f * i), .1f * c }).ToArray());
+            if (c == 1)
+                cloud.SetAttribute("radiance:sh", AttributeValue.SphericalHarmonicsRest, AttributeDomain.Vertex, AttributeFlags.Standard,
+                    Enumerable.Range(0, count * 45).Select(k => .3f * MathF.Sin(.53f * k)).ToArray());
+            scene.CreateObject(cloud, c == 0 ? null : new Transform3x4(.88f, 0f, .66f, .1f, 0f, 1.1f, 0f, .1f, -.66f, 0f, .88f, .2f));
+            clouds[c] = cloud;
+        }
+        return clouds;
+    }
+
+    // Gaussian splats (a point cloud rendered as splats, with the provisional standard attributes) render on Cycles' Metal
+    // device, judged against its recorded reference; the WGSL device does not implement them and the host refuses them
+    // there by the device's own words until the clouds render as points (RENDER-TIME REJECTIONS).
+    [Fact]
+    public async Task gaussian_splats_render_on_metal_and_are_refused_by_name_on_webgpu()
+    {
+        //Arrange
+        RenderSettings settings = new(48, 32, 8);
+        using CyclesScene gpu = CreateGpuScene();
+        PointCloudNode[] clouds = BuildGaussianSplats(gpu);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        BuildGaussianSplats(cpu);
+        FilmBuffer reference = cpu.Render(settings);
+        Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
+
+        //Act / Assert
+        reference.Span.ToArray().Where((value, index) => index % 4 == 0).Distinct().Count().Should().BeGreaterThan(10);
+        if (gpu.Backend == Backend.WebGpu)
+        {
+            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("WebGPU Gaussian splats not implemented");
+            foreach (PointCloudNode cloud in clouds) cloud.RenderAs = PointCloudRenderAs.Points;
+            (await render()).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+            return;
+        }
+        FilmBuffer film = await render();
+        Judge(gpu, "gaussian-splats", film, reference).PracticalFailures.Should().Be(0);
+        gpu.IsFaulted.Should().BeFalse();
+        clouds[1].GetAttribute("radius").Should().Equal(Enumerable.Repeat(.1f, 20).ToArray());
+    }
+
+    // Provisional (AttributeFlags.SplatBoundingRadius): the bounding radius of each splat, which Cycles' device update
+    // computes on the host for every device (PointCloud::update_gsplat_radii), reads on Metal after a render bit for bit as
+    // on the CPU and as GaussianSplatTests.BoundingRadii computes it, and is not ready before; the WebGPU backend, which
+    // renders no splats, refuses the read by name.
+    [Fact]
+    public async Task the_splat_bounding_radius_reads_on_metal_as_on_the_cpu_and_is_refused_by_name_on_webgpu()
+    {
+        //Arrange
+        RenderSettings settings = new(48, 32, 4);
+        using CyclesScene gpu = CreateGpuScene();
+        PointCloudNode[] clouds = BuildGaussianSplats(gpu);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        PointCloudNode[] cpuClouds = BuildGaussianSplats(cpu);
+        cpu.Render(settings);
+        Func<float[]> bounds = () => clouds[1].GetAttribute("radius", AttributeFlags.SplatBoundingRadius);
+
+        //Act / Assert
+        if (gpu.Backend == Backend.WebGpu)
+        {
+            NativeFailure refused = bounds.Should().Throw<NativeFailure>().Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("WebGPU Gaussian splats not implemented");
+            return;
+        }
+        bounds.Should().Throw<NativeFailure>().Which.NativeStatus.Should().Be(NativeStatus.NotReady);
+        (await gpu.RenderAsync(settings, null, Token)).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        for (int c = 0; c < 2; c++)
+        {
+            float[] computed = clouds[c].GetAttribute("radius", AttributeFlags.SplatBoundingRadius);
+            computed.Should().Equal(cpuClouds[c].GetAttribute("radius", AttributeFlags.SplatBoundingRadius));
+            computed.Should().Equal(GaussianSplatTests.BoundingRadii(clouds[c].GetAttribute("radiance:base", AttributeFlags.Standard),
+                clouds[c].GetAttribute("scale", AttributeFlags.Standard)));
+            clouds[c].GetAttribute("radius").Should().Equal(Enumerable.Repeat(.1f, 20).ToArray());
+        }
+        gpu.IsFaulted.Should().BeFalse();
+    }
+
+    // The lit triangle scene with a quad behind it whose material reads an image texture bound as UDIM tiles (provisional):
+    // UVs 0..3 by 0..2 over six tiles, five of them bound to byte4 checkers of different colours and 1013 unbound (the
+    // texture's Missing colour), as a diffuse colour plus a faint emission.
+    private static (ImageTextureNode Texture, CyclesImage Single) BuildUdimTiles(CyclesScene scene)
+    {
+        TestScenes.BuildTyped(scene);
+        ShaderNode material = scene.CreateShader();
+        UvmapNode uv = material.Add<UvmapNode>();
+        ImageTextureNode texture = material.Add<ImageTextureNode>();
+        texture.Interpolation = ImageTextureInterpolation.Closest;
+        texture.Missing = new System.Numerics.Vector3(.9f, .8f, .1f);
+        DiffuseBsdfNode diffuse = material.Add<DiffuseBsdfNode>();
+        EmissionNode emission = material.Add<EmissionNode>();
+        emission.Strength = .4f;
+        AddClosureNode add = material.Add<AddClosureNode>();
+        material.Connect(uv.UvOutput, texture.VectorInput);
+        material.Connect(texture.ColorOutput, diffuse.ColorInput);
+        material.Connect(texture.ColorOutput, emission.ColorInput);
+        material.Connect(diffuse.BsdfOutput, add.Closure1Input);
+        material.Connect(emission.EmissionOutput, add.Closure2Input);
+        material.Connect(add.ClosureOutput, material.Output.SurfaceInput);
+        material.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+        MeshNode quad = scene.CreateMesh([-2.5f, -1.8f, 1f, 2.5f, -1.8f, 1f, 2.5f, 1.8f, 1f, -2.5f, 1.8f, 1f], [0, 1, 2, 0, 2, 3], material);
+        quad.SetAttribute("uv", AttributeValue.Point2, AttributeDomain.Corner, AttributeFlags.Standard, [0f, 0f, 3f, 0f, 3f, 2f, 0f, 0f, 3f, 2f, 0f, 2f]);
+        scene.CreateObject(quad);
+        UdimTile[] tiles = [.. new[] { 1001, 1002, 1003, 1011, 1012 }.Select((number, k) => new UdimTile(number,
+            scene.CreateImage<byte>(4, 4, ImageFormat.Byte4, Enumerable.Range(0, 16).SelectMany(i => ((i % 4) + (i / 4)) % 2 == 0
+                ? new byte[] { (byte)(200 - 35 * k), (byte)(40 + 40 * k), 90, 255 }
+                : new byte[] { 30, (byte)(180 - 30 * k), (byte)(60 + 45 * k), 255 }).ToArray())))];
+        texture.BindTiles(tiles);
+        foreach (UdimTile tile in tiles[1..]) tile.Image.Dispose();
+        return (texture, tiles[0].Image);
+    }
+
+    // UDIM tiles (provisional cbc_host_image_bind_tiles) render on Cycles' Metal device, judged against its recorded
+    // reference; the host refuses a tiles binding on the WebGPU backend by name until one image is bound instead
+    // (RENDER-TIME REJECTIONS).
+    [Fact]
+    public async Task udim_tiles_render_on_metal_and_are_refused_by_name_on_webgpu()
+    {
+        //Arrange
+        RenderSettings settings = new(48, 32, 8);
+        using CyclesScene gpu = CreateGpuScene();
+        (ImageTextureNode texture, CyclesImage single) = BuildUdimTiles(gpu);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        BuildUdimTiles(cpu).Single.Dispose();
+        FilmBuffer reference = cpu.Render(settings);
+        Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
+
+        //Act / Assert
+        reference.Span.ToArray().Where((value, index) => index % 4 == 0).Distinct().Count().Should().BeGreaterThan(10);
+        if (gpu.Backend == Backend.WebGpu)
+        {
+            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("WebGPU UDIM tiles not implemented");
+            texture.Bind(single);
+            (await render()).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+            single.Dispose();
+            return;
+        }
+        FilmBuffer film = await render();
+        Judge(gpu, "udim-tiles", film, reference).PracticalFailures.Should().Be(0);
+        gpu.IsFaulted.Should().BeFalse();
+        single.Dispose();
+    }
+
+    // Progressive results (provisional HostFlags.ProgressiveResults) on Cycles' Metal device: the validation scene's final
+    // film is judged against the recorded Metal reference of that scene, and against a plain GPU render of it in the same
+    // process (practical criterion: GPU accumulation is atomic); the intermediate films arrive and the last one is the
+    // returned film. The host refuses a progressive host on the WebGPU backend by name (RENDER-TIME REJECTIONS).
+    [Fact]
+    public async Task progressive_results_render_on_metal_and_are_refused_by_name_on_webgpu()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        if (Unavailable.Value != null) Assert.Skip(Unavailable.Value);
+        using CyclesScene gpu = new(CyclesBackend.Gpu, 1, HostFlags.ProgressiveResults);
+        WebGpuValidationScenes.Build(gpu, WebGpuValidationScenes.DiffuseSun);
+        ConcurrentQueue<IntermediateFilm> films = new();
+        gpu.IntermediateFilmReceived += (_, film) => films.Enqueue(film);
+        Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
+
+        //Act / Assert
+        if (gpu.Backend == Backend.WebGpu)
+        {
+            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("WebGPU progressive results not implemented");
+            films.Should().BeEmpty();
+            return;
+        }
+        FilmBuffer film = await render();
+        using CyclesScene plain = CreateGpuScene();
+        WebGpuValidationScenes.Build(plain, WebGpuValidationScenes.DiffuseSun);
+        FilmBuffer plainFilm = await plain.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
+        FilmComparison versusPlain = FilmComparison.Compare(film.Span, plainFilm.Span);
+        output.WriteLine($"progressive vs plain Metal render: {versusPlain}");
+        Judge(gpu, WebGpuValidationScenes.DiffuseSun, film, RenderCpu(WebGpuValidationScenes.DiffuseSun)).PracticalFailures.Should().Be(0);
+        versusPlain.PracticalFailures.Should().Be(0);
+        IntermediateFilm[] received = [.. films];
+        received.Length.Should().BeGreaterThanOrEqualTo(2);
+        received[0].SamplesDone.Should().Be(1u);
+        received.Select(f => f.SamplesDone).Should().BeInAscendingOrder();
+        received[^1].SamplesDone.Should().Be(WebGpuValidationScenes.Settings.Samples);
+        received[^1].Film.Span.SequenceEqual(film.Span).Should().BeTrue();
+        gpu.IsFaulted.Should().BeFalse();
+    }
+
+    // The typed scene with a lit quad behind the triangle, textured with a smooth 16385 x 1 byte4 gradient: one pixel wider
+    // than Cycles' Metal device accepts (MetalDevice::image_alloc, 16384 x 16384).
+    private static void BuildOversizedGradient(CyclesScene scene)
+    {
+        TestScenes.BuildTyped(scene);
+        ShaderNode material = scene.CreateShader();
+        UvmapNode uv = material.Add<UvmapNode>();
+        ImageTextureNode texture = material.Add<ImageTextureNode>();
+        texture.Interpolation = ImageTextureInterpolation.Linear;
+        texture.Extension = ImageTextureExtension.Clamp;
+        DiffuseBsdfNode diffuse = material.Add<DiffuseBsdfNode>();
+        EmissionNode emission = material.Add<EmissionNode>();
+        emission.Strength = .4f;
+        AddClosureNode add = material.Add<AddClosureNode>();
+        material.Connect(uv.UvOutput, texture.VectorInput);
+        material.Connect(texture.ColorOutput, diffuse.ColorInput);
+        material.Connect(texture.ColorOutput, emission.ColorInput);
+        material.Connect(diffuse.BsdfOutput, add.Closure1Input);
+        material.Connect(emission.EmissionOutput, add.Closure2Input);
+        material.Connect(add.ClosureOutput, material.Output.SurfaceInput);
+        material.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+        MeshNode quad = scene.CreateMesh([-2.5f, -1.8f, 1f, 2.5f, -1.8f, 1f, 2.5f, 1.8f, 1f, -2.5f, 1.8f, 1f], [0, 1, 2, 0, 2, 3], material);
+        quad.SetAttribute("uv", AttributeValue.Point2, AttributeDomain.Corner, AttributeFlags.Standard, [0f, 0f, 1f, 0f, 1f, 1f, 0f, 0f, 1f, 1f, 0f, 1f]);
+        scene.CreateObject(quad);
+        const int width = 16385;
+        byte[] pixels = [.. Enumerable.Range(0, width).SelectMany(x => new byte[]
+        {
+            (byte)(30 + 200 * x / (width - 1)), (byte)(220 - 180 * x / (width - 1)), (byte)(128 + 100 * Math.Sin(2 * Math.PI * x / (width - 1))), 255,
+        })];
+        using CyclesImage image = scene.CreateImage<byte>(width, 1, ImageFormat.Byte4, pixels);
+        texture.Bind(image);
+    }
+
+    // The texture limit (provisional CyclesScene.TextureLimit) reduces images on the host before any device sees them: an
+    // image Cycles' Metal device refuses renders once a limit of 16384 halves it (to 8192 x 1), judged against its recorded
+    // reference; the host refuses a limit on the WebGPU backend by name (RENDER-TIME REJECTIONS).
+    [Fact]
+    public async Task texture_limit_brings_an_oversized_image_within_metal_and_is_refused_by_name_on_webgpu()
+    {
+        //Arrange
+        RenderSettings settings = new(48, 32, 8);
+        using CyclesScene gpu = CreateGpuScene();
+        gpu.TextureLimit = 16384;
+        BuildOversizedGradient(gpu);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        cpu.TextureLimit = 16384;
+        BuildOversizedGradient(cpu);
+        FilmBuffer reference = cpu.Render(settings);
+        Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
+
+        //Act / Assert
+        reference.Span.ToArray().Where((value, index) => index % 4 == 0).Distinct().Count().Should().BeGreaterThan(10);
+        if (gpu.Backend == Backend.WebGpu)
+        {
+            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("WebGPU texture limit not implemented");
+            return;
+        }
+        using CyclesScene unlimited = CreateGpuScene();
+        BuildOversizedGradient(unlimited);
+        NativeFailure oversized = (await ((Func<Task<FilmBuffer>>)(() => unlimited.RenderAsync(settings, null, Token))).Should().ThrowAsync<NativeFailure>()).Which;
+        oversized.Message.Should().Contain("16384");
+        FilmBuffer film = await render();
+        Judge(gpu, "texture-limit", film, reference).PracticalFailures.Should().Be(0);
+        gpu.IsFaulted.Should().BeFalse();
+    }
+
+    // BVH spatial splits (provisional CyclesScene.UseBvhSpatialSplit) on Cycles' Metal device, which honours them in its
+    // BVH2 (MetalRT ignores them, as in Cycles): the instanced-slivers scene of BvhSpatialSplitTests with splits is judged
+    // against its recorded reference and against the same scene without splits (practical criterion: GPU accumulation is
+    // atomic), and switching them on after a render matches a scene built with them. The host refuses them on the WebGPU
+    // backend by name (RENDER-TIME REJECTIONS).
+    [Fact]
+    public async Task bvh_spatial_splits_render_on_metal_and_are_refused_by_name_on_webgpu()
+    {
+        //Arrange
+        RenderSettings settings = new(64, 48, 8);
+        using CyclesScene gpu = CreateGpuScene();
+        gpu.UseBvhSpatialSplit = true;
+        BvhSpatialSplitTests.Build(gpu);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        cpu.UseBvhSpatialSplit = true;
+        BvhSpatialSplitTests.Build(cpu);
+        FilmBuffer reference = cpu.Render(settings);
+        Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
+
+        //Act / Assert
+        if (gpu.Backend == Backend.WebGpu)
+        {
+            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("WebGPU BVH spatial splits not implemented");
+            return;
+        }
+        FilmBuffer film = await render();
+        Judge(gpu, "bvh-spatial-split", film, reference).PracticalFailures.Should().Be(0);
+        using CyclesScene plain = CreateGpuScene();
+        BvhSpatialSplitTests.Build(plain);
+        FilmBuffer plainFilm = await plain.RenderAsync(settings, null, Token);
+        FilmComparison versusPlain = FilmComparison.Compare(film.Span, plainFilm.Span);
+        output.WriteLine($"Metal, spatial splits vs none: {versusPlain}");
+        versusPlain.PracticalFailures.Should().Be(0);
+        plain.UseBvhSpatialSplit = true;
+        FilmComparison toggled = FilmComparison.Compare((await plain.RenderAsync(settings, null, Token)).Span, film.Span);
+        output.WriteLine($"Metal, splits switched on after a render vs a scene built with them: {toggled}");
+        toggled.PracticalFailures.Should().Be(0);
+        gpu.IsFaulted.Should().BeFalse();
+        plain.IsFaulted.Should().BeFalse();
+    }
+
+    // Tiled rendering (provisional CyclesScene.TileSize) on Cycles' Metal device: the multi-pass scene of TiledRenderingTests
+    // (a lamp in a light group, a second, emissive triangle, named passes and cryptomatte) in 12 tiles of 16 pixels, the
+    // finished tiles kept in memory, is judged against its recorded reference, and against the untiled Metal film and passes
+    // (practical criterion: GPU accumulation is atomic); with denoising too. The host refuses tiles on the WebGPU backend by
+    // name (RENDER-TIME REJECTIONS).
+    [Fact]
+    public async Task tiled_rendering_renders_on_metal_and_is_refused_by_name_on_webgpu()
+    {
+        //Arrange
+        RenderSettings settings = new(64, 48, 16);
+        using CyclesScene gpu = CreateGpuScene();
+        TiledRenderingTests.Build(gpu, "passes");
+        gpu.TileSize = 16;
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        TiledRenderingTests.Build(cpu, "passes");
+        cpu.TileSize = 16;
+        FilmBuffer reference = cpu.Render(settings);
+        Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
+
+        //Act / Assert
+        if (gpu.Backend == Backend.WebGpu)
+        {
+            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("WebGPU tiled rendering not implemented");
+            return;
+        }
+        FilmBuffer film = await render();
+        Judge(gpu, "tiled-rendering", film, reference).PracticalFailures.Should().Be(0);
+        TiledRenderingTests.Report(gpu).Should().Be((16u, 12L, 1L, 0L));
+        string[] passes = ["Depth", "DiffuseColor", "Emission", "Group"];
+        Dictionary<string, float[]> tiledPasses = passes.ToDictionary(name => name, name => gpu.ReadPass(name).Span.ToArray());
+        using CyclesScene plain = CreateGpuScene();
+        TiledRenderingTests.Build(plain, "passes");
+        FilmBuffer plainFilm = await plain.RenderAsync(settings, null, Token);
+        FilmComparison versusUntiled = FilmComparison.Compare(film.Span, plainFilm.Span);
+        output.WriteLine($"Metal, 12 tiles vs untiled: {versusUntiled}");
+        versusUntiled.PracticalFailures.Should().Be(0);
+        foreach (string name in passes)
+        {
+            FilmComparison pass = FilmComparison.Compare(tiledPasses[name], plain.ReadPass(name).Span);
+            output.WriteLine($"  pass {name}: {pass}");
+            pass.PracticalFailures.Should().Be(0, name);
+        }
+        // Denoising: the full frame read back from memory is denoised once.
+        gpu.Integrator.UseDenoise = true;
+        plain.Integrator.UseDenoise = true;
+        FilmBuffer tiledDenoised = await gpu.RenderAsync(settings, null, Token);
+        FilmBuffer untiledDenoised = await plain.RenderAsync(settings, null, Token);
+        FilmComparison denoised = FilmComparison.Compare(tiledDenoised.Span, untiledDenoised.Span);
+        output.WriteLine($"Metal denoised, 12 tiles vs untiled: {denoised}");
+        denoised.PracticalFailures.Should().Be(0);
+        TiledRenderingTests.Report(gpu).Should().Be((16u, 24L, 2L, 0L));
+        gpu.IsFaulted.Should().BeFalse();
+        plain.IsFaulted.Should().BeFalse();
+    }
+
+    // The lit triangle scene with two quads behind it whose material reads a tiled image (provisional CreateTiledImage) of
+    // a 256 x 256 byte4 pattern with box-filtered mip levels: the left quad minified (its UVs span the image twice, so
+    // Cycles' texture cache selects the smallest level), the right one magnified (a few texels: level 0).
+    private static (ImageTextureNode Texture, TiledImageTests.LevelReader Reader) BuildTiledImage(CyclesScene scene, bool plain = false)
+    {
+        TestScenes.BuildTyped(scene);
+        ShaderNode material = scene.CreateShader();
+        UvmapNode uv = material.Add<UvmapNode>();
+        ImageTextureNode texture = material.Add<ImageTextureNode>();
+        texture.Interpolation = ImageTextureInterpolation.Closest;
+        DiffuseBsdfNode diffuse = material.Add<DiffuseBsdfNode>();
+        EmissionNode emission = material.Add<EmissionNode>();
+        emission.Strength = .4f;
+        AddClosureNode add = material.Add<AddClosureNode>();
+        material.Connect(uv.UvOutput, texture.VectorInput);
+        material.Connect(texture.ColorOutput, diffuse.ColorInput);
+        material.Connect(texture.ColorOutput, emission.ColorInput);
+        material.Connect(diffuse.BsdfOutput, add.Closure1Input);
+        material.Connect(emission.EmissionOutput, add.Closure2Input);
+        material.Connect(add.ClosureOutput, material.Output.SurfaceInput);
+        material.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+        MeshNode quads = scene.CreateMesh([-2.5f, -1.8f, 1f, 0f, -1.8f, 1f, 0f, 1.8f, 1f, -2.5f, 1.8f, 1f, 0f, -1.8f, 1f, 2.5f, -1.8f, 1f, 2.5f, 1.8f, 1f, 0f, 1.8f, 1f],
+            [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7], material);
+        quads.SetAttribute("uv", AttributeValue.Point2, AttributeDomain.Corner, AttributeFlags.Standard,
+            [0f, 0f, 2f, 0f, 2f, 1.5f, 0f, 0f, 2f, 1.5f, 0f, 1.5f, .45f, .45f, .49f, .45f, .49f, .51f, .45f, .45f, .49f, .51f, .45f, .51f]);
+        scene.CreateObject(quads);
+        byte[] pixels = [.. Enumerable.Range(0, 256 * 256).SelectMany(i => ((i % 256 / 16) + (i / 256 / 16)) % 2 == 0
+            ? new byte[] { (byte)(200 - i % 256 / 2), (byte)(40 + i / 256 / 2), 90, 255 }
+            : new byte[] { 30, (byte)(180 - i / 256 / 3), (byte)(60 + i % 256 / 3), 255 })];
+        TiledImageTests.LevelReader reader = plain ? null : new(256, 256, 4, TiledImageTests.BoxLevels(pixels, 256, 256, 4));
+        using CyclesImage image = plain ? scene.CreateImage<byte>(256, 256, ImageFormat.Byte4, pixels) : scene.CreateTiledImage(256, 256, ImageFormat.Byte4, reader);
+        texture.Bind(image);
+        return (texture, reader);
+    }
+
+    // Decision 28(b): a tiled image inside a tiled render (tiles of 16), inside a camera-border render and inside both, on
+    // the GPU backend and on the CPU reference, each against the same render with the same pixels bound as a plain image.
+    // The scene reads level 0 only (TiledImageTests: an orthographic view of a 256 x 256 pattern magnified to half a texel
+    // per pixel across four of its 64-pixel tiles, an emission, no bounce), so the two must agree: Closest renders the same
+    // texels. Cycles restarts a path after a texture cache miss on a GPU by running the kernel that missed again with the
+    // path's state, whose render_pixel_index addresses the tile's or border's buffer; only a miss of the camera ray itself
+    // rebuilds the pixel from the camera width (integrator_init_from_camera with no tile, kernel/integrator/init_from_camera.h),
+    // and only an OSL camera can miss there (camera_sample_custom), which this library does not include.
+    [Theory]
+    [InlineData("tiles")]
+    [InlineData("border")]
+    [InlineData("border-tiles")]
+    public async Task a_tiled_image_renders_inside_a_tiled_render_and_a_camera_border_like_the_image_bound_plainly(string variant)
+    {
+        //Arrange
+        RenderSettings settings = new(128, 128, 1);
+        byte[] pixels = TiledImageTests.Pattern(256, 256);
+        TiledImageTests.LevelReader Build(CyclesScene scene, bool plain)
+        {
+            TiledImageTests.Configure(scene);
+            ImageTextureNode texture = TiledImageTests.Quad(scene, .125f, .125f, .375f, .375f);
+            TiledImageTests.LevelReader reader = plain ? null : new(256, 256, 4, TiledImageTests.BoxLevels(pixels, 256, 256, 4));
+            using (CyclesImage image = plain ? scene.CreateImage<byte>(256, 256, ImageFormat.Byte4, pixels) : scene.CreateTiledImage(256, 256, ImageFormat.Byte4, reader))
+                texture.Bind(image);
+            if (variant.Contains("tiles")) scene.TileSize = 16;
+            if (variant.Contains("border"))
+            {
+                scene.Camera.BorderLeft = .25f;
+                scene.Camera.BorderRight = .8125f;
+                scene.Camera.BorderBottom = .1875f;
+                scene.Camera.BorderTop = .625f;
+            }
+            return reader;
+        }
+        using CyclesScene gpu = CreateGpuScene();
+        TiledImageTests.LevelReader reader = Build(gpu, false);
+        using CyclesScene gpuPlain = CreateGpuScene();
+        Build(gpuPlain, true);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        TiledImageTests.LevelReader cpuReader = Build(cpu, false);
+        using CyclesScene cpuPlain = TestScenes.CreateCpuScene();
+        Build(cpuPlain, true);
+
+        //Act
+        FilmBuffer cpuFilm = cpu.Render(settings), cpuPlainFilm = cpuPlain.Render(settings);
+        output.WriteLine($"{variant}, CPU: tiled image vs plain image {FilmComparison.Compare(cpuFilm.Span, cpuPlainFilm.Span)}; " +
+            $"{cpuReader.Reads.Count} reads, levels {string.Join(",", cpuReader.Reads.Select(r => r.Level).Distinct().Order())}");
+
+        //Assert
+        cpuPlainFilm.Span.ToArray().Where((value, index) => index % 4 == 0).Distinct().Count().Should().BeGreaterThan(100);
+        cpuReader.Reads.Select(r => r.Level).Distinct().Should().Equal(0);
+        cpuReader.Reads.Count.Should().BeGreaterThan(1);
+        cpuFilm.Span.SequenceEqual(cpuPlainFilm.Span).Should().BeTrue();
+        if (gpu.Backend == Backend.WebGpu)
+        {
+            NativeFailure refused = (await ((Func<Task<FilmBuffer>>)(() => gpu.RenderAsync(settings, null, Token))).Should().ThrowAsync<NativeFailure>()).Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            return;
+        }
+        FilmBuffer film = await gpu.RenderAsync(settings, null, Token), plainFilm = await gpuPlain.RenderAsync(settings, null, Token);
+        FilmComparison comparison = FilmComparison.Compare(film.Span, plainFilm.Span);
+        output.WriteLine($"{variant}, Metal: tiled image vs plain image {comparison}; vs the CPU's tiled image {FilmComparison.Compare(film.Span, cpuFilm.Span)}; " +
+            $"{reader.Reads.Count} reads, levels {string.Join(",", reader.Reads.Select(r => r.Level).Distinct().Order())}");
+        reader.Reads.Select(r => r.Level).Distinct().Should().Equal(0);
+        reader.Reads.Count.Should().BeGreaterThan(1);
+        comparison.BitwiseEqual.Should().BeTrue();
+        gpu.IsFaulted.Should().BeFalse();
+    }
+
+    // Tiled images (provisional CyclesScene.CreateTiledImage, Cycles' texture cache) on Cycles' Metal device, whose cache
+    // misses restart the path and load the requested tiles between kernel steps: judged against the recorded Metal
+    // reference, CPU comparison reported; a reader that throws fails the Metal render by name and the next render reads
+    // the tile again. The host refuses a tiled image on the WebGPU backend by name (its capability entry "sparse or tiled
+    // images", RENDER-TIME REJECTIONS).
+    [Fact]
+    public async Task tiled_images_render_on_metal_and_are_refused_by_name_on_webgpu()
+    {
+        //Arrange
+        RenderSettings settings = new(48, 32, 8);
+        using CyclesScene gpu = CreateGpuScene();
+        (_, TiledImageTests.LevelReader reader) = BuildTiledImage(gpu);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        (_, TiledImageTests.LevelReader cpuReader) = BuildTiledImage(cpu);
+        FilmBuffer reference = cpu.Render(settings);
+        Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
+
+        //Act / Assert
+        reference.Span.ToArray().Where((value, index) => index % 4 == 0).Distinct().Count().Should().BeGreaterThan(10);
+        cpuReader.Reads.Select(r => r.Level).Distinct().Count().Should().BeGreaterThan(1);
+        if (gpu.Backend == Backend.WebGpu)
+        {
+            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("WebGPU tiled images not implemented");
+            reader.Reads.Should().BeEmpty();
+            return;
+        }
+        FilmBuffer film = await render();
+        output.WriteLine($"Metal tiled image: {reader.Reads.Count} reads, levels {string.Join(",", reader.Reads.Select(r => r.Level).Distinct().Order())}; CPU {cpuReader.Reads.Count} reads");
+        Judge(gpu, "tiled-image", film, reference).PracticalFailures.Should().Be(0);
+        reader.Overlapped.Should().BeFalse();
+        reader.Reads.Select(r => r.Level).Distinct().Count().Should().BeGreaterThan(1);
+        gpu.IsFaulted.Should().BeFalse();
+        using CyclesScene failing = CreateGpuScene();
+        (_, TiledImageTests.LevelReader failingReader) = BuildTiledImage(failing);
+        InvalidOperationException thrown = new("unreadable tile");
+        failingReader.Fail = (_, _, _, _, _) => thrown;
+        CyclesException failure = (await ((Func<Task<FilmBuffer>>)(() => failing.RenderAsync(settings, null, Token))).Should().ThrowAsync<CyclesException>()).Which;
+        failure.NativeStatus.Should().Be(NativeStatus.Failed);
+        failure.InnerException.Should().BeSameAs(thrown);
+        failure.Message.Should().Contain("the tile reader failed");
+        failingReader.Fail = null;
+        FilmComparison retried = FilmComparison.Compare((await failing.RenderAsync(settings, null, Token)).Span, film.Span);
+        output.WriteLine($"Metal, the render after a failed read vs the first Metal film: {retried}");
+        retried.PracticalFailures.Should().Be(0);
+    }
+
+    // Provisional tile sizes on Cycles' Metal device, at each size it takes (64 and 128: its tile pool of 64 tiles of
+    // size + 4 pixels is at most 16384 wide): the mip levels selected by the footprint equal plain images of the level
+    // colours, and a magnified pattern across a tile edge equals the same pixels bound plainly, each bit for bit on Metal
+    // (the CPU comparison reported); 256 is refused by name. On WebGPU the image is created and its render refused.
+    [Theory]
+    [InlineData(64)]
+    [InlineData(128)]
+    public async Task tiled_images_at_every_metal_tile_size_select_mip_levels_and_render_like_plain_images(int tileSize)
+    {
+        //Arrange
+        using CyclesScene strip = CreateGpuScene();
+        TiledImageTests.LevelReader stripReader = TiledImageTests.TileSizeStrip(strip, tileSize);
+        Func<Task<FilmBuffer>> renderStrip = () => strip.RenderAsync(TiledImageTests.StripSettings, null, Token);
+
+        //Act / Assert
+        if (strip.Backend == Backend.WebGpu)
+        {
+            NativeFailure refused = (await renderStrip.Should().ThrowAsync<NativeFailure>()).Which;
+            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            refused.Message.Should().Contain("WebGPU tiled images not implemented");
+            stripReader.Reads.Should().BeEmpty();
+            return;
+        }
+        FilmBuffer film = await renderStrip();
+        using CyclesScene colors = CreateGpuScene();
+        FilmBuffer plainColors = TiledImageTests.StripOfColors(colors, 0, 1, 2, 3);
+        output.WriteLine($"Metal tile size {tileSize}: strip vs plain level colours {FilmComparison.Compare(film.Span, plainColors.Span)}; " +
+            $"{stripReader.Reads.Count} reads, levels {string.Join(",", stripReader.Reads.Select(r => r.Level).Distinct().Order())}, widest {stripReader.Reads.Max(r => r.Width)}");
+        film.Span.SequenceEqual(plainColors.Span).Should().BeTrue();
+        stripReader.Reads.Select(r => r.Level).Distinct().Order().Should().Equal(0, 1, 2, 3);
+        stripReader.Reads.Max(r => r.Width).Should().BeInRange(tileSize + 1, tileSize + 4);
+
+        using CyclesScene plainScene = CreateGpuScene();
+        using CyclesScene tiledScene = CreateGpuScene();
+        (FilmBuffer plain, _) = TiledImageTests.TileSizePattern(plainScene, tileSize, false);
+        (FilmBuffer tiled, TiledImageTests.LevelReader reader) = TiledImageTests.TileSizePattern(tiledScene, tileSize, true);
+        using CyclesScene cpuScene = TestScenes.CreateCpuScene();
+        (FilmBuffer cpu, _) = TiledImageTests.TileSizePattern(cpuScene, tileSize, true);
+        output.WriteLine($"Metal tile size {tileSize}: tiled vs plain {FilmComparison.Compare(tiled.Span, plain.Span)}; tiled vs CPU tiled {FilmComparison.Compare(tiled.Span, cpu.Span)}");
+        tiled.Span.SequenceEqual(plain.Span).Should().BeTrue();
+        reader.Reads.All(r => r.Level == 0).Should().BeTrue();
+        // Tiles 0 and 1 of level 0, each read from 2 pixels before it (its border).
+        reader.Reads.Select(r => (r.X + 2) / tileSize).Distinct().Count().Should().BeGreaterThanOrEqualTo(2);
+
+        using CyclesScene larger = CreateGpuScene();
+        Action tooLarge = () => larger.CreateTiledImage(512, 512, ImageFormat.Byte4, new TiledImageTests.LevelReader(512, 512, 4, TiledImageTests.SolidLevels(512, 512)), 256);
+        NativeFailure error = tooLarge.Should().Throw<NativeFailure>().Which;
+        error.NativeStatus.Should().Be(NativeStatus.Invalid);
+        error.Message.Should().Contain("Invalid tiled image tile size 256: 0 (the default, 64) or a power of two from 64 to 128 on the Metal backend");
+        strip.IsFaulted.Should().BeFalse();
+        tiledScene.IsFaulted.Should().BeFalse();
+    }
+
+    // Subdivision surfaces bake (provisional): the host maps the texels through Cycles' tessellation of the cage, which every
+    // device receives as triangles, and the device bakes them as any mesh kept in object space. Each bake type of
+    // SubdivisionBakingTests, with and without true displacement, is judged by the reference policy (on Metal against its
+    // recorded reference, the CPU comparison reported; on WebGPU against the CPU bake) and against the same device's bake of the
+    // ordinary mesh built from the same tessellation (practical criterion: GPU accumulation is atomic). Pixel-space dicing is
+    // refused by name on the GPU backend as on every backend.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task subdivision_surfaces_bake_on_the_gpu_like_the_mesh_of_their_tessellation(bool displaced)
+    {
+        //Arrange
+        using CyclesScene gpu = CreateGpuScene();
+        (ObjectNode target, MeshNode mesh) = SubdivisionBakingTests.Build(gpu, displaced);
+        using CyclesScene plain = CreateGpuScene();
+        (ObjectNode plainTarget, _) = SubdivisionBakingTests.BuildPlain(plain, SubdivisionBakingTests.Diced(), displaced);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        (ObjectNode cpuTarget, _) = SubdivisionBakingTests.Build(cpu, displaced);
+        Func<Task<FilmBuffer>> pixelSpace = () => gpu.BakeAsync(target, SubdivisionBakingTests.Settings(BakeType.Combined), null, Token);
+
+        //Act / Assert
+        foreach (BakeType type in SubdivisionBakingTests.Types)
+        {
+            BakeSettings settings = SubdivisionBakingTests.Settings(type);
+            FilmBuffer film = await gpu.BakeAsync(target, settings, null, Token);
+            FilmBuffer plainFilm = await plain.BakeAsync(plainTarget, settings, null, Token);
+            FilmBuffer reference = cpu.Bake(cpuTarget, settings);
+            string kind = type switch { BakeType.DiffuseColor => "diffuse-color", _ => type.ToString().ToLowerInvariant() };
+            string name = "subdivision-bake-" + kind + (displaced ? "-displaced" : "");
+            FilmComparison judged = Judge(gpu, name, film, reference, $"float32 little-endian, {settings.Components} components per texel, row 0 at v = 0 (a {kind} bake)");
+            FilmComparison versusPlain = FilmComparison.Compare(film.Span, plainFilm.Span);
+            output.WriteLine($"{name}: vs the same device's bake of the ordinary mesh of the tessellation: {versusPlain}");
+            judged.PracticalFailures.Should().Be(0, name);
+            versusPlain.PracticalFailures.Should().Be(0, name);
+        }
+        mesh.SubdAdaptiveSpace = MeshSubdAdaptiveSpace.Pixel;
+        NativeFailure refused = (await pixelSpace.Should().ThrowAsync<NativeFailure>()).Which;
+        refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        refused.Message.Should().Contain("bakes of subdivision surfaces diced in pixel space");
+        gpu.IsFaulted.Should().BeFalse();
+        plain.IsFaulted.Should().BeFalse();
     }
 
     // Records reports on the reporting thread, so the last report is known when the task completes.

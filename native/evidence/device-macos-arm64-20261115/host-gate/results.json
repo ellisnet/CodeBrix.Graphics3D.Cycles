@@ -1,0 +1,492 @@
+{
+  "contract": {
+    "webgpuCreateStatus": 2,
+    "filenameSetStatus": 2,
+    "emptyFilenameStatus": 0,
+    "udimTiles": {
+      "environmentStatus": 2,
+      "tile1000Status": 1,
+      "duplicateStatus": 1,
+      "mixedFormatStatus": 1,
+      "boundStatus": 0,
+      "renderStatus": 0
+    },
+    "textureLimit": {
+      "aboveIntMaxStatus": 1,
+      "zeroStatus": 0,
+      "setStatus": 0,
+      "sameAfterRenderStatus": 0,
+      "changedAfterRenderStatus": 5
+    },
+    "bvhSpatialSplit": {
+      "twoStatus": 1,
+      "onStatus": 0,
+      "renderStatus": 0,
+      "offStatus": 0
+    },
+    "tiledImages": {
+      "noReaderStatus": 1,
+      "noReaderReleases": 1,
+      "createStatus": 0,
+      "bindStatus": 0,
+      "releasesBeforeDestroy": 0,
+      "tileSize32Status": 1,
+      "tileSize96Status": 1,
+      "tileSize2048Status": 1,
+      "tileSize65536Status": 1,
+      "tileSize128Status": 0,
+      "tileSize1024Status": 0,
+      "refusedSizeReleases": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "acceptedSizeReleasesBeforeDestroy": [
+        0,
+        0
+      ],
+      "plainTileSizeStatus": 1,
+      "releasesAfterDestroy": 1,
+      "acceptedSizeReleasesAfterDestroy": [
+        1,
+        1
+      ]
+    },
+    "tileSize": {
+      "sevenStatus": 1,
+      "status129": 1,
+      "status8193": 1,
+      "status256": 0,
+      "eightStatus": 0,
+      "renderStatus": 0,
+      "deviceReport": {
+        "tileSize": 8,
+        "tilesKeptInMemory": 4,
+        "framesReadBack": 1,
+        "tilesHeld": 0
+      },
+      "zeroStatus": 0
+    },
+    "subdivisionBakes": {
+      "pixelSpaceMapStatus": 2,
+      "pixelSpaceBakeStatus": 2,
+      "mapStatus": 0,
+      "coveredTexels": true,
+      "trianglesBeyondTheCage": true,
+      "bakeStatus": 0,
+      "bakeFinite": true,
+      "otherPixelSpaceBakeStatus": 2,
+      "otherPixelSpaceMapStatus": 0,
+      "catmullClarkStatus": 2
+    }
+  },
+  "session-reference": [
+    {
+      "passed": true,
+      "device": "CPU",
+      "actualSession": true,
+      "renders": 3,
+      "width": 32,
+      "height": 24,
+      "samples": 8,
+      "materialEditChangesFilm": true,
+      "repeatBitwiseIdentical": true,
+      "teardownReturned": true
+    }
+  ],
+  "session64-reference": [
+    {
+      "passed": true,
+      "device": "CPU",
+      "actualSession": true,
+      "renders": 3,
+      "width": 32,
+      "height": 24,
+      "samples": 64,
+      "materialEditChangesFilm": true,
+      "repeatBitwiseIdentical": true,
+      "teardownReturned": true
+    }
+  ],
+  "cpu": [
+    {
+      "passed": true,
+      "pureCConsumer": true,
+      "explicitCpuReference": true,
+      "materialEditAfterCompilation": true,
+      "repeatBitwiseIdentical": true,
+      "sampleBudgetDecrease": true,
+      "failedRenderPreservesOutput": true,
+      "cancelPreservesOutput": true,
+      "renderAfterCancel": true,
+      "destroyDuringRender": true,
+      "foreignAndStaleHandlesRejected": true
+    }
+  ],
+  "cpu-exit": [
+    {
+      "passed": true,
+      "processExitWithLiveContext": true
+    }
+  ],
+  "cpu-progressive": [
+    {
+      "passed": true,
+      "pureCConsumer": true,
+      "explicitCpuReference": true,
+      "progressiveResults": true,
+      "filmEvents": 12,
+      "lastFilmEqualsReturnedFilm": true,
+      "unknownFlagsRejected": true,
+      "earlierConfigurationSizeAccepted": true
+    }
+  ],
+  "cpu-tiles": [
+    {
+      "passed": true,
+      "pureCConsumer": true,
+      "explicitCpuReference": true,
+      "tiledRendering": true,
+      "tileSize": 8,
+      "tilesKeptInMemory": 72,
+      "framesReadBack": 6,
+      "invalidSizesRefused": true,
+      "cancelPreservesOutput": true,
+      "destroyDuringRender": true
+    }
+  ],
+  "cpu-tiled": [
+    {
+      "passed": true,
+      "tiledImages": true,
+      "tiledEqualsPlainBitwise": true,
+      "reads": 16,
+      "failedReadFailsByName": true,
+      "readAgainAfterFailure": true,
+      "releasedOnFailedCalls": true,
+      "releasedOncePerImage": true,
+      "reentryRefused": true,
+      "updateRefused": true
+    }
+  ],
+  "cpu-tiled-exit": [
+    {
+      "passed": true,
+      "tiledImageLiveAtExit": true
+    },
+    {
+      "passed": true,
+      "releasedAtProcessExit": true,
+      "releases": 1
+    }
+  ],
+  "managed": [
+    {
+      "passed": true,
+      "thinManagedConsumer": true,
+      "cpuReferenceBitwiseEqual": true,
+      "cancelAndReuse": true,
+      "disposeDuringRender": true,
+      "utf8Strings": true,
+      "foreignHandlesRejected": true,
+      "deviceReport": true,
+      "tierConfigValidated": true
+    }
+  ],
+  "metal": [
+    {
+      "passed": true,
+      "pureCConsumer": true,
+      "explicitMetal": true,
+      "materialEditAfterCompilation": true,
+      "sampleBudgetDecrease": true,
+      "failedRenderPreservesOutput": true,
+      "cancelPreservesOutput": true,
+      "renderAfterCancel": true,
+      "destroyDuringRender": true,
+      "foreignAndStaleHandlesRejected": true,
+      "repeatChecks": 3,
+      "repeatStrictCriterionPassed": true,
+      "repeatDifferentComponents": 31,
+      "repeatMaximumAbsoluteError": 2.9802322387695312e-08,
+      "repeatBitwiseIdentical": false
+    }
+  ],
+  "metal-metalrt": [
+    {
+      "passed": true,
+      "pureCConsumer": true,
+      "explicitMetal": true,
+      "materialEditAfterCompilation": true,
+      "sampleBudgetDecrease": true,
+      "failedRenderPreservesOutput": true,
+      "cancelPreservesOutput": true,
+      "renderAfterCancel": true,
+      "destroyDuringRender": true,
+      "foreignAndStaleHandlesRejected": true,
+      "repeatChecks": 3,
+      "repeatStrictCriterionPassed": true,
+      "repeatDifferentComponents": 24,
+      "repeatMaximumAbsoluteError": 2.9802322387695312e-08,
+      "repeatBitwiseIdentical": false
+    }
+  ],
+  "metal-progressive": [
+    {
+      "passed": true,
+      "pureCConsumer": true,
+      "explicitMetal": true,
+      "materialEditAfterCompilation": true,
+      "sampleBudgetDecrease": true,
+      "failedRenderPreservesOutput": true,
+      "cancelPreservesOutput": true,
+      "renderAfterCancel": true,
+      "destroyDuringRender": true,
+      "foreignAndStaleHandlesRejected": true,
+      "repeatChecks": 3,
+      "repeatStrictCriterionPassed": true,
+      "repeatDifferentComponents": 40,
+      "repeatMaximumAbsoluteError": 2.9802322387695312e-08,
+      "repeatBitwiseIdentical": false,
+      "progressiveResults": true,
+      "filmEvents": 13,
+      "lastFilmEqualsReturnedFilm": true
+    }
+  ],
+  "metal-tiles": [
+    {
+      "passed": true,
+      "pureCConsumer": true,
+      "explicitMetal": true,
+      "materialEditAfterCompilation": true,
+      "sampleBudgetDecrease": true,
+      "failedRenderPreservesOutput": true,
+      "cancelPreservesOutput": true,
+      "renderAfterCancel": true,
+      "destroyDuringRender": true,
+      "foreignAndStaleHandlesRejected": true,
+      "repeatChecks": 3,
+      "repeatStrictCriterionPassed": true,
+      "repeatDifferentComponents": 30,
+      "repeatMaximumAbsoluteError": 2.9802322387695312e-08,
+      "repeatBitwiseIdentical": false,
+      "tiledRendering": true,
+      "tileSize": 8,
+      "tilesKeptInMemory": 73,
+      "framesReadBack": 6,
+      "invalidSizesRefused": true
+    }
+  ],
+  "image-reference-a": [
+    {
+      "passed": true,
+      "originalNativeCpuSession": true,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "cases": 256
+    }
+  ],
+  "image-reference-b": [
+    {
+      "passed": true,
+      "originalNativeCpuSession": true,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "cases": 256
+    }
+  ],
+  "image-reference-c": [
+    {
+      "passed": true,
+      "originalNativeCpuSession": true,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "cases": 256
+    }
+  ],
+  "reload": [
+    {
+      "passed": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "copiedInputs": true,
+      "releasedBindingModeEdits": true
+    },
+    {
+      "passed": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "copiedInputs": true,
+      "releasedBindingModeEdits": true
+    },
+    {
+      "passed": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "copiedInputs": true,
+      "releasedBindingModeEdits": true
+    },
+    {
+      "passed": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "copiedInputs": true,
+      "releasedBindingModeEdits": true
+    },
+    {
+      "passed": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "copiedInputs": true,
+      "releasedBindingModeEdits": true
+    },
+    {
+      "passed": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "copiedInputs": true,
+      "releasedBindingModeEdits": true
+    },
+    {
+      "passed": true,
+      "configurationRounds": 6,
+      "films": 1536
+    }
+  ],
+  "managed-reload": [
+    {
+      "passed": true,
+      "thinManagedConsumer": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "cpuReferenceBitwiseEqual": true,
+      "emptyStringRoundtrip": true,
+      "copiedImagesAndReleasedBindings": true
+    },
+    {
+      "passed": true,
+      "thinManagedConsumer": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "cpuReferenceBitwiseEqual": true,
+      "emptyStringRoundtrip": true,
+      "copiedImagesAndReleasedBindings": true
+    },
+    {
+      "passed": true,
+      "thinManagedConsumer": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "cpuReferenceBitwiseEqual": true,
+      "emptyStringRoundtrip": true,
+      "copiedImagesAndReleasedBindings": true
+    },
+    {
+      "passed": true,
+      "thinManagedConsumer": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "cpuReferenceBitwiseEqual": true,
+      "emptyStringRoundtrip": true,
+      "copiedImagesAndReleasedBindings": true
+    },
+    {
+      "passed": true,
+      "thinManagedConsumer": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "cpuReferenceBitwiseEqual": true,
+      "emptyStringRoundtrip": true,
+      "copiedImagesAndReleasedBindings": true
+    },
+    {
+      "passed": true,
+      "thinManagedConsumer": true,
+      "cases": 256,
+      "imageFormats": 8,
+      "colorspaces": 6,
+      "alphaModes": 5,
+      "environmentCases": 16,
+      "fileAndRebindCases": 0,
+      "cpuReferenceBitwiseEqual": true,
+      "emptyStringRoundtrip": true,
+      "copiedImagesAndReleasedBindings": true
+    },
+    {
+      "passed": true,
+      "sameManagedProcess": true,
+      "configurationRounds": 6,
+      "films": 1536
+    }
+  ],
+  "concurrency": [
+    {
+      "passed": true,
+      "guardedConfigurationRejections": 256,
+      "racingConfigurationsAccepted": 254,
+      "racingConfigurationsRejected": 2,
+      "concurrentHostLifetimes": 192,
+      "hostLiveConfigurationRejections": 192,
+      "destroyDuringRender": 12,
+      "racingReaders": 48,
+      "closingConfigurationRejections": 840,
+      "postRemovalConfigurationRejections": 828,
+      "cancelledOutputUntouched": true,
+      "films": 2
+    }
+  ]
+}

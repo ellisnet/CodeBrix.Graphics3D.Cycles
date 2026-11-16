@@ -1,0 +1,20 @@
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+
+Survey row 8b (KIT-MACOS-ARM64 section 6): lifts the host refusal "A subdivision surface cannot be baked"
+(native/host/host_bake.inc, bake_request) so that the next behaviour of a subdivision-surface bake can be recorded.
+
+SURVEY BUILD ONLY, NEVER PRODUCT CODE. Scratch change for the Apple Silicon feature survey; applied with
+`patch -p1 -d <survey copy>` to a git-archive copy of the base tree under native/work/, never to the repository.
+Base: branch cycles-with-metal-v5.3.0, commit 0b19d87507ac24f1e55ba6a50d1ac6b05c8d417c (host sources identical to 828f6c2f9).
+
+--- a/native/host/host_bake.inc
++++ b/native/host/host_bake.inc
+@@ -57,7 +57,6 @@
+   require(request.object, "Bake object handle is not an object");
+   request.mesh = dynamic_cast<Mesh *>(request.object->get_geometry());
+   require(request.mesh, "Only an object whose geometry is a triangle mesh can be baked");
+-  require(request.mesh->get_subdivision_type() == Mesh::SUBDIVISION_NONE, "A subdivision surface cannot be baked", CBC_UNSUPPORTED);
+   require(request.mesh->num_triangles() > 0, "The bake mesh has no triangles");
+   const char *name = config->uv_attribute;
+   request.uv = name && *name ? request.mesh->attributes.find(ustring(name)) : request.mesh->attributes.find(ATTR_STD_UV);

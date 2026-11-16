@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+
+CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever: the Metal kernel sources.
+
+The native host compiles its Metal kernels at run time from codebrix-cycles/source in
+the folder that holds libcodebrix_cycles_host.dylib. The package carries that tree at
+its root, not under runtimes/osx-arm64/native/: NuGet keeps the subfolders of native
+assets only for an application without a runtime identifier, and flattens them into
+the output folder for one with a runtime identifier, where the kernel headers' names
+collide (NETSDK1152). This file, imported by every project that references the package
+directly or transitively, copies the tree to where the host library lands, for build,
+run and publish:
+
+  no runtime identifier      runtimes/osx-arm64/native/codebrix-cycles/source/...
+  osx-arm64 (osx*-arm64)     codebrix-cycles/source/... beside the application
+  any other identifier       nothing (the package has no native assets for it)
+-->
+<Project>
+	<PropertyGroup>
+		<_CodeBrixCyclesMacOSArm64KernelTree>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', 'codebrix-cycles'))</_CodeBrixCyclesMacOSArm64KernelTree>
+	</PropertyGroup>
+	<!-- Item conditions see the final runtime identifier, however the project or the SDK sets it. -->
+	<ItemGroup Condition="'$(RuntimeIdentifier)'==''">
+		<None Include="$(_CodeBrixCyclesMacOSArm64KernelTree)**/*"
+		      Link="runtimes/osx-arm64/native/codebrix-cycles/%(RecursiveDir)%(Filename)%(Extension)"
+		      CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(RuntimeIdentifier)'!='' And $(RuntimeIdentifier.StartsWith('osx')) And $(RuntimeIdentifier.EndsWith('-arm64'))">
+		<None Include="$(_CodeBrixCyclesMacOSArm64KernelTree)**/*"
+		      Link="codebrix-cycles/%(RecursiveDir)%(Filename)%(Extension)"
+		      CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+	</ItemGroup>
+</Project>

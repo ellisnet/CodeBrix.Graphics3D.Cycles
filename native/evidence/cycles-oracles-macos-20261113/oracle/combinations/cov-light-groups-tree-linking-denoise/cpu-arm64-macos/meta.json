@@ -1,0 +1,124 @@
+{
+  "sceneId": "combinations/cov-light-groups-tree-linking-denoise",
+  "sceneSha256": "ab6fe47a0368173961c5da7540d63ac4ab969ec6d92755b46a9de593198804f8",
+  "backend": "cpu-arm64-macos",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0401739,
+    0.00930208
+  ],
+  "filmSha256": [
+    "dfc35ba6a02534d49bdaa3ba2c2bbd98d54d4241d91cbcadfd2a7f34b43d721a",
+    "dfc35ba6a02534d49bdaa3ba2c2bbd98d54d4241d91cbcadfd2a7f34b43d721a"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "LG lamp",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "b6e1d3eed48d1b50c9a01947fc240d0fd17bcf7c3e5a0a4bc40c2f38209b5f4a",
+        "b6e1d3eed48d1b50c9a01947fc240d0fd17bcf7c3e5a0a4bc40c2f38209b5f4a"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "LG fill",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1643e18f09998b2f6a136b4b148bf6cfe3958b360095f7e842308a7690fc97ab",
+        "1643e18f09998b2f6a136b4b148bf6cfe3958b360095f7e842308a7690fc97ab"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "LG spot",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "a5eaeb197b9072dec3f95438a22e6eba4b678885fe3a9d594eab64e610409ba2",
+        "a5eaeb197b9072dec3f95438a22e6eba4b678885fe3a9d594eab64e610409ba2"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "LG world",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "06ae6a4cd5c3ba0a7c99624a94b4533c17386fd3da6fb2b31186e91f97137611",
+        "06ae6a4cd5c3ba0a7c99624a94b4533c17386fd3da6fb2b31186e91f97137611"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2.1\nBuildVersion:\t\t26B131",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.2\nBuild version 27B52",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "828f6c2f9ee2c57dd379d472a0252edaf3caa87a",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+  },
+  "hostLibrarySha256": "118d1e89846d10d553db261d37d94dfa66540728656c8d856e7d6815ae67d340",
+  "runnerSha256": "486b29f946319f99c8bd96a4a43f5c3e03ed444b21d5e28cbc8d6299378f485d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/combinations/cov-light-groups-tree-linking-denoise.json",
+  "backendDescription": "Cycles CPU device, Apple Clang arm64, plain C++ kernels (no sse2neon), fixed-baseline oracle: no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.122,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/combinations/cov-light-groups-tree-linking-denoise.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-macos",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/combinations/cov-light-groups-tree-linking-denoise/cpu-arm64-macos",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

@@ -1,0 +1,60 @@
+Fri Nov 13 20:59:45 PST 2026
+Removing a Cycles source copy that predates the pinned import: /work/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/cycles-source
+In file included from /work/CodeBrix.Graphics3D.Cycles/research/native/reference.cpp:18:
+In file included from /work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math.h:7:
+In file included from /work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:42:
+In file included from /work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_gpu_compressed.h:7:
+/work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/half.h:208:3: error: unknown type name 'uint16x4_t'
+  208 |   uint16x4_t v = vdup_n_u16(uint16_t(h));
+      |   ^
+/work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/half.h:208:18: error: use of undeclared identifier 'vdup_n_u16'
+  208 |   uint16x4_t v = vdup_n_u16(uint16_t(h));
+      |                  ^
+/work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/half.h:225:63: error: use of undeclared identifier 'vdupq_n_f32'
+  225 |   return half(vget_lane_u16(vreinterpret_u16_f16(vcvt_f16_f32(vdupq_n_f32(f))), 0));
+      |                                                               ^
+/work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/half.h:244:46: error: use of undeclared identifier 'float32x4_t'
+  244 |            vreinterpret_u16_f16(vcvt_f16_f32(float32x4_t{f.x, f.y, f.z, f.w})));
+      |                                              ^
+/work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/half.h:268:47: error: use of undeclared identifier 'vld1_u16'
+  268 |             vcvt_f32_f16(vreinterpret_f16_u16(vld1_u16(reinterpret_cast<const uint16_t *>(&h)))));
+      |                                               ^
+/work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/half.h:284:9: error: unknown type name 'uint16x4_t'
+  284 |   const uint16x4_t h = vreinterpret_u16_f16(vcvt_f16_f32(float32x4_t{f.x, f.y, f.z, 0.0f}));
+      |         ^
+/work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/half.h:284:58: error: use of undeclared identifier 'float32x4_t'
+  284 |   const uint16x4_t h = vreinterpret_u16_f16(vcvt_f16_f32(float32x4_t{f.x, f.y, f.z, 0.0f}));
+      |                                                          ^
+/work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/half.h:303:9: error: unknown type name 'float32x4_t'
+  303 |   const float32x4_t f = vcvt_f32_f16(
+      |         ^
+/work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/half.h:304:28: error: use of undeclared identifier 'uint16x4_t'
+  304 |       vreinterpret_f16_u16(uint16x4_t{uint16_t(h.x), uint16_t(h.y), uint16_t(h.z), 0}));
+      |                            ^
+9 errors generated.
+Traceback (most recent call last):
+  File "/work/CodeBrix.Graphics3D.Cycles/native/tools/build_cycles_linux_arm64.py", line 99, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/work/CodeBrix.Graphics3D.Cycles/native/tools/build_cycles_linux_arm64.py", line 57, in main
+    verify_copy();generated=overlay(work/'overlay');save(work/'webgpu-compatibility.json',audit(allow_rust_documentation_change=True))
+                            ~~~~~~~^^^^^^^^^^^^^^^^
+  File "/work/CodeBrix.Graphics3D.Cycles/native/tools/build_cycles.py", line 95, in overlay
+    generate(UPSTREAM,out,REPO/'research/native/reference.cpp')
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/CodeBrix.Graphics3D.Cycles/research/translate.py", line 278, in generate
+    candidates = [n for top in ast(upstream, work, name, translation_unit) for n in nodes(top)
+                               ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/CodeBrix.Graphics3D.Cycles/research/translate.py", line 87, in ast
+    subprocess.run(command, stdout=stream, check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['clang++', '-std=c++20', '-fsyntax-only', '-Xclang', '-ast-dump=json', '-I', '/work/CodeBrix.Graphics3D.Cycles/third_party/deps/tbb/include', '-Xclang', '-ast-dump-filter=ccl::ray_triangle_reciprocal', '-I', '/work/CodeBrix.Graphics3D.Cycles/third_party/cycles/src', '/work/CodeBrix.Graphics3D.Cycles/research/native/reference.cpp']' returned non-zero exit status 1.
+
+real	2m6.211s
+user	0m22.431s
+sys	0m16.029s
+exit=1
+Fri Nov 13 21:01:51 PST 2026

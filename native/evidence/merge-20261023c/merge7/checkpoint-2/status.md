@@ -154,25 +154,25 @@
 [20:15:25] hp hostcap-linux-triangle: PASS tri5 readbacks=464 max=2.32e-06 strict=412 fmt=native-command-stream-v8
 [20:15:47] hp hostcap-linux-triangle: END passed=True wall=331s/3600s
 [20:15:47] hp hostcap triangle exit=0
-[20:16:10] hp hostcap-linux-terminator: START term0 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-0)
+[20:16:10] hp hostcap-linux-terminator: START term0 (<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-0)
 [20:16:44] hp hostcap-linux-terminator: PASS term0 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
-[20:16:45] hp hostcap-linux-terminator: START term1 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-1)
+[20:16:45] hp hostcap-linux-terminator: START term1 (<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-1)
 [20:17:26] hp hostcap-linux-terminator: PASS term1 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
-[20:17:27] hp hostcap-linux-terminator: START term2 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-2)
+[20:17:27] hp hostcap-linux-terminator: START term2 (<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-2)
 [20:18:08] hp hostcap-linux-terminator: PASS term2 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
-[20:18:09] hp hostcap-linux-terminator: START term3 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-3)
+[20:18:09] hp hostcap-linux-terminator: START term3 (<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-3)
 [20:18:50] hp hostcap-linux-terminator: PASS term3 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
-[20:18:51] hp hostcap-linux-terminator: START term4 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-4)
+[20:18:51] hp hostcap-linux-terminator: START term4 (<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-4)
 [20:20:00] hp hostcap-linux-terminator: PASS term4 readbacks=455 max=1.53e-05 strict=25 fmt=native-command-stream-v6
-[20:20:00] hp hostcap-linux-terminator: START term5 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-5)
+[20:20:00] hp hostcap-linux-terminator: START term5 (<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-5)
 [20:21:09] hp hostcap-linux-terminator: PASS term5 readbacks=446 max=1.53e-05 strict=21 fmt=native-command-stream-v6
-[20:21:10] hp hostcap-linux-terminator: START term6 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-6)
+[20:21:10] hp hostcap-linux-terminator: START term6 (<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-6)
 [20:22:19] hp hostcap-linux-terminator: PASS term6 readbacks=446 max=1.53e-05 strict=21 fmt=native-command-stream-v6
-[20:22:19] hp hostcap-linux-terminator: START term7 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-7)
+[20:22:19] hp hostcap-linux-terminator: START term7 (<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-7)
 [20:23:28] hp hostcap-linux-terminator: PASS term7 readbacks=455 max=1.53e-05 strict=25 fmt=native-command-stream-v6
-[20:23:29] hp hostcap-linux-terminator: START term8 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-8)
+[20:23:29] hp hostcap-linux-terminator: START term8 (<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-8)
 [20:24:39] hp hostcap-linux-terminator: PASS term8 readbacks=407 max=4.77e-07 strict=8 fmt=native-command-stream-v6
-[20:24:39] hp hostcap-linux-terminator: START term9 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-9)
+[20:24:39] hp hostcap-linux-terminator: START term9 (<home>/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/validation/c-shadow-terminator/out/shadow_terminator/run/case-9)
 [20:25:40] checkpoint-2 status written
 [20:26:04] hp hostcap-linux-terminator: PASS term9 readbacks=443 max=1.07e-06 strict=12 fmt=native-command-stream-v6
 [20:26:25] hp hostcap-linux-terminator: END passed=True wall=617s/3600s

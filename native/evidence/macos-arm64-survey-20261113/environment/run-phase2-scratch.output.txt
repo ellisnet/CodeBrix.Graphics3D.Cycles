@@ -1,0 +1,128 @@
+starter/diffuse-triangle                 cpu-arm64-macos        [0.00315762, 0.000296583]
+survey/integer-math-wraps                cpu-arm64-macos        [0.00244087, 0.00059375]
+survey/integer-math-traps                cpu-arm64-macos        [0.00168004, 0.000223]
+survey/denoise-upscale-1-gpu-noisy       cpu-arm64-macos        [0.136576, 0.00615312]
+survey/denoise-upscale-2-gpu-noisy       cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_render returned 2: Unsupported feature: a denoiser upscale factor other than 1 (this backend denoises with Open Image Denoise on the CPU, which does not upscale)
+survey/bake-zero-area-diffuse            cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-diffuse-direct     cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-glossy             cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-glossy-direct      cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-transmission       cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-transmission-direct cpu-arm64-macos        FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+starter/diffuse-triangle                 metal-m2pro            [0.432967, 0.00649158]
+survey/integer-math-wraps                metal-m2pro            [0.414955, 0.00578821]
+survey/integer-math-traps                metal-m2pro            [0.41091, 0.0049985]
+survey/denoise-upscale-1-gpu-noisy       metal-m2pro            [1.27956, 0.0601465]
+survey/denoise-upscale-2-gpu-noisy       metal-m2pro            [1.03975, 0.0545968]
+survey/bake-zero-area-diffuse            metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-diffuse-direct     metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-glossy             metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-glossy-direct      metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-transmission       metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-transmission-direct metal-m2pro            FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+starter/diffuse-triangle                 metal-m2pro-metalrt    [0.23636, 0.00803542]
+survey/integer-math-wraps                metal-m2pro-metalrt    [0.232521, 0.00507708]
+survey/integer-math-traps                metal-m2pro-metalrt    [0.469862, 0.135248]
+survey/denoise-upscale-1-gpu-noisy       metal-m2pro-metalrt    [0.91752, 0.0441288]
+survey/denoise-upscale-2-gpu-noisy       metal-m2pro-metalrt    [0.749839, 0.130233]
+survey/bake-zero-area-diffuse            metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-diffuse-direct     metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-glossy             metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-glossy-direct      metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-transmission       metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+survey/bake-zero-area-transmission-direct metal-m2pro-metalrt    FAILED: codebrix_cycles_oracle: cbc_host_bake returned 3: Nonfinite bake output
+starter/diffuse-triangle (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.49e-08 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.49e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              2.98e-08   2.51e-07   2.82e-09             0          0
+      worst x=19 y=8 R: ref 0.13709569 got 0.13709572 (0.000385x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      2.98e-08   2.51e-07   2.79e-09             0          0
+      worst x=19 y=8 R: ref 0.13709569 got 0.13709572 (0.000385x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]          1.49e-08   1.24e-07   7.24e-10             0          0
+      worst x=13 y=12 R: ref 0.136403397 got 0.136403382 (0.000193x tolerance)
+  verdict: perfect
+
+survey/integer-math-wraps (40x48)
+  cpu-arm64-macos            cpu       samples 4     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 4     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 4     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              2.15e+09          2   1.79e+08           144        144
+      worst x=0 y=0 R: ref 357913952 got -357913952 (1e+04x tolerance)
+      pass D0                       aov_value              maxAbs=       255 practicalFail=48 strictDiff=48
+      pass D1                       aov_value              maxAbs=       255 practicalFail=48 strictDiff=48
+      pass D2                       aov_value              maxAbs=       255 practicalFail=48 strictDiff=48
+      pass D3                       aov_value              maxAbs=       127 practicalFail=48 strictDiff=48
+      pass R                        aov_value              maxAbs=  2.15e+09 practicalFail=48 strictDiff=48
+      pass CELL                     aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      2.15e+09          2   1.79e+08           144        144
+      worst x=0 y=0 R: ref 357913952 got -357913952 (1e+04x tolerance)
+      pass D0                       aov_value              maxAbs=       255 practicalFail=48 strictDiff=48
+      pass D1                       aov_value              maxAbs=       255 practicalFail=48 strictDiff=48
+      pass D2                       aov_value              maxAbs=       255 practicalFail=48 strictDiff=48
+      pass D3                       aov_value              maxAbs=       127 practicalFail=48 strictDiff=48
+      pass R                        aov_value              maxAbs=  2.15e+09 practicalFail=48 strictDiff=48
+      pass CELL                     aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+  metal-m2pro-metalrt vs metal-m2pro [reported]                 0          0          0             0          0
+      worst x=0 y=0 R: ref -357913952 got -357913952 (0x tolerance)
+      pass D0                       aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+      pass D1                       aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+      pass D2                       aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+      pass D3                       aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+      pass R                        aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+      pass CELL                     aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+  verdict: perfect
+
+survey/integer-math-traps (12x24)
+  cpu-arm64-macos            cpu       samples 4     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 4     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 4     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]                     1          0      0.354           144        144
+      worst x=0 y=4 R: ref 0 got -1 (2e+04x tolerance)
+      pass D0                       aov_value              maxAbs=       255 practicalFail=48 strictDiff=48
+      pass D1                       aov_value              maxAbs=       255 practicalFail=16 strictDiff=16
+      pass D2                       aov_value              maxAbs=       255 practicalFail=16 strictDiff=16
+      pass D3                       aov_value              maxAbs=         1 practicalFail=16 strictDiff=16
+      pass R                        aov_value              maxAbs=         1 practicalFail=48 strictDiff=48
+      pass CELL                     aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]             1          0      0.354           144        144
+      worst x=0 y=4 R: ref 0 got -1 (2e+04x tolerance)
+      pass D0                       aov_value              maxAbs=       255 practicalFail=48 strictDiff=48
+      pass D1                       aov_value              maxAbs=       255 practicalFail=16 strictDiff=16
+      pass D2                       aov_value              maxAbs=       255 practicalFail=16 strictDiff=16
+      pass D3                       aov_value              maxAbs=         1 practicalFail=16 strictDiff=16
+      pass R                        aov_value              maxAbs=         1 practicalFail=48 strictDiff=48
+      pass CELL                     aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+  metal-m2pro-metalrt vs metal-m2pro [reported]                 0          0          0             0          0
+      worst x=0 y=0 R: ref 0 got 0 (0x tolerance)
+      pass D0                       aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+      pass D1                       aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+      pass D2                       aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+      pass D3                       aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+      pass R                        aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+      pass CELL                     aov_value              maxAbs=         0 practicalFail=0 strictDiff=0
+  verdict: perfect
+
+survey/denoise-upscale-1-gpu-noisy (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]                0.0541    0.00447    0.00304          1502       2303
+      worst x=28 y=23 B: ref 9.65629387 got 9.61312103 (21.8x tolerance)
+      pass Noisy Image              combined               maxAbs=  8.55e-06 practicalFail=0 strictDiff=505
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]        0.0541    0.00447    0.00304          1502       2303
+      worst x=28 y=23 B: ref 9.65629387 got 9.61312103 (21.8x tolerance)
+      pass Noisy Image              combined               maxAbs=  8.26e-06 practicalFail=0 strictDiff=512
+  metal-m2pro-metalrt vs metal-m2pro [reported]                 0          0          0             0          0
+      worst x=0 y=0 R: ref 0.324848622 got 0.324848622 (0x tolerance)
+      pass Noisy Image              combined               maxAbs=  2.58e-06 practicalFail=0 strictDiff=55
+  verdict: perfect
+
+
+real 23.21
+user 5.80
+sys 16.50

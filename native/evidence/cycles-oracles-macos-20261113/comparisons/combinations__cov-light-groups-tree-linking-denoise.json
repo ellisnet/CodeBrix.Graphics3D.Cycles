@@ -1,0 +1,535 @@
+{
+  "sceneId": "combinations/cov-light-groups-tree-linking-denoise",
+  "sceneSha256": "ab6fe47a0368173961c5da7540d63ac4ab969ec6d92755b46a9de593198804f8",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/combinations/cov-light-groups-tree-linking-denoise/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "LG lamp",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "LG fill",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "LG spot",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "LG world",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.0401739,
+        0.00930208
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "arm64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/combinations/cov-light-groups-tree-linking-denoise/metal-m2pro",
+      "backend": "metal-m2pro",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "LG lamp",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.4901161193847656e-08
+        },
+        {
+          "name": "LG fill",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        },
+        {
+          "name": "LG spot",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 3.725290298461914e-09
+        },
+        {
+          "name": "LG world",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 6.103515625e-05,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 6.103515625e-05,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 6.103515625e-05,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        1.04336,
+        0.347837
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/combinations/cov-light-groups-tree-linking-denoise/metal-m2pro-metalrt",
+      "backend": "metal-m2pro-metalrt",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "LG lamp",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.4901161193847656e-08
+        },
+        {
+          "name": "LG fill",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.450580596923828e-09
+        },
+        {
+          "name": "LG spot",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.450580596923828e-09
+        },
+        {
+          "name": "LG world",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 7.2479248046875e-05,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.2479248046875e-05,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 7.2479248046875e-05,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.506022,
+        0.118123
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    }
+  ],
+  "goldStandards": [
+    "cpu-arm64-macos",
+    "metal-m2pro",
+    "metal-m2pro-metalrt"
+  ],
+  "candidates": [],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.0002155303955078125,
+      "maxRelativeError": 0.0001029409384458508,
+      "rms": 7.258746140071627e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 1975,
+      "worstPixel": {
+        "x": 16,
+        "y": 10,
+        "channel": "R",
+        "reference": 0.2071436494588852,
+        "candidate": 0.2071223258972168,
+        "absoluteDifference": 2.1323561668395996e-05,
+        "criterionRatio": 0.2332260515227151
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "LG lamp",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.9125640392303467e-05,
+          "maxRelativeError": 0.0002551975753148489,
+          "rms": 7.833982487596329e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 539,
+          "worstPixel": {
+            "x": 16,
+            "y": 10,
+            "channel": 0,
+            "reference": 0.07494444400072098,
+            "candidate": 0.07492531836032867,
+            "absoluteDifference": 1.9125640392303467e-05,
+            "criterionRatio": 0.2942909279633818
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG fill",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 6.377696990966797e-06,
+          "maxRelativeError": 0.0002751713669787819,
+          "rms": 3.660704728471265e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 703,
+          "worstPixel": {
+            "x": 7,
+            "y": 10,
+            "channel": 1,
+            "reference": 0.28186556696891785,
+            "candidate": 0.2818591892719269,
+            "absoluteDifference": 6.377696990966797e-06,
+            "criterionRatio": 0.05995591167250265
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG spot",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 8.046627044677734e-06,
+          "maxRelativeError": 0.0005487807575795646,
+          "rms": 2.9579722798788705e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 253,
+          "worstPixel": {
+            "x": 16,
+            "y": 11,
+            "channel": 2,
+            "reference": 0.30944162607192993,
+            "candidate": 0.30943357944488525,
+            "absoluteDifference": 8.046627044677734e-06,
+            "criterionRatio": 0.07191659209537567
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG world",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.900859832763672e-06,
+          "maxRelativeError": 5.4937015647361166e-05,
+          "rms": 3.59269639274428e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 194,
+          "worstPixel": {
+            "x": 15,
+            "y": 9,
+            "channel": 2,
+            "reference": 0.17619533836841583,
+            "candidate": 0.17618943750858307,
+            "absoluteDifference": 5.900859832763672e-06,
+            "criterionRatio": 0.06922717474284988
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.000217437744140625,
+      "maxRelativeError": 0.00014703793024690358,
+      "rms": 8.79276945269666e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 1970,
+      "worstPixel": {
+        "x": 16,
+        "y": 10,
+        "channel": "R",
+        "reference": 0.2071436494588852,
+        "candidate": 0.20711319148540497,
+        "absoluteDifference": 3.045797348022461e-05,
+        "criterionRatio": 0.33313350755585586
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "LG lamp",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.8915703296661377e-05,
+          "maxRelativeError": 0.0003858285118024653,
+          "rms": 9.268891452204743e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 560,
+          "worstPixel": {
+            "x": 16,
+            "y": 10,
+            "channel": 0,
+            "reference": 0.07494444400072098,
+            "candidate": 0.07491552829742432,
+            "absoluteDifference": 2.8915703296661377e-05,
+            "criterionRatio": 0.4449330313306914
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG fill",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.3015689849853516e-06,
+          "maxRelativeError": 0.00027776280864493343,
+          "rms": 3.598133471903303e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 672,
+          "worstPixel": {
+            "x": 7,
+            "y": 10,
+            "channel": 1,
+            "reference": 0.28186556696891785,
+            "candidate": 0.28185826539993286,
+            "absoluteDifference": 7.3015689849853516e-06,
+            "criterionRatio": 0.06864111383066893
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG spot",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 8.046627044677734e-06,
+          "maxRelativeError": 0.0004409278919280895,
+          "rms": 2.964308968807914e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 250,
+          "worstPixel": {
+            "x": 16,
+            "y": 11,
+            "channel": 2,
+            "reference": 0.30944162607192993,
+            "candidate": 0.30943357944488525,
+            "absoluteDifference": 8.046627044677734e-06,
+            "criterionRatio": 0.07191659209537567
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG world",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.900859832763672e-06,
+          "maxRelativeError": 5.4826921427626975e-05,
+          "rms": 3.5758397862914927e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 190,
+          "worstPixel": {
+            "x": 15,
+            "y": 9,
+            "channel": 2,
+            "reference": 0.17619533836841583,
+            "candidate": 0.17618943750858307,
+            "absoluteDifference": 5.900859832763672e-06,
+            "criterionRatio": 0.06922717474284988
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 9.1552734375e-05,
+      "maxRelativeError": 4.410153165410816e-05,
+      "rms": 5.968074819736869e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 1772,
+      "worstPixel": {
+        "x": 16,
+        "y": 10,
+        "channel": "R",
+        "reference": 0.2071223258972168,
+        "candidate": 0.20711319148540497,
+        "absoluteDifference": 9.134411811828613e-06,
+        "criterionRatio": 0.09991211645482473
+      },
+      "reference": "metal-m2pro",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "LG lamp",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1563301086425781e-05,
+          "maxRelativeError": 0.0001306642816954854,
+          "rms": 5.01465559548483e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 96,
+          "worstPixel": {
+            "x": 16,
+            "y": 10,
+            "channel": 0,
+            "reference": 0.07492531836032867,
+            "candidate": 0.07491552829742432,
+            "absoluteDifference": 9.79006290435791e-06,
+            "criterionRatio": 0.15065097041008568
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG fill",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 3.516674041748047e-06,
+          "maxRelativeError": 4.2999684231326484e-05,
+          "rms": 1.3387840204741087e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 118,
+          "worstPixel": {
+            "x": 8,
+            "y": 10,
+            "channel": 1,
+            "reference": 0.6404366493225098,
+            "candidate": 0.640433132648468,
+            "absoluteDifference": 3.516674041748047e-06,
+            "criterionRatio": 0.019746907567336287
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG spot",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.3783574104309082e-07,
+          "maxRelativeError": 0.00010796841400744358,
+          "rms": 6.025890491358565e-09,
+          "practicalFailures": 0,
+          "strictDifferences": 3,
+          "worstPixel": {
+            "x": 8,
+            "y": 14,
+            "channel": 2,
+            "reference": 0.0021140165627002716,
+            "candidate": 0.0021138787269592285,
+            "absoluteDifference": 1.3783574104309082e-07,
+            "criterionRatio": 0.002733599323875976
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "LG world",
+          "type": "combined",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 9.387731552124023e-07,
+          "maxRelativeError": 7.063189648996472e-06,
+          "rms": 3.204430271837049e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 3,
+          "worstPixel": {
+            "x": 10,
+            "y": 11,
+            "channel": 0,
+            "reference": 0.13291065394878387,
+            "candidate": 0.13290971517562866,
+            "absoluteDifference": 9.387731552124023e-07,
+            "criterionRatio": 0.012258383849225148
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 0,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

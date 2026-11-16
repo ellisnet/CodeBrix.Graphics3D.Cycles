@@ -152,7 +152,7 @@ every entry after the full corpus and freezes the reports into its checkpoint. `
 first stale entry (native-render, background.cpp), as expected.
 
 ## Main moved during the merge
-07:59 (coordinator, Jeremy's request): main fast-forwarded 5aa565a2 -> 139b24f0, one added file `.gitattributes`
+07:59 (coordinator, the maintainer's request): main fast-forwarded 5aa565a2 -> 139b24f0, one added file `.gitattributes`
 (no overlap with any merged file; working tree, index and diffs unchanged; no renormalization run). From then on the
 checkpoints and the seal diff against 139b24f0; `handoff/wave8.patch` = `git diff --binary 139b24f0`.
 
@@ -216,9 +216,9 @@ tree; the APK was built after that. HEAD at seal 139b24f0 (pre-merge 5aa565a2 + 
 ## Coordinator answers after the seal (recorded, no action)
 (1) Capture numbering confirmed: lighttree 21-22, shadowcatcher 23-25, ao 26, MNEE 27-34, one v10 bump. (2) Gold-only
 run reads perfect; WGSL-vs-WGSL pairs reported, never gating (now the written rule). (3)/(4) Items 21, 22 and 23 stay
-documented for Jeremy's decision. (5) Linux-only ledger entries left for part 2. Part 1 ACCEPTED as sealed.
+documented for the maintainer's decision. (5) Linux-only ledger entries left for part 2. Part 1 ACCEPTED as sealed.
 
-## Part 1c (Jeremy's GO 11:28 on DEVICE.md items 21 and 22 only; part 2 running in the same checkout)
+## Part 1c (the maintainer's GO 11:28 on DEVICE.md items 21 and 22 only; part 2 running in the same checkout)
 - Item 21: `native/cycles/volume_gate.cpp` rejection case 9 expects "shadow catcher with volumes" (substring of the
   refusal "WebGPU shadow catcher with volumes not implemented"); cases 7 and 8 unchanged.
 - Item 22: `tools/hosttests/ImageModes/Program.cs` reads `imageInput.fileReading` by kind. Mapping: JSON true -> files

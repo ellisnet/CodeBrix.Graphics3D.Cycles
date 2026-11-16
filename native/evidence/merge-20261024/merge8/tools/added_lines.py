@@ -6,7 +6,7 @@ do not (expected only where the merge reconciled the lane's text: renumbered ent
 usage: added_lines.py lane [lane ...]"""
 import json, subprocess, sys, difflib
 from pathlib import Path
-root = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles')
+root = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles')
 T = 'tests/CodeBrix.Graphics3D.Cycles.Tests/'; REN = {T + 'WebGpuRenderTests.cs': T + 'GpuRenderTests.cs'}
 for lane in sys.argv[1:]:
     wt = Path.home() / 'ClaudeHome/cycles-worktrees' / lane

@@ -2,19 +2,25 @@
 
 > **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
 > Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
-> `third_party/cycles-import.json`). This platform has not been built or run on it (NOT BUILT).
-> Its payload (`native/binaries/osx-arm64/`), built from the previous revision, was
-> removed; it comes back when the platform is rebuilt, validated and restaged
-> on an Apple Silicon Mac (`native/binaries/README.md`). Wherever the text below
-> says the payload is committed or staged, read "after it has been restaged".
-> Every result, film, hash, file count and payload statement in this document
-> was recorded at the previous pinned revision
-> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
-> evidence for the current source. Films and references recorded at the
-> previous revision cannot be compared with the current source: the CPU
-> oracle's films changed with the pin, and the Metal references in
-> `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64` are void
-> until they are recorded again from a v5.3.0 build (step 7).
+> `third_party/cycles-import.json`). This platform is built and validated on it
+> (VALIDATED, 2026-11-15, commit `24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c`, on an
+> Apple Silicon Mac mini, M2 Pro, macOS 27.2.1, Xcode 27.2): a clean build with 0
+> warnings in this repository's code, the macOS host gate (passed, 3,102 films
+> compared), the managed build and tests (525 tests: 519 passed, the 6 WebGPU-only
+> tests skipped) and the whole oracle corpus on `cpu-arm64-macos`, `metal-m2pro` and
+> `metal-m2pro-metalrt` (793 scenes, no failure,
+> `native/evidence/cycles-oracles-macos-20261115/`), with the records in
+> `native/evidence/device-macos-arm64-20261115/`. That build is the payload staged
+> in `native/binaries/osx-arm64/` (`provenance.json` `sourceCommit` `24b74e09...`),
+> and the MacOSArm64 package is packed from it. The first build at this pin is
+> recorded in `native/evidence/device-macos-arm64-20261113/` and
+> `native/evidence/cycles-oracles-macos-20261113/`. The Metal reference films in
+> `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64` were recorded
+> again from v5.3.0 builds (2026-11-14). Results, films, hashes and file counts
+> recorded in this document before 2026-11-13 belong to the previous pinned revision
+> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and are historical records, not
+> evidence for the current source: films of the previous revision are never
+> compared with the current source.
 
 > **MANDATORY TEST RULES (from 2026-10-29; they apply to every run of this
 > procedure and override anything below, including the historical records).**
@@ -86,9 +92,9 @@ procedure produces:
 - the managed build, test and pack results on macOS, including the managed
   GPU render tests on Cycles' Metal device, judged against the recorded Metal
   references (section 5);
-- a restaged osx-arm64 payload under `native/binaries/osx-arm64` (the folder is
-  absent until the first build on the current pin has been validated; only on
-  the maintainer's decision; see step 9).
+- a restaged osx-arm64 payload under `native/binaries/osx-arm64` (only on the
+  maintainer's decision; see step 9). The payload there was staged on 2026-11-15
+  from the build of commit `24b74e09`.
 
 ## 2. Prerequisites and pins
 
@@ -116,8 +122,15 @@ Machine and toolchain:
   27.0 and Apple Clang 21.0.0. Cycles compiles the Metal kernels at run time
   from the kernel sources staged beside the host library; no offline Metal
   compiler step exists.
-- CMake 3.24 or newer (CMake 4 works; the recipes pass
-  `CMAKE_POLICY_VERSION_MINIMUM=3.5` for the old snapshot minimums).
+- CMake 4.2 or newer (the recipes pass `CMAKE_POLICY_VERSION_MINIMUM=3.5` for
+  the old snapshot minimums). The reproducible build (`native/host/MACOS_ARM64.md`,
+  "Reproducible builds") names objects with CMake's `OBJECT_NAME`, which CMake 4.2
+  added: without it the host library, the executables and the dSYM would differ
+  with the checkout path, and the dSYM would lack the line tables of the objects
+  whose file names repeat within one Cycles static library. So
+  `inject_cycles_macos.cmake` refuses an older CMake when the host build is
+  configured ("The osx-arm64 recipe requires CMake 4.2 or newer (this is CMake
+  <version>) ..."), and nothing of the host is built.
 - Python 3.
 - zstd (`render_oracles.py --bundle` runs `zstd -19`).
 - The .NET 11 SDK, **version 11.0.100 only** (no earlier version; `dotnet
@@ -210,12 +223,39 @@ that every linked library is `@rpath/`, `/usr/lib/` or `/System/Library/`;
 the Mach-O minimum OS; ad-hoc signatures (`codesign --verify`); that the Metal
 framework is linked and no image codec library is in the load closure; the
 public-API contract (`CBC_HOST_WEBGPU` and texture `filename` sockets
-rejected with `CBC_UNSUPPORTED`); the native Session references (`session` and
+rejected with `CBC_UNSUPPORTED`; UDIM tiles refused by name on an Environment
+Texture node, below tile 1001, repeated and across image formats, then bound
+and rendered on the CPU; the texture limit refused above `INT_MAX`, accepted
+before that render and, after it, accepted unchanged and refused when changed
+with `CBC_NOT_READY`; BVH spatial splits accepted as 0 and 1 and refused as 2,
+then rendered on the CPU with them; a tiled image without a reader refused and
+released at once, then created, bound and released once by the destroy, and
+its tile sizes 32, 96, 2048 and 65536 refused and 128 and 1024 accepted on the
+CPU host; render tile sizes Cycles would change refused, then a render in four tiles of 8 whose device
+report counts the four tiles kept in memory and the frame read back; on a CPU
+host of its own, a linear subdivision cage whose bake map and bake are refused
+with pixel-space dicing, whose map covers texels with indices into Cycles'
+tessellation and whose Combined bake is finite in object space, whose bake is
+refused (and bake map not) beside a second cage diced in pixel space, and whose
+Catmull-Clark bake map is refused); the
+native Session references (`session` and
 `session64`, CPU); the C lifecycle and process-exit consumers, bitwise
-against those references; the thin .NET wrapper (`HostLifecycle`, built with
+against those references, and the lifecycle consumer on hosts created with
+progressive results (`--progressive`: film events, the last film equal to the
+returned one, the films bitwise against the same references) and in tiles
+(`--tiles`: tiles of 8, 12 per film, kept in memory; sizes Cycles would change
+refused by name; the device report's tile counts after every render, none held
+after a cancel; the films bitwise against the same references, and no tile file
+written); the tiled-image consumer (`--tiled`: a tiled image served by a C reader renders the film of the
+same pixels bound plainly bit for bit, a failing read fails the render by name and
+is read again by the next render, a call into the library from the reader and an
+update of the tiled image are refused, release runs once per image) and its
+process-exit case (`--tiled-exit`: the release callback runs once from the exit
+hook); the thin .NET wrapper (`HostLifecycle`, built with
 `dotnet build`), bitwise against the same references; and the Metal lifecycle
-(`codebrix_host_gpu_test`) with shipped settings and with `CYCLES_METALRT=1`,
-compared with the CPU references by the practical criterion. It then runs the
+(`codebrix_host_gpu_test`) with shipped settings, with `CYCLES_METALRT=1`, with
+progressive results and in tiles (`--tiles`), compared with the CPU references by
+the practical criterion. It then runs the
 image fixtures in their memory-only form, because this profile reads no image
 files: the independent image reference (`codebrix_host_image_reference`, three
 runs of 256 memory-image cases), the C reload test (six rounds, bitwise against
@@ -329,8 +369,54 @@ recovery, object edits after a render, passes, and the capability and device
 reports. Their films are judged by the reference policy in section 5. Record
 the passed, skipped and failed counts, and any skip reasons.
 
-The package carries no native runtime assets yet (MAINTAINER-README.txt,
-PACKAGING AND PUBLISHING), so no consumer-style package render is possible.
+A Release build of the solution also runs the pack driver (MAINTAINER-README.txt,
+PACKAGING). It packs the MacOSArm64 package only when
+`native/binaries/osx-arm64/provenance.json` exists (it does since the stage of
+2026-11-15), so it packs Core, LinuxX64 and MacOSArm64; without that payload it
+packs Core and LinuxX64 alone. Delete the `nugets/Release/<version>/`
+folders it writes.
+
+**Consumer test of the MacOSArm64 package.** Stage the build of steps 3 and 4 into
+a scratch folder (git-ignored; never approved) and pack the family from it:
+
+```sh
+python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation-<n> \
+  --oracles native/work/oracles/<run> --output native/work/staging/osx-arm64-<n>
+dotnet build build/CodeBrix.Graphics3D.Cycles.Build.csproj -c Release \
+  -p:MacOSArm64Payload=native/work/staging/osx-arm64-<n>
+```
+
+`package_check.py` must pass and must report the MacOSArm64 package as NOT
+APPROVED, NOT PUBLISHABLE. Then make a scratch console app under `native/work/` that
+references `CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever` at the packed
+version from a local folder feed (a NuGet.Config with `<clear />` and that folder;
+`NUGET_PACKAGES` inside `native/work/`, so the user's package cache is untouched).
+It renders a small scene with `CyclesBackend.CpuReference` and with
+`CyclesBackend.Gpu` (Metal), and checks that the films are finite and plausible.
+Run it for each of:
+
+```sh
+dotnet build -c Release && dotnet bin/Release/net10.0/<app>.dll
+dotnet run -c Release
+dotnet publish -c Release
+dotnet publish -c Release -r osx-arm64 --self-contained false
+dotnet publish -c Release -r osx-arm64 --self-contained
+```
+
+Each with a fresh copy of the app and a fresh `XDG_CACHE_HOME`. In every output
+`codebrix-cycles/source/` must sit beside `libcodebrix_cycles_host.dylib`, its files
+equal to the stage's `runtime/codebrix-cycles/source`: under
+`runtimes/osx-arm64/native/` without a runtime identifier, at the output root with
+`-r osx-arm64`; no kernel header may be flattened beside the library. The package's
+buildTransitive targets copy the tree there. The self-contained publish needs the
+`Microsoft.NETCore.App.Runtime.osx-arm64` runtime pack from nuget.org: record its
+version and SHA-512 from the NuGet cache. By default the SDK also fetches the
+ASP.NET Core runtime pack for a self-contained app; for a console app,
+`-p:DisableTransitiveFrameworkReferenceDownloads=true` avoids that. As a negative
+control, remove `codebrix-cycles/` from a copy of one output: Metal must then fail
+("Metal kernel sources are missing beside the native library") and the CPU must
+still render. Never set `CYCLES_KERNEL_PATH` for this test. Record the layout and
+the render results per mode, and delete the `nugets/Release/<version>/` folder.
 
 **Recording the Metal references.** `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64/`
 holds one reviewed Metal film per GPU test scene (`<name>.rgba.f32`) and
@@ -345,7 +431,7 @@ CODEBRIX_CYCLES_RECORD_METAL_REFERENCES=1 dotnet test --project tests/CodeBrix.G
 
 Then review every changed film and its recorded CPU comparison (`git diff` of
 `manifest.json`; a CPU comparison that grew is a finding to explain before the
-films are committed) and run the tests again without the variable. A test
+films are accepted) and run the tests again without the variable. A test
 whose film no longer matches its manifest length fails with a request to
 re-record; a missing reference fails, never skips.
 
@@ -359,27 +445,83 @@ It must pass with the new evidence directory from step 6 in place.
 
 ### Step 9: staging (only on the maintainer's decision)
 
+A real stage needs a build made from a clean commit: run steps 2 to 4 on a clean
+checkout of that commit, then stage.
+
 ```sh
 python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation-<n> --oracles native/work/oracles/<run>
 python3 tools/licensing/audit.py
 ```
 
-The stager refuses while `native/binaries/osx-arm64/` already holds a payload
-("review and remove it first"); at the current pin the folder is absent, so the
-first stage creates it. A committed payload is a reviewed
-deliverable: replace it only when the maintainer decides to, after reviewing what
-changed. When it runs, it copies the host and its dependency closure into
+The stager never rebuilds: it stages the files the gate and the oracle run
+validated. `native/tools/build_cycles_macos.py`
+records the commit it built from and the git status of the Cycles-with-Metal
+sources (`tools/licensing/metal_sources.py`) in `host/invocation.json` when it
+starts and in `host/status.json` when it completes (a `--target` build records no
+commit). The stager refuses unless both records name one commit with a clean
+status, HEAD descends from that commit with no Cycles-with-Metal source change
+since, and the working tree has none. It also refuses while
+`native/binaries/osx-arm64/` already holds a payload ("review and remove it
+first"); it holds the payload staged on 2026-11-15, which a new stage replaces only after that review. A
+committed payload is a reviewed deliverable: replace it only when the maintainer
+decides to, after reviewing what changed. When it runs, it copies the host and its
+dependency closure (OIDN's core and its CPU and Metal device modules included) into
 `runtime/`, `unstripped/` and `symbols/`, removes build-tree rpaths, strips and
-ad-hoc signs the runtime copies, writes the dSYM, records `provenance.json`
-and renders from a temporary copy of `runtime/` alone on CPU and Metal.
+ad-hoc signs the runtime copies, writes the dSYM, copies the Metal kernel sources
+into `runtime/codebrix-cycles/source`, refuses any file whose name starts with `.`
+(such as `.DS_Store`), renders from a temporary copy of `runtime/` alone on CPU and
+Metal (the CPU film must equal the oracle run's) and records `provenance.json`,
+with that commit as `sourceCommit`. With `--output <git-ignored folder>` it makes
+the scratch stage of step 7 instead, which is never approved.
 
-**MISSING:** a comparison of a fresh build against the committed payload
-without restaging. Until one exists (and once a payload is committed again), compare the SHA-256 of
-`native/work/macos/osx-arm64/host/build/lib/libcodebrix_cycles_host.dylib`
-and of the dependency libraries with `approvedPayload` in
-`native/binaries/osx-arm64/provenance.json` by hand (`shasum -a 256`) and
-record the result; differences are expected wherever the build path length or
-the sources changed.
+Once `native/binaries/osx-arm64/provenance.json` is present, every pack of the
+family includes the MacOSArm64 package. When `package_check.py` reports the
+osx-arm64 payload as STALE (a Cycles-with-Metal source changed since its
+`sourceCommit`), steps 2 to 4 and this step are run again on a commit that
+contains the change.
+
+#### Comparing a fresh build with the committed payload
+
+A build of the same Cycles-with-Metal sources with the same toolchain (CMake 4.2
+or newer, section 2) is byte-identical at any checkout path (`native/host/MACOS_ARM64.md`, "Reproducible
+builds"), so a committed payload can be checked against its sources by hash,
+without restaging:
+
+1. In a clean checkout at any path, check out a commit at which
+   `tools/licensing/package_check.py` reports the osx-arm64 payload current (no
+   Cycles-with-Metal source changed since its `sourceCommit`). The toolchain must
+   be the one `native/binaries/osx-arm64/provenance.json` records under
+   `toolchain` (Xcode, SDK, Apple Clang and CMake versions and hashes, and the
+   SDK's path, which the dSYM names); another compiler gives other bytes. Leave
+   `SOURCE_DATE_EPOCH` unset: the recipe takes it from the newest commit that
+   changed a Cycles-with-Metal source, which dates the host library's version.
+2. Run steps 2 to 4. The stager needs a passed gate and an oracle run of this
+   build; the run may be limited to the scene its standalone render checks
+   (`--backend cpu-arm64-macos --scene native/oracle/scenes/starter/diffuse-triangle.json`).
+3. Make a scratch stage of the build:
+
+   ```sh
+   python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation-<n> \
+     --oracles native/work/oracles/<run> --output native/work/staging/osx-arm64-check
+   ```
+
+4. Compare every staged file with the approved payload:
+
+   ```sh
+   python3 - <<'EOF'
+   import json
+   fresh = json.load(open('native/work/staging/osx-arm64-check/provenance.json'))['payloadFiles']
+   committed = json.load(open('native/binaries/osx-arm64/provenance.json'))['approvedPayload']
+   differ = sorted(n for n in set(fresh) | set(committed) if fresh.get(n) != committed.get(n))
+   print(len(committed), 'approved files,', len(differ), 'differ')
+   print('\n'.join(differ))
+   EOF
+   ```
+
+Every file must be identical: the stripped and unstripped libraries, the dSYM
+and the kernel sources. Record the output. A difference with the recorded
+toolchain is a finding: compare the two files' Mach-O sections and load commands
+(`otool -l`) and keep both copies for the record.
 
 ## 5. Reference policy and tolerances
 
@@ -543,16 +685,15 @@ bring them back verbatim.
 
 ## 8. Standing rules
 
-- Never commit evidence into a frozen checkpoint: every existing
+- Never add evidence to a frozen checkpoint: every existing
   `native/evidence/*` directory is immutable. New output goes to new
   directories only.
 - Never relax a tolerance, edit a film, rerun until a comparison passes, or
   change scenes or Metal settings to make backends agree.
 - Never modify the shipped CodeBrix.WebGpu.Native runtime or the pinned
   snapshots under `third_party/`.
-- Never commit from the test machine without reviewing the complete list of
-  new and changed paths (`git status --porcelain`) first; build output under
-  `native/work/` stays uncommitted (it is ignored).
+- Review the complete list of new and changed paths (`git status --porcelain`)
+  after every run; build output under `native/work/` is git-ignored.
 - Record every MISSING step that blocked or limited the run.
 
 ## 9. Metal comparison: Velvet subnormal paths and Radial Tiling with two sides
@@ -587,6 +728,6 @@ questions). Build first as in sections 3 and 4 (steps 1-2) at the checked-out co
    - For each rendered scene compare the Metal films with `cpu-x64-linux/` and with `cpu-arm64-macos`: practical
      failures, strict differences, maxima, and any NaN or Inf values. The WebGPU device on Linux renders roundness 0
      and 1 and refuses 0.3, 0.5 and 0.75 (`wgsl-linux-intel/` in the evidence folder).
-4. Commit the run as a new folder `native/evidence/cycles-oracles-macos-metal-comparison-<date>/` (the oracle films,
+4. Add the run as a new folder `native/evidence/cycles-oracles-macos-metal-comparison-<date>/` (the oracle films,
    `run.json`, the comparison JSON files, the probe source and its output, and a README with the observations of
    steps 2 and 3). Never write into the frozen input folder.

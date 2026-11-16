@@ -14,7 +14,9 @@ namespace CodeBrix.Graphics3D.Cycles.Rendering;
 /// sample counter changed) with <see cref="CompletedSamples"/> and <see cref="Fraction"/> filled from
 /// it, and a final <see cref="RenderStage.Completed"/>, <see cref="RenderStage.Cancelled"/> or
 /// <see cref="RenderStage.Failed"/> report ends the render. The fields are <see langword="null"/> while
-/// the native host has reported no sample count. Reports raised from native events are delivered on a
+/// the native host has reported no sample count. A cancellation stops the render at once, also in the middle of a
+/// batch of samples; the count then stays at its last value (a batch the cancellation stopped is not counted), and
+/// the <see cref="RenderStage.Cancelled"/> report carries it. Reports raised from native events are delivered on a
 /// native render thread unless the <see cref="IProgress{T}"/> implementation marshals them (as
 /// <see cref="Progress{T}"/> does).
 /// </remarks>

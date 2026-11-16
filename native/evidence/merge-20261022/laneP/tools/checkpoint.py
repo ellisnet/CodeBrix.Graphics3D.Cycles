@@ -66,17 +66,17 @@ for r in rows:
     md.append('| %s | %s | %s%s | %s | %s | %s | %s | %s | %s |' % (r['corpus'], r['job'], r['samsungWall'], '' if r['samsungPassed'] in (True, None) else ' (Samsung FAIL)',
               r['pixelWall'], r['cutoff'], r['pixelResult'].replace('|', '/'), r['verdict'], r['maxPipelineMs'], r['log'] or '-'))
 (CP/'triage-table.md').write_text('\n'.join(md)+'\n')
-cmd = ['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', '98271FFBA0048D', 'shell', 'ls -d /data/local/tmp/codebrix-p-* 2>/dev/null']
+cmd = ['<home>/Android/Sdk/platform-tools/adb', '-s', '98271FFBA0048D', 'shell', 'ls -d /data/local/tmp/codebrix-p-* 2>/dev/null']
 try: remote = subprocess.run(cmd, capture_output=True, text=True, timeout=30).stdout.strip()
 except Exception as e: remote = 'adb error '+repr(e)
-lock = Path('/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/device-locks/pixel')
+lock = Path('<home>/ClaudeHome/cycles-wgsl-2026-10-19/device-locks/pixel')
 remaining = [r['corpus']+'/'+r['job'] for r in rows if r['verdict'] == 'NOT RUN' and r['pixelResult'] == 'not run yet']
 now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 (CP/'status.md').write_text(f"""# Lane P checkpoint ({now})
 
 Read this first if you are resuming lane P (Pixel 4 XL triage under the device reference policy).
-Worktree: /home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage (main @ 3392df3d). Outputs: native/work/p/.
-Brief: plan section 46 of /home/jeremy/ClaudeHome/PLAN_Cycles_Targetting_WGSL_WebGPU.md; cutoff = 3 x Samsung wall per job.
+Worktree: <home>/ClaudeHome/cycles-worktrees/p-pixel-triage (main @ 3392df3d). Outputs: native/work/p/.
+Brief: plan section 46 of <home>/ClaudeHome/PLAN_Cycles_Targetting_WGSL_WebGPU.md; cutoff = 3 x Samsung wall per job.
 
 - Device state: lock dir {lock} {'EXISTS (owner: ' + (lock/'owner.txt').read_text().strip() + ')' if (lock/'owner.txt').exists() else 'absent (released)'}; caller says {sys.argv[1] if len(sys.argv) > 1 else '?'}.
 - Remote folders on the Pixel (codebrix-p-*): {remote or 'none'}

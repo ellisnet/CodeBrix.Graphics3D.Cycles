@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 1: Android host builds (maintained location) and the validation APK for the managed WebGPU app gate.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge1; cd $R
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge1; cd $R
 for rid in android-arm64 android-x64; do
   echo "[$(date +%H:%M:%S)] DECLARED android host build $rid (tools/build_android.py --skip-dependencies --jobs 6): budget 2400 s" >> $M/budgets.txt
   s=$(date +%s); timeout 2400 python3 tools/build_android.py --rid $rid --skip-dependencies --jobs 6 > $M/validation/android-host-build-$rid.log 2>&1; c=$?

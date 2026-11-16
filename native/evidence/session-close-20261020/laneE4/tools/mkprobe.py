@@ -12,7 +12,7 @@ s=(dst/f).read_text()
 for r in sys.argv[4:]:
     a,b=r.split('=>',1); assert s.count(a)>=1,(a,s.count(a)); s=s.replace(a,b)
 (dst/f).write_text(s)
-adb=['/home/jeremy/Android/Sdk/platform-tools/adb','-s','R52W207XQ1V']; R='/data/local/tmp/codebrix-e4-probe'
+adb=['<home>/Android/Sdk/platform-tools/adb','-s','R52W207XQ1V']; R='/data/local/tmp/codebrix-e4-probe'
 subprocess.run(adb+['shell',f'rm -rf {R}/{dst.name}; mkdir -p {R}/{dst.name}; cp {R}/{sys.argv[1].split("-")[0]}/run.* {R}/{dst.name}/'],check=True)
 subprocess.run(adb+['push']+[str(p) for p in dst.iterdir()]+[f'{R}/{dst.name}/'],check=True,capture_output=True)
 print('staged',dst.name)

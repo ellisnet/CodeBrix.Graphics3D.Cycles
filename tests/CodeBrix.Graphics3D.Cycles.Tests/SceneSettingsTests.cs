@@ -9,6 +9,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
 using CodeBrix.Graphics3D.Cycles.Generated.Geometry;
+using CodeBrix.Graphics3D.Cycles.Generated.Lights;
 using CodeBrix.Graphics3D.Cycles.Generated.Scene;
 using CodeBrix.Graphics3D.Cycles.Generated.Shaders;
 using CodeBrix.Graphics3D.Cycles.Rendering;
@@ -143,7 +144,7 @@ public class SceneSettingsTests
     }
 
     [Fact]
-    public void Denoiser_upscale_factor_other_than_one_is_refused_where_the_cpu_denoiser_runs()
+    public void Denoiser_upscale_factor_other_than_one_is_refused_by_name_when_denoising()
     {
         //Arrange
         using CyclesScene scene = TestScenes.CreateCpuScene();
@@ -154,12 +155,112 @@ public class SceneSettingsTests
 
         //Act
         Action render = () => scene.Render(Small);
+        Action again = () => scene.Render(Small);
 
         //Assert
         withoutDenoising.Span.ToArray().All(float.IsFinite).Should().BeTrue();
         CyclesException error = render.Should().Throw<CyclesException>().Which;
         error.NativeStatus.Should().Be(NativeStatus.Unsupported);
-        error.Message.Should().Contain("upscale");
+        error.Message.Should().Contain("a denoiser upscale factor other than 1");
+        scene.Integrator.DenoiserUpscaleFactor = 1f;
+        again.Should().NotThrow();
+    }
+
+    // The light object of an area light emitting downwards (-y) from y = 1.6 (the degenerate area light scenes' room):
+    // its u axis along x and its v axis along -z, each column scaled by `scale`; with a 1e-23 scale each axis's squared length
+    // underflows to zero while every component stays a normal float when the light is rotated (`skew`): axes 1e-23 * (0.6,
+    // 0.48, 0.64) and 1e-23 * (0.8, -0.36, -0.48), whose kernel axes are infinities without a NaN.
+    internal static Transform3x4 AreaLightTransform(float scaleU, float scaleV, bool skew) => skew
+        ? new(.6f * scaleU, .8f * scaleV, 0, 0, .48f * scaleU, -.36f * scaleV, .8f, 1.6f, .64f * scaleU, -.48f * scaleV, -.6f, .5f)
+        : new(scaleU, 0, 0, 0, 0, 0, 1, 1.6f, 0, -scaleV, 0, .5f);
+
+    // Area lights with an axis of infinities (provisional, every backend): when a column of the light object's transform
+    // times the size has no zero component but a squared length that underflows to zero, Cycles' kernel axis is all
+    // infinities (normalize_len divides by the zero length); the host refuses such a light by name, at render and at bake,
+    // naming the axis. An axis that underflows with a zero component holds a NaN instead and renders (Cycles' degenerate
+    // light, as the base corpus's lamps/area-degenerate-* scenes), and so do the skewed light as a portal and with strength 0
+    // (Cycles disables it before it computes the axes).
+    [Theory]
+    [InlineData(CyclesBackend.CpuReference)]
+    [InlineData(CyclesBackend.Cpu)]
+    public void Area_lights_with_an_axis_of_infinities_are_refused_by_name_and_other_degenerate_area_lights_render(CyclesBackend backend)
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        using CyclesScene scene = new(backend);
+        (_, ObjectNode target) = DeliveredFilmTests.BuildBake(scene);
+        scene.Camera.Matrix = Transform3x4.CreateTranslation(0, 0, -4);
+        AreaLightNode light = scene.CreateLight<AreaLightNode>();
+        light.Strength = new Vector3(6, 6, 6);
+        light.Sizeu = 1;
+        light.Sizev = 1;
+        ObjectNode holder = scene.CreateObject(light, AreaLightTransform(1, 1, false));
+        BakeSettings bake = new(16, 16, 4, BakeType.Combined);
+        FilmBuffer lit = scene.Render(Small);
+        void Refused(Action call, string axis)
+        {
+            CyclesException error = call.Should().Throw<CyclesException>().Which;
+            error.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            error.Message.Should().Contain("Unsupported feature: area lights with an axis of infinities");
+            error.Message.Should().Contain($"the light's {axis} axis");
+        }
+
+        //Act / Assert
+        holder.Tfm = AreaLightTransform(1e-23f, 1e-23f, true);
+        Refused(() => scene.Render(Small), "u");
+        Refused(() => scene.Bake(target, bake), "u");
+        holder.Tfm = AreaLightTransform(1, 1e-23f, true);
+        Refused(() => scene.Render(Small), "v");
+        // A zero component: the axis holds a NaN and the light renders (an unlit strip, no sample).
+        holder.Tfm = AreaLightTransform(1e-23f, 1, false);
+        scene.Render(Small).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        light.Sizeu = 1e-23f;
+        holder.Tfm = AreaLightTransform(1, 1, false);
+        scene.Render(Small).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        scene.Bake(target, bake).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        light.Sizeu = 1;
+        holder.Tfm = AreaLightTransform(1e-23f, 1e-23f, true);
+        light.IsPortal = true;
+        scene.Render(Small).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        light.IsPortal = false;
+        light.Strength = Vector3.Zero;
+        scene.Render(Small).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        light.Strength = new Vector3(6, 6, 6);
+        Refused(() => scene.Render(Small), "u");
+        holder.Tfm = AreaLightTransform(1, 1, false);
+        scene.Render(Small).Span.SequenceEqual(lit.Span).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Both_displacement_shader_on_curves_and_points_is_refused_by_name_and_renders_on_a_mesh()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        (ShaderNode material, _, MeshNode mesh) = TestScenes.BuildTyped(scene);
+        ShaderNode displaced = TestScenes.BuildBothDisplacementShader(scene);
+        mesh.UsedShaders = [displaced];
+        FilmBuffer onMesh = scene.Render(Small);
+        HairNode hair = scene.CreateHair([-.5f, -.5f, -1f, 0f, 0f, -1f, .5f, .5f, -1f], [.1f, .1f, .1f], [0u], CurveShape.Thick, displaced);
+        scene.CreateObject(hair);
+
+        //Act
+        Action curves = () => scene.Render(Small);
+        Action bumpOnCurves = () => scene.Render(Small);
+        Action points = () => scene.Render(Small);
+
+        //Assert
+        onMesh.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        CyclesException curvesError = curves.Should().Throw<CyclesException>().Which;
+        curvesError.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        curvesError.Message.Should().Contain("curves and points with a Both displacement shader");
+        displaced.DisplacementMethod = ShaderDisplacementMethod.Bump;
+        bumpOnCurves.Should().NotThrow();
+        hair.UsedShaders = [material];
+        displaced.DisplacementMethod = ShaderDisplacementMethod.Both;
+        scene.CreateObject(scene.CreatePointCloud([-.5f, .5f, -1f, .5f, -.5f, -1f], [.2f, .2f], displaced));
+        CyclesException pointsError = points.Should().Throw<CyclesException>().Which;
+        pointsError.NativeStatus.Should().Be(NativeStatus.Unsupported);
+        pointsError.Message.Should().Contain("curves and points with a Both displacement shader");
     }
 
     [Fact]
@@ -252,8 +353,10 @@ public class SceneSettingsTests
         again.Should().NotThrow();
     }
 
+    // Gaussian splats render on the CPU and Metal backends with their standard attributes (GaussianSplatTests); a cloud
+    // without them is refused by name instead of rendering as plain points, as the pinned Cycles would with no message.
     [Fact]
-    public void Point_cloud_rendered_as_gaussian_splats_is_refused_by_name()
+    public void Point_cloud_rendered_as_gaussian_splats_without_its_attributes_is_refused_by_name()
     {
         //Arrange
         using CyclesScene scene = TestScenes.CreateCpuScene();
@@ -270,8 +373,9 @@ public class SceneSettingsTests
         //Assert
         renderAsByDefault.Should().Be(PointCloudRenderAs.Points);
         CyclesException error = render.Should().Throw<CyclesException>().Which;
-        error.NativeStatus.Should().Be(NativeStatus.Unsupported);
-        error.Message.Should().Contain("Gaussian splats");
+        error.NativeStatus.Should().Be(NativeStatus.Invalid);
+        error.Message.Should().Contain("Gaussian splats need the standard point attributes radiance:base, scale and rotation");
+        error.Message.Should().Contain("(missing: radiance:base, scale, rotation)");
         points.RenderAs = PointCloudRenderAs.Points;
         again.Should().NotThrow();
     }

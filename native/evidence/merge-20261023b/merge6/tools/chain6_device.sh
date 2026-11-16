@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 6 part 2: device chain for a reference device (adapted from chain5_device.sh), in lock-sized batches so lane m1-oracle can interleave.
 # Usage: chain6_device.sh DEVICE (samsung | hp). Nothing is built; every input was staged by part 1.
-cd "$(dirname "$0")"; dev=$1; M=$(realpath ..); R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; V=$M/validation; ref=$M/reference/linux-x64
+cd "$(dirname "$0")"; dev=$1; M=$(realpath ..); R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; V=$M/validation; ref=$M/reference/linux-x64
 source ./lock6.sh
 case $dev in
   hp) serial=192.168.86.225:5555; rid=android-x64; F="--reference $ref --device-scene"; FM="--reference $ref --device-scene --mesa-scratch-cache";;
   samsung) serial=R52W207XQ1V; rid=android-arm64; F="--reference $ref --device-scene"; FM="--reference $ref --device-scene";;
 esac
-A="/home/jeremy/Android/Sdk/platform-tools/adb -s $serial"
+A="<home>/Android/Sdk/platform-tools/adb -s $serial"
 lg(){ echo "[$(date +%H:%M:%S)] $dev $*" >> $M/timeline.log; }
 LOG=$M/device/$dev-chain.log
 run(){ python3 run_corpus.py $dev "$@" >> $LOG 2>&1; lg "corpus $1-$2 exit=$?"; }

@@ -5,7 +5,7 @@
 Refuses to run if the binary's recorded source hashes differ from the current sources."""
 import json, sys
 from pathlib import Path
-ROOT = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); sys.path.insert(0, str(ROOT/'native/tools'))
+ROOT = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); sys.path.insert(0, str(ROOT/'native/tools'))
 import render_replay
 from device_gate import sha
 render_replay.BASE = ROOT/'native/work/render/replay-build'

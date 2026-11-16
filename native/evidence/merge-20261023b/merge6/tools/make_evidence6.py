@@ -6,7 +6,7 @@ add_nodes_evidence.py). Writes the reports into native/work/merge6/ledger/ (the 
 and rewrites compatibility/evidence.json to point at the checkpoint paths. Replays come from this run (Linux, HP, Samsung)."""
 import hashlib, json, shutil, datetime
 from pathlib import Path
-R = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); M = R/'native/work/merge6'; V = M/'validation'
+R = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); M = R/'native/work/merge6'; V = M/'validation'
 DEST = M/'ledger'; CK = 'native/evidence/merge-20261023b/merge6/ledger/'
 sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
 assert not DEST.exists(), 'ledger work folder exists'

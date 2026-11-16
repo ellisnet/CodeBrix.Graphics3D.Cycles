@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Phase C Linux validation: each corpus once with a fresh empty Mesa shader cache.
-cd /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles
+cd <home>/GitHome/CodeBrix.Graphics3D.Cycles
 V=$PWD/native/work/phaseC/05-validation; T=$PWD/native/work/phaseC/tools; BIN=$PWD/native/work/cycles-build/bin
 log(){ echo "[$(date +%H:%M:%S)] $*" | tee -a $V/run.log; }
 run(){ # name budget_seconds command...

@@ -4,19 +4,20 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 
 > **STATUS AT THE CURRENT PIN.** The pinned Cycles source is the released
 > Cycles v5.3.0 (revision `b3f6262640f1a2f2d10b55b6ffccbf310ce0f981`,
-> `third_party/cycles-import.json`). This platform has not been built or run on it (NOT BUILT).
-> Its payload (`native/binaries/osx-arm64/`), built from the previous revision, was
-> removed; it comes back when the platform is rebuilt, validated and restaged
-> on an Apple Silicon Mac (`native/binaries/README.md`). Wherever the text below
-> says the payload is committed or staged, read "after it has been restaged".
-> Every result, film, hash, file count and payload statement in this document
-> was recorded at the previous pinned revision
-> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`) and is a historical record, not
-> evidence for the current source. Films and references recorded at the
-> previous revision cannot be compared with the current source: the CPU
-> oracle's films changed with the pin, and the Metal references in
-> `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64` are void
-> until they are recorded again from a v5.3.0 build.
+> `third_party/cycles-import.json`). This platform is built and validated on it
+> (VALIDATED, 2026-11-15, commit `24b74e095f5f1f4526e095e7ac4ad6dfff62bb4c`, Mac mini M2 Pro,
+> macOS 27.2.1, Xcode 27.2, Apple clang 21.0.0, CMake 4.4.5): clean build, macOS host gate,
+> managed tests and the whole oracle corpus on CPU-arm64, Metal and MetalRT
+> (`native/evidence/device-macos-arm64-20261115/`, `native/evidence/cycles-oracles-macos-20261115/`;
+> the first build at this pin, 2026-11-13: `device-macos-arm64-20261113/` and
+> `cycles-oracles-macos-20261113/`). Its payload is staged in `native/binaries/osx-arm64/`
+> (2026-11-15, `provenance.json` `sourceCommit` `24b74e09...`, 335 files). The Metal reference films in
+> `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64` were recorded again from v5.3.0
+> builds (2026-11-14). The dated "Results and findings" and "Session record" sections of 2026-10-19 and
+> 2026-10-23 below were recorded at the previous pinned revision
+> (`a456b761034dda42c32eef9f4aae0fa5a5c9f604`): their results, films, hashes, file counts and payload
+> statements are historical records, not evidence for the current source, and films of that revision
+> are never compared with the current source.
 
 This recipe produces the osx-arm64 product binary: the pinned Cycles revision
 with its own Metal backend, behind the same native C API as the WGSL builds.
@@ -64,13 +65,15 @@ same build also produces CPU-arm64 and Metal oracle films for validating WGSL.
 - sse2neon is not imported; this build targets only macOS with Metal, and the
   CPU device uses Cycles' plain C++ kernels.
 - Reviewed deliverables go to `native/binaries/osx-arm64/` (runtime,
-  unstripped and symbols) with provenance. The maintainer creates every commit and push.
+  unstripped and symbols) with provenance.
 
 ## Toolchain and isolation
 
 Agreed external inputs on the build machine: Xcode command-line tools (Apple
 Clang, the Metal framework and its runtime compiler, the macOS SDK and libc++),
-CMake 3.24 or newer and Python 3. Exact versions are recorded with each build.
+CMake 4.2 or newer (for `OBJECT_NAME`, "Reproducible builds" below; the injection
+refuses an older CMake when it configures the host build) and Python 3. Exact versions are
+recorded with each build.
 Dependency source comes only from the verified snapshots in `third_party/`.
 
 Homebrew must not leak into the build. CMake installed by Homebrew searches its
@@ -104,6 +107,11 @@ python3 native/tools/stage_macos_binaries.py --gate native/work/macos-validation
 python3 tools/licensing/audit.py
 ```
 
+A real stage needs a build made from a clean commit: build, gate, render and
+stage from a clean checkout of that commit. `--output native/work/staging/osx-arm64-<n>` makes a
+scratch stage instead (never approved), for the package check and the consumer test
+(`docs/TESTING-MACOS-ARM64.md`, step 7).
+
 `--skip-dependencies` reuses only a complete prefix whose recipe, toolchain and
 library hashes still match. `tools/dependencies/build_macos.py` builds 16 of the
 18 snapshots; libpng is not built, and OIIO is configured with every format
@@ -123,8 +131,8 @@ Adaptations, all recorded by the recipes:
   `CXX_HAS_SSE42`, `CXX_HAS_AVX2` and `CXX_HAS_F16C` as absent, and rejects any
   x86 or host-specific CPU flag. `WITH_CYCLES_NATIVE_ONLY` is off, so the CPU
   kernels run on every M-series chip.
-- Overlay files in the Metal kernel closure (NOT BUILT on a Mac at the current
-  pin). The shared overlay (`native/tools/cycles_overlay.py`) comes first on the
+- Overlay files in the Metal kernel closure (built and validated on a Mac at the
+  current pin, 2026-11-13 and 2026-11-15). The shared overlay (`native/tools/cycles_overlay.py`) comes first on the
   include path of every host translation unit, and at the current pin one of its
   files is also a header of the Metal kernel closure:
   `util/types_gpu_compressed.h` (the WebGPU device's full-precision integrator
@@ -154,22 +162,38 @@ Adaptations, all recorded by the recipes:
   barriers.
 - Cycles and the host are compiled with `-gline-tables-only` for the dSYM.
   CPU films are bit-identical with and without it.
-- Every dependency and the host use `-ffile-prefix-map=<checkout>=.`, and the
-  host links with `-oso_prefix`, so no build path reaches a binary, a line table
-  or the debug map. Cycles appends its own linker flags as a CMake list, so the
-  macOS hook adds `-oso_prefix` with `add_link_options` instead.
+- No build path, build time or build date reaches a binary ("Reproducible
+  builds" below).
 
-`stage_macos_binaries.py` copies the host and its dependency closure (16 dylibs)
+`stage_macos_binaries.py` copies the host and its dependency closure (the dylibs
+`status.json` lists, OIDN's core and its CPU and Metal device modules among them)
 into `native/binaries/osx-arm64/{runtime,unstripped,symbols}`. It removes
 build-tree rpaths (leaving only `@loader_path`), strips the runtime copies
 (`strip -x -S`), signs everything ad hoc and writes the host dSYM, checking
 UUIDs across all three copies. `provenance.json` records the inputs,
-toolchain, build commands, hashes, the UUID mapping, notices per library,
-validation evidence and the exact approved payload. `tools/licensing/audit.py`
-accepts compiled files only when listed there with matching SHA-256, and kernel
-source copies only when byte-identical to `third_party/cycles/src`. Before the
-recorded result, the stager copies the runtime directory alone to a temporary
-folder and renders from it on CPU and Metal.
+toolchain, build commands, hashes, the UUID mapping, notices per library
+(Embree is linked statically into the host), validation evidence and the exact
+approved payload. `tools/licensing/audit.py` accepts compiled files only when
+listed there with matching SHA-256, and kernel source copies only when
+byte-identical to `third_party/cycles/src`. Before the record is written, the
+stager copies the runtime directory alone to a temporary folder and renders from
+it on CPU and Metal; the CPU film must equal the oracle run's.
+
+The stager never rebuilds: it stages the build that the gate and the oracle run
+validated, because that validation is evidence for exactly those files (a rebuild
+gives the same bytes, "Reproducible builds" below, so a fresh build can still be
+compared with a staged payload by hash). To tie that build to a commit,
+`build_cycles_macos.py` records `sourceCommit` and the git status of the
+Cycles-with-Metal sources (`tools/licensing/metal_sources.py`) in
+`invocation.json` when it starts, and again as `sourceAtEnd` in `status.json` when
+it completes; a `--target` build records no commit, because it need not rebuild
+the host library. A real stage refuses unless both records name one commit with a
+clean status, HEAD descends from that commit with no Cycles-with-Metal source
+change since, and the working tree has none; `provenance.json` then names that
+commit as `sourceCommit`, from which `tools/licensing/package_check.py` judges the
+payload's staleness against the same list. Hidden files (a name starting with `.`,
+such as Finder's `.DS_Store`) are refused anywhere in the payload, because git
+ignores them and they could never be committed with their approval.
 
 The image fixtures run in their memory-only form. Under
 `CBC_HOST_NO_IMAGE_FILES` the independent image reference renders its 256
@@ -178,6 +202,115 @@ memory loader does), and the C reload test and the managed `ImageModes` and
 `ColorReload` fixtures verify that texture filenames are rejected instead of
 running the four file and rebind cases. The WGSL device and render gates are
 absent because this profile has no WebGPU device.
+
+### Reproducible builds
+
+Two clean builds of the same sources with the same toolchain (the Xcode, SDK,
+Apple Clang and CMake that `invocation.json` records under `identity`, the SDK at
+the same path, because the dSYM's line tables name its headers) give
+byte-identical files, in one checkout or in two checkouts at different paths:
+every file of a stage (`runtime/`, `unstripped/`, the dSYM in `symbols/` and the
+kernel sources), the host library and the lifecycle and reference executables of
+the build tree, the shipped dependency libraries and the oracle runner.
+`docs/TESTING-MACOS-ARM64.md` (step 9) uses this to compare a fresh build with a
+committed payload by hash. The recipes keep out of the bytes everything that is
+neither a source nor a tool:
+
+- Paths in compiled code: every dependency and the host compile with
+  `-ffile-prefix-map=<checkout>=.`, so no build path reaches a string or a line
+  table.
+- The debug map, whose object paths and times the linker's UUID covers: the host
+  links with `-oso_prefix` (Cycles appends its own linker flags as a CMake list, so
+  the macOS hook adds it with `add_link_options`), and the dependency and host
+  builds run with `ZERO_AR_DATE=1`, so the debug map records no modification times
+  and archives no member dates. `inject_cycles_macos.cmake` names the objects of
+  sources outside the Cycles tree (`native/host`, `native/tests/host`,
+  `native/oracle`) after their repository-relative paths instead of their absolute
+  ones, and renames the objects whose file names repeat within one Cycles static
+  library (`device.cpp` of the CPU, multi and dummy devices and of the overlay, for
+  example) after their paths: without times, `dsymutil` would take the first
+  archive member of a name for every entry of that name and leave the others out
+  of the dSYM. Both use CMake's `OBJECT_NAME` (CMake 4.2 or newer; the injection
+  refuses an older CMake, whose builds would differ by checkout path and lose those
+  objects' line tables).
+- Link-time rpaths: OpenEXR's and OIIO's own CMake code overrides the recipe's
+  rpath settings and linked their libraries with absolute build-tree and prefix
+  rpaths, which size the Mach-O header and so moved every section with the checkout
+  path. A project include (`tools/dependencies/build_macos.py`) links them with the
+  install rpath (`@loader_path`), like every other component. The oracle runner
+  reaches the host library through `@executable_path/../host/build/lib` instead of
+  the absolute build rpath that `native/oracle/CMakeLists.txt` sets.
+- One nondeterministic loop: Apple Clang 21's loop vectorizer decides at random
+  whether one loop of each `contrast_remap_` instantiation in OIIO's
+  `imagebufalgo_pixelmath.cpp` is worth vectorizing, so compiles of one command
+  give different objects. The same project include compiles that file with
+  `-fno-vectorize`, which keeps its arithmetic (OIIO is not built with fast math);
+  the host library imports none of its functions.
+- The date: the host library's version carries a date (`native/host/targets.cmake`).
+  `build_cycles_macos.py` sets `SOURCE_DATE_EPOCH` to the committer time of the
+  newest commit that changed a Cycles-with-Metal source
+  (`tools/licensing/metal_sources.py`), unless the caller sets it, and records the
+  value as `sourceDateEpoch` in `invocation.json`; outside a git checkout the date is
+  the UTC configure date. Every commit with the same Cycles-with-Metal sources
+  therefore builds the same bytes on any day.
+- The dSYM records the path of the binary that `dsymutil` was given, so the stager
+  gives it the path relative to the checkout.
+- The ad-hoc signatures of the linker and of `codesign -s -` depend only on the
+  contents and the file name.
+
+Not covered: libjpeg, which OIIO needs only to configure and which is neither
+shipped nor loaded, keeps the absolute install rpath its own CMake code sets and
+the configure date in its version string, so the dependency prefix's record
+(`codebrix-osx-arm64-build.json`) differs between checkout paths and between days.
+
+Checked on 2026-11-14 (M2 Pro, macOS 27.2.1, Xcode 27.2, Apple Clang 21.0.0,
+CMake 4.4.5) with two copies of one tree at paths of different lengths and a
+clean rebuild of one of them: the 335 files of each scratch stage (20 stripped and
+20 unstripped libraries, the dSYM's three files, 292 kernel sources), the build
+tree's host library, seven executables and kernel closure, the dependency
+prefix's libraries and static libraries and the oracle runner were
+byte-identical, except libjpeg and the prefix record between the two paths. With
+the recipes as they were before, 40 of these artifacts differed between the two
+paths. Against such a build at the same path, the host library, its executables
+and its dSYM (132 compile units) have the same sections, and the static
+libraries the same members. The dependency libraries are byte-identical except
+Iex, IlmThread, OpenEXR, OpenEXRCore, OpenEXRUtil and both OIIO libraries, which,
+like the runner, are linked from the same objects (but
+`imagebufalgo_pixelmath.cpp`) with link commands that differ only in their
+rpaths, so their sections moved. The host gate passed (3102 films compared), and
+the CPU-arm64 films of 81 corpus scenes were bitwise identical to the latest
+corpus run.
+
+## NuGet package
+
+`CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever`
+(`build/nuget/CodeBrix.Graphics3D.Cycles.MacOSArm64.nuspec`) is packed beside the
+other platform packages whenever `native/binaries/osx-arm64/provenance.json` is
+present. It depends
+on the Core package only (no WebGPU runtime). Its dylibs are native assets in
+`runtimes/osx-arm64/native/`. The kernel sources are not: NuGet keeps native-asset
+subfolders only for an application without a runtime identifier and flattens them
+into the output folder for one with a runtime identifier, where `dotnet publish -r
+osx-arm64` then fails with NETSDK1152 because kernel header names repeat (18
+basenames occur more than once in the closure). The package therefore carries the
+tree at its root as `codebrix-cycles/source`, and its
+`buildTransitive/CodeBrix.Graphics3D.Cycles.MacOSArm64.ApacheLicenseForever.targets`
+copies it beside the host library in the consumer's output for build, run and
+publish: under `runtimes/osx-arm64/native/` without a runtime identifier, beside
+the application for `osx-arm64`, and not at all for other runtime identifiers. The
+host looks for the tree beside its own library, so an application that moves the
+library (into an app bundle, for example) moves `codebrix-cycles/` with it.
+
+Consumer test (2026-11-14, a scratch stage of the v5.3.0 base build, SDK 11.0.100,
+.NET 10.0.15): with the tree among the native assets, `dotnet build`, `dotnet run`
+and `dotnet publish` without a runtime identifier rendered on CPU and Metal, and
+both `dotnet publish -r osx-arm64` (framework-dependent and self-contained) failed
+with NETSDK1152. With the layout above, all five rendered on CPU, Metal and Metal
+with Open Image Denoise on the GPU, with all 292 kernel files beside the library
+and none flattened; the CPU film was bitwise the same in every mode, and Metal was
+within 7.5e-8 of it. Removing `codebrix-cycles/` from an output made Metal fail
+with "Metal kernel sources are missing beside the native library" while the CPU
+still rendered.
 
 ## Managed GPU tests and device errors
 
@@ -248,9 +381,11 @@ uncommitted changes.
 
 `cbc_host_bake` (`host_bake.inc`, `exports.macos`) has no Metal-specific code: Cycles' Metal
 device runs its own `integrator_init_from_bake` kernel, staged with the other kernel
-sources, and the map reaches it through the render buffers. Not built or run on a Mac
-yet, so the capability report states `unvalidated` for Metal. To validate it, run
-`native/tools/bake_gate.py` against the Metal backend and change that report.
+sources, and the map reaches it through the render buffers. At the current pin the 60
+`bake/` scenes of the oracle corpus render on both Metal backends (2026-11-15,
+`native/evidence/cycles-oracles-macos-20261115/`), but `native/tools/bake_gate.py` has not
+been run against Metal, so the capability report states `unvalidated` for Metal. To
+validate it, run that gate against the Metal backend and change that report.
 
 ## Results and findings (2026-10-23)
 
@@ -331,7 +466,6 @@ capability scope and the memory-only image fixtures; uncommitted changes on
   `contrast_remap_<unsigned short, float>` (268 bytes shorter; the symbol order
   and every other function are identical), which Cycles never calls. That is a
   compiler-level reproducibility finding, not a behaviour change.
-- Nothing was committed or pushed.
 
 ## Session record (2026-10-19)
 
@@ -352,15 +486,16 @@ capability scope and the memory-only image fixtures; uncommitted changes on
   gate and restaged a payload. Its CPU oracle films are bitwise identical to the
   recorded ones, and its Metal films pass the practical criterion against them.
   302 of the 314 payload files are byte-identical: all kernel sources and 11 of
-  the 16 libraries. The rest vary with the length of the checkout path. OpenEXR,
-  IlmThread and both OIIO libraries keep their own upstream rpath handling,
-  which links an absolute prefix rpath that installation rewrites but whose
-  header space stays. The host's debug map names the object for
-  `native/host/cycles_host.cpp` after its absolute source path (CMake's naming
-  for sources outside the Cycles tree), which changes its UUID. No build path
-  appears in any string, line table or rpath of the shipped files.
+  the 16 libraries. The rest varied with the checkout path: the link-time rpaths
+  of OpenEXR, IlmThread and both OIIO libraries (absolute build-tree and prefix
+  paths, which installation rewrites) sized their Mach-O headers and so moved
+  every section, and the host's debug map named the object of
+  `native/host/cycles_host.cpp` after its absolute path (CMake's naming for
+  sources outside the Cycles tree) and recorded every object's modification time,
+  both of which its UUID covers. No build path appears in any string, line table
+  or rpath of the shipped files. The recipes have since removed these causes
+  ("Reproducible builds" above).
 - Next steps: the Linux side exports its gate fixtures to `native/oracle/scenes`
   and renders CPU-x64 and WGSL films with the same runner; the other RIDs drop
   OIIO format plugins and decide on `CBC_HOST_NO_IMAGE_FILES`; NuGet packaging
   places `codebrix-cycles/source` beside the osx-arm64 runtime library.
-- Nothing was committed or pushed.

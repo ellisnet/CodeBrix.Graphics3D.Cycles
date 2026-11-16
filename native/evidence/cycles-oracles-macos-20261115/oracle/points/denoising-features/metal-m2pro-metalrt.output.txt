@@ -1,0 +1,25 @@
+{
+  "sceneId": "points/denoising-features",
+  "sceneSha256": "8bf86d1f8d9773a3d8b96a576095d27500e7c04eaca3279a6b1fa36d9fbbe5c6",
+  "backend": "metal-m2pro-metalrt",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "rid": "osx-arm64",
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 5.9604644775390625e-08,
+  "renderSeconds": [0.816906,0.268957],
+  "filmSha256": ["d656f9fb5ea6a1c119bcda7d67c849cab8d12121a1df7bb009639b3c682c6acc","3fe0b2d14f62865340d5fbfdabbf3d2a5f634b46f0db6e30116c76a495ab5bcc"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Denoising Normal", "type": "denoising_normal", "components": 3, "written": true, "filmSha256": ["9d3b19e3d43a7e25812ac3905a4904db62ff48f3c74f396733a0edb90c846d9e","1ab4a9f757f43e953924ad715c590e9cfc1b59013c1cd47fef03f2ce7ec31a7d"]},
+    {"index": 1, "name": "Denoising Albedo", "type": "denoising_albedo", "components": 3, "written": true, "filmSha256": ["e1046f7a1e11d7081f0d99af90968aac55b12dd053ab7f27c2c2b1b364cb4e9b","f6834f41e2383a4b2188d51ae1e85ab81cf469176689cd2153eeee48f052818c"]},
+    {"index": 2, "name": "Denoising Depth", "type": "denoising_depth", "components": 1, "written": true, "filmSha256": ["5e33580f82466ab82464f242b0f974d1cb38fb2bf7a4406d00b8ae3f411c96c0","b08b6d09d627ef72856b6902ec3197304df91ab68a84557340ed1d551e13440f"]}
+  ],
+  "warnings": []
+}
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)

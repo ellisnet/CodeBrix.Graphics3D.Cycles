@@ -1,6 +1,6 @@
 # Phase E1: emissive triangle lights on the Samsung (ARM64) and the HP (Android x64)
 
-Agent: E1 (Opus 5.5). Worktree `/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm`, seeded from
+Agent: E1 (Opus 5.5). Worktree `<home>/ClaudeHome/cycles-worktrees/e1-triangle-arm`, seeded from
 `baseline-phaseE.json`. Devices: Samsung SM-X700 `R52W207XQ1V` and HP `192.168.86.225:5555` only (the Pixel was not
 touched). Runtime: the unchanged CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433 (android-arm64 `8113cbfa…`,
 android-x64 `c2b0105f…`, verified on device for every corpus). Nothing was committed; main, the other worktrees,
@@ -70,7 +70,7 @@ android-x64 `c2b0105f…`, verified on device for every corpus). Nothing was com
 - **What a fix needs:** reproducing bionic's `acosf`/`asinf` on the GPU per oracle ABI (arm64 and x86_64 differ),
   selected from the oracle host the way `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE` is. That is a translation of bionic's
   libm (FreeBSD msun, Sun permissive licence), which must be pinned and licence-reviewed first under the standing
-  instructions. I stopped there; this is Jeremy's decision. Alternatives: validate Android GPUs against a glibc-derived
+  instructions. I stopped there; this is the maintainer's decision. Alternatives: validate Android GPUs against a glibc-derived
   (correctly rounded) reference, or document the Android oracle as libm-dependent.
 
 ### Item 2: an Adreno-only shadow visibility flip
@@ -178,7 +178,7 @@ Devices: all `/data/local/tmp/codebrix-e1-*` folders removed on both, no codebri
 left. Budgets were declared in `budgets.txt` before every run; none overran.
 
 ## What remains
-1. Item 1 needs Jeremy's decision on the oracle libm (pin/translate bionic msun `e_acosf`/`e_asinf` per Android ABI, or
+1. Item 1 needs the maintainer's decision on the oracle libm (pin/translate bionic msun `e_acosf`/`e_asinf` per Android ABI, or
    change the Android reference policy). Until then the triangle sampler gate and the Samsung emitter probe fail on
    Android against their own oracles.
 2. Item 2 is Adreno-only GPU divergence; fixing it changes shared traversal and Linux results.

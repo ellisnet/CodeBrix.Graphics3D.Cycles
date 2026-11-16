@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 8 (from merge wave 7 part 2) part 2, Linux stream E (labels w8-*): the Linux flow (device-scene exchange + judge) for the render_gate jobs that join it
 # at wave 6, the glTF tool, bundles (re-generated into bundles/, compared with the staged ones), oracle runs and the comparator.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh; F=$M/tools/linux_flow.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh; F=$M/tools/linux_flow.sh
 B=$R/native/work/cycles-build; TOOL=$R/tools/gltf/CycleGltfRender/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.GltfRender
 MODEL=$R/native/oracle/scenes/assets/ForestVillage/CommunityProps/bench_01.gltf
 O="--runner $B/bin/codebrix_cycles_oracle --host-library $B/lib/libcodebrix_cycles_host.so --backend cpu-x64-linux --backend wgsl-linux-intel"

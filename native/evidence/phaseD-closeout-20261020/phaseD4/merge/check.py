@@ -1,5 +1,5 @@
 import json, hashlib, os, sys
-MAIN='/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'
+MAIN='<home>/GitHome/CodeBrix.Graphics3D.Cycles'
 def sha(p):
     return hashlib.sha256(open(p,'rb').read()).hexdigest() if os.path.exists(p) else None
 p=sys.argv[1]; j=json.load(open(p)); files=j.get('files') or j.get('changes')

@@ -8,7 +8,7 @@ Files already changed by an earlier lane in this wave: three-way git merge-file
 (ours = main now, base = d21bd4a5 copy saved in base/, theirs = lane worktree file == after-hash)."""
 import hashlib, json, shutil, subprocess, sys
 from pathlib import Path
-root = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge6'
+root = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles'); w = root / 'native/work/merge6'
 BASE = 'd21bd4a58f489afeafe2a3046ab32a556578f0ec'
 lane, short, want = sys.argv[1:4]
 wt = Path.home() / 'ClaudeHome/cycles-worktrees' / lane

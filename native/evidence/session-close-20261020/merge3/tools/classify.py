@@ -4,8 +4,8 @@
 """Classify each lane path: main still at lane's before-hash (single owner) or changed (shared)."""
 import hashlib, json
 from pathlib import Path
-main = Path('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles')
-W = Path('/home/jeremy/ClaudeHome/cycles-worktrees')
+main = Path('<home>/GitHome/CodeBrix.Graphics3D.Cycles')
+W = Path('<home>/ClaudeHome/cycles-worktrees')
 pre = json.load(open(main / 'native/work/merge3/pre-merge.json'))['sourceSha256']
 def h(p): return hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None
 lanes = {'E4': W / 'e4-mode4-adreno/native/work/e4/handoff', 'E5': W / 'e5-pixel-sampler/native/work/e5/handoff', 'M4': W / 'm4-bump-derivative/native/work/m4/handoff'}

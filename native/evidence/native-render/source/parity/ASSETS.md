@@ -1,12 +1,12 @@
 # Real-model corpus
 
-Jeremy supplied `~/GitHome/Oasys/Assets/ForestCommunity` for rendering tests.
+The maintainer supplied `~/GitHome/Oasys/Assets/ForestCommunity` for rendering tests.
 `tools/catalog_assets.py` performs read-only metadata inspection and saves
 `work/asset-catalog.json`. It found 706 glTF/GLB documents, 696 with images,
 without metadata parse errors. The inventory itself is not a renderer validation
 or a fresh full load through Gltf2. Three models have now been strictly loaded
 with Gltf2 1.0.290.996 and rendered through the native clay geometry gate:
-bench, lime and ceramic home. See [measured results](README.md#models-supplied-by-jeremy).
+bench, lime and ceramic home. See [measured results](README.md#models-supplied-by-the-maintainer).
 
 Use `CodeBrix.Graphics3D.Gltf2.MitLicenseForever` to prepare imported test
 scenes. Its managed loader is a test/application-side consumer; the Cycles

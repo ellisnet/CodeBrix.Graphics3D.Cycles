@@ -2,8 +2,8 @@
 # Builds the sealed D3 handoff from the worktree without touching git refs/index.
 import hashlib, json, shutil, subprocess, sys
 from pathlib import Path
-TREE = Path('/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi')
-SEED = json.loads(Path('/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-phaseD.json').read_text())
+TREE = Path('<home>/ClaudeHome/cycles-worktrees/d3-native-abi')
+SEED = json.loads(Path('<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-phaseD.json').read_text())
 OUT = TREE/'native/work/d3/handoff'
 def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def git(*a): return subprocess.run(['git', '-C', str(TREE), *a], capture_output=True, check=True).stdout
@@ -23,7 +23,7 @@ for path in paths:
         assert hashlib.sha256(git('show', SEED['head']+':'+path)).hexdigest() == before, path
         patch += git('diff', '--binary', SEED['head'], '--', path)
 (OUT/'changes.patch').write_bytes(patch)
-(OUT/'changes.json').write_text(json.dumps(dict(seedManifest='/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-phaseD.json', seedHead=SEED['head'], changes=changes), indent=2)+'\n')
+(OUT/'changes.json').write_text(json.dumps(dict(seedManifest='<home>/ClaudeHome/cycles-wgsl-2026-10-19/baseline-phaseD.json', seedHead=SEED['head'], changes=changes), indent=2)+'\n')
 validation = OUT/'validation'; validation.mkdir()
 for name in sys.argv[1:]:
     src = TREE/name

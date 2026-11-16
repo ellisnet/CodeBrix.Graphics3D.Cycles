@@ -1,0 +1,448 @@
+{
+  "sceneId": "volumes/catcher-world",
+  "sceneSha256": "4c690bd825b998a14bd3ce6f98070fb1b2f8021c1739aa48105c09be0b082e8d",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/catcher-world/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Shadow Catcher",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Shadow Catcher Matte",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Shadow Catcher Sample Count",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.0156075,
+        0.0140732
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "arm64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/catcher-world/metal-m2pro",
+      "backend": "metal-m2pro",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Shadow Catcher",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.76837158203125e-07
+        },
+        {
+          "name": "Shadow Catcher Matte",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 9.5367431640625e-07
+        },
+        {
+          "name": "Shadow Catcher Sample Count",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 9.5367431640625e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 9.5367431640625e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 9.5367431640625e-07,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        2.17783,
+        1.4943
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-arm64-base-20261113/oracle/volumes/catcher-world/metal-m2pro-metalrt",
+      "backend": "metal-m2pro-metalrt",
+      "samples": 16,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "Shadow Catcher",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.384185791015625e-07
+        },
+        {
+          "name": "Shadow Catcher Matte",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.9073486328125e-06
+        },
+        {
+          "name": "Shadow Catcher Sample Count",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.9073486328125e-06,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.9073486328125e-06,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 1.9073486328125e-06,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        1.34817,
+        1.72361
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "osx-arm64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    }
+  ],
+  "goldStandards": [
+    "cpu-arm64-macos",
+    "metal-m2pro",
+    "metal-m2pro-metalrt"
+  ],
+  "candidates": [],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.19345634430646896,
+      "maxRelativeError": 0.6468829511087655,
+      "rms": 0.00600417864084856,
+      "practicalFailures": 991,
+      "strictDifferences": 2315,
+      "worstPixel": {
+        "x": 21,
+        "y": 9,
+        "channel": "R",
+        "reference": 0.29905927181243896,
+        "candidate": 0.10560292750597,
+        "absoluteDifference": 0.19345634430646896,
+        "criterionRatio": 1761.7072895233293
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Shadow Catcher",
+          "type": "shadow_catcher",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.14079809188842773,
+          "maxRelativeError": 0.32583183627321355,
+          "rms": 0.0054108283208430304,
+          "practicalFailures": 162,
+          "strictDifferences": 410,
+          "worstPixel": {
+            "x": 28,
+            "y": 5,
+            "channel": 0,
+            "reference": 0.34145087003707886,
+            "candidate": 0.45097190141677856,
+            "absoluteDifference": 0.10952103137969971,
+            "criterionRatio": 925.8675312527115
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "Shadow Catcher Matte",
+          "type": "shadow_catcher_matte",
+          "components": 4,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.19345634430646896,
+          "maxRelativeError": 0.6468829511087655,
+          "rms": 0.00600417864084856,
+          "practicalFailures": 991,
+          "strictDifferences": 2315,
+          "worstPixel": {
+            "x": 21,
+            "y": 9,
+            "channel": "R",
+            "reference": 0.29905927181243896,
+            "candidate": 0.10560292750597,
+            "absoluteDifference": 0.19345634430646896,
+            "criterionRatio": 1761.7072895233293
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "Shadow Catcher Sample Count",
+          "type": "shadow_catcher_sample_count",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.125,
+          "maxRelativeError": 0.5,
+          "rms": 0.008438464451051902,
+          "practicalFailures": 11,
+          "strictDifferences": 11,
+          "worstPixel": {
+            "x": 21,
+            "y": 6,
+            "channel": 0,
+            "reference": 0.25,
+            "candidate": 0.375,
+            "absoluteDifference": 0.125,
+            "criterionRatio": 1250.0
+          },
+          "status": "compared",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.193461574614048,
+      "maxRelativeError": 0.6469004403093087,
+      "rms": 0.005886570432492494,
+      "practicalFailures": 979,
+      "strictDifferences": 2307,
+      "worstPixel": {
+        "x": 21,
+        "y": 9,
+        "channel": "R",
+        "reference": 0.29905927181243896,
+        "candidate": 0.10559769719839096,
+        "absoluteDifference": 0.193461574614048,
+        "criterionRatio": 1761.7549192406254
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Shadow Catcher",
+          "type": "shadow_catcher",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.10938635468482971,
+          "maxRelativeError": 0.3254431212056426,
+          "rms": 0.003993957005594721,
+          "practicalFailures": 155,
+          "strictDifferences": 411,
+          "worstPixel": {
+            "x": 28,
+            "y": 5,
+            "channel": 0,
+            "reference": 0.34145087003707886,
+            "candidate": 0.45083722472190857,
+            "absoluteDifference": 0.10938635468482971,
+            "criterionRatio": 924.7290030866988
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "Shadow Catcher Matte",
+          "type": "shadow_catcher_matte",
+          "components": 4,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.193461574614048,
+          "maxRelativeError": 0.6469004403093087,
+          "rms": 0.005886570432492494,
+          "practicalFailures": 979,
+          "strictDifferences": 2307,
+          "worstPixel": {
+            "x": 21,
+            "y": 9,
+            "channel": "R",
+            "reference": 0.29905927181243896,
+            "candidate": 0.10559769719839096,
+            "absoluteDifference": 0.193461574614048,
+            "criterionRatio": 1761.7549192406254
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "Shadow Catcher Sample Count",
+          "type": "shadow_catcher_sample_count",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.125,
+          "maxRelativeError": 0.5,
+          "rms": 0.00813150781041458,
+          "practicalFailures": 10,
+          "strictDifferences": 10,
+          "worstPixel": {
+            "x": 21,
+            "y": 6,
+            "channel": 0,
+            "reference": 0.25,
+            "candidate": 0.375,
+            "absoluteDifference": 0.125,
+            "criterionRatio": 1250.0
+          },
+          "status": "compared",
+          "passed": false
+        }
+      ]
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.07130265235900879,
+      "maxRelativeError": 0.4025894742368448,
+      "rms": 0.0013213856436845332,
+      "practicalFailures": 100,
+      "strictDifferences": 465,
+      "worstPixel": {
+        "x": 26,
+        "y": 5,
+        "channel": "A",
+        "reference": 0.17711007595062256,
+        "candidate": 0.24841272830963135,
+        "absoluteDifference": 0.07130265235900879,
+        "criterionRatio": 834.7104923749441
+      },
+      "reference": "metal-m2pro",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "Shadow Catcher",
+          "type": "shadow_catcher",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.07399845123291016,
+          "maxRelativeError": 0.10150628296194282,
+          "rms": 0.0026099731297243006,
+          "practicalFailures": 12,
+          "strictDifferences": 215,
+          "worstPixel": {
+            "x": 27,
+            "y": 2,
+            "channel": 0,
+            "reference": 0.6660867929458618,
+            "candidate": 0.6058028936386108,
+            "absoluteDifference": 0.06028389930725098,
+            "criterionRatio": 329.02940950276087
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "Shadow Catcher Matte",
+          "type": "shadow_catcher_matte",
+          "components": 4,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.07130265235900879,
+          "maxRelativeError": 0.4025894742368448,
+          "rms": 0.0013213856436845332,
+          "practicalFailures": 100,
+          "strictDifferences": 465,
+          "worstPixel": {
+            "x": 26,
+            "y": 5,
+            "channel": "A",
+            "reference": 0.17711007595062256,
+            "candidate": 0.24841272830963135,
+            "absoluteDifference": 0.07130265235900879,
+            "criterionRatio": 834.7104923749441
+          },
+          "status": "compared",
+          "passed": false
+        },
+        {
+          "name": "Shadow Catcher Sample Count",
+          "type": "shadow_catcher_sample_count",
+          "components": 1,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.0625,
+          "maxRelativeError": 0.08333333333333333,
+          "rms": 0.0022552744890219755,
+          "practicalFailures": 1,
+          "strictDifferences": 1,
+          "worstPixel": {
+            "x": 26,
+            "y": 5,
+            "channel": 0,
+            "reference": 0.75,
+            "candidate": 0.6875,
+            "absoluteDifference": 0.0625,
+            "criterionRatio": 312.5
+          },
+          "status": "compared",
+          "passed": false
+        }
+      ]
+    }
+  ],
+  "oracleReferences": {},
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 0,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

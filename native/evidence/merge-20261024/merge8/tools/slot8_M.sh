@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 8, slot M (C1): the comparator with the Mac gold-standard films added (frozen evidence
 # cycles-oracles-macos-20261023 starters, -2 bench and HDRI bench) to this wave's Linux CPU + WGSL films. Waits for slot E.
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh
 E1=$R/native/evidence/cycles-oracles-macos-20261023/oracle; E2=$R/native/evidence/cycles-oracles-macos-20261023-2/oracle
 cd $R; mkdir -p $V/w8-comparator-mac
 until grep -q "END w8-oracle-hdri exit=" $M/timeline.log; do sleep 20; done

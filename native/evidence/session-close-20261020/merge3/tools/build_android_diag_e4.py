@@ -7,7 +7,7 @@ only its WORK root moves. Nothing in the worktree is written."""
 import sys, json, hashlib
 from pathlib import Path
 here = Path(__file__).resolve().parent
-e4 = Path('/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno')
+e4 = Path('<home>/ClaudeHome/cycles-worktrees/e4-mode4-adreno')
 sys.path.insert(0, str(e4/'native/tools'))
 import build_cycles_android as build
 assert Path(build.__file__).resolve().is_relative_to(e4)

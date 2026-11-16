@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Merge wave 6, slot S: lane S3's Linux stage-judge self-test (nodes_render, principled_render) and the same flow for the
 # render_gate.cpp jobs that join the device-scene flow at merge wave 6 (microfacet_render, render static/motion, volume renders).
-R=/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh; F=$M/tools/linux_flow.sh
+R=<home>/GitHome/CodeBrix.Graphics3D.Cycles; M=$R/native/work/merge8; V=$M/validation; S=$M/tools/slot.sh; F=$M/tools/linux_flow.sh
 cd $R
 $S s-nodes_render 2400 bash $F nodes_render $V/s-nodes_render/flow
 $S s-principled_render 2400 bash $F principled_render $V/s-principled_render/flow
