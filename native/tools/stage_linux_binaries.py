@@ -209,7 +209,9 @@ def main():
  diff=subprocess.run(['git','diff','--binary'],cwd=REPO,capture_output=True,check=True).stdout
  # Built in the manylinux container: build_cycles.py hands the build over to it (native/manylinux/build.sh).
  subprocess.run([sys.executable,str(REPO/'native/tools/build_cycles.py'),'--jobs',args.jobs,'--target','codebrix_cycles_host','--target','codebrix_cycles_oracle'],check=True,cwd=REPO,capture_output=True)
- build_record=json.loads((REPO/'native/work/cycles-build.json').read_text())
+ # The record names no home folder: the WebGPU runtime package is found in the NuGet cache under it, and the
+ # payload's provenance writes that folder as <home> (as documents write <repo> and <home>).
+ build_record=json.loads((REPO/'native/work/cycles-build.json').read_text().replace(str(Path.home()),'<home>'))
  machine=build_record.get('buildMachine') or {}
  if machine.get('kind')!='manylinux container':
   raise RuntimeError('native/work/cycles-build was not built in the manylinux container (native/manylinux/build.sh); refusing to stage it')
