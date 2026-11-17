@@ -236,7 +236,8 @@ public class GpuRenderTests(ITestOutputHelper output)
     }
 
     // The integer and component nodes with a linked input (a constant one is folded away before the device sees it):
-    // every backend renders them, and the WebGPU film is judged against the CPU film.
+    // every backend renders them, and the GPU film is judged against the authority for this GPU (the CPU film for WebGPU,
+    // the recorded Metal reference for Metal).
     [Theory]
     [InlineData("Boolean Math")]
     [InlineData("Integer Math")]
@@ -288,10 +289,7 @@ public class GpuRenderTests(ITestOutputHelper output)
         onCpu.Span.ToArray().All(float.IsFinite).Should().BeTrue();
         // The emitter the node drives is in the picture: the film is not the scene's without it.
         onCpu.Span.SequenceEqual(RenderCpu(WebGpuValidationScenes.DiffuseSun).Span).Should().BeFalse();
-        // Cycles' Metal device is judged against recorded Metal references, and none is recorded for these three scenes:
-        // there the render must succeed and be finite.
-        if (gpu.Backend == Backend.Metal) film.Span.ToArray().All(float.IsFinite).Should().BeTrue();
-        else Judge(gpu, "integer-and-component-nodes-" + node.Replace(' ', '-').ToLowerInvariant(), film, onCpu).PracticalFailures.Should().Be(0);
+        Judge(gpu, "integer-and-component-nodes-" + node.Replace(' ', '-').ToLowerInvariant(), film, onCpu).PracticalFailures.Should().Be(0);
     }
 
     // A small quad whose material samples a 16385 x 1 image, which Cycles' Metal device rejects.

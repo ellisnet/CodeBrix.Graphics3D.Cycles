@@ -1,0 +1,501 @@
+--- a/src/device/device.h
++++ b/src/device/device.h
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -46,6 +48,7 @@
+   DEVICE_METAL,
+   DEVICE_ONEAPI,
+   DEVICE_DUMMY,
++  DEVICE_WEBGPU,
+ };
+ 
+ enum DeviceTypeMask {
+@@ -55,6 +58,7 @@
+   DEVICE_MASK_HIP = (1 << DEVICE_HIP),
+   DEVICE_MASK_METAL = (1 << DEVICE_METAL),
+   DEVICE_MASK_ONEAPI = (1 << DEVICE_ONEAPI),
++  DEVICE_MASK_WEBGPU = (1 << DEVICE_WEBGPU),
+   DEVICE_MASK_ALL = ~0
+ };
+ 
+@@ -186,6 +190,11 @@
+     return !error_message().empty();
+   }
+   virtual void set_error(const string &error);
++  /* CodeBrix host: forget a recorded error before a full scene re-upload. */
++  void clear_error()
++  {
++    error_msg.clear();
++  }
+   virtual BVHLayoutMask get_bvh_layout_mask(uint64_t kernel_features) const = 0;
+ 
+   /* statistics */
+--- a/src/device/device.cpp
++++ b/src/device/device.cpp
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -8,6 +10,9 @@
+ #include "bvh/bvh2.h"
+ 
+ #include "device/device.h"
++#ifdef WITH_WEBGPU
++#  include "codebrix_webgpu_device.h"
++#endif
+ #include "device/queue.h"
+ 
+ #include "device/cpu/device.h"
+@@ -113,6 +118,11 @@
+   unique_ptr<Device> device;
+ 
+   switch (info.type) {
++#ifdef WITH_WEBGPU
++    case DEVICE_WEBGPU:
++      device = device_webgpu_create(info, stats, profiler, headless);
++      break;
++#endif
+     case DEVICE_CPU:
+       device = device_cpu_create(info, stats, profiler, headless);
+       break;
+@@ -184,6 +194,9 @@
+   if (strcmp(name, "METAL") == 0) {
+     return DEVICE_METAL;
+   }
++  if (strcmp(name, "WEBGPU") == 0) {
++    return DEVICE_WEBGPU;
++  }
+   if (strcmp(name, "ONEAPI") == 0) {
+     return DEVICE_ONEAPI;
+   }
+@@ -214,6 +227,9 @@
+   if (type == DEVICE_METAL) {
+     return "METAL";
+   }
++  if (type == DEVICE_WEBGPU) {
++    return "WEBGPU";
++  }
+   if (type == DEVICE_ONEAPI) {
+     return "ONEAPI";
+   }
+@@ -228,6 +244,9 @@
+ {
+   vector<DeviceType> types;
+   types.push_back(DEVICE_CPU);
++#ifdef WITH_WEBGPU
++  types.push_back(DEVICE_WEBGPU);
++#endif
+ #ifdef WITH_CUDA
+   types.push_back(DEVICE_CUDA);
+ #endif
+@@ -345,6 +364,12 @@
+   }
+ #endif
+ 
++#ifdef WITH_WEBGPU
++  if (mask & DEVICE_MASK_WEBGPU) {
++    device_webgpu_info(devices);
++  }
++#endif
++
+   if (mask & DEVICE_MASK_CPU) {
+     if (!(devices_initialized_mask & DEVICE_MASK_CPU)) {
+       device_cpu_info(cpu_devices());
+--- a/src/integrator/path_trace.cpp
++++ b/src/integrator/path_trace.cpp
+@@ -1,8 +1,13 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+ 
+ #include "integrator/path_trace.h"
++
++#include <cstdio>
++#include <cstdlib>
+ 
+ #include "device/cpu/device.h"
+ #include "device/device.h"
+@@ -24,7 +29,210 @@
+ #include "util/tbb.h"
+ #include "util/time.h"
+ 
++#include <cstring>
++#include <list>
++#include <map>
++
+ CCL_NAMESPACE_BEGIN
++
++/* CodeBrix host (native/host/ABI.md "Tiled rendering"): the finished tiles of a tiled render stay in system memory.
++ * The pinned TileManager (session/tile.cpp) writes them to a tile file through OpenImageIO, which needs an EXR writer,
++ * and reads the file back for the full-frame work; this store takes the place of the three calls PathTrace makes into
++ * that file, so a tiled render behaves the same in every build, whatever OpenImageIO plugins it has. A frame holds
++ * what TileManager::read_full_buffer_from_disk would read back: the full buffer's parameters and passes and the
++ * integrator's denoise parameters (the sockets the file's attributes carry), and every pixel's channels (the passes in
++ * use, in buffer order), zero where no tile was written. A finished frame is found by its name, which the session's
++ * full buffer callback receives in place of the file name. A frame lives until it is read back, the next render of its
++ * path tracer starts, codebrix_memory_tiles drops it, or the path tracer is destroyed. No file is written or read. */
++int codebrix_memory_tiles(const PathTrace *path_trace, bool discard);
++
++namespace {
++
++struct CodeBrixMemoryFrame {
++  const PathTrace *owner = nullptr;
++  bool finished = false;
++  string name;
++  BufferParams params;
++  DenoiseParams denoise;
++  int channels = 0;
++  vector<float> pixels;
++  int tiles = 0;
++};
++
++thread_mutex codebrix_memory_mutex;
++std::list<CodeBrixMemoryFrame> codebrix_memory_frames;
++std::map<const PathTrace *, DenoiseParams> codebrix_memory_denoise;
++uint64_t codebrix_memory_frame_count = 0;
++
++/* The sockets the tile file's attributes carry (node_to_image_spec_atttributes), set as its read-back sets them. */
++void codebrix_memory_copy_sockets(Node *to, const Node &from)
++{
++  for (const SocketType &socket : from.type->inputs) {
++    to->copy_value(socket, from, socket);
++  }
++}
++
++/* The integrator's denoise parameters, which TileManager::update keeps with the tile file. */
++void codebrix_memory_denoise_params(const PathTrace *owner, const DenoiseParams &params)
++{
++  const thread_scoped_lock lock(codebrix_memory_mutex);
++  codebrix_memory_denoise[owner] = params;
++}
++
++/* TileManager::write_tile: the window of the tile's buffer goes to its place in the frame (the first tile of a render
++ * starts the frame, from the full buffer's parameters, as TileManager::update describes the file). */
++bool codebrix_memory_write_tile(const PathTrace *owner,
++                                const BufferParams &full_params,
++                                const RenderBuffers &tile_buffers)
++{
++  const thread_scoped_lock lock(codebrix_memory_mutex);
++  CodeBrixMemoryFrame *frame = nullptr;
++  for (CodeBrixMemoryFrame &candidate : codebrix_memory_frames) {
++    if (candidate.owner == owner && !candidate.finished) {
++      frame = &candidate;
++    }
++  }
++  if (frame == nullptr) {
++    frame = &codebrix_memory_frames.emplace_back();
++    frame->owner = owner;
++    frame->params = full_params;
++    const auto denoise = codebrix_memory_denoise.find(owner);
++    if (denoise != codebrix_memory_denoise.end()) {
++      frame->denoise = denoise->second;
++    }
++    for (const BufferPass &pass : full_params.passes) {
++      if (pass.offset != PASS_UNUSED) {
++        frame->channels += pass.get_info().num_components;
++      }
++    }
++    frame->pixels.resize(size_t(full_params.width) * size_t(full_params.height) * size_t(frame->channels), 0.0f);
++  }
++
++  const BufferParams &tile_params = tile_buffers.params;
++  const int tile_x = tile_params.full_x - frame->params.full_x + tile_params.window_x;
++  const int tile_y = tile_params.full_y - frame->params.full_y + tile_params.window_y;
++  if (tile_params.pass_stride != frame->params.pass_stride || frame->channels > tile_params.pass_stride ||
++      tile_x < 0 || tile_y < 0 || tile_x + tile_params.window_width > frame->params.width ||
++      tile_y + tile_params.window_height > frame->params.height)
++  {
++    return false;
++  }
++
++  const int64_t pass_stride = tile_params.pass_stride;
++  for (int y = 0; y < tile_params.window_height; ++y) {
++    const float *in = tile_buffers.buffer.data() +
++                      ((int64_t(tile_params.window_y) + y) * tile_params.width + tile_params.window_x) *
++                          pass_stride;
++    float *out = frame->pixels.data() +
++                 ((int64_t(tile_y) + y) * frame->params.width + tile_x) * frame->channels;
++    for (int x = 0; x < tile_params.window_width; ++x, in += pass_stride, out += frame->channels) {
++      memcpy(out, in, sizeof(float) * frame->channels);
++    }
++  }
++  ++frame->tiles;
++  return true;
++}
++
++/* TileManager::finish_write_tiles: the frame is complete (a tile never written reads zero, as the zero tiles Cycles
++ * writes for it) and gets its name. Empty when no tile was written. */
++string codebrix_memory_finish_frame(const PathTrace *owner)
++{
++  const thread_scoped_lock lock(codebrix_memory_mutex);
++  for (CodeBrixMemoryFrame &frame : codebrix_memory_frames) {
++    if (frame.owner == owner && !frame.finished) {
++      frame.finished = true;
++      frame.name = "codebrix-memory-tile-frame-" + to_string(++codebrix_memory_frame_count);
++      return frame.name;
++    }
++  }
++  return string();
++}
++
++/* TileManager::read_full_buffer_from_disk: the buffer and denoise parameters rebuilt from their sockets, as from the
++ * file's attributes, and the frame's pixels; the frame is dropped. */
++bool codebrix_memory_read_frame(const string_view name, RenderBuffers *buffers, DenoiseParams *denoise_params)
++{
++  std::list<CodeBrixMemoryFrame> taken;
++  {
++    const thread_scoped_lock lock(codebrix_memory_mutex);
++    for (auto it = codebrix_memory_frames.begin(); it != codebrix_memory_frames.end(); ++it) {
++      if (it->finished && string_view(it->name) == name) {
++        taken.splice(taken.begin(), codebrix_memory_frames, it);
++        break;
++      }
++    }
++  }
++  if (taken.empty()) {
++    LOG_ERROR << "No tile frame in memory named " << name;
++    return false;
++  }
++
++  const CodeBrixMemoryFrame &frame = taken.front();
++  BufferParams buffer_params;
++  codebrix_memory_copy_sockets(&buffer_params, frame.params);
++  for (const BufferPass &stored : frame.params.passes) {
++    BufferPass pass;
++    codebrix_memory_copy_sockets(&pass, stored);
++    buffer_params.passes.emplace_back(std::move(pass));
++  }
++  if (buffer_params.passes.empty()) {
++    LOG_ERROR << "Missing passes in the tile frame.";
++    return false;
++  }
++  buffer_params.update_passes();
++  buffers->reset(buffer_params);
++
++  codebrix_memory_copy_sockets(denoise_params, frame.denoise);
++
++  if (frame.pixels.size() > buffers->buffer.size()) {
++    LOG_ERROR << "Tile frame larger than its render buffer.";
++    return false;
++  }
++  memcpy(buffers->buffer.data(), frame.pixels.data(), sizeof(float) * frame.pixels.size());
++  return true;
++}
++
++void codebrix_memory_release(const PathTrace *owner)
++{
++  codebrix_memory_tiles(owner, true);
++  const thread_scoped_lock lock(codebrix_memory_mutex);
++  codebrix_memory_denoise.erase(owner);
++}
++
++}  // namespace
++
++/* The tiles held by path_trace's frames, finished or not; with discard the frames are dropped (the CodeBrix host's
++ * bookkeeping, and a cancelled or failed render's frame). */
++int codebrix_memory_tiles(const PathTrace *path_trace, const bool discard)
++{
++  const thread_scoped_lock lock(codebrix_memory_mutex);
++  int tiles = 0;
++  for (auto it = codebrix_memory_frames.begin(); it != codebrix_memory_frames.end();) {
++    if (it->owner != path_trace) {
++      ++it;
++      continue;
++    }
++    tiles += it->tiles;
++    it = discard ? codebrix_memory_frames.erase(it) : std::next(it);
++  }
++  return tiles;
++}
++
++/* CodeBrix host (native/host/ABI.md "Render output", the delivered film): the parameters of the render buffers whose
++ * passes a write to the output driver delivers, while the driver's write_render_tile runs on this thread. The tile the
++ * driver receives states the size of the render requested; these state the size the passes were rendered at, which
++ * differs when the path tracer renders at a reduced resolution (the resolution divider, which a denoiser upscale factor
++ * raises), so the host can refuse such a film by name instead of reading it as the requested one. */
++const BufferParams *codebrix_delivered_buffer_params();
++
++namespace {
++thread_local const BufferParams *codebrix_delivered_params = nullptr;
++}  // namespace
++
++const BufferParams *codebrix_delivered_buffer_params()
++{
++  return codebrix_delivered_params;
++}
+ 
+ PathTrace::PathTrace(Device *device,
+                      Device *denoise_device,
+@@ -68,6 +276,8 @@
+ PathTrace::~PathTrace()
+ {
+   destroy_gpu_resources();
++  /* CodeBrix: the path tracer's frames in memory and its denoise parameters go with it. */
++  codebrix_memory_release(this);
+ }
+ 
+ void PathTrace::load_kernels()
+@@ -129,6 +339,12 @@
+ 
+   full_params_ = full_params;
+ 
++  /* CodeBrix: a new render drops the frames an earlier render left in memory (TileManager::reset_scheduling closes
++   * the tile file a stopped render left open). */
++  if (reset_rendering) {
++    codebrix_memory_tiles(this, true);
++  }
++
+   /* NOTE: GPU display checks for buffer modification and avoids unnecessary re-allocation.
+    * It is requires to inform about reset whenever it happens, so that the redraw state tracking is
+    * properly updated. */
+@@ -213,6 +429,16 @@
+     const uint num_rendered_samples = render_scheduler_.get_num_rendered_samples();
+     const uint limit = next_power_of_two(num_rendered_samples) - num_rendered_samples;
+     render_scheduler_.set_limit_samples_per_update(limit);
++    /* CodeBrix WebGPU: one sample per update with volumes (the CPU device's sample order). */
++    if (device_->info.type == DEVICE_WEBGPU) {
++      render_scheduler_.set_limit_samples_per_update(1);
++    }
++  }
++  /* CodeBrix maintainer modes (native/cycles/fingerprint.h, scene_capture.h): one sample per update keeps the
++   * hashed command sequence independent of the clock (RenderScheduler::calculate_num_samples_per_update), and a
++   * capture's path records at their first size. The film does not depend on this grouping. */
++  if (device_->info.type == DEVICE_WEBGPU && (getenv("CODEBRIX_CYCLES_FINGERPRINT") || getenv("CODEBRIX_CYCLES_RENDER_CAPTURE"))) {
++    render_scheduler_.set_limit_samples_per_update(1);
+   }
+ 
+   path_trace(render_work);
+@@ -245,6 +471,16 @@
+   denoise_volume_guiding_buffers(render_work, has_volume);
+   if (render_cancel_.is_requested) {
+     return;
++  }
++  /* CodeBrix maintainer tool: raw render buffer of the CPU device, DIR/s<samples>.bin. */
++  if (const char *dump = getenv("CODEBRIX_CYCLES_RENDER_BUFFER_DUMP")) {
++    path_trace_works_[0]->copy_render_buffers_from_device();
++    RenderBuffers *buffers = path_trace_works_[0]->get_render_buffers();
++    const string name = string(dump) + "/s" + to_string(render_work.path_trace.start_sample + render_work.path_trace.num_samples) + ".bin";
++    if (FILE *file = fopen(name.c_str(), "wb")) {
++      fwrite(buffers->buffer.data(), sizeof(float), buffers->buffer.size(), file);
++      fclose(file);
++    }
+   }
+ 
+   write_tile_buffer(render_work);
+@@ -562,6 +798,9 @@
+ 
+ void PathTrace::set_denoiser_params(const DenoiseParams &params)
+ {
++  /* CodeBrix: the integrator's denoise parameters, kept with a frame in memory as TileManager::update keeps them. */
++  codebrix_memory_denoise_params(this, params);
++
+   if (!params.use) {
+     denoiser_.reset();
+     render_scheduler_.set_denoiser_params(params);
+@@ -933,14 +1172,16 @@
+ 
+   LOG_DEBUG << "Handle full-frame render buffer work.";
+ 
+-  if (!tile_manager_.has_written_tiles()) {
+-    LOG_DEBUG << "No tiles on disk.";
+-    return;
+-  }
+-
+-  /* Make sure writing to the file is fully finished.
+-   * This will include writing all possible missing tiles, ensuring validness of the file. */
+-  tile_manager_.finish_write_tiles();
++  /* CodeBrix: the frame in memory is complete, and its name goes to the session's full buffer callback in place of
++   * the tile file's name (TileManager::finish_write_tiles). */
++  const string codebrix_frame = codebrix_memory_finish_frame(this);
++  if (codebrix_frame.empty()) {
++    LOG_DEBUG << "No tiles in memory.";
++    return;
++  }
++  if (tile_manager_.full_buffer_written_cb) {
++    tile_manager_.full_buffer_written_cb(codebrix_frame);
++  }
+ 
+   /* NOTE: The rest of full-frame post-processing (such as full-frame denoising) will be done after
+    * all scenes and layers are rendered by the Session (which happens after freeing Session memory,
+@@ -996,7 +1237,11 @@
+   }
+ 
+   const PathTraceTile tile(*this);
++  /* CodeBrix: the parameters the passes of this write are read with, for the host's check of the delivered film. */
++  codebrix_delivered_params = full_frame_state_.render_buffers ? &full_frame_state_.render_buffers->params :
++                                                                 &render_state_.effective_big_tile_params;
+   output_driver_->write_render_tile(tile);
++  codebrix_delivered_params = nullptr;
+ }
+ 
+ void PathTrace::tile_buffer_read()
+@@ -1051,8 +1296,9 @@
+     buffers = &big_tile_cpu_buffers;
+   }
+ 
+-  if (!tile_manager_.write_tile(*buffers)) {
+-    device_->set_error("Error writing tile to file");
++  /* CodeBrix: the tile goes to the frame in memory, never to a tile file. */
++  if (!codebrix_memory_write_tile(this, full_params_, *buffers)) {
++    device_->set_error("Error keeping tile in memory");
+   }
+ }
+ 
+@@ -1143,13 +1389,14 @@
+ {
+   LOG_DEBUG << "Processing full frame buffer file " << filename;
+ 
+-  progress_set_status("Reading full buffer from disk");
++  /* CodeBrix: the frame comes from memory (TileManager::read_full_buffer_from_disk reads the tile file). */
++  progress_set_status("Reading full buffer from memory");
+ 
+   RenderBuffers full_frame_buffers(cpu_device_.get());
+ 
+   DenoiseParams denoise_params;
+-  if (!tile_manager_.read_full_buffer_from_disk(filename, &full_frame_buffers, &denoise_params)) {
+-    const string error_message = "Error reading tiles from file";
++  if (!codebrix_memory_read_frame(filename, &full_frame_buffers, &denoise_params)) {
++    const string error_message = "Error reading tiles from memory";
+     if (progress_) {
+       progress_->set_error(error_message);
+       progress_->set_cancel(error_message);
+@@ -1336,6 +1583,8 @@
+       return "Multi";
+     case DEVICE_METAL:
+       return "Metal";
++    case DEVICE_WEBGPU:
++      return "WebGPU";
+   }
+ 
+   return "UNKNOWN";
+--- a/src/util/types_gpu_compressed.h
++++ b/src/util/types_gpu_compressed.h
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2026 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -177,5 +179,14 @@
+ template<typename T> struct gpu_state_storage<T, gpu_void_t<typename T::compressed_type>> {
+   using gpu_type = typename T::compressed_type;
+ };
++#ifdef WITH_WEBGPU
++/* CodeBrix WebGPU: compressed-on-GPU state fields are stored in full precision. */
++template<> struct gpu_state_storage<FloatCompressedOnGPU, void> {
++  using gpu_type = float;
++};
++template<> struct gpu_state_storage<SpectrumCompressedOnGPU, void> {
++  using gpu_type = PackedSpectrum;
++};
++#endif
+ 
+ CCL_NAMESPACE_END
