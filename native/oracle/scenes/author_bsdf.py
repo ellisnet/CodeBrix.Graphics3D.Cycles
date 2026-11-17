@@ -145,6 +145,23 @@ def scenes():
         single('gm-smooth', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.3, 'IOR': 1.5, 'color': [0.9, 0.95, 1.0]}),
         single('gm-rough', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.7, 'IOR': 1.33, 'color': [0.95, 0.85, 0.7]}),
         tangent_shader('gm-aniso', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.4, 'anisotropy': 0.5, 'rotation': 0.15, 'IOR': 1.45, 'color': [0.85, 0.95, 0.9]})])
+    # The other branches of the multiscatter Glass BSDF's energy preservation (closure/bsdf_microfacet.h
+    # bsdf_microfacet_setup_fresnel_generalized_schlick, microfacet_ggx_preserve_energy): a singular lobe, a white glass at
+    # roughness 1 with a high IOR (the average Fresnel equals one: no darkening), and an IOR below 1 with a negative anisotropy.
+    out['glass-multiscatter-extremes.json'] = scene('bsdf/glass-multiscatter-extremes', 'Glass BSDF with the multiscatter GGX distribution at its extremes: roughness 0 (IOR 1.5), '
+                                                    'a white glass at roughness 1 (IOR 2.4), and an IOR below 1 (0.8) with a negative anisotropy (-0.7) and a tangent', [
+        single('gx-sharp', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.0, 'IOR': 1.5, 'color': [0.9, 0.95, 1.0]}),
+        single('gx-white', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 1.0, 'IOR': 2.4, 'color': [1.0, 1.0, 1.0]}),
+        tangent_shader('gx-low', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.5, 'anisotropy': -0.7, 'IOR': 0.8, 'color': [0.8, 0.9, 0.7]})])
+    # With refractive caustics off, a diffuse path's glass has a zero transmission tint: the average Fresnel is the reflection
+    # tint times mix(f0, 1, s) of the closure's IOR (the reflective branch); a black glass has both tints zero.
+    document = scene('bsdf/glass-multiscatter-caustics-off', 'Glass BSDF with the multiscatter GGX distribution with refractive caustics off (a diffuse path sees the reflection '
+                     'only): roughness 0.3 (IOR 1.5), roughness 0.7 (IOR 1.33), and a black glass', [
+        single('gc-smooth', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.3, 'IOR': 1.5, 'color': [0.9, 0.95, 1.0]}),
+        single('gc-rough', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.7, 'IOR': 1.33, 'color': [0.95, 0.85, 0.7]}),
+        single('gc-black', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.4, 'IOR': 1.45, 'color': [0.0, 0.0, 0.0]})])
+    document['nodes'][0]['set']['caustics_refractive'] = False
+    out['glass-multiscatter-caustics-off.json'] = document
     out['principled-anisotropic-transmission.json'] = scene('bsdf/principled-anisotropic-transmission', 'Principled BSDF with Anisotropic and Transmission Weight (the anisotropic transmission lobe): GGX, multiscatter GGX with a rotated tangent and a partial transmission, and a part-metallic tinted one', [
         tangent_shader('p-ggx', 'principled_bsdf', {'distribution': 'ggx', 'base_color': [0.9, 0.95, 1.0], 'roughness': 0.3, 'ior': 1.5, 'anisotropic': 0.7, 'transmission_weight': 1.0}),
         tangent_shader('p-multi', 'principled_bsdf', {'distribution': 'multi_ggx', 'base_color': [0.85, 0.6, 0.4], 'roughness': 0.4, 'ior': 1.45, 'anisotropic': 0.5,

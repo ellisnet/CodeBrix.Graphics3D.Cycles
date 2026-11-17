@@ -84,6 +84,12 @@ def anisotropic(principled):
  node(nodes,'glass')['graph']=dict(nodes=[bsdf,dict(handle='t',type='color',set=dict(value=[0.8,0.3,0.2]))],
   connect=[['t','Color','bsdf','Tangent'],['bsdf','BSDF','output','Surface']])
  return data
+def multiscatter():
+ data,nodes=derived('mnee/glass-multiscatter-caustic','MNEE shadow caustics through a rough Glass BSDF with the multiscatter GGX distribution (roughness 0.2)',1)
+ data['sourceFixture']='native/oracle/scenes/author_mnee.py; no mnee_fixture() case (nearest: case 1, a rough isotropic refraction caster)'
+ node(nodes,'glass')['graph']=dict(nodes=[dict(handle='bsdf',type='glass_bsdf',set=dict(distribution='multi_ggx',roughness=0.2,IOR=1.45,color=[0.95,0.97,1.0]))],
+  connect=[['bsdf','BSDF','output','Surface']])
+ return data
 def volume():
  data,nodes=derived('mnee/volume-caustic','MNEE shadow caustics inside an absorbing medium: the sphere and the floor under it in a box with an absorption volume',24)
  at=nodes.index(node(nodes,'world'))
@@ -118,7 +124,7 @@ def catcher():
  return data
 def main():
  for data in [moving_caster(),spot(False),spot(True),
-              background(),lamp_shader(),beckmann(),volume(),huang(),catcher(),anisotropic(False),anisotropic(True),
+              background(),lamp_shader(),beckmann(),volume(),huang(),catcher(),anisotropic(False),anisotropic(True),multiscatter(),
               area('mnee/area-caustic','MNEE shadow caustics from a rectangular area light with the full spread',26,dict(sizeu=1.2,sizev=0.9,ellipse=False,spread=3.1415927)),
               area('mnee/area-disk-spread-caustic','MNEE shadow caustics from a disk area light with a narrow spread (the clamped sample region)',27,
                    dict(sizeu=0.8,sizev=0.8,ellipse=True,spread=1.2)),

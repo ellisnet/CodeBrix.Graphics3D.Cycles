@@ -5,7 +5,8 @@
 
 Tufts of curves in the sampling family's room: ribbons, thick curves and thick linear curves, single-user and instanced,
 with the closures the WebGPU device has, per curve and per key attributes, UVs, the Hair Info node's outputs, the
-Geometry and Texture Coordinate nodes, bump, lights, the light tree, emission and data passes, through the public C API.
+Geometry and Texture Coordinate nodes, bump, a strong noise Bump of the Generated coordinates (which curves do not have),
+lights, the light tree, emission and data passes, through the public C API.
 Usage: python3 native/oracle/scenes/author_curves.py [--check]."""
 import argparse
 import json
@@ -155,6 +156,25 @@ def geometry_scene(name, shape):
     return with_nodes(document, shader, hair('tuft', 'geo', shape), place('tuft-object', 'tuft', [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 0.0]))
 
 
+def generated_bump_scene():
+    """A strong noise Bump whose coordinates are the Generated attribute, which curves do not have: the Attribute node
+    takes the shading position and its dPdx and dPdy instead (svm/attribute.h svm_node_attr_surface_eval), each a sum of
+    two products, and the height differences of the Bump follow the last bits of the offset positions. On a curve both
+    products are non-zero. Ribbons and thick curves, the thick ones in a scaled object."""
+    shader = material('generated-bump', [
+        {'handle': 'a', 'type': 'attribute', 'set': {'attribute': 'generated'}},
+        {'handle': 'n', 'type': 'noise_texture', 'set': {'scale': 9.0, 'detail': 2.0, 'dimensions': '3D'}},
+        {'handle': 'bump', 'type': 'bump', 'set': {'strength': 1.0, 'distance': 0.6}},
+        {'handle': 'd', 'type': 'diffuse_bsdf', 'set': {'roughness': 0.0}},
+    ], [['a', 'Vector', 'n', 'Vector'], ['n', 'Fac', 'bump', 'Height'], ['bump', 'Normal', 'd', 'Normal'], ['d', 'BSDF', 'output', 'Surface']])
+    document = base('curves/bump-strong-noise-generated', 'Bump node with a strong high-frequency noise height of the Generated coordinates read by an '
+                    'Attribute node (scale 9, detail 2, distance 0.6) on ribbons and thick curves, which have no Generated attribute: the node falls '
+                    'back to the shading position and its differentials', samples=16)
+    return with_nodes(document, shader, hair('ribbons', 'generated-bump', 'ribbon', seed=0.3, curves=8, center=(-1.3, -2, 0.4), spread=1.0, radius=0.3), place('ribbons-object', 'ribbons'),
+                      hair('tubes', 'generated-bump', 'thick', seed=1.1, curves=8, center=(1.3, -2, 0.4), spread=1.0, radius=0.3),
+                      place('tubes-object', 'tubes', [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 0.0]))
+
+
 def instanced_scene():
     document = base('curves/instanced-mixed', 'All three shapes: one single-user tuft (baked into world space) and instancing objects with rotated, non-uniform and mirrored transforms')
     rotate = 0.5
@@ -201,6 +221,7 @@ def scenes():
     out['hair-info-linear.json'] = hair_info_scene('hair-info-linear', 'thick_linear')
     out['geometry-ribbon.json'] = geometry_scene('geometry-ribbon', 'ribbon')
     out['geometry-thick.json'] = geometry_scene('geometry-thick', 'thick')
+    out['bump-strong-noise-generated.json'] = generated_bump_scene()
     emitter = room.shader('hair-emission', [{'handle': 'e', 'type': 'emission', 'set': {'color': [1.0, 0.6, 0.3], 'strength': 4.0}}], [['e', 'Emission', 'output', 'Surface']])
     emitter['set'] = {'emission_sampling_method': 'auto'}
     out['emission-thick.json'] = closure_scene('emission-thick', 'thick', emitter, 'Emissive thick curves with MIS flags on the shader: a curve hit takes no forward MIS (the kernel tests for a triangle)')

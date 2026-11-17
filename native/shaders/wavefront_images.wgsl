@@ -50,8 +50,8 @@ fn image_interpolate(info:ImageInfo,xy:vec2<f32>)->vec4<f32>{
 // is the f32 bound's bit pattern): the Intel Vulkan driver on Windows compiles
 // the float comparison as true for NaN (docs/TESTING-WINDOWS-X64.md, W2).
 fn image_below(v:vec2<f32>,bound:u32)->bool{return all((bitcast<vec2<u32>>(v)&vec2<u32>(0x7fffffffu))<vec2<u32>(bound));}
-// kernel_image_interp_with_udim: missing is the value of an image that is not there (no tile for the UDIM, no image, no
-// XX
+// kernel_image_interp_with_udim: missing is the value of an image that is not there (a UDIM coordinate outside the
+// tile grid, no tile for the UDIM, or no image: KERNEL_IMAGE_NONE).
 fn image_sample(s:ptr<function,SvmState>,input_id:i32,input_uv:vec2<f32>,missing:vec4<f32>)->vec4<f32>{
     var id=input_id;var uv=input_uv;
     if(!image_below(uv,0x4e6e6b28u)){svm_error(s,128u);return vec4<f32>(0);}// 1.0e9

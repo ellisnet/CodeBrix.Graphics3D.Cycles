@@ -5,7 +5,9 @@
 
 The camera family's perspective room (author_cameras.py, the sampling family room) rendered through a camera border:
 an inner region, and a region touching the film's right and bottom edges. The film comes back at full size with zero
-outside the region (native/host/ABI.md, Cameras).
+outside the region (native/host/ABI.md, Cameras). border-adaptive adds adaptive sampling to a region that does not start
+at the film's left edge: the adaptive sampling kernels then take a region whose first column is not the buffer's
+(native/DEVICE.md, item 218).
 Usage: python3 native/oracle/scenes/author_camera_borders.py [--check]."""
 import argparse
 import json
@@ -28,6 +30,12 @@ def scenes():
         document = cameras.scene('cameras/'+name, description, camera)
         document['sourceFixture'] = 'native/oracle/scenes/author_camera_borders.py (the sampling family room)'
         out[name+'.json'] = document
+    camera = dict(PERSPECTIVE, **{'border.left': 0.25, 'border.right': 0.875, 'border.bottom': 0.25, 'border.top': 0.75})
+    document = cameras.scene('cameras/border-adaptive', 'Perspective camera with a camera border away from the left edge (left 0.25, right 0.875, '
+                             'bottom 0.25, top 0.75) and adaptive sampling', camera, samples=96,
+                             extra_integrator=dict(use_adaptive_sampling=True, adaptive_threshold=0.0, adaptive_min_samples=0))
+    document['sourceFixture'] = 'native/oracle/scenes/author_camera_borders.py (the sampling family room)'
+    out['border-adaptive.json'] = document
     return out
 
 

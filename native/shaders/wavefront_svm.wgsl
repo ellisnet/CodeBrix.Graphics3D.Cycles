@@ -66,6 +66,70 @@ fn svm_take(s:ptr<function,SvmState>,bytes:u32)->u32{
     if((*s).pc>p(22u)||count>p(22u)-(*s).pc){svm_error(s,4u);return 0u;}
     let address=p(21u)+(*s).pc*4u;(*s).pc+=count;return address;
 }
+//#if SVM_STAGES
+// Staged shader evaluation of the surface stage (native/DEVICE.md 202): a prepare entry whose one-pass evaluation is
+// at or above svm_stage_threshold_bytes (pipelines.h) is built as three entries from three module variants, each
+// with a part of the node handlers: the nodes stage (0: SVM_STAGE_NO_HEAVY; every handler but the two sets below,
+// the start of the evaluation and what follows it), the heavy stage (1: SVM_STAGE_NO_NODES; the Ambient Occlusion,
+// Bevel and Raycast nodes, the displacement nodes, Set Bump and the bump evaluation state) and the closure stage
+// (2: both; NODE_CLOSURE_BSDF). The program runs node by node in the pinned order; at a node another stage owns the
+// evaluation stops and its state goes to the stage record (the result words, then the program counter, the closure
+// weight and the three ShaderData members a node changes, P, N and dP, in the words the light sample takes later),
+// with the ready word naming the owner; the value stack and the closures are in the arena already. The host
+// dispatches the stages in turn until every program has ended (surface.cpp). Jumps, the value nodes and the closure
+// weight nodes run in every stage. Other evaluations of these module variants (svm_stage_at 0) are never built.
+const SVM_STAGE_WAIT:u32=16u;
+//#if SVM_STAGE_NO_NODES else const SVM_STAGE_THIS:u32=0u;
+//#if SVM_STAGE_NO_HEAVY else const SVM_STAGE_THIS:u32=1u;
+const SVM_STAGE_THIS:u32=2u;
+//#endif
+//#endif
+var<private> svm_stage_at:u32=0u;
+var<private> svm_stage_resume:bool=false;
+var<private> svm_stage_suspended:bool=false;
+fn svm_stage_shared(opcode:u32)->bool{
+    return opcode==NODE_SHADER_JUMP||opcode==NODE_JUMP_IF_ZERO||opcode==NODE_JUMP_IF_ONE||opcode==NODE_VALUE_F||opcode==NODE_VALUE_V||
+           opcode==NODE_CLOSURE_SET_WEIGHT||opcode==NODE_CLOSURE_WEIGHT||opcode==NODE_MIX_CLOSURE;
+}
+fn svm_stage_owner(opcode:u32)->u32{
+    if(opcode==NODE_CLOSURE_BSDF){return 2u;}
+    if(opcode==NODE_AMBIENT_OCCLUSION||opcode==NODE_SET_BUMP||opcode==NODE_ENTER_BUMP_EVAL||opcode==NODE_LEAVE_BUMP_EVAL){return 1u;}
+//#if SVM_RAYTRACE_NODES
+    if(opcode==OP_BEVEL||opcode==OP_RAYCAST){return 1u;}
+//#endif
+//#if SVM_NODE_DISPLACEMENT
+    if(opcode==OP_SET_DISPLACEMENT||opcode==OP_DISPLACEMENT||opcode==OP_VECTOR_DISPLACEMENT){return 1u;}
+//#endif
+    return 0u;
+}
+fn svm_stage_suspend(s:ptr<function,SvmState>,owner:u32){
+    let at=svm_stage_at;let r=(*s).output;
+    store_word(at+244u,r.closure_base);store_word(at+248u,r.count);store_word(at+252u,r.remaining);store_word(at+256u,r.runtime_flag);
+    store_word(at+260u,r.error);store_word(at+264u,r.lcg_state);
+    store_word(at+268u,bitcast<u32>(r.N.x));store_word(at+272u,bitcast<u32>(r.N.y));store_word(at+276u,bitcast<u32>(r.N.z));
+    store_word(at+280u,bitcast<u32>(r.emission.x));store_word(at+284u,bitcast<u32>(r.emission.y));store_word(at+288u,bitcast<u32>(r.emission.z));
+    store_word(at+292u,bitcast<u32>(r.transparency.x));store_word(at+296u,bitcast<u32>(r.transparency.y));store_word(at+300u,bitcast<u32>(r.transparency.z));
+    store_word(at+308u,(*s).pc);
+    store_word(at+312u,bitcast<u32>((*s).weight.x));store_word(at+316u,bitcast<u32>((*s).weight.y));store_word(at+320u,bitcast<u32>((*s).weight.z));
+    store_word(at+324u,bitcast<u32>((*s).geometry.P.x));store_word(at+328u,bitcast<u32>((*s).geometry.P.y));store_word(at+332u,bitcast<u32>((*s).geometry.P.z));
+    store_word(at+336u,bitcast<u32>((*s).geometry.N.x));store_word(at+340u,bitcast<u32>((*s).geometry.N.y));store_word(at+344u,bitcast<u32>((*s).geometry.N.z));
+    store_word(at+348u,bitcast<u32>((*s).geometry.dP));
+    store_word(at,SVM_STAGE_WAIT+owner);svm_stage_suspended=true;
+}
+fn svm_stage_restore(s:ptr<function,SvmState>){
+    let at=svm_stage_at;var r:SvmResult;
+    r.closure_base=load_word(at+244u);r.count=load_word(at+248u);r.remaining=load_word(at+252u);r.runtime_flag=load_word(at+256u);
+    r.error=load_word(at+260u);r.lcg_state=load_word(at+264u);
+    r.N=vec3<f32>(bitcast<f32>(load_word(at+268u)),bitcast<f32>(load_word(at+272u)),bitcast<f32>(load_word(at+276u)));
+    r.emission=vec3<f32>(bitcast<f32>(load_word(at+280u)),bitcast<f32>(load_word(at+284u)),bitcast<f32>(load_word(at+288u)));
+    r.transparency=vec3<f32>(bitcast<f32>(load_word(at+292u)),bitcast<f32>(load_word(at+296u)),bitcast<f32>(load_word(at+300u)));
+    (*s).output=r;(*s).pc=load_word(at+308u);
+    (*s).weight=vec3<f32>(bitcast<f32>(load_word(at+312u)),bitcast<f32>(load_word(at+316u)),bitcast<f32>(load_word(at+320u)));
+    (*s).geometry.P=vec3<f32>(bitcast<f32>(load_word(at+324u)),bitcast<f32>(load_word(at+328u)),bitcast<f32>(load_word(at+332u)));
+    (*s).geometry.N=vec3<f32>(bitcast<f32>(load_word(at+336u)),bitcast<f32>(load_word(at+340u)),bitcast<f32>(load_word(at+344u)));
+    (*s).geometry.dP=bitcast<f32>(load_word(at+348u));
+}
+//#endif
 // v[i] for a bytecode-supplied component without dynamic vector indexing: on
 // the Adreno 650 compiler (EV031.32.02.10) v[component] corrupted the separate
 // vector's output offset, so the store was skipped and a later read reported
@@ -299,11 +363,16 @@ fn svm_gradient(s:ptr<function,SvmState>,kind:u32,v:vec3<f32>)->f32{
 fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32,flag:u32,visibility:u32,lcg:u32,volume:bool,previous:SvmResult)->SvmResult{
     var s:SvmState;s.output=previous;s.volume=volume;s.geometry=geometry;s.pc=(geometry.shader&SHADER_MASK)*(1u+SZ_ShaderJump/4u);
     s.output.runtime_flag=geometry.runtime_flag;s.output.N=geometry.N;s.output.lcg_state=lcg;
+//#if SVM_NODE_MASK_BUMP
+    svm_node_mask_bump=(flag&PATH_RAY_EMISSION)!=0u||volume;
+//#endif
     // This invocation's stack slot (header after the error word: region address, slot count).
     let stack_region=load_word(p(17u)+4u);let stack_slots=load_word(p(17u)+8u);let arena_bytes=arrayLength(&heap)*4u;
     if(svm_slot>=stack_slots||stack_region==0u||stack_region%4u!=0u||stack_region>arena_bytes||stack_slots>(arena_bytes-stack_region)/(SVM_STACK_WORDS*4u)){svm_error(&s,1u);return s.output;}
     svm_stack_at=stack_region+svm_slot*(SVM_STACK_WORDS*4u);
-    svm_stack_set(255u,0u);svm_stack_set(256u,0u);svm_stack_set(257u,0u);svm_stack_set(258u,0u);svm_stack_set(259u,0u);svm_stack_set(260u,0u);svm_stack_set(261u,0u);svm_stack_set(262u,0u);
+//#if SVM_STAGES else     svm_stack_set(255u,0u);svm_stack_set(256u,0u);svm_stack_set(257u,0u);svm_stack_set(258u,0u);svm_stack_set(259u,0u);svm_stack_set(260u,0u);svm_stack_set(261u,0u);svm_stack_set(262u,0u);
+    if(svm_stage_at==0u||!svm_stage_resume){svm_stack_set(255u,0u);svm_stack_set(256u,0u);svm_stack_set(257u,0u);svm_stack_set(258u,0u);svm_stack_set(259u,0u);svm_stack_set(260u,0u);svm_stack_set(261u,0u);svm_stack_set(262u,0u);}
+//#endif
     if(closure_limit>SVM_CLOSURE_CAPACITY){svm_error(&s,16u);return s.output;}
     s.output.closure_base=closure_base;
     if(closure_base!=0u){let bytes=arrayLength(&heap)*4u;let required=SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES;
@@ -312,9 +381,15 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 
     s.output.remaining=0u;
     if((visibility&PATH_RAY_VISIBILITY_SHADOW)==0u&&(flag&(PATH_RAY_TERMINATE|PATH_RAY_EMISSION|select(0u,PATH_RAY_EXTINCTION,volume)))==0u){s.output.remaining=closure_limit;}
+//#if SVM_STAGES
+    if(svm_stage_at!=0u&&svm_stage_resume){svm_stage_restore(&s);}
+//#endif
 
     for(var instructions=0u;instructions<65536u;instructions++){
         let opcode_address=svm_take(&s,4u);if(s.error!=0u){return s.output;}let opcode=load_word(opcode_address);
+//#if SVM_STAGES
+        if(svm_stage_at!=0u&&!svm_stage_shared(opcode)){let owner=svm_stage_owner(opcode);if(owner!=SVM_STAGE_THIS){s.pc-=1u;svm_stage_suspend(&s,owner);return s.output;}}
+//#endif
         if(opcode==NODE_END){s.output.N=s.geometry.N;return s.output;}
         var size=0u;
         switch(opcode){
@@ -493,6 +568,15 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_RADIAL_TILING
             case OP_RADIAL_TILING:{size=SZ_RadialTiling;}
 //#endif
+//#if SVM_NODE_BOOLEAN_MATH
+            case OP_BOOLEAN_MATH:{size=SZ_BooleanMath;}
+//#endif
+//#if SVM_NODE_INTEGER_MATH
+            case OP_INTEGER_MATH:{size=SZ_IntegerMath;}
+//#endif
+//#if SVM_NODE_GET_VECTOR_COMPONENT
+            case OP_GET_VECTOR_COMPONENT,OP_GET_VECTOR_COMPONENT_DERIVATIVE:{size=SZ_GetVectorComponent;}
+//#endif
 //#if SVM_NODE_AOV
             case OP_AOV_START:{
                 // svm_node_aov_check: AOVs are written only by primary (camera or
@@ -550,6 +634,7 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
             }
             case NODE_VALUE_F:{svm_store_bits(&s,svm_byte(node+N_ValueF_out_offset),load_word(node+N_ValueF_value));}
             case NODE_VALUE_V:{svm_store3(&s,svm_byte(node+N_ValueV_out_offset),heap_vec3(node+N_ValueV_value));}
+//#if !SVM_STAGE_NO_NODES
             case NODE_GEOMETRY:{
 //#if SVM_NODE_GEOMETRY else svm_error(&s,2u);
                 let kind=svm_byte(node+N_Geometry_geom_type);var v=vec3<f32>(0);
@@ -667,7 +752,15 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_PRINCIPLED_VOLUME
             case VC_OP_PRINCIPLED_VOLUME:{if(volume){svm_principled_volume(&s,node,flag,visibility);}}
 //#endif
+//#endif
+//#if SVM_STAGES else             case NODE_CLOSURE_BSDF:{svm_closure_bsdf(&s,node,flag,visibility);}
+//#if SVM_STAGE_NO_HEAVY
+//#if SVM_STAGE_NO_NODES
             case NODE_CLOSURE_BSDF:{svm_closure_bsdf(&s,node,flag,visibility);}
+//#endif
+//#endif
+//#endif
+//#if !SVM_STAGE_NO_NODES
             case NODE_CLOSURE_HOLDOUT:{
 //#if SVM_NODE_CLOSURE_HOLDOUT else svm_error(&s,2u);
                 if(!SVM_SURFACE){svm_error(&s,2u);return s.output;}
@@ -677,11 +770,22 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
             }
             case NODE_CLOSURE_SET_NORMAL:{
 //#if SVM_NODE_CLOSURE_SET_NORMAL else svm_error(&s,2u);
+//#if SVM_NODE_MASK_BUMP
+                // Not called without the BUMP node feature (svm/svm.h): the shading normal stays and the node's Normal
+                // slot is not written (the graph links it to the output node only, scene/shader_graph.cpp
+                // bump_from_displacement: no node reads it).
+                if(!svm_node_mask_bump){
+//#endif
                 if(!SVM_SURFACE){svm_error(&s,2u);return s.output;}let n=svm_load3(&s,svm_byte(node+N_ClosureSetNormal_direction_offset));s.geometry.N=n;svm_store3(&s,svm_byte(node+N_ClosureSetNormal_normal_offset),n);
+//#if SVM_NODE_MASK_BUMP
+                }
+//#endif
 //#endif
             }
+//#endif
             case NODE_CLOSURE_SET_WEIGHT:{s.weight=heap_vec3(node+N_ClosureSetWeight_rgb);}
             case NODE_CLOSURE_WEIGHT:{s.weight=svm_load3(&s,svm_byte(node+N_ClosureWeight_weight_offset));}
+//#if !SVM_STAGE_NO_NODES
             case NODE_EMISSION_WEIGHT:{s.weight=svm_input3(&s,node+N_EmissionWeight_color)*svm_input(&s,node+N_EmissionWeight_strength);}
             case NODE_CLOSURE_BACKGROUND,NODE_CLOSURE_EMISSION:{
                 let offset=select(N_ClosureBackground_mix_weight_offset,N_ClosureEmission_mix_weight_offset,opcode==NODE_CLOSURE_EMISSION);
@@ -690,15 +794,32 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                 // svm_node_closure_emission: in a volume shader evaluation the weight is scaled by object_volume_density
                 // (1 for OBJECT_NONE, the world volume) after the mix weight. A volume program can emit only in a module
                 // with the VOLUME_EMISSION region (the others refuse an emitting volume evaluation).
-                if(mix_index==SVM_STACK_INVALID||mix_weight!=0.0){var weight=s.weight*mix_weight;
-                    if(volume&&opcode==NODE_CLOSURE_EMISSION&&s.geometry.object_id!=NONE){weight*=object_volume_density(s.geometry.object_id);}
-                    if((s.output.runtime_flag&SR_EMISSION)!=0u){s.output.emission+=weight;}else{s.output.emission=weight;s.output.runtime_flag|=SR_EMISSION;}}
+//#if VOLUME_LIGHT_PATH else                 if(mix_index==SVM_STACK_INVALID||mix_weight!=0.0){var weight=s.weight*mix_weight;
+                // svm_node_closure_emission tests sd->runtime_flag & SR_IS_VOLUME_SHADER_EVAL, which volume_shader_eval sets and
+                // the shader data then keeps: under it a shadow ray's evaluation, or one for the extinction alone, records no
+                // emission ("Don't need emission for shadows and extinction"), and any other is scaled by the density. The
+                // flag is clear in the extrema estimates a shadow ray makes before its first transmittance evaluation
+                // (volume_estimate_extrema calls volume_shader_eval_entry on shader data that shader_setup_from_volume has
+                // just cleared; wavefront_shadow.wgsl vl_shadow_step gives those evaluations no flag): there the emission is
+                // recorded as it stands. That estimate is the one reader of such an evaluation's emission, so the test is in
+                // its region; elsewhere every volume evaluation carries the flag.
+                if(mix_index==SVM_STACK_INVALID||mix_weight!=0.0){var weight=s.weight*mix_weight;let flagged=volume&&opcode==NODE_CLOSURE_EMISSION&&(s.output.runtime_flag&SR_IS_VOLUME_SHADER_EVAL)!=0u;
+//#endif
+//#if VOLUME_LIGHT_PATH else                     if(volume&&opcode==NODE_CLOSURE_EMISSION&&s.geometry.object_id!=NONE){weight*=object_volume_density(s.geometry.object_id);}
+                    if(flagged&&s.geometry.object_id!=NONE){weight*=object_volume_density(s.geometry.object_id);}
+//#endif
+//#if VOLUME_LIGHT_PATH else                     if((s.output.runtime_flag&SR_EMISSION)!=0u){s.output.emission+=weight;}else{s.output.emission=weight;s.output.runtime_flag|=SR_EMISSION;}}
+                    if(!(flagged&&((visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u||(flag&PATH_RAY_EXTINCTION)!=0u))){
+                        if((s.output.runtime_flag&SR_EMISSION)!=0u){s.output.emission+=weight;}else{s.output.emission=weight;s.output.runtime_flag|=SR_EMISSION;}}}
+//#endif
 //#endif
             }
+//#endif
             case NODE_MIX_CLOSURE:{
                 let f=clamp(svm_input(&s,node+N_MixClosure_fac),0.0,1.0);let weight=svm_optional(&s,svm_byte(node+N_MixClosure_in_weight_offset),1.0);
                 svm_optional_store(&s,svm_byte(node+N_MixClosure_weight1_offset),weight*(1.0-f));svm_optional_store(&s,svm_byte(node+N_MixClosure_weight2_offset),weight*f);
             }
+//#if !SVM_STAGE_NO_NODES
             case NODE_TEX_CHECKER:{
 //#if SVM_NODE_TEX_CHECKER else svm_error(&s,2u);
                 let co=svm_load3(&s,svm_byte(node+N_TexChecker_co))*svm_input(&s,node+N_TexChecker_scale);
@@ -865,6 +986,8 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                 svm_wireframe(&s,node);
             }
 //#endif
+//#endif
+//#if !SVM_STAGE_NO_HEAVY
 //#if SVM_NODE_AO
             // svm_node_ao: ao = 1 under every node mask without
             // KERNEL_FEATURE_NODE_RAYTRACE; the ray tracing runs only in
@@ -889,8 +1012,20 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
             // (wavefront_ao.wgsl, prepare_surface_raytrace only) has one call site.
             case OP_BEVEL,OP_RAYCAST:{svm_raytrace_node(&s,node,index,opcode==OP_BEVEL);}
 //#endif
+//#endif
+//#if !SVM_STAGE_NO_NODES
 //#if SVM_NODE_RADIAL_TILING
             case OP_RADIAL_TILING:{svm_radial_tiling(&s,node);}
+//#endif
+//#if SVM_NODE_BOOLEAN_MATH
+            case OP_BOOLEAN_MATH:{svm_boolean_math(&s,node);}
+//#endif
+//#if SVM_NODE_INTEGER_MATH
+            case OP_INTEGER_MATH:{svm_integer_math(&s,node);}
+//#endif
+//#if SVM_NODE_GET_VECTOR_COMPONENT
+            // The derivative opcode does nothing in a volume evaluation (svm.h, IF_NOT_KERNEL_NODES_FEATURE (VOLUME)).
+            case OP_GET_VECTOR_COMPONENT,OP_GET_VECTOR_COMPONENT_DERIVATIVE:{if(opcode==OP_GET_VECTOR_COMPONENT||!volume){svm_get_vector_component(&s,node,opcode==OP_GET_VECTOR_COMPONENT_DERIVATIVE);}}
 //#endif
 //#if SVM_NODE_AOV
             case OP_AOV_START:{}
@@ -906,6 +1041,8 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                 if(s.error==0u){svm_aov_add(at,value);}
             }
 //#endif
+//#endif
+//#if !SVM_STAGE_NO_HEAVY
 //#if SVM_NODE_DISPLACEMENT
             case OP_SET_DISPLACEMENT,OP_DISPLACEMENT,OP_VECTOR_DISPLACEMENT:{svm_displacement(&s,node,opcode);}
 //#endif
@@ -919,6 +1056,8 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                 svm_bump_state(&s,node,opcode==NODE_ENTER_BUMP_EVAL);
             }
 //#endif
+//#endif
+//#if !SVM_STAGE_NO_NODES
 //#if SVM_NODE_GEOMETRY_DERIVATIVE
             case NODE_GEOMETRY_DERIVATIVE:{
                 svm_geometry_derivative(&s,node);
@@ -938,6 +1077,7 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
             case NODE_MAPPING_DERIVATIVE,NODE_TEXTURE_MAPPING_DERIVATIVE:{
                 svm_mapping_derivative(&s,node,opcode);
             }
+//#endif
 //#endif
             default:{svm_error(&s,2u);}
         }

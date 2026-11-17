@@ -523,7 +523,11 @@ fn vl_shadow_step(index:u32,seg:ptr<function,VlShadow>,r:SvmResult,evaluated:boo
     (*seg).hs=hs;(*seg).throughput=throughput;
     if(!more){if(vh_shadow_store(index,throughput)){return 1u;}return 2u;}
 //#if VOLUME_LIGHT_PATH else     (*seg).sd.P=rounded_add3((*seg).origin,(*seg).direction*hs.shade_t);(*seg).entry=0u;(*seg).r=SvmResult();(*seg).r.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
-    (*seg).sd.P=rounded_add3((*seg).origin,(*seg).direction*hs.shade_t);(*seg).entry=select(0u,hs.est_slot,hs.estimating);(*seg).r=SvmResult();(*seg).r.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
+    // An extrema estimate before the segment's first transmittance evaluation runs without SR_IS_VOLUME_SHADER_EVAL, as the
+    // pinned shader data does (shader_setup_from_volume clears the flags, volume_shader_eval sets this one and it stays): the
+    // Emission closure reads it (svm_node_closure_emission; wavefront_svm.wgsl).
+    (*seg).sd.P=rounded_add3((*seg).origin,(*seg).direction*hs.shade_t);(*seg).entry=select(0u,hs.est_slot,hs.estimating);(*seg).r=SvmResult();(*seg).r.runtime_flag=select(SR_IS_VOLUME_SHADER_EVAL,0u,hs.estimating&&!hs.shaded);
+    if(!hs.estimating){(*seg).hs.shaded=true;}
 //#endif
 //#endif
     return 0u;
@@ -552,6 +556,8 @@ struct VhShadow {
     // The resumable walk's stage and locals, the set-up, and the Light Path estimate (its entry's slot and emission).
     lstage:u32, first:bool, empty:bool, sigma2:vec2<f32>, tmin2:f32, post_ok:bool, set_i:u32, set_skip_object:u32, set_skip_shader:u32,
     set_local:VhOctree, est:VlpEstimate, estimating:bool, est_slot:u32, est_emission:vec3<f32>,
+    // A transmittance evaluation was made on this segment (the shader data then carries SR_IS_VOLUME_SHADER_EVAL).
+    shaded:bool,
 //#endif
 }
 fn vh_shadow_store(index:u32,throughput:vec3<f32>)->bool{

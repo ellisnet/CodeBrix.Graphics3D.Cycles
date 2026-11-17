@@ -577,7 +577,7 @@ public sealed unsafe class CyclesHost : IDisposable
     /// filter). It applies to caller images and to Cycles' own (the Sky Texture's), and brings an image within Metal's
     /// 16384-pixel texture limit. The same value is always accepted; a different one fails with
     /// <see cref="NativeStatus.NotReady"/> once a render or bake has loaded images, because Cycles does not load an image
-    /// again. The WebGPU backend refuses a render with a limit by name.
+    /// again. Every backend renders with it.
     /// </summary>
     /// <param name="maxSize">0 (the default: images keep their size) to <see cref="int.MaxValue"/> pixels.</param>
     public void SetTextureLimit(uint maxSize) => Finish(Native.TextureLimit(Handle, maxSize));
@@ -587,8 +587,8 @@ public sealed unsafe class CyclesHost : IDisposable
     /// each geometry Cycles keeps in object space (one that several objects use, or one with true displacement, subsurface
     /// scattering or subdivision; never in the scene's top level, for curves or for geometry with motion blur), and
     /// <see cref="Backend.Cpu"/> builds at Embree's high quality; MetalRT ignores it, as in Cycles. A speed setting that
-    /// by design changes no film. A change has every BVH built again at the next render or bake. The WebGPU backend
-    /// refuses a render with it enabled by name.
+    /// by design changes no film. A change has every BVH built again at the next render or bake. Every backend renders
+    /// with it.
     /// </summary>
     /// <param name="enabled"><see langword="true"/> to use spatial splits; <see langword="false"/> is the default.</param>
     public void SetBvhSpatialSplit(bool enabled) => Finish(Native.BvhSpatialSplit(Handle, enabled ? 1u : 0u));
@@ -597,7 +597,7 @@ public sealed unsafe class CyclesHost : IDisposable
     /// Sets the tile size of the host's later renders and bakes (provisional; Cycles' tiled rendering): tiles of
     /// <paramref name="tileSize"/> pixels square, rendered one after another; the native library keeps the finished tiles
     /// in system memory (no file is written) and returns the whole film, every pass included, as an untiled render does.
-    /// With tiles the render time limit applies to each tile. The WebGPU backend refuses a render with tiles by name.
+    /// With tiles the render time limit applies to each tile. Every backend renders with tiles.
     /// </summary>
     /// <param name="tileSize">0 (the default: one tile), 8 to 128, or a multiple of 128 up to 8192; anything else fails
     /// with <see cref="NativeStatus.Invalid"/>.</param>

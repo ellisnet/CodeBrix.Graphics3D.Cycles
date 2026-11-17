@@ -12,7 +12,7 @@ import struct
 import subprocess
 from pathlib import Path
 from build import REPO, WORK, PACKAGE
-from device_gate import sha, save
+from device_gate import sha, save, require_built
 from render_gate import inputs
 import render_replay
 
@@ -51,6 +51,9 @@ def main():
                 command += ['--target', 'codebrix_cycles_'+name+'_gate']
             with (out/'build.log').open('w') as log:
                 subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True)
+        else:
+            # --skip-build builds nothing: name each missing program and the command that builds it instead of failing on its hash.
+            require_built(('volume_boundary', 'closed_volume_render', 'volume', 'camera'))
         render_replay.build('linux-x64')
         binaries = {name:WORK/'cycles-build/bin'/('codebrix_cycles_'+name+'_gate') for name in ('volume_boundary', 'closed_volume_render', 'volume', 'camera')}
         for binary in [*binaries.values(), render_replay.BASE/'linux-x64/render_replay']:
@@ -94,7 +97,7 @@ def main():
             elif name == 'compaction-guard':
                 assert report['malformedCasesRejected'] == 1 and report['cases'] == 0
             elif name == 'world-regression':
-                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 119 and report['invalidCasesRejected'] == 18
+                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 121 and report['invalidCasesRejected'] == 18
             else:
                 assert report['independentCpuImage'] and report['repeatBitwiseIdentical']
                 assert report['volumeTransmitEvents'] > 0 and report['volumeScatterEvents'] > 0

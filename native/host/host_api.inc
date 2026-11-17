@@ -130,19 +130,13 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
            "\"cryptomatte\",\"aov_color\",\"aov_value\",\"mist\",\"render_time\",\"sample_count\",\"shadow_catcher\",\"shadow_catcher_sample_count\",\"shadow_catcher_matte\",\"denoising_albedo\",\"denoising_normal\","
            "\"denoising_specular_albedo\",\"denoising_roughness\",\"denoising_depth\",\"denoising_backward_motion\",\"denoising_specular_motion\",\"volume_majorant\",\"volume_majorant_sample_count\",\"volume_direct\",\"volume_indirect\"],\"lightGroups\":true,"
            "\"renderTimeRejections\":[" CBC_HOST_REJECTIONS ","
-           "\"tiled rendering (a tile size other than 0)\","
-           "\"BVH spatial splits\","
-           "\"a texture limit (images reduced when they load)\","
-           "\"progressive results (intermediate films during a render)\","
-           "\"UDIM tiles (several images bound to one Image Texture node)\","
            "\"point clouds rendered as Gaussian splats\","
            "\"quaternion and spherical-harmonics attributes read by a shader\","
            "\"dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0)\",\"custom (OSL) cameras\",\"path guiding (the integrator's use_guiding) and its passes\","
            "\"a Radial Tiling node with at most two sides and a roundness strictly between 0 and 1\",\"scenes whose device data does not fit the GPU (there is no host-memory fallback)\","
            "\"BVH time steps\",\"volume velocity motion blur\",\"sparse or tiled images\","
-           "\"area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, or reached by the light tree at a transmissive surface\",\"background light portals of zero extent\",\"bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)\","
+           "\"area lights whose axis length underflows to zero with a spread of zero, or whose axis length overflows with a spread below 1e-5 in a scene with volumes\",\"background light portals of zero extent\",\"bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)\","
            "\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\","
-           "\"Boolean Math, Integer Math and Get Vector Component shader nodes with a linked input\","
            "\"shadow catchers with transparent shadows on Adreno 650 GPUs\",\"shadow caustics (manifold next-event estimation) on Adreno 650 GPUs\"],\"maxImageDimension\":" << INT32_MAX / 2
         << ",\"maxImageTileSize\":" << tiled_image_largest_tile_size(CBC_HOST_WEBGPU) << ",\"reference\":\"native/DEVICE.md\"}";
 #endif

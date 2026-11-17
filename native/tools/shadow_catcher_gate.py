@@ -10,7 +10,7 @@ import json
 import subprocess
 from pathlib import Path
 from build import REPO, WORK, PACKAGE
-from device_gate import sha, save
+from device_gate import sha, save, require_built
 from render_gate import inputs
 import render_replay
 
@@ -40,6 +40,9 @@ def main():
                 subprocess.run(['python3', str(REPO/'native/tools/build_cycles.py'), '--jobs', args.jobs,
                                 '--target', 'codebrix_cycles_shadow_catcher_gate'], stdout=log, stderr=subprocess.STDOUT, check=True)
             render_replay.build('linux-x64')
+        else:
+            # --skip-build builds nothing: name each missing program and the command that builds it instead of failing on its hash.
+            require_built(['shadow_catcher'], render_replay.BASE/'linux-x64/render_replay')
         pins[str(binary)] = sha(binary)
         pins[str(render_replay.BASE/'linux-x64/render_replay')] = sha(render_replay.BASE/'linux-x64/render_replay')
         save(out/'invocation.json', {'productionSourceSha256': source, 'fileSha256': pins})

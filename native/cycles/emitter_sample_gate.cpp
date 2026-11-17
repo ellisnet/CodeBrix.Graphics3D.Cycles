@@ -29,7 +29,7 @@
 #include <numeric>
 using namespace ccl;
 using namespace wavefront_test;
-struct Metrics {uint64_t highlights=0,cases=0,guards=0,paths=0,lamp_hits=0,continued=0,terminated=0,exact=0,numeric=0,film=0,strict=0;double maximum=0;};
+struct Metrics {uint64_t inside_highlights=0,highlights=0,cases=0,guards=0,paths=0,lamp_hits=0,continued=0,terminated=0,exact=0,numeric=0,film=0,strict=0;double maximum=0;};
 static void numeric(float actual,float expected,Metrics &m,const std::string &where){
   const double error=std::abs(double(actual)-expected);m.numeric++;m.maximum=std::max(m.maximum,error);m.strict+=error>1e-7+1e-7*std::abs(double(expected));
   require(std::isfinite(actual)&&std::isfinite(expected)&&error<=5e-5+2e-4*std::abs(double(expected)),where+" got="+std::to_string(actual)+" expected="+std::to_string(expected));
@@ -157,6 +157,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     // The probe compiles the surface module specialized to this scene, exactly as
     // the device does (pipelines.h): the unspecialized module with emissive-triangle
     // sampling crashed the Intel Mesa 25.0.7 compiler on every cold compile.
+#ifdef CODEBRIX_BROAD_LIGHT_GATE
+    // The fixture has no geometry: the probe's states are placed by hand, some of them inside the sphere light, so the
+    // region the device selects from the BVH (SF_LIGHT_SPHERE_INSIDE, pipelines.h) is selected here. Negative control:
+    // CODEBRIX_EMITTER_GATE_SPHERE_INSIDE=0 leaves it out, and the highlight check of the inside samples must then fail.
+    if(const char *inside=std::getenv("CODEBRIX_EMITTER_GATE_SPHERE_INSIDE");!inside||std::string(inside)!="0")d.enabled_features|=SF_LIGHT_SPHERE_INSIDE;
+#endif
     const std::string source=d.module_wgsl(surface_source())+"const EMITTER_PROBE_GROUP_SIZE:u32="+std::to_string(probe_group_size)+"u;\n"+R"WGSL(
 @compute @workgroup_size(EMITTER_PROBE_GROUP_SIZE) fn emitter_sample_probe(@builtin(global_invocation_id) invocation:vec3<u32>){
  svm_invocation(invocation.x);let id=vec3<u32>(invocation.x+p(30u),invocation.y,invocation.z);if(id.x>=p(1u)){return;}var sd:SurfaceData;sd.time=heap_float(state_address(S_ray_time,id.x,4u));sd.P=heap_vec3(state_address(S_ray_P,id.x,12u));sd.N=heap_vec3(state_address(S_ray_D,id.x,12u));var r:SvmResult;
@@ -194,19 +200,22 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     auto highlight=[](const float3 normal,const float3 direction){
       const float c=(normal.x*direction.x+normal.y*direction.y)+normal.z*direction.z;const float alpha2=1e-4f;
       const float z=std::min(c*c,1.0f);const float v=(1.0f-z)+alpha2*z;return alpha2/(M_PI_F*(v*v));};
+    unsigned inside_highlights=0;
     for(unsigned i=0;i<count;i++){const auto at=i*12;if(!expected[at])continue;
       const unsigned prim=unsigned(expected[at+10]);if(prim>=d.light_records.size())continue;const auto &light=d.light_records[prim];
       if(!((light.type==LIGHT_POINT||light.type==LIGHT_SPOT)&&light.spot.is_sphere))continue;
-      // The cone strategy only (a shading point outside the sphere): inside, the direction comes from the hemisphere or sphere
-      // samplers, whose trigonometry is the device's (not the subject of this check; native/DEVICE.md, item 152).
-      {const float3 delta=states[i].ray.P-make_float3(light.co.x,light.co.y,light.co.z);if(!(dot(delta,delta)>sqr(light.spot.radius)))continue;}
+      // Outside the sphere the cone strategy; inside it (light/point.h point_light_sample, "Inside sphere") the uniform
+      // sphere or the cosine hemisphere, in the oracle's order with the scalar sinf and cosf (the LIGHT_SPHERE_INSIDE
+      // regions, selected above; native/DEVICE.md, item 152). Both are counted.
+      bool inside=false;
+      {const float3 delta=states[i].ray.P-make_float3(light.co.x,light.co.y,light.co.z);inside=!(dot(delta,delta)>sqr(light.spot.radius));}
       const double e[3]={expected[at+4],expected[at+5],expected[at+6]};double q[3]={e[2],0.0,-e[0]};
-      const double ql=std::sqrt(q[0]*q[0]+q[2]*q[2]);if(ql<1e-3)continue;
+      const double ql=std::sqrt(q[0]*q[0]+q[2]*q[2]);if(ql<1e-3)continue;if(inside)inside_highlights++;
       const double a=std::cos(0.0131),b=std::sin(0.0131);
       const float3 normal=make_float3(float(a*e[0]+b*q[0]/ql),float(a*e[1]),float(a*e[2]+b*q[2]/ql));
       numeric(highlight(normal,make_float3(output[at+12],output[at+13],output[at+14])),highlight(normal,make_float3(e[0],e[1],e[2])),metrics,
               "Emitter sphere highlight sample="+std::to_string(i));metrics.highlights++;}
-    require(metrics.highlights>=10,"Insufficient sphere light highlight checks");
+    require(metrics.highlights>=10,"Insufficient sphere light highlight checks");require(inside_highlights>=1,"No highlight check inside a sphere light");metrics.inside_highlights=inside_highlights;
 #endif
     require(valid>100,"Insufficient valid emitter samples");metrics.paths=count;metrics.lamp_hits=valid;
 #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
@@ -227,7 +236,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     }d.light_distribution_records=saved;d.data=data;
 #else
     const auto saved=d.light_records;const auto saved_data=d.data;
-    for(unsigned bad=0;bad<8;bad++){d.light_records=saved;d.data=saved_data;std::string reason;
+    const auto saved_overflow=d.light_axis_overflow;
+    for(unsigned bad=0;bad<10;bad++){d.light_records=saved;d.data=saved_data;d.light_axis_overflow=saved_overflow;std::string reason;
       // An area light axis of zero length (native/DEVICE.md, item 148): the device holds it as a zero axis and renders it; an
       // axis of infinities (no NaN) and a spread of zero are refused by name.
       if(bad==0){d.light_records[2].area.len_u=0;d.light_records[2].area.axis_u=zero_float3();
@@ -249,13 +259,21 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
         d.data.background.portal_weight=1;d.data.kernel_features|=KERNEL_FEATURE_VOLUME;d.data.integrator.use_direct_light=1;
         bool accepted=true;try{d.validate_lighting(true);}catch(const std::exception &){accepted=false;}
         require(accepted,"Renderer rejected a valid portal with volume direct light");metrics.guards++;continue;}
+      // An axis of zero length with a spread below 1e-5 (tan_half_spread) and volume direct light: accepted when the axis
+      // length underflowed (the NaN axis: area_light_valid_ray_segment's angle_almost_zero branch, vl_area_segment), refused
+      // by name when it overflowed (the device's record of that, light_axis_overflow).
+      if(bad==8||bad==9){d.light_records[2].area.len_u=0;d.light_records[2].area.axis_u=zero_float3();d.light_records[2].area.tan_half_spread=1e-6f;
+        d.data.kernel_features|=KERNEL_FEATURE_VOLUME;d.data.integrator.use_direct_light=1;
+        if(bad==8){bool accepted=true;try{d.validate_lighting(true);}catch(const std::exception &){accepted=false;}
+          require(accepted,"Renderer rejected a degenerate area light with a narrow spread and volume direct light");metrics.guards++;continue;}
+        d.light_axis_overflow.assign(d.light_records.size(),0);d.light_axis_overflow[2]=1;reason="degenerate area light with a spread below 1e-5";}
       bool rejected=false;try{d.validate_lighting(true);}catch(const std::exception &error){rejected=std::string(error.what()).find(reason)!=std::string::npos;}
       require(rejected,"Emitter guard did not reject case="+std::to_string(bad));metrics.guards++;
-    }d.light_records=saved;d.data=saved_data;
+    }d.light_records=saved;d.data=saved_data;d.light_axis_overflow=saved_overflow;
 #endif
     }
   }
   require(stats.mem_used==0,"Emitter test leaked allocations");std::ofstream(std::string(argv[1])+".library.txt")<<d.gpu.library_path;
   if(exchange_only)std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
-  else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"samples\":"<<metrics.paths<<",\"guardCases\":"<<metrics.guards<<",\"valid\":"<<metrics.lamp_hits<<",\"sphereHighlightChecks\":"<<metrics.highlights<<",\"numericChecks\":"<<metrics.numeric<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+  else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"samples\":"<<metrics.paths<<",\"guardCases\":"<<metrics.guards<<",\"valid\":"<<metrics.lamp_hits<<",\"sphereHighlightChecks\":"<<metrics.highlights<<",\"sphereInsideHighlightChecks\":"<<metrics.inside_highlights<<",\"numericChecks\":"<<metrics.numeric<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
 }catch(const std::exception &error){std::cerr<<error.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

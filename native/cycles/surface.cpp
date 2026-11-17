@@ -216,8 +216,11 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   // world's, the lamps') are left out of its pipeline (surface_unused_svm_features), built on its own below; scenes
   // without such regions keep it in the shared build.
   const ShaderFeatures prepare_unused=surface_unused_svm_features();
+  // A prepare_surface at or above svm_stage_threshold_bytes is built in three entries, on its own below (pipelines.h
+  // SF_SVM_STAGE_NO_HEAVY); 0 rounds: the one entry.
+  const uint32_t prepare_rounds=svm_stage_rounds("prepare_surface",light_variant,prepare_unused,surface_stage);
   if(!pipeline_current(surface,"shade_surface")||(triangle_stage&&!surface_light_triangle.value)||(background_stage&&!surface_light_background.value)){
-    if(prepare_unused.any()){
+    if(prepare_unused.any()||prepare_rounds){
       if(triangle_stage){
         auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","shade_surface_light","shade_surface_light_triangle","connect_surface_light","shade_surface"},light_variant);
         surface_geometry=std::move(built[0]);surface_light=std::move(built[1]);
@@ -241,10 +244,29 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
     else surface_light_background={};
     surface_prepare_removed=SF_NONE;
   }
-  if(!surface_prepare.value||prepare_unused!=surface_prepare_removed){
-    surface_prepare=std::move(build_pipelines("surface",surface_source(),{"prepare_surface"},light_variant,prepare_unused)[0]);
-    surface_prepare_removed=prepare_unused;
+  if(!surface_prepare.value||prepare_unused!=surface_prepare_removed||prepare_rounds!=surface_prepare_rounds){
+    if(prepare_rounds){
+      surface_prepare=std::move(build_pipelines("surface",surface_source(),{"prepare_surface"},light_variant|SF_SVM_STAGE_NO_HEAVY,prepare_unused)[0]);
+      surface_prepare_heavy=std::move(build_pipelines("surface",surface_source(),{"prepare_surface_heavy"},light_variant|SF_SVM_STAGE_NO_NODES,prepare_unused)[0]);
+      surface_prepare_closure=std::move(build_pipelines("surface",surface_source(),{"prepare_surface_closure"},light_variant|SF_SVM_STAGE_NO_HEAVY|SF_SVM_STAGE_NO_NODES,prepare_unused)[0]);
+    }else{
+      surface_prepare=std::move(build_pipelines("surface",surface_source(),{"prepare_surface"},light_variant,prepare_unused)[0]);
+      surface_prepare_heavy={};surface_prepare_closure={};
+    }
+    surface_prepare_removed=prepare_unused;surface_prepare_rounds=prepare_rounds;
   }
+  // The staged evaluation (wavefront_svm.wgsl SVM_STAGES): the nodes stage starts every program; each round then runs the
+  // heavy, the closure and the nodes stage once (push word 3: the round, with bit 31 in the last one, where a program that
+  // has not ended is an error). An entry returns at once for a record that does not wait for it.
+  auto staged=[&](const cbc::Pipeline &heavy,const char *heavy_entry,const cbc::Pipeline &closure,const char *closure_entry,
+                  const cbc::Pipeline &nodes,const char *nodes_entry,uint32_t rounds){
+    std::array<uint32_t,32> q=p;
+    for(uint32_t round=1;round<=rounds;round++){
+      q[3]=round|(round==rounds?0x80000000u:0u);
+      dispatch(q,uint32_t(work),heavy,workgroup(heavy_entry));dispatch(q,uint32_t(work),closure,workgroup(closure_entry));
+      dispatch(q,uint32_t(work),nodes,workgroup(nodes_entry));
+    }
+  };
   // Dispatch ordering makes the GPU-private preparation records visible to the
   // sampling stage without a CPU readback or a native scheduler queue transition.
   dispatch(p,uint32_t(work),surface_geometry,workgroup("prepare_shader_data"));
@@ -253,10 +275,25 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
     // with the node's ray tracing (SVM_NODE_RAYTRACE, wavefront_ao.wgsl), built from
     // the same surface source; the other stages are the shared pipelines above.
     const ShaderFeatures unused=raytrace_unused_svm_features();
-    if(!pipeline_current(surface_prepare_raytrace,"prepare_surface_raytrace",unused))
-      surface_prepare_raytrace=std::move(build_pipelines("surface",surface_source(),{"prepare_surface_raytrace"},SF_NODE_RAYTRACE,unused)[0]);
+    const uint32_t rounds=svm_stage_rounds("prepare_surface_raytrace",SF_NODE_RAYTRACE,unused,surface_raytrace_stage);
+    if(!pipeline_current(surface_prepare_raytrace,"prepare_surface_raytrace",unused)||rounds!=surface_prepare_raytrace_rounds){
+      if(rounds){
+        surface_prepare_raytrace=std::move(build_pipelines("surface",surface_source(),{"prepare_surface_raytrace"},SF_NODE_RAYTRACE|SF_SVM_STAGE_NO_HEAVY,unused)[0]);
+        surface_prepare_raytrace_heavy=std::move(build_pipelines("surface",surface_source(),{"prepare_surface_raytrace_heavy"},SF_NODE_RAYTRACE|SF_SVM_STAGE_NO_NODES,unused)[0]);
+        surface_prepare_raytrace_closure=std::move(build_pipelines("surface",surface_source(),{"prepare_surface_raytrace_closure"},SF_NODE_RAYTRACE|SF_SVM_STAGE_NO_HEAVY|SF_SVM_STAGE_NO_NODES,unused)[0]);
+      }else{
+        surface_prepare_raytrace=std::move(build_pipelines("surface",surface_source(),{"prepare_surface_raytrace"},SF_NODE_RAYTRACE,unused)[0]);
+        surface_prepare_raytrace_heavy={};surface_prepare_raytrace_closure={};
+      }
+      surface_prepare_raytrace_rounds=rounds;
+    }
     dispatch(p,uint32_t(work),surface_prepare_raytrace,workgroup("prepare_surface_raytrace"));
-  }else dispatch(p,uint32_t(work),surface_prepare,workgroup("prepare_surface"));
+    staged(surface_prepare_raytrace_heavy,"prepare_surface_raytrace_heavy",surface_prepare_raytrace_closure,"prepare_surface_raytrace_closure",
+           surface_prepare_raytrace,"prepare_surface_raytrace",surface_prepare_raytrace_rounds);
+  }else{
+    dispatch(p,uint32_t(work),surface_prepare,workgroup("prepare_surface"));
+    staged(surface_prepare_heavy,"prepare_surface_heavy",surface_prepare_closure,"prepare_surface_closure",surface_prepare,"prepare_surface",surface_prepare_rounds);
+  }
   if(reserve_shadow){
     // PathTraceWorkGPU::enqueue_path_iteration budgets at least one shadow slot
     // for each surface input before invoking this kernel. Unused reservations

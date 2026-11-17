@@ -3,6 +3,10 @@
 #include "pipelines.h"
 #include "surface_svm_test.h"
 #include "surface_fixture.h"
+#ifdef CBC_NODES_FIXTURE
+#include "kernel/svm/integer_math.h"
+#include <cstring>
+#endif
 #ifdef CBC_PRINCIPLED_FIXTURE
 struct PrincipledArgs {float metallic=0,roughness=.5f,ior=1.45f,transmission=0,coat=0,coat_roughness=.1f,coat_ior=1.5f,sheen=0,sheen_roughness=.5f,
   level=.5f,anisotropic=0,rotation=0,alpha=1,emission=0,diffuse_roughness=0,subsurface=0,thin_film=0,film_ior=1.33f;int thin_wall=0;bool multi=true,tinted=false;
@@ -80,7 +84,8 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
     if(test==12)program.refraction(.3f,1.5f);
     if(test==13)program.glass(.3f,1.5f,0,7);
     if(test==14){program.glass(.3f,1.5f);ds.data.tables.ggx_gen_schlick_ior_s=ds.lookup_table.size()-4095;}
-    if(test==15)program.glass(.3f,1.5f,0,SVM_STACK_INVALID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+    // The multiscatter GGX distribution is implemented (typed programs below): here its glass energy table is out of bounds.
+    if(test==15){program.glass(.3f,1.5f,0,SVM_STACK_INVALID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);ds.data.tables.ggx_glass_E=ds.lookup_table.size()-4000;}
     if(test==16)program.refraction(.3f,1.5f,SVM_STACK_INVALID,CLOSURE_BSDF_PHONG_RAMP_ID); // unsupported refraction-record kind (Beckmann and hair are implemented)
 #endif
     program.install(ds);ds.data.max_closures=test==3?MAX_CLOSURE+1:MAX_CLOSURE;d.const_copy_to("data",&ds.data,sizeof(KernelData));
@@ -97,7 +102,7 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
 #else
       16,4,8,512,
 #ifdef CBC_GLASS_FIXTURE
-      16,16
+      512,16
 #else
       512
 #endif
@@ -145,6 +150,196 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
     out.copy_from_device();healthy(d);require(std::all_of(out.data(),out.data()+out.size(),[](uint v){return v==0xa5a5a5a5u;}),"Rejected node SVM wrote output");cache.verify();d.zero(d.error_word,4);
   }ds.data=original;return count;
 }
+// Boolean Math, Integer Math and Get Vector Component (pinned svm/boolean_math.h, svm/integer_math.h and
+// svm/sepcomb_vector.h svm_node_get_vector_component). Integers are compared exactly: a result leaves as four base-256
+// digits (the last one signed), each plus an offset that keeps the closure weight positive, so every weight is a small
+// whole number and the gate's float tolerance separates neighbouring integers. Only cases whose pinned evaluation is
+// defined run (integer_model checks every step in 64 bits); the pinned function itself must give the model's value.
+static int64_t integer_model(NodeIntegerMathType type,int64_t a,int64_t b,int64_t c,bool &ok){
+  auto in=[&](int64_t v){if(v<INT32_MIN||v>INT32_MAX)ok=false;return v;};
+  auto quotient=[&](int64_t x,int64_t y){if(y==0||(x==INT32_MIN&&y==-1)){ok=false;return int64_t(0);}return x/y;};
+  auto remainder=[&](int64_t x,int64_t y){if(y==0||(x==INT32_MIN&&y==-1)){ok=false;return int64_t(0);}return x%y;};
+  auto magnitude=[&](int64_t x){return in(x<0?-x:x);};
+  auto floor_div=[&](int64_t x,int64_t y){const int64_t q=quotient(x,y),r=remainder(x,y);return r!=0?in(q-int64_t((x<0)!=(y<0))):q;};
+  auto gcd=[&](int64_t x,int64_t y){x=magnitude(x);y=magnitude(y);while(y!=0){const int64_t t=y;y=remainder(x,y);x=t;}return x;};
+  const int64_t sign_b=int64_t(0<b)-int64_t(b<0);
+  switch(type){
+    case NODE_INTEGER_MATH_ADD:return in(a+b);
+    case NODE_INTEGER_MATH_SUBTRACT:return in(a-b);
+    case NODE_INTEGER_MATH_MULTIPLY:return in(a*b);
+    case NODE_INTEGER_MATH_DIVIDE:return b!=0?quotient(a,b):0;
+    case NODE_INTEGER_MATH_MULTIPLY_ADD:return in(in(a*b)+c);
+    case NODE_INTEGER_MATH_POWER:{
+      if(b<0)return a==1||a==-1?((a<0&&(b&1)!=0)?-1:1):0;
+      int64_t result=1,factor=a,exponent=b;while(exponent!=0){if((exponent&1)!=0)result=in(result*factor);exponent>>=1;factor=in(factor*factor);}return result;}
+    case NODE_INTEGER_MATH_FLOORED_MODULO:return b!=0?remainder(in(remainder(a,b)+b),b):0;
+    case NODE_INTEGER_MATH_ABSOLUTE:return magnitude(a);
+    case NODE_INTEGER_MATH_MINIMUM:return std::min(a,b);
+    case NODE_INTEGER_MATH_MAXIMUM:return std::max(a,b);
+    case NODE_INTEGER_MATH_GCD:return gcd(a,b);
+    case NODE_INTEGER_MATH_LCM:{const int64_t g=gcd(a,b);return g!=0?magnitude(in(quotient(a,g)*b)):0;}
+    case NODE_INTEGER_MATH_NEGATE:return in(-a);
+    case NODE_INTEGER_MATH_SIGN:return int64_t(0<a)-int64_t(a<0);
+    case NODE_INTEGER_MATH_DIVIDE_FLOOR:return b!=0?floor_div(a,b):0;
+    case NODE_INTEGER_MATH_DIVIDE_CEIL:return b!=0?in(-floor_div(a,in(-b))):0;
+    case NODE_INTEGER_MATH_DIVIDE_ROUND:{const int64_t abs_b=magnitude(b);
+      if(a>=0)return in((abs_b!=0?quotient(in(in(2*a)+abs_b),in(2*abs_b)):0)*sign_b);
+      return in(in(-(abs_b!=0?quotient(in(in(2*in(-a))+abs_b),in(2*abs_b)):0))*sign_b);}
+    case NODE_INTEGER_MATH_MODULO:return b!=0?remainder(a,b):0;
+  }
+  return 0;
+}
+static unsigned integer_node_cases(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const std::vector<Field> &layout,const std::vector<IntegratorStateCPU> &initial,
+    const std::vector<int> &small,Metrics &m){
+  auto &ds=scene.dscene;unsigned cases=0;constexpr int lo=INT32_MIN,hi=INT32_MAX;constexpr SVMStackOffset none=SVM_STACK_INVALID;
+  const auto constant=[](int v){return SVMInputInt{.value=v,.offset=SVM_STACK_INVALID};};
+  // A linked operand carries a value in the record that must not be read.
+  const auto linked=[](unsigned slot){return SVMInputInt{.value=0x5a5a5a5a,.offset=SVMStackOffset(slot)};};
+  const auto integer=[&](Program &p,NodeIntegerMathType type,SVMInputInt a,SVMInputInt b,SVMInputInt c,unsigned out){
+    p.add(NODE_INTEGER_MATH,SVMNodeIntegerMath{.math_type=type,.value1=a,.value2=b,.value3=c,.result_offset=SVMStackOffset(out)});};
+  // The integer in `slot` plus `offset`, as a float, into `out`.
+  const auto as_float=[&](Program &p,unsigned slot,int offset,unsigned out){
+    integer(p,NODE_INTEGER_MATH_ADD,linked(slot),constant(offset),constant(0),240);p.add(NODE_CONVERT,SVMNodeConvert{.convert_type=NODE_CONVERT_IF,.from_offset=240,.to_offset=SVMStackOffset(out)});};
+  // The integer in `slot` as two closure weights: (d0+1, d1+1, d2+1) on a diffuse closure and (d3+129, 1, 1) on a translucent one.
+  const auto digits=[&](Program &p,unsigned slot){
+    unsigned from=slot;
+    for(unsigned k=0;k<3;k++){integer(p,NODE_INTEGER_MATH_FLOORED_MODULO,linked(from),constant(256),constant(0),230);as_float(p,230,1,200+k);
+      integer(p,NODE_INTEGER_MATH_DIVIDE_FLOOR,linked(from),constant(256),constant(0),231+k);from=231+k;}
+    as_float(p,from,129,203);p.add(NODE_VALUE_F,SVMNodeValueF{.value=1.f,.out_offset=204});p.add(NODE_VALUE_F,SVMNodeValueF{.value=1.f,.out_offset=205});
+    p.add(NODE_CLOSURE_WEIGHT,SVMNodeClosureWeight{.weight_offset=200});p.diffuse(0);p.add(NODE_CLOSURE_WEIGHT,SVMNodeClosureWeight{.weight_offset=203});p.simple(CLOSURE_BSDF_TRANSLUCENT_ID);};
+  const auto run=[&](Program &p,const std::string &name){p.install(ds);evaluate(d,scene,shader,layout,initial,small,"Typed node "+name+" "+std::to_string(cases++),m);};
+  struct Case {int a,b,c;};
+  const std::pair<NodeIntegerMathType,std::vector<Case>> table[]={
+    {NODE_INTEGER_MATH_ADD,{{1,2,0},{-5,3,0},{0,0,0},{hi,0,0},{lo,0,0},{hi,lo,0},{1<<30,(1<<30)-1,0},{-(1<<30),-(1<<30),0}}},
+    {NODE_INTEGER_MATH_SUBTRACT,{{5,7,0},{0,0,0},{lo,0,0},{-1,hi,0},{0,hi,0},{hi,hi,0},{lo,-1,0}}},
+    {NODE_INTEGER_MATH_MULTIPLY,{{6,-7,0},{0,lo,0},{46340,46340,0},{-65536,32768,0},{hi,1,0},{hi,-1,0},{-1,-hi,0},{lo,1,0}}},
+    {NODE_INTEGER_MATH_DIVIDE,{{7,2,0},{-7,2,0},{7,-2,0},{-7,-2,0},{7,0,0},{0,0,0},{lo,0,0},{lo,1,0},{lo,hi,0},{hi,lo,0},{lo,2,0},{lo,lo,0},{hi,-1,0},{lo+1,-1,0}}},
+    {NODE_INTEGER_MATH_MULTIPLY_ADD,{{2,3,4},{1000,1000,-1000000},{0,0,lo},{65536,32767,65535},{-65536,32768,0},{hi,-1,-1},{46340,46340,88047},{-46340,46340,-88048}}},
+    {NODE_INTEGER_MATH_POWER,{{2,10,0},{2,15,0},{-2,15,0},{7,7,0},{-3,3,0},{46340,1,0},{5,0,0},{0,0,0},{0,-1,0},{1,-5,0},{-1,-5,0},{-1,-4,0},{2,-1,0},{1,hi,0},{-1,hi,0},{0,hi,0},
+      {-1,lo,0},{lo,-1,0},{lo,0,0},{0,1,0},{-1,lo+1,0},{1,lo,0}}},
+    {NODE_INTEGER_MATH_FLOORED_MODULO,{{7,3,0},{-7,3,0},{7,-3,0},{-7,-3,0},{7,0,0},{0,0,0},{lo,0,0},{lo,3,0},{hi,7,0},{5,lo,0},{6,3,0},{-6,3,0},{0,-1,0},{-7,1,0}}},
+    {NODE_INTEGER_MATH_ABSOLUTE,{{-5,0,0},{0,0,0},{hi,0,0},{lo+1,0,0},{7,0,0}}},
+    {NODE_INTEGER_MATH_MINIMUM,{{lo,hi,0},{-1,1,0},{3,3,0},{hi,lo,0}}},
+    {NODE_INTEGER_MATH_MAXIMUM,{{lo,hi,0},{-1,1,0},{3,3,0},{hi,lo,0}}},
+    {NODE_INTEGER_MATH_GCD,{{12,18,0},{-12,18,0},{0,5,0},{5,0,0},{0,0,0},{17,5,0},{hi,hi,0},{1<<30,1<<29,0},{-36,-48,0},{1836311903,1134903170,0},{hi,lo+1,0},{1,hi,0}}},
+    {NODE_INTEGER_MATH_LCM,{{4,6,0},{-4,6,0},{21,6,0},{0,5,0},{5,0,0},{0,0,0},{46340,46341,0},{-6,4,0},{1<<30,2,0},{6,-4,0},{-6,-4,0},{hi,1,0}}},
+    {NODE_INTEGER_MATH_NEGATE,{{5,0,0},{0,0,0},{hi,0,0},{-hi,0,0}}},
+    {NODE_INTEGER_MATH_SIGN,{{-7,0,0},{0,0,0},{hi,0,0},{lo,0,0},{1,0,0}}},
+    {NODE_INTEGER_MATH_DIVIDE_FLOOR,{{7,2,0},{-7,2,0},{7,-2,0},{-7,-2,0},{6,3,0},{-6,3,0},{7,0,0},{lo,0,0},{lo,2,0},{lo,hi,0},{hi,lo,0},{lo,lo,0},{hi,-1,0},{-1,hi,0},{1,lo,0}}},
+    {NODE_INTEGER_MATH_DIVIDE_CEIL,{{7,2,0},{-7,2,0},{7,-2,0},{-7,-2,0},{6,3,0},{-6,3,0},{7,0,0},{lo,0,0},{lo,2,0},{hi,2,0},{hi,hi,0},{1,hi,0},{-1,hi,0},{lo+1,-1,0}}},
+    {NODE_INTEGER_MATH_DIVIDE_ROUND,{{7,2,0},{5,2,0},{-5,2,0},{5,-2,0},{-5,-2,0},{7,0,0},{-7,0,0},{0,0,0},{1000000,3,0},{-1000001,2,0},{1<<29,3,0},{-(1<<29),-3,0},{(1<<30)-1,1,0},
+      {-((1<<30)-1),1,0},{1,2,0},{-1,2,0},{3,2,0},{-3,2,0},{0,(1<<30)-1,0},{(1<<29)-1,(1<<30)-1,0},{1<<29,(1<<30)-1,0}}},
+    {NODE_INTEGER_MATH_MODULO,{{7,3,0},{-7,3,0},{7,-3,0},{-7,-3,0},{7,0,0},{0,0,0},{lo,0,0},{lo,hi,0},{hi,lo,0},{lo,2,0},{lo,lo,0},{hi,-1,0},{lo+1,-1,0}}},
+  };
+  for(const auto &[type,rows]:table)for(const Case &row:rows){
+    bool defined=true;const int64_t want=integer_model(type,row.a,row.b,row.c,defined);
+    require(defined,"Integer Math case with an undefined pinned evaluation: "+std::to_string(type)+" "+std::to_string(row.a)+" "+std::to_string(row.b)+" "+std::to_string(row.c));
+    require(svm_integer_math(type,row.a,row.b,row.c)==want,"Pinned Integer Math differs from the 64-bit model: "+std::to_string(type)+" "+std::to_string(row.a)+" "+std::to_string(row.b)+" "+std::to_string(row.c));
+    // Linked operands (each the constant-input sum a + 0), then the same operation on constant inputs: both results leave.
+    for(unsigned form=0;form<2;form++){Program p(ds);
+      if(form==0){integer(p,NODE_INTEGER_MATH_ADD,constant(row.a),constant(0),constant(0),20);integer(p,NODE_INTEGER_MATH_ADD,constant(0),constant(row.b),constant(0),21);
+        integer(p,NODE_INTEGER_MATH_SUBTRACT,constant(row.c),constant(0),constant(0),22);integer(p,type,linked(20),linked(21),linked(22),23);}
+      else integer(p,type,constant(row.a),constant(row.b),constant(row.c),23);
+      digits(p,23);run(p,"integer math "+std::to_string(type)+(form?" constant":" linked"));}
+  }
+  // An operation number past the last one: 0 (the pinned switch has no case for it).
+  {Program p(ds);integer(p,NodeIntegerMathType(NODE_INTEGER_MATH_MODULO+1),constant(7),constant(3),constant(1),23);digits(p,23);run(p,"integer math unknown operation");}
+  // A result nobody reads (result_offset invalid) writes nothing.
+  {Program p(ds);integer(p,NODE_INTEGER_MATH_ADD,constant(41),constant(1),constant(0),23);
+    p.add(NODE_INTEGER_MATH,SVMNodeIntegerMath{.math_type=NODE_INTEGER_MATH_ADD,.value1=constant(1),.value2=constant(2),.value3=constant(0),.result_offset=none});digits(p,23);run(p,"integer math no output");}
+  // Boolean Math: every operation (and one past the last) on operands at and around the threshold 0, linked and constant.
+  const int booleans[]={0,1,2,-3,-1,lo,hi};
+  for(unsigned type=0;type<=NODE_BOOLEAN_MATH_NIMPLY+1u;type++)for(int a:booleans)for(int b:{0,1,-1,hi,lo}){Program p(ds);
+    integer(p,NODE_INTEGER_MATH_ADD,constant(a),constant(0),constant(0),20);integer(p,NODE_INTEGER_MATH_ADD,constant(b),constant(0),constant(0),21);
+    p.add(NODE_BOOLEAN_MATH,SVMNodeBooleanMath{.math_type=NodeBooleanMathType(type),.value1=linked(20),.value2=linked(21),.result_offset=23});
+    p.add(NODE_BOOLEAN_MATH,SVMNodeBooleanMath{.math_type=NodeBooleanMathType(type),.value1=constant(a),.value2=linked(21),.result_offset=24});
+    p.add(NODE_BOOLEAN_MATH,SVMNodeBooleanMath{.math_type=NodeBooleanMathType(type),.value1=linked(20),.value2=constant(b),.result_offset=25});
+    p.add(NODE_BOOLEAN_MATH,SVMNodeBooleanMath{.math_type=NodeBooleanMathType(type),.value1=constant(a),.value2=constant(b),.result_offset=none});
+    for(unsigned k=0;k<3;k++)as_float(p,23+k,1,200+k);
+    p.add(NODE_CLOSURE_WEIGHT,SVMNodeClosureWeight{.weight_offset=200});p.diffuse(0);digits(p,23);run(p,"boolean math "+std::to_string(type));}
+  // Get Vector Component: a linked vector (slot 6, the fraction of the scaled position, in [0,1)) and a constant one, the
+  // index linked and constant, inside and outside 0..2; each component plus 1 as a closure weight.
+  const auto position=[&](Program &p){p.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=0});
+    p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_SCALE,.a=stack_in3(0),.b=color(0,0,0),.c=color(0,0,0),.param1=value(64),.value_offset=SVM_STACK_INVALID,.vector_offset=3});
+    p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_FLOOR,.a=stack_in3(3),.b=color(0,0,0),.c=color(0,0,0),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=3});
+    p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_SCALE,.a=stack_in3(3),.b=color(0,0,0),.c=color(0,0,0),.param1=value(1.f/64),.value_offset=SVM_STACK_INVALID,.vector_offset=3});
+    p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_FRACTION,.a=stack_in3(3),.b=color(0,0,0),.c=color(0,0,0),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=6});};
+  const auto plus_one=[&](Program &p,unsigned slot,unsigned out){p.add(NODE_MATH,SVMNodeMath{.math_type=NODE_MATH_ADD,.value1=stack_in(slot),.value2=value(1),.value3=value(0),.result_offset=SVMStackOffset(out)});};
+  for(int index:{0,1,2,-1,3,lo,hi,-2,256,65536}){Program p(ds);position(p);integer(p,NODE_INTEGER_MATH_ADD,constant(index),constant(0),constant(0),20);
+    p.add(NODE_GET_VECTOR_COMPONENT,SVMNodeGetVectorComponent{.vector=stack_in3(6),.index=linked(20),.out_offset=30});
+    p.add(NODE_GET_VECTOR_COMPONENT,SVMNodeGetVectorComponent{.vector=color(.25f,.5f,.75f),.index=linked(20),.out_offset=31});
+    p.add(NODE_GET_VECTOR_COMPONENT,SVMNodeGetVectorComponent{.vector=stack_in3(6),.index=constant(index),.out_offset=32});
+    p.add(NODE_GET_VECTOR_COMPONENT,SVMNodeGetVectorComponent{.vector=stack_in3(6),.index=constant(index),.out_offset=none});
+    for(unsigned k=0;k<3;k++)plus_one(p,30+k,200+k);
+    p.add(NODE_CLOSURE_WEIGHT,SVMNodeClosureWeight{.weight_offset=200});p.diffuse(0);run(p,"get vector component "+std::to_string(index));}
+  // The derivative opcode: a dual vector in slots 40..48 (the position with its derivatives; the value replaced by the
+  // bit-identical slot 3), the component with its two derivatives in 60..62; a constant vector has no derivatives; an
+  // index outside 0..2 gives three zeros. Weights: 1 + |value| and 1 + 1000 |derivative|.
+  for(int index:{0,1,2,-1,3,lo,hi})for(unsigned form=0;form<3;form++){Program p(ds);position(p);
+    p.add(NODE_GEOMETRY_DERIVATIVE,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.bump_offset=NODE_BUMP_OFFSET_CENTER,.store_derivatives=1,.out_offset=40,.bump_filter_width=1});
+    p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_ADD,.a=stack_in3(3),.b=color(0,0,0),.c=color(0,0,0),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=40});
+    integer(p,NODE_INTEGER_MATH_ADD,constant(index),constant(0),constant(0),20);
+    // Stale values where the outputs go: a zero result must overwrite all three slots.
+    p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=60,.value=make_float3(7,8,9)});
+    p.add(NODE_GET_VECTOR_COMPONENT_DERIVATIVE,SVMNodeGetVectorComponent{.vector=form==2?color(.25f,.5f,.75f):stack_in3(40),.index=form==1?constant(index):linked(20),.out_offset=60});
+    p.add(NODE_GET_VECTOR_COMPONENT_DERIVATIVE,SVMNodeGetVectorComponent{.vector=stack_in3(40),.index=linked(20),.out_offset=none});
+    for(unsigned k=0;k<3;k++){p.add(NODE_MATH,SVMNodeMath{.math_type=NODE_MATH_ABSOLUTE,.value1=stack_in(60+k),.value2=value(0),.value3=value(0),.result_offset=SVMStackOffset(70+k)});
+      p.add(NODE_MATH,SVMNodeMath{.math_type=NODE_MATH_MULTIPLY,.value1=stack_in(70+k),.value2=value(k?1000.f:1.f),.value3=value(0),.result_offset=SVMStackOffset(70+k)});plus_one(p,70+k,200+k);}
+    p.add(NODE_CLOSURE_WEIGHT,SVMNodeClosureWeight{.weight_offset=200});p.diffuse(0);run(p,"get vector component derivative "+std::to_string(index)+"/"+std::to_string(form));}
+  return cases;
+}
+// CODEBRIX_NODES_GATE_INTEGER_ONLY=1: a development run of integer_node_cases alone (its report has no
+// "originalCpuSurfaceSvm", so the gate driver cannot take it for the gate).
+static bool integer_nodes_only(){const char *only=std::getenv("CODEBRIX_NODES_GATE_INTEGER_ONLY");return only&&*only&&std::strcmp(only,"0")!=0;}
+#endif
+#ifdef CBC_NODES_FIXTURE
+// The nodes the BUMP and BUMP_STATE node features gate, in a light evaluation: KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT
+// (kernel/features.h) has neither, so svm_node_set_bump and svm_node_displacement store zero (svm/displace.h) and
+// svm_node_set_displacement, svm_node_set_normal, svm_node_enter_bump_eval and svm_node_leave_bump_eval are not called
+// (svm/displace.h, svm/svm.h). The states carry the kernel's light-evaluation arguments (PATH_RAY_VISIBILITY_NONE,
+// PATH_RAY_EMISSION), which the reference evaluates with that mask (svm_surface_reference.cpp); the device's region is
+// the one it selects for an emitter's shader (SF_NODE_MASK_BUMP, pipelines.h). Each program ends in an Emission closure
+// whose weight accumulates what the nodes left. Negative control: CODEBRIX_NODES_GATE_BUMP_MASK=0 leaves the region
+// out of the probe module, and the first case must then fail. CODEBRIX_NODES_GATE_BUMP_MASK_ONLY=1: a development run that ends after
+// these cases (its report has no "originalCpuSurfaceSvm", so the gate driver cannot take it for the gate).
+static bool bump_mask_only(){const char *only=std::getenv("CODEBRIX_NODES_GATE_BUMP_MASK_ONLY");return only&&*only&&std::string(only)!="0";}
+static void bump_mask_cases(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const std::vector<Field> &layout,const std::vector<IntegratorStateCPU> &initial,
+    const std::vector<int> &small,Metrics &m){
+  auto &ds=scene.dscene;auto states=initial;for(int i:small){states[i].path.flag=PATH_RAY_EMISSION;states[i].path.visibility=PATH_RAY_VISIBILITY_NONE;}
+  // Every shader of the fixture runs the program under test, the emitters' too, so the census selects the region.
+  if(const char *mask=std::getenv("CODEBRIX_NODES_GATE_BUMP_MASK");mask&&std::string(mask)=="0"){probe_disabled_features=SF_NODE_MASK_BUMP;
+    Program first(ds);first.diffuse(0);first.install(ds);shader=pipeline(d,probe_raw);}
+  const auto acc3=[&](Program &p,unsigned slot,float k){
+    p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_ABSOLUTE,.a=stack_in3(slot),.b=color(0,0,0),.c=color(0,0,0),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=200});
+    p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_MULTIPLY_ADD,.a=stack_in3(200),.b=color(k,k,k),.c=stack_in3(10),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=10});};
+  const auto begin=[&](Program &p){p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=10,.value=make_float3(.1f,.2f,.3f)});p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=30,.value=normalize(make_float3(.2f,-.3f,.93f))});};
+  const auto emit=[&](Program &p,const std::string &name){p.add(NODE_CLOSURE_WEIGHT,SVMNodeClosureWeight{.weight_offset=10});
+    p.add(NODE_CLOSURE_EMISSION,SVMNodeClosureEmission{.mix_weight_offset=SVM_STACK_INVALID});p.install(ds);
+    evaluate(d,scene,shader,layout,states,small,"Bump node mask "+name,m);};
+  // A Bump node over three position taps, as in the surface cases: its Normal output is zero.
+  for(unsigned variant=0;variant<4;variant++){Program p(ds);begin(p);
+    for(unsigned tap=0;tap<3;tap++){p.add(NODE_GEOMETRY_DERIVATIVE,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.bump_offset=NodeBumpOffset(tap),.store_derivatives=0,.out_offset=SVMStackOffset(110+3*tap),.bump_filter_width=2000.f});
+      p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_DOT_PRODUCT,.a=stack_in3(110+3*tap),.b=color(.7f,-1.3f,.4f),.c=color(0,0,0),.param1=value(1),.value_offset=SVMStackOffset(119+tap),.vector_offset=SVM_STACK_INVALID});}
+    p.add(NODE_SET_BUMP,SVMNodeSetBump{.scale=value(.7f),.strength=value(1),.bump_filter_width=2000.f,.normal_offset=SVMStackOffset(variant%2?30:SVM_STACK_INVALID),
+      .invert=0,.use_object_space=uint8_t(variant/2),.center_offset=119,.dx_offset=120,.dy_offset=121,.out_offset=122,.bump_state_offset=SVM_STACK_INVALID});
+    acc3(p,122,1);emit(p,"set bump "+std::to_string(variant));}
+  // The bump from displacement's program: the bump state nodes, a Displacement node, a Bump node reading the saved
+  // state, Set Normal and Set Displacement. The Displacement and Normal outputs are zero; the position and the shading
+  // normal (read after them by Geometry nodes) are the shading point's.
+  for(unsigned variant=0;variant<2;variant++){Program p(ds);begin(p);
+    p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=40,.value=make_float3(.3f,-.2f,.5f)});
+    for(unsigned tap=0;tap<3;tap++)p.add(NODE_VALUE_F,SVMNodeValueF{.value=.2f+.3f*float(tap),.out_offset=SVMStackOffset(119+tap)});
+    p.add(NODE_ENTER_BUMP_EVAL,SVMNodeEnterBumpEval{.state_offset=130});
+    p.add(NODE_DISPLACEMENT,SVMNodeDisplacement{.space=variant?NODE_NORMAL_MAP_OBJECT:NODE_NORMAL_MAP_WORLD,.height=value(.8f),.midlevel=value(.5f),.scale=value(2),
+      .normal_offset=SVMStackOffset(variant?30:SVM_STACK_INVALID),.out_offset=140});
+    p.add(NODE_SET_BUMP,SVMNodeSetBump{.scale=value(.7f),.strength=value(1),.bump_filter_width=2000.f,.normal_offset=SVM_STACK_INVALID,
+      .invert=0,.use_object_space=0,.center_offset=119,.dx_offset=120,.dy_offset=121,.out_offset=122,.bump_state_offset=130});
+    p.add(NODE_LEAVE_BUMP_EVAL,SVMNodeLeaveBumpEval{.state_offset=130});
+    p.add(NODE_CLOSURE_SET_NORMAL,SVMNodeClosureSetNormal{.direction_offset=30,.normal_offset=150});
+    p.add(NODE_SET_DISPLACEMENT,SVMNodeSetDisplacement{.fac_offset=40});
+    p.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=160});p.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_N,.out_offset=163});
+    acc3(p,140,1);acc3(p,122,1);acc3(p,160,.1f);acc3(p,163,1);emit(p,"bump program "+std::to_string(variant));}
+}
 #endif
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   // Every probe check compares against svm_reference_records, so on reference import (the device-scene flow)
@@ -155,6 +350,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     auto &ds=scene.dscene;ds.data.integrator.use_light_mis=0;ds.data.integrator.use_caustics=0;
     auto limit=[&](int n){ds.data.max_closures=n;d.const_copy_to("data",&ds.data,sizeof(KernelData));};limit(MAX_CLOSURE);
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&ds,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();auto layout=fields(d);std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto ids=states_for(scene,initial);
+#ifdef CBC_NODES_FIXTURE
+    if(integer_nodes_only()){Program first(ds);first.diffuse(0);first.install(ds);auto source=probe_source();auto shader=pipeline(d,source);
+      integer_node_cases(d,scene,shader,layout,initial,std::vector<int>(ids.begin(),ids.begin()+51),m);}
+    else{
+#endif
     auto source=probe_source();std::ofstream(prefix+".wgsl")<<gate_probe_wgsl(d,source);auto shader=pipeline(d,source);
     evaluate(d,scene,shader,layout,initial,ids,"Native compiled graphs",m,prefix);
     for(int cap:{0,1,2}){limit(cap);evaluate(d,scene,shader,layout,initial,ids,"Closure limit "+std::to_string(cap),m);}limit(MAX_CLOSURE);
@@ -191,6 +391,9 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     // ulp, so inputs are made bit-identical before the node under test. Outputs
     // color 10..12 and value 13 become closure weights (diffuse and translucent).
     unsigned node_typed=0;
+    if(bump_mask_only()){bump_mask_cases(d,scene,shader,layout,initial,small,m);
+      std::cout<<"{\"passed\":true,\"bumpMaskCasesOnly\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFloatFailures\":"<<m.strict
+        <<",\"maximumAbsoluteError\":"<<m.maximum<<"}"<<std::endl;std::_Exit(0);}
     auto begin=[&](Program &p,float3 k=make_float3(1.3f,.9f,1.7f)){p.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=0});
       p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_SCALE,.a=stack_in3(0),.b=color(0,0,0),.c=color(0,0,0),.param1=value(64),.value_offset=SVM_STACK_INVALID,.vector_offset=3});
       p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_FLOOR,.a=stack_in3(3),.b=color(0,0,0),.c=color(0,0,0),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=3});
@@ -479,12 +682,14 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       p.add(NODE_CONVERT,SVMNodeConvert{.convert_type=NODE_CONVERT_FV,.from_offset=13,.to_offset=14});p.add(NODE_CLOSURE_WEIGHT,SVMNodeClosureWeight{.weight_offset=14});p.simple(CLOSURE_BSDF_TRANSLUCENT_ID,122);
       p.install(ds);evaluate(d,scene,shader,layout,initial,small,"Typed node set bump "+std::to_string(variant)+" "+std::to_string(node_typed++),m);
     }
+    bump_mask_cases(d,scene,shader,layout,initial,small,m);
     {
       // Bump state: enter saves P and dP, leave restores them.
       Program p(ds);dbegin(p);p.add(NODE_ENTER_BUMP_EVAL,SVMNodeEnterBumpEval{.state_offset=130});acc3(p,130,.1f);acc1(p,133,1000);
       p.add(NODE_LEAVE_BUMP_EVAL,SVMNodeLeaveBumpEval{.state_offset=130});p.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=140});acc3(p,140,.1f);
       finish(p,"bump state");
     }
+    integer_node_cases(d,scene,shader,layout,initial,small,m);
 #endif
 #ifdef CBC_MICROFACET_FIXTURE
     unsigned typed=0;
@@ -604,6 +809,13 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       if(glass)p.glass(rough,ior,0,0,CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);else p.refraction(rough,ior,0,CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID);p.install(ds);
       evaluate(d,scene,shader,layout,initial,small,"Typed Beckmann glass/refraction "+std::to_string(typed++),m);
     }
+    // The Glass BSDF with the multiscatter GGX distribution beside the Metallic and Beckmann families (the module shares
+    // the energy helpers and the precise tangent rotation with them).
+    for(float rough:{0.f,.1f,.5f,1.f})for(float ior:{.7f,1.5f}){
+      Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=typed%2?make_float3(.2,.3,1):zero_float3()});
+      p.glass(rough,ior,0,0,CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);p.install(ds);
+      evaluate(d,scene,shader,layout,initial,small,"Typed multiscatter glass "+std::to_string(typed++),m);
+    }
 #endif
 #if CBC_BSDF_FIXTURE==2
     unsigned typed=0;
@@ -697,6 +909,38 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       if(glass)p.glass(rough,ior,0,0);else p.refraction(rough,ior,0);p.install(ds);
       evaluate(d,scene,shader,layout,initial,small,"Typed glass/refraction "+std::to_string(typed++),m);
     }
+    // The Glass BSDF with the multiscatter GGX distribution (svm/closure.h CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID;
+    // closure/bsdf_microfacet.h bsdf_microfacet_setup_fresnel_generalized_schlick with preserve_energy and
+    // microfacet_ggx_preserve_energy): roughness and IOR extremes on both table sets (the IOR and its inverse on
+    // backfacing paths), then the average Fresnel of every tint: caustics switched off on diffuse paths (a zero
+    // transmission tint takes the reflective branch), black and white colours, and the anisotropic alphas with a rotated
+    // tangent.
+    auto multi_glass=[&](Program &p,float rough,float ior,float aniso,float rotation,SVMStackOffset tangent,SVMStackOffset normal,float3 tint){
+      p.add(NODE_CLOSURE_BSDF,SVMNodeClosureBsdf{.closure_type=CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID,.mix_weight_offset=SVM_STACK_INVALID});
+      auto n=SVMNodeGlassBsdfData{.color=color(tint.x,tint.y,tint.z),.roughness=value(rough),.anisotropy=value(aniso),.rotation=value(rotation),.ior=value(ior),
+        .thin_film_thickness=value(0),.thin_film_ior=value(1.3f),.normal_offset=normal,.tangent_offset=tangent};
+      auto bits=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),bits.begin(),bits.end());};
+    unsigned multi=0;
+    for(float rough:{0.f,.003f,.004f,.1f,.5f,1.f,2.f,-1.f})for(float ior:{0.f,.7f,1.f,1.00001f,1.5f,2.4f}){
+      Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=multi%2?make_float3(.2,.3,1):zero_float3()});
+      multi_glass(p,rough,ior,0,0,SVM_STACK_INVALID,0,make_float3(.2f,.5f,.9f));p.install(ds);
+      evaluate(d,scene,shader,layout,initial,small,"Typed multiscatter glass "+std::to_string(multi++),m);
+    }
+    {auto states=initial;unsigned n=0;const uint vis[]={PATH_RAY_VISIBILITY_DIFFUSE,PATH_RAY_VISIBILITY_CAMERA,PATH_RAY_VISIBILITY_DIFFUSE,PATH_RAY_VISIBILITY_GLOSSY,PATH_RAY_VISIBILITY_TRANSMIT};
+      for(int i:small)states[i].path.visibility=vis[n++%5];
+      const auto caustics=[&](int reflective,int refractive){ds.data.integrator.caustics_reflective=reflective;ds.data.integrator.caustics_refractive=refractive;limit(MAX_CLOSURE);};
+      for(unsigned mode=0;mode<4;mode++)for(float rough:{0.f,.1f,.5f,1.f})for(float ior:{.7f,1.5f,2.4f})for(unsigned tint=0;tint<3;tint++){
+        caustics(mode&1,(mode>>1)&1);Program p(ds);p.weight(.2,.5,.9);
+        multi_glass(p,rough,ior,0,0,SVM_STACK_INVALID,SVM_STACK_INVALID,tint==0?make_float3(.2f,.5f,.9f):tint==1?zero_float3():one_float3());p.install(ds);
+        evaluate(d,scene,shader,layout,states,small,"Typed multiscatter glass caustics "+std::to_string(multi++),m);
+      }
+      caustics(1,1);}
+    for(float rough:{.1f,.5f,1.f})for(float aniso:{-2.f,-.99f,-.3f,1e-4f,2e-4f,.5f,.99f,2.f})for(float rotation:{0.f,.3f}){
+      Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=make_float3(.8,.3,.2)});
+      p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=3,.value=multi%2?make_float3(.2,.3,1):zero_float3()});
+      multi_glass(p,rough,multi%3?1.5f:.7f,aniso,rotation,0,3,make_float3(.2f,.5f,.9f));p.install(ds);
+      evaluate(d,scene,shader,layout,initial,small,"Typed multiscatter glass anisotropic "+std::to_string(multi++),m);
+    }
 #endif
     // The scene-exchange passes (reference_policy.h) do no GPU work; the rejections run in the import pass.
     if(!svm_exchange_mode()){
@@ -717,6 +961,9 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       else require(message.empty(),"Supported Principled program rejected: "+message);
       host_rejections+=reason!=nullptr;}
     Program restore(ds);restore.diffuse(0);restore.install(ds);d.shader_features();
+#endif
+#ifdef CBC_NODES_FIXTURE
+    }
 #endif
   }
   require(stats.mem_used==0,"Surface SVM allocation leak");
@@ -745,6 +992,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
                  uint(CLOSURE_BSDF_HAIR_REFLECTION_ID),uint(CLOSURE_BSDF_HAIR_TRANSMISSION_ID),uint(CLOSURE_BSDF_HAIR_CHIANG_ID)})
     require(m.closures.count(kind),"Missing BSDF fixture closure family "+std::to_string(kind));
 #elif defined(CBC_NODES_FIXTURE)
+  if(integer_nodes_only()){std::cout<<"{\"passed\":true,\"integerNodeCasesOnly\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFloatFailures\":"<<m.strict
+    <<",\"maximumAbsoluteError\":"<<m.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";TaskScheduler::exit();return 0;}
   require(m.closures.size()==5,"Missing closure families");
 #else
   // Diffuse, Oren-Nayar, translucent, transparent, holdout and the ray portal (typed programs 14-16).

@@ -58,6 +58,8 @@ class WebGPUDevice final:public Device {
   KernelData data{};
   // Exact native table copies for capability validation; sampling remains on GPU.
   std::vector<KernelLight> light_records;
+  // Per light record: an area light axis whose length overflowed (device.cpp holds it as a zero axis; lighting.cpp).
+  std::vector<uint8_t> light_axis_overflow;
   // The lamps: the first integrator.num_lights records. Background light portals follow them (portal_offset), with only
   // their area geometry set by the pinned LightManager (AreaLight::copy_to_kernel returns before the shader fields).
   std::span<const KernelLight> lamp_records() const{
@@ -68,6 +70,9 @@ class WebGPUDevice final:public Device {
   std::vector<KernelLightTreeEmitter> light_tree_emitters;
   std::vector<KernelShader> shader_records;
   std::vector<KernelObject> object_records;
+  // The BVH2 nodes as uploaded (four floats each): the walk that decides SF_LIGHT_SPHERE_INSIDE (pipelines.cpp).
+  std::vector<float> bvh_node_words;
+  bool sphere_light_reaches_geometry(const KernelLight &light) const;
   std::vector<uint> object_flag_records;
   // The object flag table's Cycles memory: ObjectManager::apply_static_transforms sets SD_OBJECT_TRANSFORM_APPLIED in it
   // without an upload, ahead of the curve transparency evaluation (shadow.cpp).
@@ -242,6 +247,18 @@ class WebGPUDevice final:public Device {
   // DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE: the surface module specialized
   // with SVM_NODE_RAYTRACE (AO node traversal); its other stages are shared.
   cbc::Pipeline surface_prepare_raytrace;
+  // Staged shader evaluation of the surface stage (pipelines.h SF_SVM_STAGE_NO_HEAVY; native/DEVICE.md 202): the heavy and
+  // closure stage entries of each queue beside the nodes stage (surface_prepare, surface_prepare_raytrace), the rounds each
+  // queue's entries were built for (0: the one-entry evaluation) and the decision per (svm_generation, module features).
+  struct SvmStageDecision {uint64_t generation=~uint64_t(0);ShaderFeatures features;uint32_t rounds=0;};
+  SvmStageDecision surface_stage,surface_raytrace_stage;
+  cbc::Pipeline surface_prepare_heavy,surface_prepare_closure,surface_prepare_raytrace_heavy,surface_prepare_raytrace_closure;
+  uint32_t surface_prepare_rounds=0,surface_prepare_raytrace_rounds=0;
+  // The rounds of heavy, closure and nodes stage dispatches after the first nodes stage dispatch that end every program of
+  // the scene, when `entry` built in one entry with these features reaches svm_stage_threshold_bytes; 0 otherwise.
+  uint32_t svm_stage_rounds(const char *entry,ShaderFeatures extra,ShaderFeatures removed,SvmStageDecision &decision);
+  // The module text of a staged queue's entry as built (stage 0 nodes, 1 heavy, 2 closure), for the replay capture.
+  std::string svm_stage_module(bool raytrace,unsigned stage);
   uint32_t surface_closures=0;size_t surface_closure_bytes=0;
   // A replay capture (scene_capture.h) records a fixed arena: the surface stage's records are then sized for the path
   // capacity, not for the largest dispatch so far, which can grow after the capture starts as the scheduler refills paths.

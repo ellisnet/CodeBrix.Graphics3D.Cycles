@@ -341,7 +341,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// box filter; sides rounded down); this covers images bound with <c>Bind</c> or <c>BindTiles</c> and Cycles' own (the
     /// Sky Texture's), and brings an image within Metal's 16384-pixel texture limit. 0, the default, keeps every image at
     /// its size. Set it before the first render that loads images: Cycles does not load an image again, so a different
-    /// value afterwards is refused. The WebGPU backend refuses a render with a limit by name (RENDER-TIME REJECTIONS).
+    /// value afterwards is refused. Every backend renders with it.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">The value exceeds <see cref="int.MaxValue"/>.</exception>
     /// <exception cref="InvalidOperationException">A render or bake of this scene has loaded images, and the value differs.</exception>
@@ -369,8 +369,8 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// or one with true displacement, subsurface scattering or subdivision; never in the scene's top level, for curves or
     /// for geometry with motion blur), and <see cref="Backend.Cpu"/> builds at Embree's high quality; MetalRT ignores it, as in
     /// Cycles. A speed setting: it changes how rays find the closest hit, not which one, so a film does not change by
-    /// design. <see langword="false"/> is the default. A change has every BVH built again at the next render or bake. The
-    /// WebGPU backend refuses a render with it enabled by name (RENDER-TIME REJECTIONS).
+    /// design. <see langword="false"/> is the default. A change has every BVH built again at the next render or bake.
+    /// Every backend renders with it.
     /// </summary>
     public bool UseBvhSpatialSplit
     {
@@ -389,7 +389,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// denoising and with every pass, as an untiled render does. 0, the default, renders the whole film (or its camera
     /// border) in one tile. Cycles uses one tile when the tile's area is at least the film's and no side exceeds 8192.
     /// With tiles the render time limit applies to each tile, and adaptive sampling also renders 4 pixels beyond each
-    /// tile's edges. The WebGPU backend refuses a render with tiles by name (RENDER-TIME REJECTIONS).
+    /// tile's edges. Every backend renders with tiles.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not 0, 8 to 128, or a multiple of 128 up to 8192 (the
     /// sizes Cycles uses as given).</exception>

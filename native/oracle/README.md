@@ -217,7 +217,9 @@ Sobol-Burley and blue-noise patterns, with scrambling distance, and pattern
 variants of committed scenes (raw files stay beside the source scene).
 `author_cameras.py` (`--check`) writes `scenes/cameras/`: the same room seen
 through orthographic and panoramic cameras (every panorama type) and with depth
-of field (disk and polygonal apertures, anamorphic ratio). `author_cameras_b.py` (`--check`) adds spherical stereo
+of field (disk and polygonal apertures, anamorphic ratio). `author_camera_borders.py` (`--check`) adds the camera border
+scenes: `cameras/border-inner`, `cameras/border-corner`, and `cameras/border-adaptive` (a border that does not start at the
+film's left edge with adaptive sampling, native/DEVICE.md item 218). `author_cameras_b.py` (`--check`) adds spherical stereo
 (`cameras/stereo-*`: perspective and panoramic cameras, left and right eyes, convergence, pole merge, depth of field), the
 Texture Coordinate node's Window output through every panorama type (`cameras/window-*`), and `passes/motion-*` and
 `passes/denoising-motion-*`: the motion pass and the denoising motion features through an orthographic camera and every
@@ -275,6 +277,8 @@ Each is written by its family's script, whose `--check` still reproduces every c
 - `author_volumes_b.py`, `author_volumes_c.py`: `volumes/denoising-depth-bounds` (the denoising depth pass through a
   medium's bounds) and `volumes/mixed-phase-world` (two phase lobes lit only by a gradient world through a background
   light; its `shade_volume_light` is above the pipeline size guard, a warning, and under the compile envelope).
+- `author_volumes_c.py`: `volumes/heterogeneous-open-boxes` (two overlapping boxes of a heterogeneous medium without
+  their back faces, both octrees with the plane x = 0 as a cell boundary; native/DEVICE.md 183 and 197).
 - `author_surface_nodes.py`: `surface-nodes/attribute-standard-name` (plain attributes named `color`, `pointiness` and
   `uv`, which an Attribute node and the Texture Coordinate node now find).
 
@@ -284,11 +288,11 @@ its identity, so its hash changed with the description.
 
 ## Scenes added by the Apple Silicon feature survey
 
-One scene per case of the feature survey (docs/KIT-MACOS-ARM64.md, section 6) that no committed scene reached and whose
+One scene per case of the feature survey (docs/KIT-MACOS-ARM64-history.md, section 6) that no committed scene reached and whose
 pinned result is defined. Each is written by its family's script, whose `--check` still reproduces every committed scene:
 
 - `author_surface_nodes.py`: `surface-nodes/integer-math`, `surface-nodes/boolean-math` and
-  `surface-nodes/get-vector-component` (the nodes with linked inputs, which the WebGPU device refuses by name): table scenes
+  `surface-nodes/get-vector-component` (the nodes with linked inputs): table scenes
   of one 4x4-pixel cell per case under an orthographic camera that maps one world unit to one pixel, with a box pixel filter
   of width 1, so each cell's AOVs hold the case's values exactly. Each operand is the Integer Math sum of two face
   attributes that binary32 holds exactly; an integer result leaves through the AOVs `D0`..`D3` (base-256 digits, `D3`
@@ -301,9 +305,10 @@ pinned result is defined. Each is written by its family's script, whose `--check
 - `author_bsdf.py`: `bsdf/glass-multiscatter` (the Glass BSDF with the multiscatter GGX distribution).
 - `author_points.py`: `points/geometry-tangent` and `points/geometry-tangent-bump` (the Geometry node's Tangent output on
   points, as a colour and as a Bump height).
-- `author_degenerate_lights.py`: `lamps/area-degenerate-spread-zero`, `-ellipse-spread-zero` (with the Glossy Direct pass),
-  `-spread-tiny`, `-spread-tiny-volume` and `-tree-transmissive` (the degenerate area light cases the WebGPU device refuses
-  by name, native/DEVICE.md item 148). The axes of infinities without a NaN (`lamps/area-degenerate-infinite-axis`) are
+- `author_degenerate_lights.py`: `lamps/area-degenerate-spread-zero`, `-ellipse-spread-zero` (with the Glossy Direct pass;
+  the degenerate area light cases the WebGPU device refuses by name, native/DEVICE.md item 148), and `-spread-tiny`,
+  `-spread-tiny-volume` and `-tree-transmissive` (a spread of 1e-6 without and with a volume, and the light tree at a
+  transmissive point, which every backend renders). The axes of infinities without a NaN (`lamps/area-degenerate-infinite-axis`) are
   refused by the host on every backend and have no committed scene; `--scratch DIR` writes that document outside the
   corpus, for a survey build that lifts the refusal.
 - `author_world.py`: `world/portal-zero-u`, `world/portal-zero` and `world/portal-underflow` (the window portal of zero
@@ -336,16 +341,14 @@ float4 tiles (1001 to 1003) with Closest interpolation to a plane whose UVs run 
 six 16x16 sRGB byte4 checkers (1001 to 1003 and 1011 to 1013) with Linear interpolation and Periodic extension, UVs 0 to 3
 by 0 to 2; `udim-missing-tile` one image at tiles 1003 and 1001 (two device images of one image) and none at 1002 on an
 upper quad, and two images at 1019 and 1020 on a lower quad whose UVs reach u 11.5, where no tile exists: the UVs without
-an image read the texture's Missing colour. The WebGPU backend refuses all three by name ("WebGPU UDIM tiles not
-implemented"); the CPU and Metal backends render them.
+an image read the texture's Missing colour. Every backend renders them.
 
 The texture limit (provisional, `render.textureLimit`) on the same plane, UVs 0 to 1, Linear interpolation:
 `texture-limit-blocks` binds a 64x64 byte4 image of uniform 2x2 blocks under a limit of 32, which Cycles halves when it
 loads it, and `texture-limit-blocks-halved` is its twin without a limit, the 32x32 image of the block colours: their CPU
 films are equal bit for bit. `texture-limit-checker` binds a 64x64 checker of 16x16 squares, each a checker of single
 pixels 24 levels lighter and darker, under a limit of 16: quartered, the single-pixel pattern averages away and a flat
-checker of 4x4 squares renders. The WebGPU backend refuses the two with a limit by name ("WebGPU texture limit not
-implemented"); the CPU and Metal backends render them.
+checker of 4x4 squares renders. Every backend renders them.
 
 ## Render-setting scenes (`scenes/render-settings/`)
 
@@ -357,8 +360,7 @@ transmission direct, glossy indirect, sample count, the light group), 64x48 at 3
 (the noisy image and the denoising guides as passes), 64x48 at 16 samples, the region in 18 tiles of 8. Each has a twin
 without the key (`-untiled`), rendered in one tile. On the CPU reference the twins' films and passes are bit for bit the
 same, except the denoised film of `tiles-border-denoise` (Open Image Denoise reads the per-pixel-normalised image with
-tiles; practical criterion). The WebGPU backend refuses the tiled scenes by name ("WebGPU tiled rendering not
-implemented").
+tiles; practical criterion). Every backend renders the tiled scenes.
 
 ## Gaussian splat scenes (`scenes/gsplat/`)
 

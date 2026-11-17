@@ -1391,6 +1391,7 @@ fn svm_wavelength(s:ptr<function,SvmState>,node:u32){
 // shader-data setup (motion triangles included), object space corners use the
 // shading point's object or motion transform. Background and volume
 // evaluations have no primitive (0), as on the host.
+fn svmn_wire_fence(x:f32,order:u32)->f32{return bitcast<f32>(bitcast<u32>(x)^order);}
 fn svm_wireframe(s:ptr<function,SvmState>,node:u32){
     let size=svm_input(s,node+N_Wireframe_in_size);if((*s).error!=0u){return;}
     let g=(*s).geometry;var f=0.0;
@@ -1408,8 +1409,17 @@ fn svm_wireframe(s:ptr<function,SvmState>,node:u32){
         if((g.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){for(var k=0u;k<3u;k++){corners[k]=surface_object_point(g,corners[k],false);}}
         var pixelwidth=1.0;
         if(svm_byte(node+N_Wireframe_use_pixel_size)!=0u){
-            let x=dx-svmn_dot(dx,g.wi)*g.wi;let y=dy-svmn_dot(dy,g.wi)*g.wi;
-            pixelwidth=(sqrt(svmn_dot(x,x))+sqrt(svmn_dot(y,y)))*0.5;
+            // `len(dP.dx - dot(dP.dx, sd->wi) * sd->wi)` and the same for dy, in the kernel's order: the dpps dot
+            // ((x + y) + z, every product rounded), the product with wi rounded before the difference, then the
+            // correctly rounded square root of the dpps dot. One body for the two axes; the order word as above.
+            var widths=vec2<f32>(0);let scalar_order=order.x;
+            for(var axis=0u;axis<2u;axis++){
+                let d=select(dy,dx,axis==0u);
+                let along=svmn_wire_fence(svmn_wire_fence(svmn_wire_fence(d.x*g.wi.x,scalar_order)+svmn_wire_fence(d.y*g.wi.y,scalar_order),scalar_order)+svmn_wire_fence(d.z*g.wi.z,scalar_order),scalar_order);
+                let r=bitcast<vec3<f32>>(bitcast<vec3<u32>>(d-bitcast<vec3<f32>>(bitcast<vec3<u32>>(along*g.wi)^order))^order);
+                widths[axis]=rounded_sqrt(svmn_wire_fence(svmn_wire_fence(svmn_wire_fence(r.x*r.x,scalar_order)+svmn_wire_fence(r.y*r.y,scalar_order),scalar_order)+svmn_wire_fence(r.z*r.z,scalar_order),scalar_order));
+            }
+            pixelwidth=(widths.x+widths.y)*0.5;
         }
         pixelwidth*=0.5*size;pixelwidth*=pixelwidth;
         for(var i=0u;i<3u;i++){
@@ -2201,5 +2211,122 @@ fn svm_radial_tiling(s:ptr<function,SvmState>,node:u32){
         svm_optional_store3(s,segment_coordinates,vec3<f32>(out.y,out.x,0.0));svm_optional_store(s,max_unit,out.z);svm_optional_store(s,bisector,out.w);
     }
     svm_optional_store(s,segment_id,select(0.0,rt_calculate_out_segment_id(max(sides,2.0),coord.xy),segment_id!=SVM_STACK_INVALID));
+}
+//#endif
+//#if SVM_NODES_INTEGER
+// An SVMInputInt (svm/util.h stack_load): the stack slot's bits when the input is linked, else the record's value.
+fn svm_input_int(s:ptr<function,SvmState>,address:u32)->i32{
+    let offset=svm_byte(address+N_InputInt_offset);
+    if(offset!=SVM_STACK_INVALID){return bitcast<i32>(svm_load_bits(s,offset));}
+    return bitcast<i32>(load_word(address+N_InputInt_value));
+}
+//#endif
+//#if SVM_NODE_BOOLEAN_MATH
+// Boolean Math node (pinned svm/boolean_math.h): an input is true when it is above 0; an unknown operation gives 0.
+fn svm_boolean_math(s:ptr<function,SvmState>,node:u32){
+    let a=svm_input_int(s,node+N_BooleanMath_value1)>0;let b=svm_input_int(s,node+N_BooleanMath_value2)>0;var result=false;
+    switch(load_word(node+N_BooleanMath_math_type)){
+        case BM_AND:{result=a&&b;}
+        case BM_OR:{result=a||b;}
+        case BM_NOT:{result=!a;}
+        case BM_NAND:{result=!(a&&b);}
+        case BM_NOR:{result=!(a||b);}
+        case BM_XNOR:{result=a==b;}
+        case BM_XOR:{result=a!=b;}
+        case BM_IMPLY:{result=!a||b;}
+        case BM_NIMPLY:{result=a&&!b;}
+        default:{}
+    }
+    let out=svm_byte(node+N_BooleanMath_result_offset);if(out!=SVM_STACK_INVALID){svm_store_bits(s,out,select(0u,1u,result));}
+}
+//#endif
+//#if SVM_NODE_INTEGER_MATH
+// Integer Math node (pinned svm/integer_math.h). Every case the pinned C++ defines gives the C++ result. Where the C++
+// is undefined the device neither traps nor leaves the value to the shader compiler: sums, differences, products and
+// negations wrap to 32 bits, abs(INT_MIN) is INT_MIN (im_abs), and the quotient and remainder below are total.
+// a / b and a % b of C++ (truncated, the remainder with the dividend's sign) wherever they are defined. The divisor
+// handed to the WGSL operator is never 0 and never -1 with the dividend INT_MIN: b == 0 gives 0 (every pinned call
+// site but divide_round's INT_MIN divisor guards it), INT_MIN / -1 gives INT_MIN and INT_MIN % -1 gives 0.
+fn im_div(a:i32,b:i32)->i32{
+    if(b==0){return 0;}
+    if(b==-1){return -a;}
+    return a/b;
+}
+fn im_mod(a:i32,b:i32)->i32{
+    if(b==0||b==-1){return 0;}
+    return a%b;
+}
+fn im_bool(b:bool)->i32{return select(0,1,b);}
+fn im_abs(a:i32)->i32{if(a<0){return -a;}return a;}
+fn im_divide_floor(a:i32,b:i32)->i32{
+    let d=im_div(a,b);let r=im_mod(a,b);
+    if(r!=0){return d-im_bool((a<0)!=(b<0));}
+    return d;
+}
+// Euclid's loop ends in fewer than 50 steps for 32-bit operands; the bound is for the shader compiler.
+fn im_gcd(a_in:i32,b_in:i32)->i32{
+    var a=im_abs(a_in);var b=im_abs(b_in);
+    for(var i=0u;i<64u&&b!=0;i++){let t=b;b=im_mod(a,b);a=t;}
+    return a;
+}
+fn im_power(base_in:i32,exponent_in:i32)->i32{
+    var factor=base_in;var exponent=exponent_in;
+    if(exponent<0){
+        if(factor==1||factor==-1){if(factor<0&&(exponent&1)!=0){return -1;}return 1;}
+        return 0;
+    }
+    var result=1;
+    for(var i=0u;i<31u&&exponent!=0;i++){
+        if((exponent&1)!=0){result*=factor;}
+        exponent=exponent>>1u;factor*=factor;
+    }
+    return result;
+}
+fn svm_integer_math(s:ptr<function,SvmState>,node:u32){
+    let a=svm_input_int(s,node+N_IntegerMath_value1);let b=svm_input_int(s,node+N_IntegerMath_value2);let c=svm_input_int(s,node+N_IntegerMath_value3);
+    var result=0;
+    switch(load_word(node+N_IntegerMath_math_type)){
+        case IM_ADD:{result=a+b;}
+        case IM_SUBTRACT:{result=a-b;}
+        case IM_MULTIPLY:{result=a*b;}
+        case IM_DIVIDE:{result=im_div(a,b);}
+        case IM_MULTIPLY_ADD:{result=a*b+c;}
+        case IM_POWER:{result=im_power(a,b);}
+        case IM_FLOORED_MODULO:{result=im_mod(im_mod(a,b)+b,b);}
+        case IM_ABSOLUTE:{result=im_abs(a);}
+        case IM_MINIMUM:{result=min(a,b);}
+        case IM_MAXIMUM:{result=max(a,b);}
+        case IM_GCD:{result=im_gcd(a,b);}
+        case IM_LCM:{let gcd=im_gcd(a,b);if(gcd!=0){result=im_abs(im_div(a,gcd)*b);}}
+        case IM_NEGATE:{result=-a;}
+        case IM_SIGN:{result=im_bool(0<a)-im_bool(a<0);}
+        case IM_DIVIDE_FLOOR:{if(b!=0){result=im_divide_floor(a,b);}}
+        case IM_DIVIDE_CEIL:{if(b!=0){result=-im_divide_floor(a,-b);}}
+        case IM_DIVIDE_ROUND:{
+            let abs_b=im_abs(b);let sign_b=im_bool(0<b)-im_bool(b<0);
+            if(a>=0){if(abs_b!=0){result=im_div(2*a+abs_b,2*abs_b);}result=result*sign_b;}
+            else{if(abs_b!=0){result=im_div(2*(-a)+abs_b,2*abs_b);}result=(-result)*sign_b;}
+        }
+        case IM_MODULO:{result=im_mod(a,b);}
+        default:{}
+    }
+    let out=svm_byte(node+N_IntegerMath_result_offset);if(out!=SVM_STACK_INVALID){svm_store_bits(s,out,bitcast<u32>(result));}
+}
+//#endif
+//#if SVM_NODE_GET_VECTOR_COMPONENT
+// Get Vector Component node (pinned svm/sepcomb_vector.h svm_node_get_vector_component): the component the integer
+// index selects, 0 for an index outside 0..2. The derivative opcode reads the vector with its two derivatives (nine
+// slots; a constant vector has none) and writes the component with its two (three slots).
+fn svm_get_vector_component(s:ptr<function,SvmState>,node:u32,derivative:bool){
+    let bits=load_word(node+N_GetVectorComponent_vector);let linked=(bits>>8u)==(SVM_INPUT_STACK_OFFSET_MASK>>8u);
+    let v=svm_input3(s,node+N_GetVectorComponent_vector);
+    var dx=vec3<f32>(0);var dy=vec3<f32>(0);
+    if(derivative&&linked){dx=svm_load3(s,(bits&255u)+3u);dy=svm_load3(s,(bits&255u)+6u);}
+    let index=svm_input_int(s,node+N_GetVectorComponent_index);let out=svm_byte(node+N_GetVectorComponent_out_offset);
+    if(out==SVM_STACK_INVALID){return;}
+    var value=vec3<f32>(0);
+    if(index>=0&&index<=2){let i=u32(index);value=vec3<f32>(svm_component(v,i),svm_component(dx,i),svm_component(dy,i));}
+    svm_store(s,out,value.x);
+    if(derivative){svm_store(s,out+1u,value.y);svm_store(s,out+2u,value.z);}
 }
 //#endif

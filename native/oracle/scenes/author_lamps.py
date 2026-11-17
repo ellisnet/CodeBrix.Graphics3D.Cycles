@@ -141,6 +141,19 @@ def lamp_scenes():
                                                                            'used_shaders': ['zero-shader'], 'sizeu': 0.0, 'sizev': 1.0}},
                           {'handle': 'zero-object', 'create': 'object', 'set': {'geometry': 'zero', 'tfm': [1, 0, 0, 0.0, 0, 0, 1, 2.8, 0, -1, 0, 0.5]}}]
     out['area-zero-size.json'] = document
+    # Surface points inside a sphere light (light/point.h point_light_sample, "Inside sphere"): the room's lamp, radius
+    # 2.2, centred on the glass sphere, which it encloses (sample_uniform_sphere at a transmissive point), with part of
+    # the glossy and matte spheres and of the floor (sample_cos_hemisphere). Hidden from camera rays only, so the camera
+    # sees what is inside; the rough glass highlight amplifies a last bit of the sampled direction.
+    document = room.scene('lamps/sphere-light-inside', 'Surface points inside a sphere light of radius 2.2 centred on the glass sphere (hidden from camera rays): '
+                          'the uniform-sphere sample at the transmissive glass, the cosine-hemisphere sample at the other surfaces', {}, samples=16)
+    document['sourceFixture'] = 'native/oracle/scenes/author_lamps.py (the sampling family room)'
+    for node in document['nodes']:
+        if node['handle'] == 'lamp':
+            node['set'].update({'radius': 2.2, 'strength': [60, 50, 40]})
+        if node['handle'] == 'lamp-object':
+            node['set'].update({'tfm': [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -0.9, 0.0, 0.0, 1.0, 0.4], 'visibility': 254})
+    out['sphere-light-inside.json'] = document
     return out
 
 

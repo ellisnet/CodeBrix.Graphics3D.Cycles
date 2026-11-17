@@ -48,7 +48,7 @@ def main():
                 out/'glass_render',out/('glass_render-'+args.off_mode),args.off_mode);save(out/'results.json',reports)
         assert sources==inputs() and all(sha(Path(name))==digest for name,digest in pins.items())
         status.update(complete=True,passed=True,phase='complete',inputsUnchanged=True,
-                      scope='Native single-scatter GGX refraction and glass, Fresnel reflection/transmission, TIR, mixtures and independent original-Cycles images. Thin film, multi-GGX glass and Principled remain unsupported.')
+                      scope='Native single-scatter GGX refraction and glass, Fresnel reflection/transmission, TIR, mixtures and independent original-Cycles images. Multiscatter GGX glass: the typed programs of glass_svm. Thin film on the Glass BSDF and Principled remain unsupported.')
     except Exception as error:
         status.update(complete=True,passed=False,error=repr(error));raise
     finally:save(out/'status.json',status)

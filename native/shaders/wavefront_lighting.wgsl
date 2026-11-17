@@ -181,10 +181,20 @@ fn light_sample_lamp(index:u32,sd:SurfaceData,r:SvmResult,selection:LightSelecti
 //#endif
 
             }else{
-                if((r.runtime_flag&SR_BSDF_HAS_TRANSMISSION)!=0u){let z=1.0-2.0*random.x;let radial=sqrt(max(1.0-z*z,0.0));let phi=2.0*PI*random.y;
-                    ls.D=vec3<f32>(radial*cos(phi),radial*sin(phi),z);ls.pdf=0.25*INV_PI;
+//#if LIGHT_SPHERE_INSIDE else                 if((r.runtime_flag&SR_BSDF_HAS_TRANSMISSION)!=0u){let z=1.0-2.0*random.x;let radial=sqrt(max(1.0-z*z,0.0));let phi=2.0*PI*random.y;
+                // A shading point inside the sphere (light/point.h point_light_sample, light/spot.h): sample_uniform_sphere in
+                // the oracle's order, its sinf and cosf from the scalar adapter (as the volume segment's sample,
+                // wavefront_volume_light.wgsl), and the cosine to the centre with every product rounded before the sum
+                // (native/DEVICE.md, item 152).
+                if((r.runtime_flag&SR_BSDF_HAS_TRANSMISSION)!=0u){let z=rounded_add(1.0,-2.0*random.x);let radial=rounded_sqrt(max(rounded_add(1.0,-(z*z)),0.0));let sc=native_phase_sincos(6.283185307179586*random.y);
+//#endif
+//#if LIGHT_SPHERE_INSIDE else                     ls.D=vec3<f32>(radial*cos(phi),radial*sin(phi),z);ls.pdf=0.25*INV_PI;
+                    ls.D=vec3<f32>(radial*sc.y,radial*sc.x,z);ls.pdf=0.25*INV_PI;
+//#endif
                 }else{let sampled=surface_cos_hemisphere(sd.N,random.xy);ls.D=sampled.xyz;ls.pdf=sampled.w;}
-                cosine=-dot(ls.D,normal);
+//#if LIGHT_SPHERE_INSIDE else                 cosine=-dot(ls.D,normal);
+                cosine=-rounded_dot(ls.D,normal);
+//#endif
             }
             if(spot&&d2>r2){ls.eval_fac*=spot_attenuation(light,-ls.D);if(ls.eval_fac==0.0){ls.pdf=0.0;return ls;}}
 //#if LAMP_SAMPLE_EXACT else             let root=sqrt(max(r2-d2+d2*cosine*cosine,0.0));ls.t=select(distance*cosine-select(-root,root,d2-r2>=0.0),sampled_t,sampled_t>=0.0);
@@ -214,7 +224,10 @@ fn light_bsdf(sd:SurfaceData,r:SvmResult,direction:vec3<f32>,shader:u32)->Surfac
     for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(!surf_bsdf(c.kind)){if(ss_bssrdf_kind(c.kind)){weight_sum+=c.sample_weight;}continue;}
 //#endif
         let eval=surf_evaluate(sd,c,direction);
-        if(eval.w!=0.0){
+//#if SVM_NODE_TANGENT else         if(eval.w!=0.0){
+        // bsdf_pdf != 0.0f is true for a NaN pdf (integrator/surface_shader.h _surface_shader_bsdf_eval_mis; a closure with a NaN tangent or normal, native/DEVICE.md, items 150 and 210): on the bits.
+        if((bitcast<u32>(eval.w)&0x7fffffffu)!=0u){
+//#endif
             let excluded=(surf_diffuse(c.kind)&&(shader&SHADER_EXCLUDE_DIFFUSE)!=0u)||
                 (surf_glossy(c.kind)&&(shader&SHADER_EXCLUDE_GLOSSY)!=0u)||
                 (surf_refraction(c.kind)&&(shader&SHADER_EXCLUDE_TRANSMIT)!=0u)||

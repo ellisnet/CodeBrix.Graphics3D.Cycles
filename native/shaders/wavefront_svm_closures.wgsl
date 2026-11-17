@@ -145,6 +145,9 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
         case CLOSURE_BSDF_TRANSLUCENT_ID,CLOSURE_BSDF_TRANSPARENT_ID:{bytes=SZ_SimpleBsdfData;}
         case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:{bytes=SZ_RefractionBsdfData;}
         case CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID:{bytes=SZ_GlassBsdfData;}
+//#if SVM_BSDF_GLASS_MULTISCATTER
+        case GLASS_MULTI_GGX_ID:{bytes=SZ_GlassBsdfData;}
+//#endif
         case CLOSURE_BSDF_MICROFACET_GGX_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID:{bytes=SZ_GlossyBsdfData;}
 //#if SVM_BSDF_PRINCIPLED
         case CLOSURE_BSDF_PRINCIPLED_ID:{bytes=SZ_PrincipledBsdfData;}
@@ -216,7 +219,9 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
 //#endif
     // Scene specialization (pipelines.h) removes closure setup the uploaded SVM
     // programs cannot reach; reaching a removed handler is reported, never shaded.
-    if(kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID||kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID){
+//#if SVM_BSDF_GLASS_MULTISCATTER else     if(kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID||kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID){
+    if(kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID||kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID||kind==GLASS_MULTI_GGX_ID){
+//#endif
 //#if SVM_BSDF_GLASS else svm_error(s,2u);return;
         svm_glass(s,data,kind,mix_weight,visibility);return;
 //#endif
@@ -365,7 +370,11 @@ fn svm_volume(s:ptr<function,SvmState>,node:u32){
 //#if VOLUME_PHASES
     else if(kind!=CLOSURE_VOLUME_ABSORPTION_ID){vp_scatter(s,kind,weight,svm_input(s,node+N_ClosureVolume_param1),svm_input(s,node+N_ClosureVolume_param_extra));}
 //#endif
-    (*s).output.transparency+=weight;(*s).output.runtime_flag|=SR_EXTINCTION;
+//#if VOLUME_HETEROGENEOUS else     (*s).output.transparency+=weight;(*s).output.runtime_flag|=SR_EXTINCTION;
+    // volume_extinction_setup: the weight (a product) is rounded before it joins the sum. A contracted multiply-add moves the
+    // last bit of the extinction, and with it the majorant octree's extrema and every null-scattering distance.
+    (*s).output.transparency=rounded_add3((*s).output.transparency,weight);(*s).output.runtime_flag|=SR_EXTINCTION;
+//#endif
 }
 //#if SVM_BSDF_FAMILIES
 // safe_normalize_fallback(N, sd->N) of an optional SVM normal input, as in svm_bsdf.
@@ -727,7 +736,9 @@ fn svm_volume_coefficients(s:ptr<function,SvmState>,node:u32,flag:u32,visibility
         else if(kind!=CLOSURE_VOLUME_ABSORPTION_ID){svm_error(s,16u);return;}
     }
     let absorption=svm_input3(s,node+N_VolumeCoefficients_absorption_coeffs);
-    (*s).output.transparency+=weight*(scatter+absorption);(*s).output.runtime_flag|=SR_EXTINCTION;
+//#if VOLUME_HETEROGENEOUS else     (*s).output.transparency+=weight*(scatter+absorption);(*s).output.runtime_flag|=SR_EXTINCTION;
+    (*s).output.transparency=rounded_add3((*s).output.transparency,weight*(scatter+absorption));(*s).output.runtime_flag|=SR_EXTINCTION;
+//#endif
     if((visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u||(flag&PATH_RAY_EXTINCTION)!=0u){return;}
     let emission=svm_input3(s,node+N_VolumeCoefficients_emission_coeffs);if(all(emission==vec3<f32>(0))){return;}
     let e=weight*emission;if(((*s).output.runtime_flag&SR_EMISSION)!=0u){(*s).output.emission+=e;}else{(*s).output.emission=e;(*s).output.runtime_flag|=SR_EMISSION;}
@@ -773,7 +784,9 @@ fn svm_principled_volume(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u
             svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);(*s).output.runtime_flag|=SR_SCATTER;}}
         let absorption_color=max(sqrt(svm_input3(s,node+N_PrincipledVolume_absorption_color)),vec3<f32>(0));
         let absorption=max(vec3<f32>(1)-color,vec3<f32>(0))*max(vec3<f32>(1)-absorption_color,vec3<f32>(0));
-        (*s).output.transparency+=(color+absorption)*density;(*s).output.runtime_flag|=SR_EXTINCTION;
+//#if VOLUME_HETEROGENEOUS else         (*s).output.transparency+=(color+absorption)*density;(*s).output.runtime_flag|=SR_EXTINCTION;
+        (*s).output.transparency=rounded_add3((*s).output.transparency,(color+absorption)*density);(*s).output.runtime_flag|=SR_EXTINCTION;
+//#endif
     }
     if((visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u||(flag&PATH_RAY_EXTINCTION)!=0u){return;}
     let emission=svm_input(s,node+N_PrincipledVolume_emission);let blackbody=svm_input(s,node+N_PrincipledVolume_blackbody);

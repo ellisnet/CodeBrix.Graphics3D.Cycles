@@ -288,7 +288,13 @@ fn svm_attribute(s:ptr<function,SvmState>,node:u32,derivative:bool){
         dx=vec3<f32>(-sd.du.x-sd.dv.x,sd.du.x,0.0);dy=vec3<f32>(-sd.du.y-sd.dv.y,sd.du.y,0.0);
     }else if(id==ATTR_STD_GENERATED&&!desc.found){
 //#endif
-        let sd=(*s).geometry;value=sd.P;dx=sd.dPdu*sd.du.x+sd.dPdv*sd.dv.x;dy=sd.dPdu*sd.du.y+sd.dPdv*sd.dv.y;
+//#if SVM_NODE_ATTR else         let sd=(*s).geometry;value=sd.P;dx=sd.dPdu*sd.du.x+sd.dPdv*sd.dv.x;dy=sd.dPdu*sd.du.y+sd.dPdv*sd.dv.y;
+        // shading_position<dual3>: dPdx and dPdy (svm/util.h) round each product before the sum (attribute_order). Only a
+        // module with the Attribute node's region calls this function for a node, so the others keep their text.
+        let sd=(*s).geometry;value=sd.P;let generated_order=load_word(p(17u)+12u);
+        dx=attribute_order(vec4<f32>(attribute_order(vec4<f32>(sd.dPdu*sd.du.x,0.0),generated_order).xyz+attribute_order(vec4<f32>(sd.dPdv*sd.dv.x,0.0),generated_order).xyz,0.0),generated_order).xyz;
+        dy=attribute_order(vec4<f32>(attribute_order(vec4<f32>(sd.dPdu*sd.du.y,0.0),generated_order).xyz+attribute_order(vec4<f32>(sd.dPdv*sd.dv.y,0.0),generated_order).xyz,0.0),generated_order).xyz;
+//#endif
         if(sd.object_id!=NONE){let object=table_at(G_objects,sd.object_id,SIZE_objects);
             value=surface_object_point(sd,value,true);dx=surface_object_direction(sd,dx,true);dy=surface_object_direction(sd,dy,true);}
     }else if(!desc.found){

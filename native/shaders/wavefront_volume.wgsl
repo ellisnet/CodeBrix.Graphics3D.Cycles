@@ -528,8 +528,13 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     var random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+V_PRNG_VOLUME_PHASE,2u).xy;
 //#endif
     var selected=0u;var sum=svm_closure_read(r,0u).sample_weight;
-    for(var i=1u;i<r.count;i++){let weight=svm_closure_read(r,i).sample_weight;sum+=weight;let threshold=weight/sum;
-        if(random.x<threshold){selected=i;random.x/=threshold;}else{random.x=(random.x-threshold)/(1.0-threshold);}}
+//#if VOLUME_HETEROGENEOUS else     for(var i=1u;i<r.count;i++){let weight=svm_closure_read(r,i).sample_weight;sum+=weight;let threshold=weight/sum;
+    // volume_shader_phase_pick: the three quotients correctly rounded (the rescaled number is the phase sample's).
+    for(var i=1u;i<r.count;i++){let weight=svm_closure_read(r,i).sample_weight;sum+=weight;let threshold=rounded_divide(weight,sum);
+//#endif
+//#if VOLUME_HETEROGENEOUS else         if(random.x<threshold){selected=i;random.x/=threshold;}else{random.x=(random.x-threshold)/(1.0-threshold);}}
+        if(random.x<threshold){selected=i;random.x=rounded_divide(random.x,threshold);}else{random.x=rounded_divide(random.x-threshold,1.0-threshold);}}
+//#endif
 //#if VOLUME_PHASES else     let g=svm_closure_read(r,selected).roughness;let phase=volume_phase(direction,g,random);
     let closure=svm_closure_read(r,selected);let g=vp_get_g(closure);var phase:vec4<f32>;
     if(closure.kind==CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID){phase=volume_phase(direction,closure.roughness,random);}else{phase=vp_phase_sample(direction,closure,random);}
@@ -587,8 +592,13 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     var random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+V_PRNG_VOLUME_PHASE,2u).xy;
 //#endif
     var selected=0u;var sum=svm_closure_read(r,0u).sample_weight;
-    for(var i=1u;i<r.count;i++){let weight=svm_closure_read(r,i).sample_weight;sum+=weight;let threshold=weight/sum;
-        if(random.x<threshold){selected=i;random.x/=threshold;}else{random.x=(random.x-threshold)/(1.0-threshold);}}
+//#if VOLUME_HETEROGENEOUS else     for(var i=1u;i<r.count;i++){let weight=svm_closure_read(r,i).sample_weight;sum+=weight;let threshold=weight/sum;
+    // volume_shader_phase_pick: the three quotients correctly rounded (the rescaled number is the phase sample's).
+    for(var i=1u;i<r.count;i++){let weight=svm_closure_read(r,i).sample_weight;sum+=weight;let threshold=rounded_divide(weight,sum);
+//#endif
+//#if VOLUME_HETEROGENEOUS else         if(random.x<threshold){selected=i;random.x/=threshold;}else{random.x=(random.x-threshold)/(1.0-threshold);}}
+        if(random.x<threshold){selected=i;random.x=rounded_divide(random.x,threshold);}else{random.x=rounded_divide(random.x-threshold,1.0-threshold);}}
+//#endif
     let closure=svm_closure_read(r,selected);
 //#if VOLUME_PHASES else     let g=closure.roughness;let phase=volume_phase(direction,closure.roughness,random);
     let g=vp_get_g(closure);var phase:vec4<f32>;

@@ -156,8 +156,16 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
         require(light.area.tan_half_spread!=0,"WebGPU degenerate area light with a spread of zero not implemented");
         // A spread above zero but below 1e-5: volume_valid_direct_ray_segment then maps the ray into the light's frame with the
         // NaN axis (area_light_valid_ray_segment's angle_almost_zero branch), whose segment depends on how each min and max
-        // drops a NaN lane.
-        require(!(light.area.tan_half_spread<1e-5f),"WebGPU degenerate area light with a spread below 1e-5 not implemented");
+        // drops a NaN lane: vl_area_segment (wavefront_volume_light.wgsl) gives that segment. That branch is the pinned
+        // kernel's only use of the 1e-5 threshold and is reached only from integrate_volume_sample_direct_light
+        // (kernel/integrator/shade_volume.h), which a scene without volumes never runs and which returns before it without
+        // direct light: at surfaces such a light is the degenerate light above. Still refused there: an axis whose length
+        // overflowed (a zero axis of infinite length on the CPU, whose slab is the whole line; the device's copy does not
+        // tell it from the NaN axis).
+        const size_t record=size_t(&light-light_records.data());
+        require(!(light.area.tan_half_spread<1e-5f)||!(data.kernel_features&KERNEL_FEATURE_VOLUME)||!data.integrator.use_direct_light||
+          !(record<light_axis_overflow.size()&&light_axis_overflow[record]),
+          "WebGPU degenerate area light with a spread below 1e-5 not implemented");
       }
       require(std::isfinite(light.area.len_u)&&light.area.len_u>=0&&std::isfinite(light.area.len_v)&&light.area.len_v>=0,"Invalid native area light");
       require(std::isfinite(light.area.invarea)&&std::isfinite(light.area.tan_half_spread)&&light.area.tan_half_spread>=0&&

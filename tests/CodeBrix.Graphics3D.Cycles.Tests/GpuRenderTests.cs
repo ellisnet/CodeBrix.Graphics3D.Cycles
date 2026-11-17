@@ -235,17 +235,16 @@ public class GpuRenderTests(ITestOutputHelper output)
         Judge(gpu, WebGpuValidationScenes.DiffuseSun, film, RenderCpu(WebGpuValidationScenes.DiffuseSun)).PracticalFailures.Should().Be(0);
     }
 
-    // The integer and component nodes are not part of the WGSL device: a graph that reaches one with a linked input is
-    // refused with the node's name (a constant one is folded away before the device sees it), and the CPU renders it.
+    // The integer and component nodes with a linked input (a constant one is folded away before the device sees it):
+    // every backend renders them, and the WebGPU film is judged against the CPU film.
     [Theory]
     [InlineData("Boolean Math")]
     [InlineData("Integer Math")]
     [InlineData("Get Vector Component")]
-    public async Task webgpu_refuses_the_integer_and_component_nodes_by_name_and_the_cpu_renders_them(string node)
+    public async Task gpu_renders_the_integer_and_component_nodes_like_the_cpu(string node)
     {
         //Arrange
         using CyclesScene gpu = CreateGpuScene();
-        if (gpu.Backend == Backend.Metal) Assert.Skip("Cycles' Metal device renders these nodes; the refusal is the WGSL device's.");
         using CyclesScene cpu = TestScenes.CreateCpuScene();
         foreach (CyclesScene scene in new[] { gpu, cpu })
         {
@@ -270,7 +269,7 @@ public class GpuRenderTests(ITestOutputHelper output)
                     break;
                 default:
                     GetVectorComponentNode component = material.Add<GetVectorComponentNode>();
-                    component.Index = 1;
+                    component.Index = 2;
                     material.Connect(geometry.NormalOutput, component.VectorInput);
                     material.Connect(component.ValueOutput, emission.StrengthInput);
                     break;
@@ -281,12 +280,18 @@ public class GpuRenderTests(ITestOutputHelper output)
         }
 
         //Act
-        Func<Task> render = () => gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
+        FilmBuffer film = await gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
         FilmBuffer onCpu = await cpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
 
         //Assert
-        (await render.Should().ThrowAsync<NativeFailure>()).Which.Message.Should().Contain("WebGPU " + node + " node not implemented");
+        gpu.IsFaulted.Should().BeFalse();
         onCpu.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        // The emitter the node drives is in the picture: the film is not the scene's without it.
+        onCpu.Span.SequenceEqual(RenderCpu(WebGpuValidationScenes.DiffuseSun).Span).Should().BeFalse();
+        // Cycles' Metal device is judged against recorded Metal references, and none is recorded for these three scenes:
+        // there the render must succeed and be finite.
+        if (gpu.Backend == Backend.Metal) film.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        else Judge(gpu, "integer-and-component-nodes-" + node.Replace(' ', '-').ToLowerInvariant(), film, onCpu).PracticalFailures.Should().Be(0);
     }
 
     // A small quad whose material samples a 16385 x 1 image, which Cycles' Metal device rejects.
@@ -1685,11 +1690,11 @@ public class GpuRenderTests(ITestOutputHelper output)
         return (texture, tiles[0].Image);
     }
 
-    // UDIM tiles (provisional cbc_host_image_bind_tiles) render on Cycles' Metal device, judged against its recorded
-    // reference; the host refuses a tiles binding on the WebGPU backend by name until one image is bound instead
-    // (RENDER-TIME REJECTIONS).
+    // UDIM tiles (provisional cbc_host_image_bind_tiles) render on the GPU backend, judged against its authority (the
+    // recorded reference on Cycles' Metal device, the CPU film on the WebGPU device); binding one image in their place
+    // renders too.
     [Fact]
-    public async Task udim_tiles_render_on_metal_and_are_refused_by_name_on_webgpu()
+    public async Task udim_tiles_render_on_the_gpu_backend()
     {
         //Arrange
         RenderSettings settings = new(48, 32, 8);
@@ -1702,28 +1707,23 @@ public class GpuRenderTests(ITestOutputHelper output)
 
         //Act / Assert
         reference.Span.ToArray().Where((value, index) => index % 4 == 0).Distinct().Count().Should().BeGreaterThan(10);
-        if (gpu.Backend == Backend.WebGpu)
-        {
-            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
-            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
-            refused.Message.Should().Contain("WebGPU UDIM tiles not implemented");
-            texture.Bind(single);
-            (await render()).Span.ToArray().All(float.IsFinite).Should().BeTrue();
-            single.Dispose();
-            return;
-        }
         FilmBuffer film = await render();
         Judge(gpu, "udim-tiles", film, reference).PracticalFailures.Should().Be(0);
+        if (gpu.Backend == Backend.WebGpu)
+        {
+            texture.Bind(single);
+            (await render()).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        }
         gpu.IsFaulted.Should().BeFalse();
         single.Dispose();
     }
 
-    // Progressive results (provisional HostFlags.ProgressiveResults) on Cycles' Metal device: the validation scene's final
-    // film is judged against the recorded Metal reference of that scene, and against a plain GPU render of it in the same
-    // process (practical criterion: GPU accumulation is atomic); the intermediate films arrive and the last one is the
-    // returned film. The host refuses a progressive host on the WebGPU backend by name (RENDER-TIME REJECTIONS).
+    // Progressive results (provisional HostFlags.ProgressiveResults) on the GPU backend: the validation scene's final film
+    // is judged against its authority (the recorded Metal reference of that scene, the CPU film on WebGPU), and against a
+    // plain GPU render of it in the same process (practical criterion: GPU accumulation is atomic); the intermediate films
+    // arrive and the last one is the returned film.
     [Fact]
-    public async Task progressive_results_render_on_metal_and_are_refused_by_name_on_webgpu()
+    public async Task progressive_results_render_on_the_gpu_backend()
     {
         //Arrange
         TestScenes.RequireNativeHost();
@@ -1735,20 +1735,12 @@ public class GpuRenderTests(ITestOutputHelper output)
         Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
 
         //Act / Assert
-        if (gpu.Backend == Backend.WebGpu)
-        {
-            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
-            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
-            refused.Message.Should().Contain("WebGPU progressive results not implemented");
-            films.Should().BeEmpty();
-            return;
-        }
         FilmBuffer film = await render();
         using CyclesScene plain = CreateGpuScene();
         WebGpuValidationScenes.Build(plain, WebGpuValidationScenes.DiffuseSun);
         FilmBuffer plainFilm = await plain.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
         FilmComparison versusPlain = FilmComparison.Compare(film.Span, plainFilm.Span);
-        output.WriteLine($"progressive vs plain Metal render: {versusPlain}");
+        output.WriteLine($"progressive vs plain {gpu.Backend} render: {versusPlain}");
         Judge(gpu, WebGpuValidationScenes.DiffuseSun, film, RenderCpu(WebGpuValidationScenes.DiffuseSun)).PracticalFailures.Should().Be(0);
         versusPlain.PracticalFailures.Should().Be(0);
         IntermediateFilm[] received = [.. films];
@@ -1795,9 +1787,9 @@ public class GpuRenderTests(ITestOutputHelper output)
 
     // The texture limit (provisional CyclesScene.TextureLimit) reduces images on the host before any device sees them: an
     // image Cycles' Metal device refuses renders once a limit of 16384 halves it (to 8192 x 1), judged against its recorded
-    // reference; the host refuses a limit on the WebGPU backend by name (RENDER-TIME REJECTIONS).
+    // reference; the WebGPU device, which takes the image whole too, renders the halved image, judged against the CPU film.
     [Fact]
-    public async Task texture_limit_brings_an_oversized_image_within_metal_and_is_refused_by_name_on_webgpu()
+    public async Task texture_limit_reduces_an_oversized_image_on_the_gpu_backend()
     {
         //Arrange
         RenderSettings settings = new(48, 32, 8);
@@ -1812,29 +1804,26 @@ public class GpuRenderTests(ITestOutputHelper output)
 
         //Act / Assert
         reference.Span.ToArray().Where((value, index) => index % 4 == 0).Distinct().Count().Should().BeGreaterThan(10);
-        if (gpu.Backend == Backend.WebGpu)
+        if (gpu.Backend == Backend.Metal)
         {
-            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
-            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
-            refused.Message.Should().Contain("WebGPU texture limit not implemented");
-            return;
+            using CyclesScene unlimited = CreateGpuScene();
+            BuildOversizedGradient(unlimited);
+            NativeFailure oversized = (await ((Func<Task<FilmBuffer>>)(() => unlimited.RenderAsync(settings, null, Token))).Should().ThrowAsync<NativeFailure>()).Which;
+            oversized.Message.Should().Contain("16384");
         }
-        using CyclesScene unlimited = CreateGpuScene();
-        BuildOversizedGradient(unlimited);
-        NativeFailure oversized = (await ((Func<Task<FilmBuffer>>)(() => unlimited.RenderAsync(settings, null, Token))).Should().ThrowAsync<NativeFailure>()).Which;
-        oversized.Message.Should().Contain("16384");
         FilmBuffer film = await render();
         Judge(gpu, "texture-limit", film, reference).PracticalFailures.Should().Be(0);
         gpu.IsFaulted.Should().BeFalse();
     }
 
-    // BVH spatial splits (provisional CyclesScene.UseBvhSpatialSplit) on Cycles' Metal device, which honours them in its
-    // BVH2 (MetalRT ignores them, as in Cycles): the instanced-slivers scene of BvhSpatialSplitTests with splits is judged
-    // against its recorded reference and against the same scene without splits (practical criterion: GPU accumulation is
-    // atomic), and switching them on after a render matches a scene built with them. The host refuses them on the WebGPU
-    // backend by name (RENDER-TIME REJECTIONS).
+    // BVH spatial splits (provisional CyclesScene.UseBvhSpatialSplit) on the GPU backend: Cycles' Metal device honours them
+    // in its BVH2 (MetalRT ignores them, as in Cycles) and the WebGPU device traverses Cycles' BVH2. The instanced-slivers
+    // scene of BvhSpatialSplitTests with splits (transparent shadows through primitives that several leaves reference) is
+    // judged against its authority (the recorded reference on Metal, the CPU film on WebGPU) and against the same scene
+    // without splits (practical criterion: GPU accumulation is atomic), and switching them on after a render matches a scene
+    // built with them.
     [Fact]
-    public async Task bvh_spatial_splits_render_on_metal_and_are_refused_by_name_on_webgpu()
+    public async Task bvh_spatial_splits_render_on_the_gpu_backend()
     {
         //Arrange
         RenderSettings settings = new(64, 48, 8);
@@ -1848,36 +1837,29 @@ public class GpuRenderTests(ITestOutputHelper output)
         Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
 
         //Act / Assert
-        if (gpu.Backend == Backend.WebGpu)
-        {
-            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
-            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
-            refused.Message.Should().Contain("WebGPU BVH spatial splits not implemented");
-            return;
-        }
         FilmBuffer film = await render();
         Judge(gpu, "bvh-spatial-split", film, reference).PracticalFailures.Should().Be(0);
         using CyclesScene plain = CreateGpuScene();
         BvhSpatialSplitTests.Build(plain);
         FilmBuffer plainFilm = await plain.RenderAsync(settings, null, Token);
         FilmComparison versusPlain = FilmComparison.Compare(film.Span, plainFilm.Span);
-        output.WriteLine($"Metal, spatial splits vs none: {versusPlain}");
+        output.WriteLine($"{gpu.Backend}, spatial splits vs none: {versusPlain}");
         versusPlain.PracticalFailures.Should().Be(0);
         plain.UseBvhSpatialSplit = true;
         FilmComparison toggled = FilmComparison.Compare((await plain.RenderAsync(settings, null, Token)).Span, film.Span);
-        output.WriteLine($"Metal, splits switched on after a render vs a scene built with them: {toggled}");
+        output.WriteLine($"{gpu.Backend}, splits switched on after a render vs a scene built with them: {toggled}");
         toggled.PracticalFailures.Should().Be(0);
         gpu.IsFaulted.Should().BeFalse();
         plain.IsFaulted.Should().BeFalse();
     }
 
-    // Tiled rendering (provisional CyclesScene.TileSize) on Cycles' Metal device: the multi-pass scene of TiledRenderingTests
+    // Tiled rendering (provisional CyclesScene.TileSize) on the GPU backend: the multi-pass scene of TiledRenderingTests
     // (a lamp in a light group, a second, emissive triangle, named passes and cryptomatte) in 12 tiles of 16 pixels, the
-    // finished tiles kept in memory, is judged against its recorded reference, and against the untiled Metal film and passes
-    // (practical criterion: GPU accumulation is atomic); with denoising too. The host refuses tiles on the WebGPU backend by
-    // name (RENDER-TIME REJECTIONS).
+    // finished tiles kept in memory, is judged against its authority (the recorded reference on Cycles' Metal device, the
+    // CPU film on the WebGPU device), and against the untiled GPU film and passes (practical criterion: GPU accumulation is
+    // atomic); with denoising too.
     [Fact]
-    public async Task tiled_rendering_renders_on_metal_and_is_refused_by_name_on_webgpu()
+    public async Task tiled_rendering_renders_on_the_gpu_backend()
     {
         //Arrange
         RenderSettings settings = new(64, 48, 16);
@@ -1891,13 +1873,6 @@ public class GpuRenderTests(ITestOutputHelper output)
         Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
 
         //Act / Assert
-        if (gpu.Backend == Backend.WebGpu)
-        {
-            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
-            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
-            refused.Message.Should().Contain("WebGPU tiled rendering not implemented");
-            return;
-        }
         FilmBuffer film = await render();
         Judge(gpu, "tiled-rendering", film, reference).PracticalFailures.Should().Be(0);
         TiledRenderingTests.Report(gpu).Should().Be((16u, 12L, 1L, 0L));
@@ -1907,7 +1882,7 @@ public class GpuRenderTests(ITestOutputHelper output)
         TiledRenderingTests.Build(plain, "passes");
         FilmBuffer plainFilm = await plain.RenderAsync(settings, null, Token);
         FilmComparison versusUntiled = FilmComparison.Compare(film.Span, plainFilm.Span);
-        output.WriteLine($"Metal, 12 tiles vs untiled: {versusUntiled}");
+        output.WriteLine($"{gpu.Backend}, 12 tiles vs untiled: {versusUntiled}");
         versusUntiled.PracticalFailures.Should().Be(0);
         foreach (string name in passes)
         {
@@ -1921,7 +1896,7 @@ public class GpuRenderTests(ITestOutputHelper output)
         FilmBuffer tiledDenoised = await gpu.RenderAsync(settings, null, Token);
         FilmBuffer untiledDenoised = await plain.RenderAsync(settings, null, Token);
         FilmComparison denoised = FilmComparison.Compare(tiledDenoised.Span, untiledDenoised.Span);
-        output.WriteLine($"Metal denoised, 12 tiles vs untiled: {denoised}");
+        output.WriteLine($"{gpu.Backend} denoised, 12 tiles vs untiled: {denoised}");
         denoised.PracticalFailures.Should().Be(0);
         TiledRenderingTests.Report(gpu).Should().Be((16u, 24L, 2L, 0L));
         gpu.IsFaulted.Should().BeFalse();

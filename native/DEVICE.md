@@ -3162,6 +3162,11 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    the CPU exactly, so the order follows scheduling, its timing included. There is no device arithmetic to correct, and
    sorting every layer on the device would not match the CPU either, which does not sort them. The scene, the
    comparator and the criterion are unchanged; the corpus reports this scene's two material passes as failing.
+   Because the order follows scheduling, the number of such pixels can vary from run to run (FACT: one run of one tree
+   showed a second pixel, (19,10), in one repeat, with the same ids and weights as the CPU's in another slot order, and two
+   reruns of that tree showed only (28,10)); the accepted result is therefore one or more pixels of this kind (the
+   maintainer's ruling, 2026-11-16): the material layer only, the same count in both passes, the layer's ids and
+   weights at each such pixel bit for bit the CPU's, everything else in the scene perfect. Anything else is a finding.
 45. **Area light spread clamp in exact arithmetic (`area_region`); device validation owed.** `area_region`
    (`wavefront_emitters.wgsl`, pinned `area_light_spread_clamp_light`) used plain WGSL arithmetic, which a driver may
    contract (`a + b*c` into an FMA: Mesa 24.0.8's Intel compiler did on the HP). It now follows the pinned association
@@ -3442,8 +3447,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     with `native/tools/compile_probe.cpp` on the failing probe module; no criterion changes and nothing is refused.
 105. **Degenerate area lights and portals: replaced by item 148.** The refusal "WebGPU degenerate area light not implemented"
     is gone: an area light whose axis length underflows to zero renders as the CPU renders it (item 148), and what remains
-    refused is named there (a spread of zero or below 1e-5, an axis of infinities without a NaN, the light tree at a
-    transmissive point, and portals of zero extent). FACT (2026-11-12, probe films): the inference of this item that "the NaNs fall out"
+    refused is named there (a spread of zero; an axis whose length overflows, with a spread below 1e-5, in a scene with
+    volume direct light, item 233; an axis of infinities without a NaN; and portals of zero extent; the light tree at a
+    transmissive point and a spread below 1e-5 in a volume render since, items 222 and 223). FACT (2026-11-12, probe films): the inference of this item that "the NaNs fall out"
     holds for a spread above zero only; with a spread of zero the CPU's next-event direction is NaN and its microfacet
     closures turn it into finite light (item 148).
 106. **Background light portals with volume direct light: RESOLVED in the same session.** With the portal strategy inlined,
@@ -3596,7 +3602,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     background light and area lights under the guard (`light-motion/linking-hdri` 953,844 bytes and 56,016 instructions to 743,290,
     `shadow-linking/hdri-world` 952,582 to 742,028; both WGSL films perfect); their module text changes.
 
-130. **A bump-mapped Principled BSDF with subsurface and AOV outputs: `prepare_surface` over the 940,000 B size guard: OPEN.** FACT:
+130. **A bump-mapped Principled BSDF with subsurface and AOV outputs: `prepare_surface` over the 940,000 B size guard: RESOLVED (item 202).** FACT:
     with a Bump node feeding the Principled Normal and two AOV Output nodes on a random walk and a Christensen-Burley sphere,
     `prepare_surface` is built at 1,192,719 B inlined and measures 55,045 Intel instructions (under the 60,000 envelope); the device prints
     its size warning. The size comes from the Principled SVM with bump and the AOV nodes, not from the subsurface combinations; the
@@ -3605,6 +3611,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     (WGSL film perfect against the CPU film); measured 1,192,719 B and 55,045 instructions (21.7 B per instruction), `shade_surface`
     932,275 B and 52,007. The size is the scene's own SVM program (the Principled closure with the bump-mapped normal), which
     `prepare_surface` evaluates in one pass: no entry boundary inside it. A warning row under the standing ruling.
+    RESOLVED since: the entry's shader evaluation is built in three entries, each under the size guard (item 202).
 135. **BVH time steps: refused by name; no consumer can reach them.** "WebGPU BVH time steps not implemented" (points) and
     "WebGPU curves with BVH time steps not implemented" (`closest.cpp`). FACT: `KernelBVH::use_bvh_steps` comes only from
     `SceneParams::num_bvh_time_steps` (`scene/geometry_bvh.cpp`), and the host creates every session with the default 0 and
@@ -3680,7 +3687,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     (density 0.03 times a Noise Texture around the homogeneous box) and `volumes/heterogeneous-in-heterogeneous-world` (the
     heterogeneous box inside it): perfect. The probes at twice that density are not committed, for item 47's reason.
 
-148. **Area lights whose axis length underflows to zero: render as on the CPU (item 105); five cases refused by name.** FACT: an
+148. **Area lights whose axis length underflows to zero: render as on the CPU (item 105); the cases below refused by name.** FACT: an
     area light whose size and object axes are not zero (`Light::has_contribution` keeps it) but whose squared axis length
     underflows (a size or object scale near 1e-23) reaches the kernels with `len_u` or `len_v` zero, an axis of infinities and
     NaNs (`normalize_len` of a zero vector) and an inverse area of 1 (the area is zero), and no `SHADER_USE_MIS`. What the
@@ -3701,19 +3708,20 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     -0.5, 0.5) = -0.5`, the light tree, `mn_area_sample`, the volume light record with a NaN point). Refused by name, each with its reason: a
     spread of zero ("WebGPU degenerate area light with a spread of zero not implemented": the CPU's next-event sample is valid
     with a NaN direction, and its microfacet closures turn that into finite light through `min` and `fmaxf`, which drop a NaN: a
-    probe's Glossy Direct pass reached 13,504); a spread above zero but below 1e-5 ("WebGPU degenerate area light with a spread
+    probe's Glossy Direct pass reached 13,504); an axis whose length OVERFLOWS, with a spread above zero but below 1e-5, in a scene with volume direct light ("WebGPU degenerate area light with a spread
     below 1e-5 not implemented": `area_light_valid_ray_segment`'s `angle_almost_zero` branch maps a volume ray into the light's
-    frame with the NaN axis, so the segment depends on how each `min` and `max` drops a NaN lane; a probe with a spread of 1e-6
-    in the world volume differed in 1,892 practical values before the refusal); an axis of infinities without a NaN (a rotated object scaled below about 1e-23:
+    frame; the kernels hold such an axis as a zero vector of infinite length, whose slab is the whole line, and the device's
+    copy does not tell it from the NaN axis, whose segment item 223 gives; without a volume, or without direct light, the
+    branch is never reached: item 217); an axis of infinities without a NaN (a rotated object scaled below about 1e-23:
     its CPU comparisons depend on the signs of each ray's components; since the maintainer's ruling of 2026-11-15 the host
     refuses it on every backend, "Unsupported feature: area lights with an axis of infinities", before any device, so the
-    device's own refusal is no longer reached; provisional); the light tree at a transmissive point (error bit 131072:
-    `is_visible |= has_transmission` takes the CPU into the importance with `cos_theta_u = FLT_MAX`, whose weights overflow);
+    device's own refusal is no longer reached; provisional);
     and a background light portal of zero extent ("WebGPU degenerate background light portal not implemented": the pinned portal
     sampler returns NaN directions, which the world shader and the closures evaluate). Covered by `emitter_sample` (an area
     light of size 1e-23 in the fixture, its sample validity compared exactly; validation cases 0, 1 and 6) and the oracle scenes
     `lamps/area-degenerate-*` (rect, ellipse with a spread of 1, disk plane, lamp shader, light tree, world volume): all six
-    perfect against the x64 CPU on Linux (2026-11-12; strict 4 to 526 values, max 6.68e-06).
+    perfect against the x64 CPU on Linux (2026-11-12; strict 4 to 526 values, max 6.68e-06). No longer refused: the light
+    tree at a transmissive point (item 222) and a spread below 1e-5 with volume direct light on the NaN axis (item 223).
 149. **A bake texel on a zero-area triangle: the flat Normal bake fails as on the CPU; the other types stay refused (for the
     maintainer).** FACT: the pinned kernel's geometric normal there is NaN (`normalize` of a zero cross product). The Normal
     type (no bump) writes it: the device now stores the same quiet NaN in each component, so the host fails the bake ("Nonfinite
@@ -3777,7 +3785,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     (the cone), computed on the host in `bsdf_D`'s order for both sides (36 checks; before: sample 214, 432.12738 against
     431.369293; after: passes, and the gate's strict differences fall from 105 to 32). Not covered: a shading point inside a
     sphere light, whose direction comes from the hemisphere or sphere samplers with the device's trigonometry (the gate's
-    sample 189 differs there by 11 ulps in y; not judged by this check, an open item).
+    sample 189 differs there by 11 ulps in y; not judged by this check then: resolved in item 209).
 168. **Camera border (a render region): RESOLVED (implemented, every backend).** Before, the `border` sockets were set and
     ignored. FACT: the host now renders only the region (`BufferParams::full_x/full_y` inside `full_width/full_height`, the
     camera keeping the whole film's raster, `cbc_host_render`) and `HostOutput` places Cycles' region tile into the full
@@ -3827,7 +3835,8 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     (`SubdAttributeInterpolation`), so the map's triangle indices are the device's. The pinned kernels have no subdivision
     code: every device, the WGSL device included, receives the diced triangles of a mesh kept in object space, which the
     WGSL bake places through the object transform (`wavefront_bake.wgsl`, the path of `bake/instanced`); no device work
-    (WebGPU unverified: no WebGPU run of a subdivision bake yet). Measured on the CPU reference: every bake type, also with
+    (on the WebGPU device the `bake/subdivision-*` scenes are perfect against the x64 CPU, no practical failure).
+    Measured on the CPU reference: every bake type, also with
     true displacement, bit for bit the bake of an ordinary mesh built from the same tessellation and kept in object space;
     Metal within the practical criterion (`SubdivisionBakingTests`, `GpuRenderTests`, scenes `bake/subdivision-*`).
     Pixel-space dicing is refused by name on every backend at bake time (it measures in the dicing camera, which a bake
@@ -3848,7 +3857,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     the count.
 172. **Scene-level settings the API does not offer: FOR THE MAINTAINER (a ruling each).** Each is stated in AGENT-README.txt
     "WHAT THIS PACKAGE DOES NOT DO". FACTS from the pinned source:
-    - Tiled rendering: RESOLVED on the CPU and Metal backends (provisional). `cbc_host_tile_size` sets
+    - Tiled rendering: RESOLVED on every backend (provisional; WebGPU: items 217 and 218). `cbc_host_tile_size` sets
       `SessionParams::use_auto_tile` and `tile_size` for later renders and bakes (0, 8 to 128, or a multiple of 128 up to
       8192, the sizes `TileManager::compute_render_tile_size` keeps). Cycles' tile manager writes each finished tile to a
       tile file through OpenImageIO (`session/tile.cpp`, an EXR writer, which several builds do not have) and reads it back
@@ -3871,17 +3880,18 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
       samples; 806 practical failures against the untiled Metal film, `render-settings/tiles-glass-passes`), a camera
       border in tiles stops every tile there, and small UNTILED films (20 x 20 to 40 x 30) never stop early on Metal
       where the CPU stops most pixels. Not caused by the tile store (it copies a tile after its last sample; depth and
-      non-adaptive films are equal); INFERENCE: the Metal adaptive-sampling path for small buffers. The WGSL device has not
-      been run with tile offsets and overscan: refused on the WebGPU backend ("WebGPU tiled rendering not implemented").
-    - UDIM tiles: RESOLVED on the CPU and Metal backends (provisional). `cbc_host_image_bind_tiles` binds caller images
+      non-adaptive films are equal); INFERENCE: the Metal adaptive-sampling path for small buffers. The WGSL device renders
+      tiles through the same `PathTraceWorkGPU` and does not show that difference: its sample count pass of
+      `render-settings/tiles-glass-passes` equals the CPU's exactly (item 217).
+    - UDIM tiles: RESOLVED on every backend (provisional; WebGPU: item 217). `cbc_host_image_bind_tiles` binds caller images
       with tile numbers to one Image Texture node and the host hands them to Cycles' multi-loader
       `ImageManager::add_image(vector<unique_ptr<ImageLoader>>, ...)` (`scene/image.cpp`); the host's memory loader reports
       its tile (`ImageLoader::get_tile_number`) and compares it in `equals`, since `add_image_texture` reuses an equal
       loader's image and reads the tile number from it. Tiles below 1001, repeated tiles, images of different formats and
       Environment Texture nodes are refused by name (`native/host/ABI.md` "Images"). The WGSL image lookup reads the UDIM
-      table (`wavefront_images.wgsl`) but has not been run with one: the host refuses a tiles binding on the WebGPU backend
-      ("WebGPU UDIM tiles not implemented") until a WebGPU run validates it. Scenes `images/udim-*`.
-    - BVH spatial splits: RESOLVED on the CPU and Metal backends (provisional). `cbc_host_bvh_spatial_split` sets
+      table (`image_sample` in `wavefront_images.wgsl`, the mirror of `kernel_image_interp_with_udim`), and the WebGPU
+      backend renders a tiles binding (item 217). Scenes `images/udim-*`.
+    - BVH spatial splits: RESOLVED on every backend (provisional; WebGPU: item 219). `cbc_host_bvh_spatial_split` sets
       `SceneParams::use_bvh_spatial_split`, read by Cycles' BVH2 builder (`bvh/split.h`, `scene/geometry_bvh.cpp`; off for
       the top level, curves and motion blur, `bvh/build.cpp`) and Embree's build quality (`bvh/embree.cpp`); MetalRT does
       not read it (no use in `device/metal/bvh.mm`), Metal's BVH2 on GPUs without ray-tracing hardware does. A speed
@@ -3889,26 +3899,24 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
       Metal within its repeat noise (`BvhSpatialSplitTests`, `GpuRenderTests`). A BVH keeps the parameters it was built
       with, so a change sets `need_update_bvh_for_offset` and `need_update_rebuild` on every geometry (not `tag_modified`,
       which would run true displacement again on displaced positions, `GeometryManager::displace`) and tags the geometry
-      manager `GEOMETRY_ADDED`, whose reallocation drops the scene BVH (`device_update_preprocess`). The WGSL traversal
-      has not been run with a split BVH2 (a primitive referenced from several leaves): refused on the WebGPU backend
-      ("WebGPU BVH spatial splits not implemented").
-    - Texture limit: RESOLVED on the CPU and Metal backends (provisional). `cbc_host_texture_limit` sets
+      manager `GEOMETRY_ADDED`, whose reallocation drops the scene BVH (`device_update_preprocess`). The WGSL device
+      traverses Cycles' packed BVH2 and renders with a split one (item 219).
+    - Texture limit: RESOLVED on every backend (provisional; WebGPU: item 217). `cbc_host_texture_limit` sets
       `SceneParams::texture_limit`, which `ImageManager::device_load_image` (`scene/image.cpp`) reads when it loads an
       image: a scale of limit / larger side, rounded down to a power of two and applied on the host by a box filter
       (`ImageCache::load_full`, `util_image_resize_pixels`), before any device, so every device including Metal; it brings
       an image within Metal's 16384-pixel texture limit. Cycles does not load an image again (`need_load`), so the host
       refuses a change once a render or bake has loaded images (`CBC_NOT_READY`). Exact on the CPU: an image of uniform
       2 x 2 blocks under half its side renders bit for bit like the image of the block colours (`TextureLimitTests`). The
-      WebGPU device has not been run with reduced images: the host refuses a limit on the WebGPU backend ("WebGPU texture
-      limit not implemented"). Scenes `images/texture-limit-*`.
-    - Progressive results: RESOLVED on the CPU and Metal backends (provisional). A host created with
+      WebGPU device receives the reduced image like any other and renders with a limit (item 217). Scenes
+      `images/texture-limit-*`.
+    - Progressive results: RESOLVED on every backend (provisional; WebGPU: item 220). A host created with
       `CBC_HOST_PROGRESSIVE_RESULTS` (`CBCHostConfig.flags`) has a session that is not headless, so
       `RenderScheduler::work_need_update_display` schedules display updates, and `HostOutput::update_render_tile` reads the
       Combined film of each `PathTrace::update_display` (`integrator/path_trace.cpp`); the host sends it as `CBC_EVENT_FILM`
       after the progress event of its samples. On the CPU the final film equals a plain host's bit for bit (plain,
-      adaptive, volume, denoised and camera-border scenes, `ProgressiveResultTests`). The WebGPU device has not been
-      validated with intermediate reads of its render buffers: the host refuses a progressive host on the WebGPU backend
-      ("WebGPU progressive results not implemented").
+      adaptive, volume, denoised and camera-border scenes, `ProgressiveResultTests`). The WebGPU device delivers them too
+      (item 220).
     - Texture cache (tiled, mip-mapped images): RESOLVED on the CPU and Metal backends (provisional). Cycles' cache
       (`scene/image_cache.cpp`) loads tiles (64 x 64 by default; provisional, the consumer's choice of a power of two from
       64 to 128 on Metal and to 1024 on the CPU, `CBCImageConfig::tile_size`) and mip levels on demand through the virtual
@@ -4054,7 +4062,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     step position with the product rounded before the sum. `logf` and `expf` stay the driver's: with the correctly rounded
     double-float forms (the ray-marching ones) the 718 steps of that path were bit-identical too, but any use of them in the
     step entry made `volumes/heterogeneous-in-heterogeneous-world` fail 17 film components in 7 pixels, the same components
-    whichever of the two was used (the scene is perfect without them; open item 182). With the driver's `logf` and `expf` the lockstep passes all 83 volume
+    whichever of the two was used (the scene is perfect without them; item 182, closed by item 197). With the driver's `logf` and `expf` the lockstep passes all 83 volume
     stages (3,080 paths, 2,230 shadow paths), and the scene is perfect in two WGSL renders (practical 0, strict 3, largest
     1.56e-05) with its CPU film unchanged. Gate: `codebrix_cycles_volume_gate`
     case 95 runs that lockstep (case 92's scene rendered by the native scheduler) in every full run.
@@ -4072,22 +4080,33 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     `kernel_data.integrator.use_light_tree` is set, as the other light tree regions check it. Gate: cases 92 and 95 require
     the light tree regions in their modules in a full run (they follow cases 66-73) and a scene without the tree.
 
-182. **Correctly rounded `logf` or `expf` in the heterogeneous step entry: a deterministic film difference, OPEN.** With the
+182. **Correctly rounded `logf` or `expf` in the heterogeneous step entry: a deterministic film difference. CLOSED: the cause
+    was the phase pick's divisions, item 197 (c); with item 197 the double-float forms are in `vh_step` and every corpus
+    scene with a heterogeneous medium is perfect. What is still not the CPU's bits is recorded in item 197.** With the
     ray-marching double-float `logf` (the exponential sample of `volume_indirect_scatter_advance`) or `expf` (the residual
     rescale after an octree advance) in `vh_step`, each alone, `volumes/heterogeneous-in-heterogeneous-world` fails the same 17
     film components (7 pixels, largest 0.00707) in both repeats, while the same WGSL with only those functions defined and not
     called is perfect (strict 21, as without the change), and the camera motion case's 718 traced steps are bit-identical with
     them. Which value departs is not found (no step trace of that scene was made); the item 180 fix leaves both as the driver's.
-183. **Volume shaders on meshes that are not closed differ from the CPU: OPEN, older than the re-pin, cause not established.**
-    FACT (2026-11-13, a re-pin lane's scratch scenes, not committed): two open boxes with volume shaders (meshes that no back
-    face closes; camera rays enter the first and then the second), lit by a sun. With the sun on the camera side: 56
-    practical failures against the CPU film, worst 177 times the tolerance, at pixel (12,17); the previous pinned
-    revision's device against the previous revision's CPU film gives the same numbers. With the sun behind the open
-    backs: 3 failures on that one pixel, 2.37 times the tolerance, identical before and after the lane's change. The CPU
-    films of five such scenes are bit-identical between the two pinned revisions (0 of 3,072 values differ). Not the
-    cause (tried, by film): the conversion of an unbounded step count to an integer in `volume_transmittance` (item 188).
-    No committed scene has an open volume mesh, so no committed scene fails for it. Nothing is refused: such a scene
-    renders, and differs.
+183. **Volume shaders on meshes that are not closed differed from the CPU: FIXED. The missing faces were not the cause.**
+    As recorded before the cause was known: two open boxes with volume shaders (meshes that no back face closes; camera
+    rays enter the first and then the second), lit by a sun; with the sun on the camera side 56 practical failures, worst
+    177 times the tolerance, at pixel (12,17); with the sun behind the open backs 3 failures on that pixel, 2.37 times.
+    The CPU film is bitwise repeatable and does not depend on the thread count, and the same two boxes with their back
+    faces also failed (4 practical failures). Cause (FACT: the raw render buffers of both devices after every sample, the
+    per-segment values of the first differing path on both devices, and both devices' octrees): the two boxes overlap and
+    both are centred on x = 0, so both majorant octrees have that plane as a cell boundary. When a ray crosses a plane two
+    octrees share, `volume_octree_setup` enters the other octree again at a point that lies on its own cell boundary;
+    which cell it finds, and whether a sliver of a segment appears, is decided by the last bits of the ray. The first
+    differing path (pixel (12,17), sample index 5, bounce 3) walked one segment with majorant 1.77607 on the CPU and two
+    slivers and a segment with majorant 1.72410 on the device, from a scatter position six last bits apart one bounce
+    earlier; the path then scattered elsewhere and lost its background contribution. The last bits came from the three
+    places of item 197, which are now the pinned arithmetic. With them the scratch scenes are perfect (sun on the camera
+    side: practical 0, strict 3; sun behind: 0 and 0; the closed boxes: 0), and so is the committed scene
+    `volumes/heterogeneous-open-boxes` (`author_volumes_c.py`: the first of the scratch scenes). An open mesh as such
+    needs nothing: a path that leaves through a missing face misses with the box still on its volume stack,
+    `integrator_shade_volume_setup` cleans the stack and the device does the same (FACT, the per-kernel record of such a
+    path on both devices). Not the cause, as recorded: the conversion of an unbounded step count (item 188).
 184. **A strong noise Bump seen after a diffuse bounce differed from the CPU: FIXED.** FACT (2026-11-13): Lambert
     surfaces with a Noise texture (scale 9, detail 2) driving a Bump node, seen after a diffuse bounce, failed with
     Filter Glossy 0 (31 practical failures, worst 22 times the tolerance) and with Filter Glossy 2 (6, worst 8.3 times);
@@ -4099,14 +4118,33 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     (`surface_differentials`), whose reciprocal of the determinant is one correctly rounded division as in the kernel.
     Both scratch scenes are perfect; `surface-nodes/bump-strong-noise` and `surface-nodes/bump-strong-noise-attribute`
     cover the first three sites (no film distinguishes the Wireframe reordering). The whole corpus and every gate ran with these
-    changes in the first full pass on Cycles v5.3.0 (2026-11-13/14, the last section): no job failed for them. Still plain, reached by no scene: the Wireframe node's pixel size and the Attribute node's Generated
-    derivatives.
-185. **Boolean Math, Integer Math and Get Vector Component nodes: refused by name on the WebGPU device, OPEN (new in
-    Cycles v5.3.0, not ported).** "WebGPU Boolean Math node not implemented", "WebGPU Integer Math node not
-    implemented", "WebGPU Get Vector Component node not implemented" (`svm_census`, referenced shaders only, before any
-    pipeline is built). The SVM compiler folds constant inputs, so only a node with a linked input reaches the device.
-    The CPU backend renders them. They are in the target (Cycles' Metal device has them): a gap to close, not a
-    permanent refusal.
+    changes in the first full pass on Cycles v5.3.0 (2026-11-13/14, the last section): no job failed for them.
+185. **Boolean Math, Integer Math and Get Vector Component nodes: PORTED (new in Cycles v5.3.0; they were refused by name
+    on the WebGPU device).** The three refusals, "WebGPU Boolean Math node not implemented", "WebGPU Integer Math node not
+    implemented" and "WebGPU Get Vector Component node not implemented", are removed. The handlers are `svm_boolean_math`,
+    `svm_integer_math` and `svm_get_vector_component` (`wavefront_svm_nodes.wgsl`; the last one serves both
+    `NODE_GET_VECTOR_COMPONENT` and `NODE_GET_VECTOR_COMPONENT_DERIVATIVE`, which does nothing in a volume evaluation, as
+    in `svm.h`), behind the feature bits 67 to 69 (`SF_NODE_BOOLEAN_MATH`, `SF_NODE_INTEGER_MATH`,
+    `SF_NODE_GET_VECTOR_COMPONENT`): a scene without these nodes builds the modules it built before. The SVM compiler
+    folds constant inputs, so only a node with a linked input reaches a device. An operation number the pinned `switch`
+    does not know gives 0, as in the pinned code, not an error.
+    Integer Math mirrors `svm/integer_math.h` operation by operation on 32-bit integers, and every case the pinned C++
+    defines gives the C++ result exactly. Where the pinned C++ is undefined the device does not trap and does not leave
+    the value to the shader compiler; it is fixed as follows, and a CPU render of the same case may differ or stop:
+    a sum, difference, product or negation that overflows wraps to 32 bits (two's complement), in every operation and
+    in the intermediate steps of Multiply Add, Power, Floored Modulo, LCM, Divide Ceil and Divide Round;
+    `abs(INT_MIN)` is `INT_MIN` (Absolute, GCD, LCM, Divide Round); `INT_MIN / -1` is `INT_MIN` and `INT_MIN % -1` is 0
+    (Divide, Divide Floor, Divide Ceil, Modulo, Floored Modulo); Divide Round by `INT_MIN` is 0 (its doubled divisor
+    wraps to 0, and the device's quotient by 0 is 0). The device never hands the WGSL `/` or `%` operator a zero divisor
+    or the pair `INT_MIN`, -1 (`im_div`, `im_mod`), so the result does not depend on how a WebGPU implementation or a
+    driver treats those. The loops are bounded for the shader compiler (GCD at 64 steps, where Euclid's algorithm on
+    32-bit operands needs fewer than 50; Power at the 31 bits of a non-negative exponent).
+    Covered by `nodes_gate` (`integer_node_cases` in `svm_surface_gate.cpp`: every Integer Math operation at its edges
+    with linked and with constant operands, each case checked against a 64-bit model that rejects an undefined step
+    and against the pinned function before the device is compared with the CPU kernel, integers exact through base-256
+    digits; every Boolean Math operation around the threshold 0; Get Vector Component and its derivative opcode with
+    linked and constant vectors and indices inside and outside 0..2) and by the scenes `surface-nodes/integer-math`,
+    `boolean-math`, `get-vector-component` and `get-vector-component-bump`.
 186. **Gaussian splats, and quaternion and spherical-harmonics attributes: refused by name, OPEN (new in Cycles v5.3.0,
     not ported).** The CPU and Metal backends render a point cloud whose `render_as` is `gaussian_splats`, with the
     standard point attributes `radiance:base`, `scale` and `rotation` (and optionally `radiance:sh`; provisional,
@@ -4135,8 +4173,8 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     available in this library (use openimagedenoise)"). Both are on the render-time rejection list of AGENT-README.txt.
 188. **Recorded while re-porting to Cycles v5.3.0; each is older than the re-pin. (a), (g) and the density factor of (d)
     are FIXED (2026-11-13; the whole corpus and every gate ran with the fixes in the first full pass on Cycles v5.3.0,
-    the last section, and (g)'s helper call is what item 52's last point measures); (b), (c), (e), (f) and the rest of
-    (d) are open.**
+    the last section, and (g)'s helper call is what item 52's last point measures); (c) is resolved in item 207, the rest
+    of (d) in item 208, (e) is RESOLVED by item 202, (f) is resolved in item 211; (b) is open.**
     FACT unless marked. Fixed: the Attribute node gives a lamp's uv in a lamp's shader (`lamps/lamp-area-uv`); an Emission
     closure of a volume shader is multiplied by the object's volume density (proven only with a temporary density on both
     devices, since no scene can set one); an unbounded expected step count gives one sample on x86-64 as in the kernel
@@ -4151,10 +4189,14 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     (`svm/closure.h`); the density is 1 unless the object is a Volume geometry in object space, which the host does not
     create (INFERENCE: no effect today). (e) AO, Bevel, a Raycast node, subsurface scattering and a volume in one scene:
     `prepare_surface_raytrace` is 1,256,653 inlined bytes, over the 940,000 byte size guard, and took 72 s to compile
-    on the Linux reference machine (1,256,442 bytes before the lane's change); no committed scene has that combination.
-    (f) Emission read from a Bump node's output is undefined on the CPU: a light evaluation masks Bump out and reads a
-    stack slot the node did not write, while the device evaluates the node (INFERENCE on the cause; about 3,200
-    practical failures in a scratch scene). (g) `volume_transmittance` converts an unbounded expected step count to an
+    on the Linux reference machine (1,256,442 bytes before the lane's change); no committed scene had that combination.
+    RESOLVED (item 202): the combination is committed as `surface-nodes/raycast-ao-bevel-subsurface-volume`
+    (`native/oracle/scenes/author_mnee_size.py`), its `prepare_surface_raytrace` is built in three entries (294,793,
+    785,571 and 310,542 bytes; 8,768, 36,096 and 15,290 instructions; the largest compiles in 16.0 s), and its WGSL
+    film is perfect against the CPU film.
+    (f) Emission read from a Bump node's output: defined on the CPU (a light evaluation has no Bump node feature and
+    the node stores zero), and the device now does the same (item 211; the inference recorded here, an unwritten stack
+    slot, was wrong). (g) `volume_transmittance` converts an unbounded expected step count to an
     integer: INT_MIN on x86-64 (one sample), saturation on ARM64 and in WGSL (1,024 samples); by reading only, and a
     trial of the x86-64 form changed no film bit of the item 183 scene.
 189. **`hair/chiang-absorption-thick`: one pixel past the practical criterion; ACCEPTED deviation (the maintainer's
@@ -4176,7 +4218,11 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     This scene is where that one unit is amplified past the criterion. Same family as items 77 and 78. The scene, the
     comparator and the criterion are unchanged; the corpus reports the scene as failing by this one pixel.
 190. **`combinations/cov-camera-motion-heterogeneous-linking-catcher`: one pixel of the Shadow Catcher Matte pass past the
-    practical criterion; ACCEPTED deviation (the maintainer's ruling, 2026-11-13).** FACT: deterministic at Cycles
+    practical criterion; was an ACCEPTED deviation (the maintainer's ruling, 2026-11-13). NO LONGER OBSERVED: with the
+    fixes of item 197 the scene is perfect** (FACT: three runs, both repeats of each: practical 0, strict 0, largest
+    difference 1.19e-07; the CPU film is bitwise what it was. INFERENCE: item 197's last-bit fixes of the heterogeneous
+    medium's arithmetic removed the flip described below; which of the three did was not isolated). The scene is judged
+    like any other again. The record of the deviation follows. FACT: deterministic at Cycles
     v5.3.0, not the driver fault of item 52: 3 practical failures (5 strict differences, largest 0.0629), all at pixel
     (24,13), in the Shadow Catcher Matte pass (blue: CPU 0.335366279, WebGPU 0.27242589). The two films agree to the last
     bits through sample index 9; at sample index 10, and again at index 14, the CPU's primary ray is transmitted through
@@ -4204,6 +4250,392 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     `scene/scene.cpp`) switches to its extended limits and tags every geometry modified inside the render's scene update,
     without the host restoring the authored positions first, so a displaced mesh could be displaced twice. (b) is known
     from reading the source only; no film shows it.
+197. **Three places where a heterogeneous medium's arithmetic was a last bit off the CPU's: FIXED (the cause of items 182
+    and 183).** Each is in the `VOLUME_HETEROGENEOUS` regions only (other scenes keep their text). (a) The extinction
+    of a volume closure: `volume_extinction_setup(sd, weight)` adds a rounded product to the sum
+    (`closure/volume.h`); the device's `transparency += weight` after `weight *= density` was open to a contracted
+    multiply-add (`svm_volume`, `svm_volume_coefficients`, the Principled Volume: `wavefront_svm_closures.wgsl`). FACT: the
+    majorant octree of the scratch scene of item 183 had 50 of 82 nodes with other extrema bits than the CPU device's
+    (largest relative difference 1.17e-7); with `rounded_add3` none. (b) The null-scattering distance:
+    `sample_exponential_distribution` (`-logf(1 - rand) / lambda`) and the rescale of the random number by `expf` of the
+    residual optical depth (`volume_integrate_advance`) used the driver's `log` and `exp`; they now use the double-float
+    forms of the ray-marching path (`vr_log_parts`, `vr_exp_parts`; `logf(0)` is `-inf`), with the product and the
+    difference of the rescale rounded apart. (c) `volume_shader_phase_pick` (more than one phase closure): its three
+    quotients were plain divisions and the rescaled random number, which is the phase sample's, came out one last bit off
+    (0.496550053 against 0.496550024); they are `rounded_divide` now (`shade_volume` and `shade_volume_phase`,
+    `wavefront_volume.wgsl`). The failure of `volumes/heterogeneous-in-heterogeneous-world` with (b) that item 182 records (11 practical failures
+    here with (a) and (b), the largest 0.00707 as there) was (c):
+    FACT, the first differing path (pixel (16,4), sample index 4) passed through the sphere lamp, its direction after the
+    scatter before was three last bits off, and the next segment, which starts on the lamp's surface, sampled the lamp
+    from the other side of `d_sq > r_sq`; with (a), (b) and (c) the scene is perfect (practical 0, strict 12).
+    **Still not the CPU's bits (OPEN, no film shows it):** the host C library's `logf` is not correctly rounded (it
+    differs from the correctly rounded value for 2,877 of 400,000 random arguments in (0, 1], `expf` for 264 of
+    400,000 in [0, 20)), so a distance can still be one last bit from the oracle's where the library rounds the other
+    way; the phase pick of the volume light stage (`vl_phase_scatter`, used without the phase stage, so never with a
+    heterogeneous medium) keeps its plain divisions; the transmittance estimators' step (`length / (N * k)`) and
+    `floor(log(rand) / log(q))` are as they were. Gate: `codebrix_cycles_volume_gate` case 36 compares the box medium's
+    octree with the CPU device's, prints how many nodes have its extrema bit for bit and requires every node of the box
+    medium to (a full gate run showed all 2,396,745 nodes identical; the world volume's octree is printed and held to
+    the practical criterion, and its 417 nodes were identical too).
+202. **The surface stage's shader evaluation in three entries for the largest `prepare_surface` and
+    `prepare_surface_raytrace`: RESOLVED for the three largest rows of the size guard table (the maintainer's ruling:
+    those three are restructured, the other warning rows stand).** FACT (`intel_compile_envelope.py`, Mesa
+    25.0.7, a fresh shader cache): `prepare_surface` of `subsurface/aov-principled-bump` was 1,236,844 inlined bytes and
+    56,527 backend instructions (27 s to compile), of `displacement/stateful-nodes` 1,323,265 and 49,124 (23 s), and
+    `prepare_surface_raytrace` of `curves-b/raycast-beside` 1,280,079 and 50,805 (52 s). The size is the SVM interpreter
+    with every handler of the scene's programs inlined into one entry; what dominates differs by scene: the closure
+    handler with the Principled BSDF (784,467 bytes of the first), the bump and displacement handlers (540,968 of the
+    second), the Raycast node's traversal with curve leaves and its hit set-up (828,521 of the third).
+    Fix (feature bits 71 `SVM_STAGE_NO_HEAVY` and 72 `SVM_STAGE_NO_NODES`, module variants that are not in `SF_ALL`): a
+    prepare entry that inlines to 1,110,000 bytes or more as one entry (`svm_stage_threshold_bytes`, measured on the
+    scene's module text in scene specialization; the size guard's threshold and its override play no part) is built as
+    three entries from three module variants, each holding a part of the node handlers: the nodes stage (bit 71:
+    `prepare_surface` or `prepare_surface_raytrace`, every handler but the two sets that follow, the start of the
+    evaluation and everything after it), the heavy stage (bit 72: `prepare_surface_heavy`,
+    `prepare_surface_raytrace_heavy`; the Ambient Occlusion, Bevel and Raycast nodes, the three displacement nodes, Set
+    Bump and the bump evaluation state) and the closure stage (both bits: `prepare_surface_closure`,
+    `prepare_surface_raytrace_closure`; `NODE_CLOSURE_BSDF`). The interpreter runs the program node by node in the pinned
+    order. At a node another stage owns, it stops, writes its state to the path's stage record and names the owner in the
+    record's ready word (16 plus the stage); jumps, the two value nodes and the closure weight nodes run in every
+    stage. The state is the result words in their usual place, then the program counter, the closure weight and the
+    three ShaderData members a node can change (P, N and dP: Set Normal, the displacement nodes and the bump evaluation
+    state) in eleven of the words the light sample takes after the evaluation; the value stack and the closures are in
+    the arena already, and the ShaderData itself stays in the record. The host dispatches the nodes stage once, then
+    rounds of heavy, closure and nodes (push word 3: the round, bit 31 in the last), and an entry returns at once for a
+    record that does not wait for it. A waiting record passes at least one heavy or closure node in a round, so the
+    largest number of such node records in one shader's programs bounds the rounds (`SvmCensus::stage_service_nodes`,
+    one census per shader; jumps only skip nodes); a record still waiting in the last round is an error, never a
+    silent stop. No operation, order or value changes: each handler is the same text, run once, in program order.
+    Measured (bytes, instructions, compile time; `prepare_surface` or `prepare_surface_raytrace`, heavy, closure):
+    `subsurface/aov-principled-bump` 320,429 / 10,681 / 2.3 s, 201,679 / 7,390 / 0.5 s, 846,313 / 42,619 / 13.1 s;
+    `displacement/stateful-nodes` 423,759 / 16,560 / 4.8 s, 768,568 / 24,342 / 7.3 s, 263,853 / 12,451 / 1.6 s;
+    `curves-b/raycast-beside` 257,943 / 9,345 / 2.3 s, 890,137 / 33,179 / 15.8 s, 263,105 / 12,400 / 1.5 s; the scene of
+    item 188 (e), `surface-nodes/raycast-ao-bevel-subsurface-volume`, 294,793 / 8,768 / 2.1 s, 785,571 / 36,096 / 16.0 s,
+    310,542 / 15,290 / 2.2 s. Every stage entry of these scenes is under the 940,000-byte guard; the least room is
+    49,863 bytes (`prepare_surface_raytrace_heavy` of `curves-b/raycast-beside`), then 93,687 (`prepare_surface_closure`
+    of `subsurface/aov-principled-bump`). The four WGSL films are perfect against their CPU films, and the CPU films of
+    the three older scenes are bitwise the reference's.
+    What does not change: a module without the two bits compiles the text it compiled before (the three shader files,
+    with the stage regions resolved as off, are byte for byte the earlier files, so this holds for every feature set),
+    and a scene whose prepare entries are under 1,110,000 bytes builds and dispatches what it did. The other
+    `prepare_surface` warning rows are therefore untouched (`bench_01` 1,070,938, `displacement/both` 1,031,824,
+    `hair/huang-mix-principled` 957,292): lowering the constant to the guard would stage them too and is the
+    maintainer's decision. The superset and unspecialized modes keep the one-entry evaluation. Gate fixtures are
+    staged by the same rule: with curves added (`curve_mixed_gate.py`), the MNEE state gate built `prepare_surface` at
+    1,233,922 and 1,348,458 bytes as one entry, and the raytrace nodes state gate built `prepare_surface_raytrace` at
+    1,467,045 bytes and 60,910 instructions and at 1,669,297 bytes and 83,190 instructions as one entry: both above the
+    60,000 envelope, the second above the driver's 65,535, in a gate that passed (gate modules are not part of the
+    corpus envelope measurement, so this was not known). Staged, that gate passes and its heavy stages are 1,047,752
+    bytes and 41,901 instructions and 1,275,302 bytes and 64,836 instructions: the second is still above the envelope
+    (the Raycast and Bevel traversal over every curve shape of the gate's fixture is one handler, which no stage
+    boundary divides). OPEN for that gate fixture; no committed scene builds it.
+    On Intel through Metal the stage entries take the one invocation per workgroup that `prepare_surface` takes
+    there. The stage dispatches are recorder entries 69 to 73 (the recorder bound is 74), with a module file per
+    stage in a capture. Still open: a module whose heavy or closure handlers alone exceed the guard keeps a
+    warning row for that stage (the gate fixture above).
+207. **The Glass BSDF node with the multiscatter GGX distribution (item 188 c): RESOLVED (implemented).** FACT: the node's
+    closure type `CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID` had no entry in `bsdf_info` (`pipelines.cpp`), so the census
+    counted a stopped path and `svm_bsdf` reported error 16 ("unsupported SVM parameter"). In the pinned kernel the node
+    differs from the GGX Glass BSDF in one argument: `bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd->wi,
+    fresnel, is_multiggx)` (`kernel/svm/closure.h`), whose `preserve_energy` branch takes the average Fresnel `Fss` (the
+    transmission tint, or, when that is zero, the reflection tint times `mix(f0, f90, s)` with `s =
+    saturatef(inverse_lerp(F0, 1, fresnel_dielectric_Fss(bsdf->ior)))`) into `microfacet_ggx_preserve_energy`
+    (`kernel/closure/bsdf_microfacet.h`: the glass energy tables of the IOR or of its inverse, `energy_scale`, and the
+    darkening of the weight and of the sample weight). The closure's type stays `CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID`
+    (`bsdf_microfacet_ggx_glass_setup`). Device: bit 73 `BSDF_GLASS_MULTISCATTER`, set by the census with `BSDF_GLASS`;
+    `svm_glass` (`wavefront_svm_microfacet.wgsl`) allocates the GGX glass closure and, after the albedo estimate, calls the
+    Principled BSDF's `principled_preserve` with that `Fss` (the differences and the one sum of a product rounded on their
+    own). The three helpers it shares (`principled_average`, `principled_fss`, `principled_preserve`) and the four glass
+    energy table constants moved into regions of their own (`SVM_BSDF_AVERAGE`, `SVM_BSDF_DIELECTRIC_FSS`,
+    `SVM_BSDF_PRESERVE_ENERGY`) that hold the families that had them and bit 73; a module without the bit keeps its text.
+    The eval, sample, MNEE and pass code needed nothing: they read `energy_scale` and the weight of a GGX glass closure, as
+    for the Principled BSDF's multiscatter transmission lobe. Evidence, against the x64 CPU:
+    `glass_svm` (240 typed programs: roughness and IOR extremes on both table sets, every caustics setting on diffuse,
+    glossy and transmission paths with tinted, black and white glass, the anisotropic alphas with a rotated tangent; an
+    energy table out of bounds is error 512) and `bsdf_svm` (beside the Metallic and Beckmann families); scenes
+    `bsdf/glass-multiscatter`, `bsdf/glass-multiscatter-extremes` (roughness 0, a white glass at roughness 1, an IOR below
+    1 with a negative anisotropy), `bsdf/glass-multiscatter-caustics-off` (the reflective branch, a black glass) and
+    `mnee/glass-multiscatter-caustic` (a caster). Not covered: a thin film on a Glass BSDF node, which the device
+    reports as error 16 for either distribution (`svm_glass`: no scene, no named refusal; open).
+208. **The Emission closure of a volume shader in a shadow ray's extrema estimate (the rest of item 188 d): RESOLVED.** FACT:
+    the early return of `svm_node_closure_emission` (`kernel/svm/closure.h`: "Don't need emission for shadows and
+    extinction") and its density factor stand under `sd->runtime_flag & SR_IS_VOLUME_SHADER_EVAL`. `volume_shader_eval`
+    sets that flag and the shader data keeps it (`integrator/volume_shader.h`); `shader_setup_from_volume` clears it. The
+    emission of such an evaluation has one reader: `volume_estimate_extrema` (`integrator/shade_volume.h`), the extrema of
+    a Light Path volume for a ray that is not a camera ray, which calls `volume_shader_eval_entry` directly and takes
+    `max(extinction, emission)`. So a shadow ray's estimates read the emission until the ray's first transmittance
+    evaluation (`volume_transmittance`) and nothing after it, and the extrema set the segments (`volume_octree_advance_shadow`:
+    until the range times the length reaches 1) and the number of density evaluations of the transmittance. Item 188 (d)
+    inferred that nothing reads it; the CPU shows otherwise: with the medium seen by shadow rays only and direct light only,
+    the film changes in 481 of 3,072 values past the practical criterion when the medium's emission goes from 8 times the
+    noise to nothing. The device recorded the emission in every such estimate (413 practical values in that set-up). Now
+    (inside `VOLUME_LIGHT_PATH`, so only Light Path volumes change their text): the closure tests the flag
+    (`wavefront_svm.wgsl`), and the shadow walk gives an estimate before the segment's first transmittance evaluation no
+    flag (`wavefront_shadow.wgsl`, `VhShadow.shaded`). The same set-up is then bit for bit the CPU's, and scene
+    `volumes/light-path-heterogeneous-emission` (the emission follows the noise, so the octree is deep; a constant emission
+    above the extinction bakes one leaf and shows nothing) is perfect. On a camera path every evaluation carries the flag
+    after the first, the estimate is not a shadow evaluation, and the density of every object the host creates is 1: no
+    change there. The Volume Coefficients and Principled Volume nodes return early without the flag in the pinned source,
+    as the device already did.
+209. **A surface point inside a sphere light (the remainder of item 152): RESOLVED.** FACT (the pinned source,
+    `kernel/light/point.h` `point_light_sample` and `light/spot.h`, "Inside sphere"): with `d_sq <= r_sq` the direction is
+    `sample_uniform_sphere(rand)` at a point whose shader has transmission (`z = 1 - 2 * rand.x`, `r = sin_from_cos(z)`,
+    `polar_to_cartesian(r, M_2PI_F * rand.y)`, pdf `M_1_2PI_F * 0.5f`) and `sample_cos_hemisphere(N, rand)` otherwise,
+    then `cos_theta = -dot(ls->D, lightN)` and the law of cosines of the outside case. Both are plain functions of the
+    random numbers, repeatable on the CPU. The device took the driver's `sin` and `cos` for the sphere sample and an
+    unordered dot for the cosine: `emitter_sample`'s sample 189 was 11 units in the last place off in y, which a near-peak
+    GGX highlight turns into 429.106781 against 431.748108 (6.1e-3 relative). Now the sphere sample is in the oracle's
+    order with the scalar `sinf` and `cosf` adapter, as the volume segment's sample already was
+    (`wavefront_volume_light.wgsl`), and the cosine is a rounded dot. Bit 74 `LIGHT_SPHERE_INSIDE` selects it, so scenes
+    whose sphere lights are clear of the geometry keep their text: it is set when the ball of a point or spot light with
+    `is_sphere` (its radius widened by a thousandth) reaches a box of the top level of the uploaded BVH
+    (`WebGPUDevice::sphere_light_reaches_geometry`, `pipelines.cpp`: the walk stops at the first leaf, instance or
+    unaligned node within the radius and answers yes). Evidence: `emitter_sample`'s highlight check now covers the inside
+    samples (it fails at sample 189 with `CODEBRIX_EMITTER_GATE_SPHERE_INSIDE=0`, which leaves the region out, and passes
+    with it); scene `lamps/sphere-light-inside` (a lamp of radius 2.2 around the glass sphere, hidden from camera rays)
+    is bit for bit the CPU film (2 strict differences before). No film of that scene fails without the change: a uniform
+    sphere sample meets a sharp lobe's peak too rarely for the last bits to show, so the gate is the proof. Not changed:
+    the forward pdf of a lamp hit from inside (`wavefront_light_eval.wgsl` `point_forward_pdf`: the driver's dot in
+    `pdf_cos_hemisphere`), which no check amplifies.
+210. **Float `!=` tests and a NaN operand: the Tangent node's NaN followed further; the general case OPEN.** FACT (item 150):
+    on the Linux reference driver a WGSL `a != b` is false when an operand is NaN, where the pinned C++ is true, so a device
+    test written `x != 0.0` takes the other branch on a NaN whether the pinned test is `x != 0.0f` or `x == 0.0f` with
+    its branches the other way round. The pinned kernel does not stop at a NaN: it carries it to the sample's
+    contribution, which the film write clears, so a NaN on the CPU is a sample without light, and a device that skips the
+    NaN branch shades the point. Changed, inside `SVM_NODE_TANGENT` (the one NaN source known in the node set, item 150),
+    each to a test on the bits: the normal of the Glossy BSDF and Glass BSDF nodes (`svm/closure.h`: `N =
+    safe_normalize_fallback(N, sd->N)`, `util/math_float3.h`: `(t != 0.0f) ? a * (1.0f / t) : fallback`), which item 150 had
+    changed for the other closures; `if (rotation != 0.0f)` of the Glossy, Glass, Principled and Metallic BSDFs; `if
+    (!is_zero(emission))` of the Principled BSDF's emission; and `if (bsdf_pdf != 0.0f)` of the closure loops of
+    `_surface_shader_bsdf_eval_mis` (`integrator/surface_shader.h`; `wavefront_surface.wgsl` `surf_sample`,
+    `surf_sample_mis`, `wavefront_lighting.wgsl` `light_bsdf`). Evidence: scene
+    `surface-nodes/tangent-node-glossy-glass-normal` (the radial tangent as the Normal of both nodes) had 89 practical
+    values past the criterion and is perfect; `surface-nodes/tangent-node-emission` (a NaN Emission Strength) is perfect
+    before and after, since the NaN emission is cleared on both sides. NOT resolved: a NaN Rotation of an anisotropic
+    Glossy BSDF (the closure's tangent is then NaN): 96 practical values before, 3 after (one pixel, the device darker:
+    0.1140 against 0.1171 in red), cause not established; that scene is not committed. Not changed: every other float
+    `!=` of the shaders (the node handlers, the guards of divisions and normalisations, the light and volume code),
+    because no input that reaches them with a NaN is known beyond the Tangent node's and an arithmetic node's own
+    overflow, and each changed test alters the text of every scene that compiles it; and the device's own NaN checks
+    written `x != x` (`wavefront_mnee.wgsl` `mn_atan_tan`, `wavefront_trig.wgsl` `trig_atan2`), which by the fact above
+    cannot fire on this driver (INFERENCE: not measured).
+211. **An emission that reads a Bump node's output (item 188 f): RESOLVED (the device follows the pinned kernel).** FACT
+    (the pinned source): the kernel evaluates a shader with a node feature mask (`kernel/features.h`), and only the
+    surface, shadow and displacement masks hold the BUMP and BUMP_STATE node features. The evaluations without them are
+    the light evaluation (`KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT`: `integrate_light_nee` of
+    `integrator/shade_light.h`, the next-event emission of a lamp, of the background light and of an emissive triangle
+    and the dedicated light of shadow linking; `light_sample_shader_eval_forward` of `light/sample.h`, a lamp or a sun
+    that a path hits; the importance map of `bake/bake.h`), the background evaluation
+    (`KERNEL_FEATURE_NODE_MASK_SURFACE_BACKGROUND`, `integrator/shade_background.h`) and the volume evaluations
+    (`KERNEL_FEATURE_NODE_MASK_VOLUME`, `integrator/volume_shader.h` and `bake/bake.h`). The light and background
+    evaluations are the ones made with `PATH_RAY_EMISSION`; the emission of a surface that a path hits belongs to the
+    surface evaluation and has the features. Without the features `svm_node_set_bump`, `svm_node_displacement` and
+    `svm_node_vector_displacement` store zero in their output (`else { stack_store_float3(stack, node.out_offset,
+    zero_float3()); }`, `kernel/svm/displace.h`), `svm_node_set_displacement` leaves the position, and
+    `svm_node_set_normal`, `svm_node_enter_bump_eval` and `svm_node_leave_bump_eval` are not called
+    (`kernel/svm/svm.h`). No stack slot is read unwritten by this, as item 188 (f) inferred, and the CPU film is
+    repeatable. Root cause on the device: a surface module ran those handlers in every evaluation, so a next-event or
+    lamp emission saw the bumped normal (and, with the bump from displacement, the bumped shading normal and the
+    undisplaced position), and so did a volume shader; only the background module stored zero. Fixed: the region
+    `SVM_NODE_MASK_BUMP` (`SF_NODE_MASK_BUMP`, `pipelines.h`; `wavefront_svm.wgsl`, `wavefront_svm_derivatives.wgsl`)
+    gives the kernel's result in an evaluation made with `PATH_RAY_EMISSION` and in a volume evaluation. The device
+    selects it only when the program of an emitter's shader (a lamp's, a sampled emissive triangle's, any emissive
+    shader with shadow linking) or a volume program holds one of those nodes, so every other scene keeps its shader
+    text, the scenes with a Bump node on an unsampled surface included. Proof: the state gate's cases "Bump node mask"
+    (`svm_surface_gate.cpp` in the nodes fixture: a Bump node, and the bump from displacement's program, evaluated as a
+    light evaluation against the kernel's light node mask; with the region left out the first case fails, the device
+    giving 0.274 where the kernel gives 0.1), and the scenes of `author_surface_nodes.py`, practical failures before
+    and after the fix: `surface-nodes/bump-emission` (a sampled emissive panel whose colour is a Bump node's Normal)
+    1,213 and 0, `surface-nodes/bump-emission-displacement` (the bump from displacement, the colour from the shading
+    normal) 1,224 and 0, `surface-nodes/bump-emission-lamp` (a lamp's shader) 1,221 and 0,
+    `surface-nodes/bump-emission-world` (the world with a background light) 1,194 and 0, `surface-nodes/bump-volume`
+    (an absorbing medium) 474 and 0; `surface-nodes/bump-emission-unsampled` (the first panel with emission sampling
+    off: surface evaluations only) is perfect before and after with an unchanged shader text. The other nodes that a
+    node feature gates were read against the device: the ray-tracing nodes outside the ray-tracing surface kernel, the
+    AOV nodes outside the surface and background evaluations and the Light Path node already follow their masks; the
+    closures of a light evaluation other than the Principled BSDF's emission are set up by the device and skipped by
+    the kernel, with no closure kept on either side.
+212. **More plain sums of products that mirror pinned arithmetic (the class of item 184): FENCED.** FACT: the CPU
+    kernel is built without contraction, and each of these was a sum or difference of products in plain WGSL, which the
+    driver may contract into a fused multiply-add. Each now follows the pinned operation order with the repository's
+    barriers (the order word, or `rounded_add`).
+    (a) The Attribute node's Generated fallback (`svm_attribute`; `svm/attribute.h` `svm_node_attr_surface_eval`,
+    `shading_position<dual3>`): when the geometry has no Generated attribute the node gives the shading position with
+    `dPdx` and `dPdy` (`svm/util.h`), each a sum of two products. Triangle meshes get the attribute from Cycles; curves do
+    not, and on a curve both products are non-zero. `curves/bump-strong-noise-generated` (a strong noise Bump of the
+    Generated coordinates on ribbons and thick curves) fails without the barriers and is perfect with them. The new text
+    is inside the Attribute node's region (`SVM_NODE_ATTR`), the only modules that run the node; other modules keep
+    theirs.
+    (b) The dual-number operators of `wavefront_svm_derivatives.wgsl` (`util/math_dual.h`: the product, quotient and
+    chain rules in `svmd_mul`, `svmd_scale`, `svmd_mul1`, `svmd_div1`, `svmd_sqrt1`, and the Vector Math node's
+    derivative forms of divide, cross product, reflect, snap and power) and `svmd_incoming`
+    (`shading_incoming<dual3>`). The only path a film reaches them by is the Texture Coordinate node's Normal output
+    inside a Bump (`svm_texco_smooth_normal`, then `safe_normalize` of the dual), and that path had three more
+    differences from the kernel, corrected with them: the interpolation of the smooth normal a differential apart
+    (`geom/triangle.h` `triangle_interpolate`) was a plain sum of products; the dual `inversesqrt` was a plain
+    `1.0 / sqrt(x)`, which a driver may replace by its reciprocal square root (now `rounded_sqrt` and
+    `rounded_divide`, as `tn_dual_normalize`); and the inverse normal transform normalized by division, where
+    `object_inverse_normal_transform` (`geom/object.h`) uses `safe_normalize`, a product with the reciprocal length
+    (`svmd_inverse_normal`; the shared `surface_object_normal` is unchanged, see below).
+    `surface-nodes/bump-strong-noise-normal` (a strong noise Bump of that output on a smooth sphere, a tilted panel, a
+    wall and a floor) fails without these and is perfect with them. The Vector Math, Value and Mapping derivative
+    forms are reached by no scene on this device: Cycles keeps derivatives on the stack only for an image with tiles
+    and mipmaps under the texture cache, which the device refuses (error 256); the surface SVM gate covers them.
+    (c) The Wireframe node's pixel size (`svm_wireframe`; `svm/wireframe.h`,
+    `len(dP.dx - dot(dP.dx, sd->wi) * sd->wi)`): the dot in the kernel's order, the product rounded before the
+    difference, and a correctly rounded square root. No film distinguishes it: the node's output is 0 or 1 from a
+    comparison, so a last-bit move of the width matters only for a sample exactly on the threshold.
+    (d) `optical_depth += sigma * length` when a heterogeneous segment enters the next octree leaf
+    (`wavefront_volume_heterogeneous.wgsl`; `integrator/shade_volume.h`): the product rounded before the sum. No film
+    distinguishes it: the sum feeds the majorant pass that scales the scatter probability of later samples, which
+    nothing amplifies.
+    Recorded and not changed: `surface_object_normal` (`wavefront_shader_data.wgsl`) normalizes its inverse direction
+    by division like its forward one, where the kernel's `object_inverse_normal_transform` multiplies by the reciprocal
+    length (its other callers: the Bump node in object space, the Displacement nodes, the Texture Coordinate node's
+    plain Normal); the homogeneous segment's `optical_depth` sum (`wavefront_volume.wgsl`) is a plain sum of a
+    product; the divisions and the square root of `svmd_div1`, `svmd_sqrt1` and the Vector Math derivative divide are
+    plain WGSL, which need not be correctly rounded; a colour or vector converted to an integer in a derivative graph
+    goes through a plain dot product.
+217. **UDIM tiles, the texture limit, tiled rendering and a narrow-spread degenerate area light at surfaces render on the
+    WebGPU backend: RESOLVED (item 172, item 148).** The host refused the first three on the WebGPU backend because no
+    WebGPU run had validated them; nothing was missing in the device. FACTS, each judged against the x64 CPU film on Linux
+    (Intel UHD 770): `images/udim-checker-linear`, `udim-missing-tile` and `udim-three-tiles` perfect, no strict difference
+    (maximum 3.0e-08): `image_sample` (`wavefront_images.wgsl`) reads Cycles' UDIM table, the missing tile included.
+    `images/texture-limit-blocks` and `texture-limit-checker` perfect, no strict difference; the WGSL film of
+    `texture-limit-blocks` is within 3.0e-08 of the CPU film of its twin `texture-limit-blocks-halved` (Cycles reduces the
+    image before any device). `render-settings/tiles-border-denoise` (18 tiles of 8 in a camera border, denoised once)
+    perfect, 597 strict differences, maximum 5.5e-05; `render-settings/tiles-glass-passes` (12 tiles of 16, adaptive
+    sampling with its overscan, seven passes) perfect, 901 strict differences, maximum 9.5e-06, every pass within the
+    practical criterion and the sample count pass equal to the CPU's in every pixel, so the WGSL device stops each pixel of a
+    small tile where the CPU does (the difference item 172 records for Cycles' Metal device does not come from the shared
+    `PathTraceWorkGPU`). A tiled bake renders too (a probe: the Combined bake of `bake/combined` in tiles of 16, perfect,
+    and within 2.4e-07 of the untiled WebGPU bake). `lamps/area-degenerate-spread-tiny` (a spread of 1e-6 on a light whose
+    axis underflows, no volume) perfect, 25 strict differences, maximum 5.7e-06: `area_light_valid_ray_segment`'s
+    `angle_almost_zero` branch is the pinned kernel's only use of the 1e-5 threshold and is reached only from
+    `integrate_volume_sample_direct_light` (`kernel/integrator/shade_volume.h`), which returns first without direct
+    light, so the device now refuses such a light only when the scene has volumes and direct light (`validate_lighting`,
+    `lighting.cpp`); at surfaces it takes item 148's path unchanged. Still refused, as item 148 says: a spread
+    of zero, portals of zero extent and, with a spread below 1e-5 in a scene with volume direct light, an axis whose
+    length overflows (item 233). The same light in a volume (`lamps/area-degenerate-spread-tiny-volume`) and the light
+    tree at a transmissive point render since (items 223 and 222).
+218. **The adaptive sampling kernels refused a region away from the buffer's left edge: RESOLVED.** FACT:
+    `PathTraceWorkGPU` passes the effective buffer's `full_x`, `full_y`, `width`, `height`, `offset` and `stride` to the
+    convergence check and to the two filters, and `BufferParams::update_offset_stride` (`session/buffers.cpp`) sets
+    `offset = -(full_x + full_y * width)` and `stride = width`, so for a tile or a camera border that does not start at
+    the film's left edge `full_x + width` exceeds the stride while every pixel index `offset + x + y * stride` lies in the
+    buffer. `enqueue_adaptive_sampling` (`film_passes.cpp`) required `stride >= sx + sw` and so failed such a render with
+    "Invalid adaptive sampling region": every tiled render with adaptive sampling beyond its first column of tiles, and
+    (before tiles existed) an untiled render with adaptive sampling and a camera border whose left edge is not 0, which no
+    committed scene has. The guard is now `stride >= sw` (a row of the region fits a row of the buffer); the bounds of the
+    first and last pixel were and are checked against the allocation. The WGSL (`wavefront_film_adaptive.wgsl`) already
+    indexed with the signed offset and is unchanged. Covered by `render-settings/tiles-glass-passes` and by
+    `cameras/border-adaptive` (untiled: a border from 0.25 of the width with adaptive sampling; the device failed it by that
+    message before the correction and renders it within the practical criterion of the CPU film now).
+219. **BVH spatial splits render on the WebGPU backend: RESOLVED (item 172).** FACT: the WGSL device traverses Cycles'
+    own packed BVH2 (`get_bvh_layout_mask` is `BVH_LAYOUT_BVH2`; the tables `bvh_nodes`, `bvh_leaf_nodes`, `prim_index`,
+    `prim_object` are uploaded as Cycles packs them), so a split BVH needs no table of its own: a primitive referenced from
+    several leaves is several entries of `prim_index`. The pinned builder never splits the top level, curves or geometry
+    with motion blur (`bvh/build.cpp`), so the device's reading of the top-level primitives (`SF_LOCAL_INSTANCE_SKIP`,
+    `mnee_unused_svm_features` in `pipelines.cpp`) sees the same entries with and without splits. The two places where the
+    pinned kernel must not count a primitive twice were already mirrored: a transparent shadow hit already recorded
+    (`intersection_skip_shadow_already_recoded`, `kernel/bvh/intersect_filter.h`; `wavefront_shadow_traversal.wgsl` compares
+    object and primitive with the recorded hits) and a local hit at an equal distance (`local_intersect_get_record_index`;
+    `raytrace_traverse` in `wavefront_ao.wgsl`, which the ambient occlusion, bevel and subsurface traversals share). A closest
+    hit found twice is the same hit. Covered by the managed test `bvh_spatial_splits_render_on_the_gpu_backend`
+    (`GpuRenderTests`: instanced half-transparent slivers under a point light, a displaced mesh, curves and points; the
+    WebGPU film is judged against the CPU film, against the WebGPU film without splits and after switching splits on).
+220. **Progressive results are delivered on the WebGPU backend: RESOLVED (item 172).** FACT: a display update reads the
+    device's render buffers through `PathTrace::copy_render_tile_from_device` (`PathTraceTile::get_pass_pixels`), the call
+    the final read makes, between batches of samples; the session of a progressive host stays a background session (no resolution divider, no display
+    driver), and only `RenderScheduler`'s batch sizes change, which the device takes per work tile as in any render. Covered
+    by the managed test `progressive_results_render_on_the_gpu_backend` (`GpuRenderTests`: the final film against the CPU
+    film and against a plain WebGPU render, the intermediate films in ascending sample order, the last one equal to the
+    returned film).
+222. **A degenerate area light with the light tree at a transmissive point: RESOLVED (item 148).** FACT (pinned source,
+    `kernel/light/area.h` `area_light_tree_parameters`, `kernel/light/tree.h`): the corners of a light whose axis holds a NaN are
+    NaN, so `cos_theta_u = fminf(cos_theta_u, dot(point_to_centroid, point_to_corner))` keeps `FLT_MAX` and
+    `distance.x = fmaxf(distance.x, distance_point_to_corner)` keeps the centre's distance (the libm functions return the
+    other operand for a NaN; the pinned `_WIN32` definitions `(a < b) ? a : b` would not), and `shape_above_surface` is
+    false; `is_visible |= has_transmission` then takes a transmissive point (and every volume segment) into
+    `light_tree_importance` with `cos_theta_u = FLT_MAX`. There `sin_from_cos(FLT_MAX)` is `safe_sqrtf(1 - inf) = 0`, the
+    incidence cosines are `cos_theta_i * FLT_MAX` (infinite only for a cosine above 1), `cos_theta_minus_theta_u =
+    cos_theta * FLT_MAX` passes `>= cos_theta_o` for every point in front of the light and fails both tests behind it (zero
+    importance), the maximum importance is a huge finite number or an infinity and the minimum, the product of two such
+    cosines, is an infinity (or a NaN when a zero meets an infinity). In `sample_reservoir` an infinite weight over an infinite
+    total is a NaN threshold: `rand <= thresh` is false, `rand` becomes NaN and `saturatef` (`min(max(a, 0), 1)` with
+    `(a > b) ? a : b`) makes it 0; `get_left_probability` and the leaf's `0.5f * (selected / total + ...)` then give 0 or NaN,
+    so the selection pdf of the degenerate light, and of a light chosen beside it, is a NaN or 0. `light_sample` ends with
+    `ls->pdf *= ls->pdf_selection; return in_volume_segment || (ls->pdf > 0.0f)`: no sample at such a surface point. A NaN
+    `light_tree_pdf` makes the forward MIS weight of a lamp hit NaN, and `film_clamp_light`'s `ensure_finite` drops that
+    contribution. On a volume segment the incidence term is omitted, so the importance is finite. The device follows this
+    inside `LIGHT_AREA_DEGENERATE` (`wavefront_light_tree.wgsl`): WGSL defines neither arithmetic nor comparisons on
+    infinities and NaNs, so every operation of `lt_importance`, `lt_reservoir` and the walk that can see one is decided on the
+    bits (`ltx_*`: sums, products and quotients with the IEEE result, comparisons false for a NaN, `fmaxf`, `saturatef`), and
+    a NaN is a runtime bit pattern, never a constant expression; `light_selection_compute` (`wavefront_surface.wgsl`) makes a
+    selection with a NaN pdf an invalid one for the samplers and keeps the emitter and the NaN in the record. The refusal
+    (error bit 131072) is gone. The module text of every scene with a degenerate area light changes (the tree source is
+    part of the lighting modules); other scenes keep theirs. Covered by `light_tree` case 8 (case 7's glass receiver with a
+    rectangle of u size 1e-23 and a point lamp at its centre, which shares its leaf; two of three probe states
+    transmissive; a pdf that is not finite is compared by class, there only) and `lamps/area-degenerate-tree-transmissive`.
+223. **A degenerate area light with a spread below 1e-5 in a volume: RESOLVED for the NaN axis (item 148).** FACT (pinned
+    source, `kernel/light/area.h` `area_light_valid_ray_segment`, `util/math_intersect.h`, `util/math_float4.h`): with
+    `tan_half_spread < 1e-5f` the ray is mapped by `make_transform(light->axis_u, light->axis_v, axis)`, so P and D hold a NaN
+    in the lane of a NaN axis (x for u, y for v). An ellipse: `ray_infinite_cylinder_intersect` has `a`, `b` and `c` NaN and
+    `solve_quadratic` returns false (`valid_linear = (a == 0.0f) && (b != 0.0f)` and `valid_quadratic = (a != 0.0f) &&
+    (discriminant > -1e-5f)` are both false): no segment. A rectangle: `ray_aabb_intersect` takes `tmin =
+    reduce_max(make_float4(min(t_lower, t_upper), t_range->min))` and `tmax = reduce_min(...)` with a NaN in that lane. The
+    SSE oracle computes `h = max(shuffle<1, 0, 3, 2>(a), a)`, then `max(shuffle<2, 3, 0, 1>(h), h)`, and `_mm_max_ps` and
+    `_mm_min_ps` return their second operand when either is a NaN: a NaN in lane x is the result, so `t_range->is_empty()`
+    (`!(min < max)`) holds and there is no segment; a NaN in lane y is dropped and the slabs of x and z remain. The scalar
+    oracle computes `max(max(a.x, a.y), max(a.z, a.w))` with `(a > b) ? a : b`: a NaN in lane x alone is dropped (the slabs
+    of y and z), a NaN in lane y drops x and y (the z slab). `ray_plane_intersect` then has `DN = dot(ray_D, N)` NaN, takes
+    the `else` branch and `fminf(t_range->max, t)` keeps the maximum, so it changes nothing. No segment means
+    `VOLUME_SAMPLE_NONE` for that path (`volume_direct_sample_method`); for this light only the existence of a segment
+    reaches the path state (its sample point is NaN, so the direct light at the scatter point gives nothing: the segment
+    decides the sample method). `vl_area_segment` (`wavefront_volume_light.wgsl`,
+    inside `LIGHT_AREA_DEGENERATE`) returns exactly those segments from the device's zero axis, by the oracle's ISA
+    (`TRIANGLE_LIGHT_NATIVE_SSE`); the scalar rules are read from the source and have had no ARM64 run. The refusal is
+    narrowed to an axis whose length OVERFLOWS (item 148; `light_axis_overflow`, `device.cpp`, `lighting.cpp`). Covered by
+    `emitter_sample` (validation cases 8 and 9: accepted for the NaN axis, refused by name for the overflowed one),
+    `volume` cases 96 and 97 (case 44's rectangle with a spread of 1e-6 and a u, then a v size of 1e-23, placed so that
+    the other oracle's rule gives another answer: both fail with `CODEBRIX_CYCLES_WGSL_ARITHMETIC=arm64-scalar` against the
+    x64 CPU, as a negative control must) and `lamps/area-degenerate-spread-tiny-volume`.
+232. **A thin film on a Glass BSDF node: no handler and no named refusal; OPEN.** FACT: the Glass BSDF node has thin
+    film sockets at Cycles v5.3.0; the device has no handler for them and such a shader stops with error 16 instead of
+    a refusal by name (item 207). No committed scene has it. A parity gap of the kind item 188 (c) was: in the target.
+233. **A degenerate area light whose axis length OVERFLOWS, with a spread below 1e-5, in a scene with volume direct
+    light: refused by name; OPEN, a gap.** FACT (item 223): the pinned slab test for such an axis is finite arithmetic
+    over the whole line, but the device's copy of the light record holds an overflowed axis as a zero axis and cannot
+    tell it from an axis that is NaN, so `validate_lighting` refuses the case (`light_axis_overflow`). None of the
+    three grounds for a permanent refusal is shown. INFERENCE, not probed: on the volume cone branch the pinned
+    `area_light_max_extent` is infinite for such an axis where the device uses 0, so the device's zero-length stand-in
+    should be probed against the CPU on every path (surface, volume cone, light tree) before the refusal is lifted. No
+    scene has an overflowed axis.
+234. **`surface_object_normal` divides by the length where the pinned inverse normal transform multiplies by its
+    reciprocal; OPEN.** FACT (by reading): `object_inverse_normal_transform` (`kernel/geom/object.h`) ends in
+    `safe_normalize`, a product with `1.0f / t` (`util/math_float3.h`), in the static and in the motion branch, and only
+    the object-to-world direction uses `normalize`; the device's shared function (`wavefront_shader_data.wgsl`,
+    `surface_native_normalize`) divides in both directions. FACT (by film): the one caller replaced so far, the
+    smooth normal of a Texture Coordinate derivative (item 212, `svmd_inverse_normal`), needed the pinned form to be
+    perfect. Other callers of the inverse direction still divide (Set Bump in object space, the Displacement nodes,
+    the plain Texture Coordinate Normal, Normal Map and others); no film is known to fail for them (not tried). The
+    function is compiled into every scene's shader data, so correcting it changes every module of the corpus and needs
+    a full run.
+235. **The homogeneous volume segment's optical depth is a plain sum of a product; OPEN.** FACT (by reading):
+    `wavefront_volume.wgsl` adds `max(sigma) * distance` to the path's optical depth in one plain WGSL expression, which
+    a driver may contract; the pinned kernel rounds the product before the sum (`kernel/integrator/shade_volume.h`). The
+    heterogeneous counterpart is fenced (item 212). No film is known to show it.
+236. **The curve-mixed raytrace nodes fixture builds an entry over the compile envelope; OPEN.** FACT: the raytrace
+    nodes state gate with curves added to its fixture (`curve_mixed_gate.py`) builds `prepare_surface_raytrace` in two
+    modules; staged (item 202) they measure 1,047,752 B and 41,901 Intel instructions, and 1,275,302 B and 64,836
+    instructions, the second over the 60,000 envelope (as one entry they measured 60,910 and 83,190). The gate passes.
+    By the maintainer's ruling the envelope binds a gate fixture as it binds a scene. The entry is one handler (the
+    Raycast and Bevel traversal over every curve shape of the fixture), so no stage boundary divides it: the traversal
+    needs its own split, as item 126 made for the MNEE walk. No committed scene builds it.
+237. **A NaN Rotation of an anisotropic Glossy BSDF: one pixel past the practical criterion; OPEN.** FACT (item 210):
+    with the Tangent node's NaN as the Rotation of an anisotropic Glossy BSDF the device had 96 practical values past
+    the criterion, and 3 (one pixel, the device darker: 0.1140 against 0.1171 in red) with the bit tests of item 210;
+    the cause of the last pixel is not established and the scene is not committed.
 
 Resolved, or closed under the device reference policy:
 - [34 and 18 of this list] **AO, Bevel and Raycast `only_local` from a transform-applied object beside instances: RESOLVED.**
@@ -8533,9 +8965,10 @@ every Intel instruction count given is under the 60,000 envelope.
 - `prepare_surface` of the BSDF gate fixture (`bsdf_bounce`): 1,006,459 bytes (instruction count not measured);
   1,019,198 bytes in its glossy-filter case.
 
-**New in the release and not rendered by the device.** Items 185 to 187: the Boolean Math, Integer Math and Get Vector
-Component nodes, Gaussian splats with the quaternion and spherical-harmonics attribute types, dispersion and the dlss
-denoiser. Each is refused by name; none is approximated.
+**New in the release and not rendered by the device.** Items 186 and 187: Gaussian splats with the quaternion and
+spherical-harmonics attribute types, dispersion and the dlss denoiser. Each is refused by name; none is approximated.
+The Boolean Math, Integer Math and Get Vector Component nodes, refused by name when this was written, are ported
+(item 185).
 
 **The other platforms.** The recipes for Linux ARM64, Android, Windows and both macOS profiles read the same pinned
 source and the same overlay and have not been built or run on it. Cycles' Metal device (osx-arm64) comes with the release
@@ -8646,6 +9079,14 @@ device compiled for the 726 scenes: 1,661 distinct modules, 10,126 entry points,
 | `shade_surface` | `subsurface/burley-sobol` | 942,076 | 52,062 |
 | `prepare_light_nee` | `light-motion/moving-lamps-object-shader` | 940,603 | 54,520 |
 
+- Since this pass (the maintainer's ruling: the rows above are accepted as they stand, and the three largest are
+  restructured): the first three rows of the table are no longer built. `prepare_surface` of
+  `displacement/stateful-nodes` and of `subsurface/aov-principled-bump` and `prepare_surface_raytrace` of
+  `curves-b/raycast-beside` are built in three entries each (item 202 of "Open device items" has the method and
+  every entry's bytes and instructions): the largest entries that replace them are 768,568 bytes and 24,342
+  instructions, 846,313 and 42,619, and 890,137 and 33,179. The other rows of those scenes stand
+  (`shade_background` and `shader_eval_displace` of `displacement/stateful-nodes`); the largest built row of
+  `subsurface/aov-principled-bump` is now `shade_surface`, 935,860 bytes.
 - Unspecialized compile smoke (every feature in one module, which the device never builds; it warns and never fails a
   gate): `prepare_surface` is 8,392,517 inlined bytes and its compile did not complete in 900 s; `shade_surface_light`
   is 1,695,359 bytes and compiled in 36.8 s. The module text for this step is taken from the device's module dump

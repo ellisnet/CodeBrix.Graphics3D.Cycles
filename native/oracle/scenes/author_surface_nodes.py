@@ -7,7 +7,7 @@ The Bevel node (rounded box edges and a smooth sphere), the Raycast node (hit
 distance and hit normal along the shading normal, and an only_local ray into a
 box), the Radial Tiling node (regular and irregular, rounded polygons), plain
 attributes named like standard attributes and a Bump node with a strong noise
-height (of the position and of an attribute), through the public C API, lit by a sphere lamp with MIS and a constant world.
+height (of the position, of an attribute and of the smooth normal), through the public C API, lit by a sphere lamp with MIS and a constant world.
 The Integer Math, Boolean Math and Get Vector Component nodes with linked inputs, as tables of one cell per case under an
 orthographic camera (integer results as exact base-256 digits in AOVs; only cases whose pinned evaluation is defined), the
 Get Vector Component node as a Bump height, and the Missing and Missing Alpha inputs of Image Texture, Attribute and
@@ -123,6 +123,17 @@ def strong_bump_attribute_material(handle, color):
                            {'handle': 'bump', 'type': 'bump', 'set': {'strength': 1.0, 'distance': 0.6}},
                            {'handle': 'd', 'type': 'diffuse_bsdf', 'set': {'color': color, 'roughness': 0.0}}],
                   [['a', 'Vector', 'n', 'Vector'], ['n', 'Fac', 'bump', 'Height'], ['bump', 'Normal', 'd', 'Normal'], ['d', 'BSDF', 'output', 'Surface']])
+
+
+def strong_bump_normal_material(handle, color):
+    """The strong noise Bump with the noise coordinates from the Texture Coordinate node's Normal output: inside a Bump
+    the node gives the smooth normal with its derivatives (the normals interpolated a differential apart, then the
+    dual-number normalization), so the offset coordinates follow the last bits of that arithmetic."""
+    return shader(handle, [{'handle': 'tc', 'type': 'texture_coordinate', 'set': {}},
+                           {'handle': 'n', 'type': 'noise_texture', 'set': {'dimensions': '3D', 'scale': 40.0, 'detail': 2.0}},
+                           {'handle': 'bump', 'type': 'bump', 'set': {'strength': 1.0, 'distance': 0.6}},
+                           {'handle': 'd', 'type': 'diffuse_bsdf', 'set': {'color': color, 'roughness': 0.0}}],
+                  [['tc', 'Normal', 'n', 'Vector'], ['n', 'Fac', 'bump', 'Height'], ['bump', 'Normal', 'd', 'Normal'], ['d', 'BSDF', 'output', 'Surface']])
 
 
 def coords_attribute(positions):
@@ -515,6 +526,101 @@ def image_missing():
     return document
 
 
+# A Bump node in an evaluation the kernel makes without the BUMP node feature (kernel/features.h): the emission of a
+# lamp, of the world and of an emissive triangle sampled as a light (next-event estimation) is evaluated with the light
+# or background node mask, where the Bump, Displacement and Vector Displacement nodes store zero and Set Normal and the
+# bump state nodes are skipped (svm/displace.h, svm/svm.h); the same triangle hit by a path is a surface evaluation,
+# with the bumped normal.
+BUMP_HEIGHT = [{'handle': 'n', 'type': 'noise_texture', 'set': {'scale': 4.0, 'detail': 2.0}},
+               {'handle': 'bump', 'type': 'bump', 'set': {'strength': 0.8, 'distance': 0.3}}]
+CEILING_PANEL = [(-1.2, 2.4, -0.6), (1.2, 2.4, -0.6), (1.2, 2.4, 1.0), (-1.2, 2.4, 1.0)]
+BUMP_EMISSION_FIXTURE = 'native/oracle/scenes/author_surface_nodes.py (the Bump node in an emission evaluation)'
+
+
+def bump_emission_material(handle, sampling):
+    """An Emission whose colour is a Bump node's Normal output over a noise height."""
+    document = shader(handle, BUMP_HEIGHT+[{'handle': 'e', 'type': 'emission', 'set': {'strength': 6.0}}],
+                      [['n', 'Fac', 'bump', 'Height'], ['bump', 'Normal', 'e', 'Color'], ['e', 'Emission', 'output', 'Surface']])
+    document['set']['emission_sampling_method'] = sampling
+    return document
+
+
+def bump_offset_graph(closure, output, strength):
+    """closure (an emission or a background node) whose colour is a Bump node's Normal output plus a constant colour."""
+    return {'nodes': BUMP_HEIGHT+[{'handle': 'sum', 'type': 'vector_math', 'set': {'math_type': 'add', 'vector2': [0.6, 0.5, 0.4]}},
+                                  {'handle': 'e', 'type': closure, 'set': {'strength': strength}}],
+            'connect': [['n', 'Fac', 'bump', 'Height'], ['bump', 'Normal', 'sum', 'Vector1'], ['sum', 'Vector', 'e', 'Color'],
+                        ['e', output, 'output', 'Surface']]}
+
+
+def displacement_emission_material(handle):
+    """An Emission whose colour is the absolute shading normal, in a shader with the bump from displacement (displacement
+    method Bump): the bump program's Displacement, Bump and Set Normal nodes run before the Geometry node."""
+    document = shader(handle, [{'handle': 'noise', 'type': 'noise_texture', 'set': {'scale': 4.0, 'detail': 2.0}},
+                               {'handle': 'disp', 'type': 'displacement', 'set': {'space': 'object', 'scale': 0.5, 'midlevel': 0.5}},
+                               {'handle': 'geo', 'type': 'geometry', 'set': {}},
+                               {'handle': 'abs', 'type': 'vector_math', 'set': {'math_type': 'absolute'}},
+                               {'handle': 'e', 'type': 'emission', 'set': {'strength': 6.0}}],
+                      [['noise', 'Fac', 'disp', 'Height'], ['disp', 'Displacement', 'output', 'Displacement'],
+                       ['geo', 'Normal', 'abs', 'Vector1'], ['abs', 'Vector', 'e', 'Color'], ['e', 'Emission', 'output', 'Surface']])
+    document['set'].update(emission_sampling_method='front_back', displacement_method='bump')
+    return document
+
+
+def bump_volume_material(handle):
+    """A volume whose absorption colour is a Bump node's Normal output plus a constant colour: the volume node mask has
+    no Bump either."""
+    graph = bump_offset_graph('absorption_volume', 'Volume', 1.0)
+    graph['nodes'][-1]['set'] = {'density': 0.6}
+    graph['connect'][-1] = ['e', 'Volume', 'output', 'Volume']
+    return shader(handle, graph['nodes'], graph['connect'])
+
+
+def bump_emission_scene(name, description, materials, shapes, replaced=None):
+    document = scene('surface-nodes/'+name, description, materials, shapes+sphere('ball', 'wall', (0.0, -0.9, 0.4), 1.0))
+    document['sourceFixture'] = BUMP_EMISSION_FIXTURE
+    document['render'].update(samples=16)
+    for node in document['nodes']:
+        if replaced and node.get('create') == 'shader' and node['handle'] == replaced[0]:
+            node['graph'] = replaced[1]
+    return document
+
+
+def bump_emission_scenes():
+    out = {}
+    out['bump-emission.json'] = bump_emission_scene(
+        'bump-emission', "A ceiling panel whose Emission colour is a Bump node's Normal output over a noise height, sampled as a light: "
+        'zero in the next-event evaluation (the light node mask has no Bump), the bumped normal where a path hits the panel',
+        [bump_emission_material('panel-emission', 'front_back')], quad('panel', 'panel-emission', CEILING_PANEL))
+    out['bump-emission-unsampled.json'] = bump_emission_scene(
+        'bump-emission-unsampled', 'The same panel with emission sampling off: every evaluation of its shader is a surface evaluation, '
+        'so the emission is the bumped normal throughout',
+        [bump_emission_material('panel-emission', 'none')], quad('panel', 'panel-emission', CEILING_PANEL))
+    out['bump-emission-displacement.json'] = bump_emission_scene(
+        'bump-emission-displacement', 'A ceiling panel with the bump from displacement (displacement method Bump) whose Emission colour is '
+        'the absolute shading normal, sampled as a light: the geometric normal in the next-event evaluation (no bump program there), '
+        'the bumped normal where a path hits the panel',
+        [displacement_emission_material('panel-emission')], quad('panel', 'panel-emission', CEILING_PANEL))
+    out['bump-emission-lamp.json'] = bump_emission_scene(
+        'bump-emission-lamp', "A sphere lamp whose shader's Emission colour is a Bump node's Normal output plus a constant colour: every "
+        'evaluation of a lamp shader has the light node mask, so the colour is the constant',
+        [], [], replaced=('emitter', bump_offset_graph('emission', 'Emission', 1.0)))
+    document = bump_emission_scene(
+        'bump-emission-world', "A world whose Background colour is a Bump node's Normal output plus a constant colour, with a background "
+        'light (importance map): the background and light node masks have no Bump, so the colour is the constant where a path leaves '
+        'the scene, in the next-event evaluation and in the importance map',
+        [], [], replaced=('world', bump_offset_graph('background_shader', 'Background', 1.0)))
+    document['nodes'] += [{'handle': 'world-light', 'create': 'backgroundlight',
+                           'set': {'use_mis': True, 'map_resolution': 256, 'strength': [1.0, 1.0, 1.0], 'used_shaders': ['world']}},
+                          {'handle': 'world-light-object', 'create': 'object', 'set': {'geometry': 'world-light'}}]
+    out['bump-emission-world.json'] = document
+    out['bump-volume.json'] = bump_emission_scene(
+        'bump-volume', "A box of absorbing medium whose colour is a Bump node's Normal output plus a constant colour: a volume "
+        'evaluation has no Bump node feature, so the colour is the constant',
+        [bump_volume_material('medium')], box('medium-box', 'medium', (-2.2, -0.9, 0.2), (1.6, 2.0, 1.6)))
+    return out
+
+
 def node_scenes():
     out = {}
     out['integer-math.json'] = integer_table(
@@ -529,6 +635,7 @@ def node_scenes():
         'attribute per strip) times 8 as the height of a Bump node on a tilted panel (the derivative form of the node)',
         [component_bump_material('component-bump')], strips('panel', 'component-bump', [0, 1, 2, -1, 3]))
     out['image-missing.json'] = image_missing()
+    out.update(bump_emission_scenes())
     return out
 
 
@@ -583,6 +690,19 @@ def scenes():
             node['mesh']['attributes'] = coords_attribute(node['mesh']['positions'])
     document['render'].update(width=48, height=36, samples=16)
     out['bump-strong-noise-attribute.json'] = document
+    # The same height with its coordinates from the Texture Coordinate node's Normal output, on a smooth sphere (the
+    # interpolated normal and its derivatives), a tilted panel, the wall and the floor (flat: no derivative).
+    document = scene('surface-nodes/bump-strong-noise-normal', 'Bump node with a strong high-frequency noise height of the Texture Coordinate '
+                     "node's Normal output (scale 40, detail 2, distance 0.6) on a smooth sphere, a tilted panel, the back wall and the floor, "
+                     'seen directly and after diffuse bounces with Filter Glossy 0',
+                     [strong_bump_normal_material('bumped-a', [0.6, 0.6, 0.6])],
+                     quad('panel-a', 'bumped-a', [(-3.6, -2, 1), (-0.2, -2, 0.2), (-0.2, 1.5, 0.2), (-3.6, 1.5, 1)]) +
+                     sphere('ball', 'bumped-a', (1.7, -0.6, 0.3), 1.3))
+    replaced = {'wall': strong_bump_normal_material('wall', [0.6, 0.62, 0.65]),
+                'floor-material': strong_bump_normal_material('floor-material', [0.5, 0.45, 0.35])}
+    document['nodes'] = [replaced.get(node['handle'], node) for node in document['nodes']]
+    document['render'].update(width=48, height=36, samples=16)
+    out['bump-strong-noise-normal.json'] = document
     out.update(node_scenes())
     return out
 

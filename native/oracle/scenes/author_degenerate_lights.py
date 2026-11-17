@@ -7,9 +7,9 @@ An area light whose axis length underflows to zero (a size or an object scale of
 kernels see a zero length and an axis of infinities and NaNs. Its next-event samples are rejected; a camera ray sees a
 rectangle or an ellipse with one such axis as a strip without emission (the spread clamp rejects it), and an ellipse with
 both axes zero as an emitting plane. Next to the sampling family room's sphere lamp, with distribution sampling and with
-the light tree, through the public C API. Also the cases the WebGPU device refuses by name (native/DEVICE.md item 148): a
-spread of zero (with the Glossy Direct pass) and of 1e-6 (in a volume too), and the light tree at a transmissive point (the
-glass sphere kept). Axes of infinities without a NaN (the squared lengths of normal 1e-23-scale axes underflow) are refused
+the light tree, through the public C API. Also a spread of 1e-6 (the pinned kernel's 1e-5 threshold is its volume light
+sampling's only), that spread in a volume, the light tree at a transmissive point (the glass sphere kept), and the case the
+WebGPU device refuses by name (native/DEVICE.md item 148): a spread of zero (with the Glossy Direct pass). Axes of infinities without a NaN (the squared lengths of normal 1e-23-scale axes underflow) are refused
 by the host on every backend, so that document is not a committed scene: --scratch DIR writes it, as DIR/lamps/<name>, for
 a survey build that lifts the refusal.
 Usage: python3 native/oracle/scenes/author_degenerate_lights.py [--check] [--scratch DIR]."""
@@ -44,7 +44,7 @@ def degenerate(scene_id, description, tfm, sizeu, sizev, ellipse=False, spread=N
         values['spread'] = spread
     if tree and not keep_glass:
         # No transmissive closure: at a transmissive point the CPU's light tree weighs the light with infinite importance
-        # (refused on the device by name, native/DEVICE.md item 148); the glass sphere becomes a second glossy one.
+        # (native/DEVICE.md item 148; keep_glass covers that); the glass sphere becomes a second glossy one.
         for n in document['nodes']:
             if n['handle'] == 'sphere-1':
                 n['set']['used_shaders'] = ['glossy']

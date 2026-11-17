@@ -390,8 +390,8 @@ int cbc_host_render_time_limit(CBCHost host, double seconds);
  * settings). A UV outside every bound tile reads the node's Missing inputs. Replaces any earlier binding of the node;
  * cbc_host_image_bind(node, 0) removes it, and cbc_host_image_update of a member image applies at the next render (an
  * update that would leave the tiles of a binding with different formats is CBC_INVALID).
- * Image Texture nodes only: an Environment Texture node is CBC_UNSUPPORTED. On the WebGPU backend a render or bake of a
- * scene with a tiles binding is CBC_UNSUPPORTED ("WebGPU UDIM tiles not implemented"). Nothing changes on failure. */
+ * Image Texture nodes only: an Environment Texture node is CBC_UNSUPPORTED. Rendered on every backend. Nothing changes on
+ * failure. */
 int cbc_host_image_bind_tiles(CBCHost host, CBCNode texture_node, const uint32_t *tiles, const CBCImage *images, uint64_t count);
 
 /* ---- Texture limit (addition to ABI 1, PROVISIONAL; ABI.md "Images"). ---- */
@@ -401,8 +401,7 @@ int cbc_host_image_bind_tiles(CBCHost host, CBCNode texture_node, const uint32_t
  * (each side times the power-of-two scale, rounded down, at least 1 pixel). It applies to caller images and to Cycles' own (the Sky Texture's), and
  * brings an image within Metal's 16384-pixel texture limit. 0, the default, keeps every image at its size; max_size is
  * 0 to INT_MAX, else CBC_INVALID. The same value is always accepted; a different one is CBC_NOT_READY once a render or
- * bake has loaded images (Cycles does not load an image again). On the WebGPU backend a render or bake with a limit
- * other than 0 is CBC_UNSUPPORTED ("WebGPU texture limit not implemented"). */
+ * bake has loaded images (Cycles does not load an image again). Rendered on every backend. */
 int cbc_host_texture_limit(CBCHost host, uint32_t max_size);
 
 /* ---- BVH spatial splits (addition to ABI 1, PROVISIONAL; ABI.md "Scene authoring"). ---- */
@@ -413,8 +412,8 @@ int cbc_host_texture_limit(CBCHost host, uint32_t max_size);
  * motion blur), and the
  * Embree CPU backend (CBC_HOST_CPU) builds at Embree's high quality; MetalRT ignores it, as in Cycles. A speed setting:
  * it changes how rays find the closest hit, not which one, so renders do not change by design. enabled is 0 (the
- * default) or 1, else CBC_INVALID. A change has every BVH built again at the next render or bake. On the WebGPU backend a
- * render or bake with it enabled is CBC_UNSUPPORTED ("WebGPU BVH spatial splits not implemented"). */
+ * default) or 1, else CBC_INVALID. A change has every BVH built again at the next render or bake. Rendered on every
+ * backend. */
 int cbc_host_bvh_spatial_split(CBCHost host, uint32_t enabled);
 
 /* ---- Tiled rendering (addition to ABI 1, PROVISIONAL; ABI.md "Tiled rendering"). ---- */
@@ -425,8 +424,7 @@ int cbc_host_bvh_spatial_split(CBCHost host, uint32_t enabled);
  * when the tile's area is at least the film's and no side exceeds 8192. The device holds one tile's buffers at a time;
  * the library keeps the finished tiles in system memory (no file is written) and, once the last tile is done, denoises
  * the whole film and returns it, every pass included, as for an untiled render. With tiles the time limit applies to
- * each tile, and adaptive sampling renders 4 pixels beyond each tile's edges (not for bakes). On the WebGPU backend a
- * render or bake with a tile size other than 0 is CBC_UNSUPPORTED ("WebGPU tiled rendering not implemented"). */
+ * each tile, and adaptive sampling renders 4 pixels beyond each tile's edges (not for bakes). Rendered on every backend. */
 int cbc_host_tile_size(CBCHost host, uint32_t tile_size);
 
 /* ---- Tiled images, Cycles' texture cache (addition to ABI 1, PROVISIONAL; ABI.md "Tiled images"). ---- */

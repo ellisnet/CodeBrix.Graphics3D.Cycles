@@ -380,7 +380,11 @@ validated there); the staging step measures and records it.
 same build to the container (build.sh cycles / build.sh dependencies), so every
 tool that builds (the gates without --skip-build, host_gate.py, the staging
 step) builds there. `--target all` builds every gate and test program. An
-up-to-date tree rebuilds nothing. The CMake build tree names /src, so
+up-to-date tree rebuilds nothing. A gate run with --skip-build builds nothing:
+the gates that run the replay tool stop at once when a program they need was
+never built in the checkout, naming each one and the command that builds it
+(require_built in native/tools/device_gate.py; mnee_gate.py has its own copy).
+The CMake build tree names /src, so
 `cmake --build native/work/cycles-build` works only in the container
 (`native/manylinux/build.sh run cmake --build native/work/cycles-build ...`);
 use build_cycles.py.
@@ -746,8 +750,9 @@ pipelines from byte-identical modules, CPU films stay bit-identical and every
 WebGPU film is within the practical criterion of its CPU film; the WebGPU films'
 bit identity is reported).
 The specialization feature mask (pipelines.h ShaderFeatures) is a fixed array of
-64-bit words (256 bits); bit numbers keep their meaning once assigned (0-61 and
-63 are in use, 62 and 64 onwards are free; a retired bit stays unused and is
+64-bit words (256 bits); bit numbers keep their meaning once assigned (the
+bits in use are the `ShaderFeatures::bit(` lines of pipelines.h: list them
+before taking one; a retired bit stays unused and is
 never reassigned: bit 6 was the Vertex Color handler, which Cycles v5.3.0
 removed); reports and logs carry feature
 names, never the numeric mask, so widening it changes no persisted format.

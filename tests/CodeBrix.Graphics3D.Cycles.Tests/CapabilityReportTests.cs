@@ -257,10 +257,10 @@ public class CapabilityReportTests
             report.BackendScopes[backend].RenderTimeRejections.Should().Contain(entry, backend);
     }
 
-    // UDIM tiles (provisional cbc_host_image_bind_tiles) render on the CPU and Metal backends; the host refuses a tiles
-    // binding on the WebGPU backend only, so the entry is in the WebGPU group and in no other backend's scope.
+    // UDIM tiles (provisional cbc_host_image_bind_tiles) render on every backend: no group and no backend's scope has the
+    // entry the WebGPU backend had.
     [Fact]
-    public void udim_tiles_are_a_rejection_of_the_webgpu_backend_only()
+    public void udim_tiles_are_a_rejection_of_no_backend()
     {
         //Arrange
         TestScenes.RequireNativeHost();
@@ -272,16 +272,16 @@ public class CapabilityReportTests
         Dictionary<string, List<string>> groups = ReadmeRejections();
 
         //Assert
-        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[1]].Should().NotContain(entry);
         groups[RejectionGroups[0]].Should().NotContain(entry);
         foreach (string backend in report.CompiledBackends)
-            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+            report.BackendScopes[backend].RenderTimeRejections.Should().NotContain(entry, backend);
     }
 
-    // Tiled rendering (provisional CyclesScene.TileSize) renders on the CPU and Metal backends; the host refuses a tile size
-    // other than 0 on the WebGPU backend only, so the entry is in the WebGPU group and in no other backend's scope.
+    // Tiled rendering (provisional CyclesScene.TileSize) renders on every backend: no group and no backend's scope has the
+    // entry the WebGPU backend had.
     [Fact]
-    public void tiled_rendering_is_a_rejection_of_the_webgpu_backend_only()
+    public void tiled_rendering_is_a_rejection_of_no_backend()
     {
         //Arrange
         TestScenes.RequireNativeHost();
@@ -293,16 +293,16 @@ public class CapabilityReportTests
         Dictionary<string, List<string>> groups = ReadmeRejections();
 
         //Assert
-        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[1]].Should().NotContain(entry);
         groups[RejectionGroups[0]].Should().NotContain(entry);
         foreach (string backend in report.CompiledBackends)
-            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+            report.BackendScopes[backend].RenderTimeRejections.Should().NotContain(entry, backend);
     }
 
-    // BVH spatial splits (provisional CyclesScene.UseBvhSpatialSplit) apply on the CPU and Metal backends; the host refuses
-    // them on the WebGPU backend only, so the entry is in the WebGPU group and in no other backend's scope.
+    // BVH spatial splits (provisional CyclesScene.UseBvhSpatialSplit) apply on every backend: no group and no backend's
+    // scope has the entry the WebGPU backend had.
     [Fact]
-    public void bvh_spatial_splits_are_a_rejection_of_the_webgpu_backend_only()
+    public void bvh_spatial_splits_are_a_rejection_of_no_backend()
     {
         //Arrange
         TestScenes.RequireNativeHost();
@@ -314,16 +314,16 @@ public class CapabilityReportTests
         Dictionary<string, List<string>> groups = ReadmeRejections();
 
         //Assert
-        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[1]].Should().NotContain(entry);
         groups[RejectionGroups[0]].Should().NotContain(entry);
         foreach (string backend in report.CompiledBackends)
-            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+            report.BackendScopes[backend].RenderTimeRejections.Should().NotContain(entry, backend);
     }
 
-    // The texture limit (provisional CyclesScene.TextureLimit) reduces images on the host for every device; the host refuses
-    // a limit on the WebGPU backend only, so the entry is in the WebGPU group and in no other backend's scope.
+    // The texture limit (provisional CyclesScene.TextureLimit) reduces images on the host for every device: no group and no
+    // backend's scope has the entry the WebGPU backend had.
     [Fact]
-    public void a_texture_limit_is_a_rejection_of_the_webgpu_backend_only()
+    public void a_texture_limit_is_a_rejection_of_no_backend()
     {
         //Arrange
         TestScenes.RequireNativeHost();
@@ -335,16 +335,16 @@ public class CapabilityReportTests
         Dictionary<string, List<string>> groups = ReadmeRejections();
 
         //Assert
-        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[1]].Should().NotContain(entry);
         groups[RejectionGroups[0]].Should().NotContain(entry);
         foreach (string backend in report.CompiledBackends)
-            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+            report.BackendScopes[backend].RenderTimeRejections.Should().NotContain(entry, backend);
     }
 
-    // Progressive results (provisional HostFlags.ProgressiveResults) are delivered on the CPU and Metal backends; the host
-    // refuses a progressive host on the WebGPU backend only, so the entry is in the WebGPU group and in no other scope.
+    // Progressive results (provisional HostFlags.ProgressiveResults) are delivered on every backend: no group and no
+    // backend's scope has the entry the WebGPU backend had.
     [Fact]
-    public void progressive_results_are_a_rejection_of_the_webgpu_backend_only()
+    public void progressive_results_are_a_rejection_of_no_backend()
     {
         //Arrange
         TestScenes.RequireNativeHost();
@@ -356,10 +356,10 @@ public class CapabilityReportTests
         Dictionary<string, List<string>> groups = ReadmeRejections();
 
         //Assert
-        groups[RejectionGroups[1]].Should().Contain(entry);
+        groups[RejectionGroups[1]].Should().NotContain(entry);
         groups[RejectionGroups[0]].Should().NotContain(entry);
         foreach (string backend in report.CompiledBackends)
-            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
+            report.BackendScopes[backend].RenderTimeRejections.Should().NotContain(entry, backend);
         report.Events.Should().Contain("film");
     }
 

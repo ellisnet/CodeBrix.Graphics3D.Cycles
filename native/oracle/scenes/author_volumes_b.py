@@ -110,6 +110,24 @@ def light_path(name, description, method='multiple_importance', overlap=False):
     return document
 
 
+def light_path_emission():
+    """The Light Path heterogeneous box with an Emission closure that follows the noise and is stronger than the extinction
+    (strength 8 times the noise): the octree is deep (the baked extrema hold the emission), so a shadow ray crosses several
+    leaves. Its extrema estimates read the emission until its first transmittance evaluation and none after it
+    (svm/closure.h svm_node_closure_emission tests SR_IS_VOLUME_SHADER_EVAL, which volume_shader_eval sets and the shader
+    data keeps), and the extrema set the segments and the number of density evaluations of the shadow's transmittance."""
+    nodes, connect = volumes.noise_medium()
+    camera_ray_scale(nodes, connect, ('s', 'Density'), 0.4, 1.3, '')
+    connect.remove(['add', 'Closure', 'output', 'Volume'])
+    nodes += [{'handle': 'es', 'type': 'math', 'set': {'math_type': 'multiply', 'value2': 8.0}},
+              {'handle': 'e', 'type': 'emission', 'set': {'color': [1.0, 0.6, 0.3]}}, {'handle': 'add2', 'type': 'add_closure'}]
+    connect += [['n', 'Fac', 'es', 'Value1'], ['es', 'Value', 'e', 'Strength'], ['add', 'Closure', 'add2', 'Closure1'], ['e', 'Emission', 'add2', 'Closure2'],
+                ['add2', 'Closure', 'output', 'Volume']]
+    return volumes.scene('volumes/light-path-heterogeneous-emission', 'The Light Path heterogeneous box with an Emission closure that follows the noise (8 times it, above '
+                         'the extinction), point light with MIS: a shadow ray\'s extrema estimates read the emission before its first transmittance evaluation and '
+                         'none after it', graph=(nodes, connect))
+
+
 def bsdf_in_volume():
     """A Mix Shader of a Principled BSDF and the medium's scatter in the box's Volume socket: the volume shader steps
     over the BSDF node (no closure), so only the scatter half, at the mix weight, makes the medium."""
@@ -159,6 +177,7 @@ def scenes():
     documents['light-path-heterogeneous-point.json'] = light_path('light-path-heterogeneous-point', 'The heterogeneous box whose density is 0.4 + 0.9 * Is Camera Ray times the noise density (a Light Path node), point light with MIS: camera rays read the baked octree extrema, scattered and shadow rays estimate them')
     documents['light-path-heterogeneous-equiangular.json'] = light_path('light-path-heterogeneous-equiangular', 'The Light Path heterogeneous box with equiangular sampling only', method='equiangular')
     documents['light-path-overlap.json'] = light_path('light-path-overlap', 'The Light Path heterogeneous box overlapped by a homogeneous medium box whose density also follows Is Camera Ray: the octree set-up estimates both stack entries', overlap=True)
+    documents['light-path-heterogeneous-emission.json'] = light_path_emission()
     return documents
 
 

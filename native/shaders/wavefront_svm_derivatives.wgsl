@@ -9,6 +9,17 @@
 // NormalDual for dual3 and vec3<f32>(value, dx, dy) for dual1. Derivative
 // variants keep derivatives in the adjacent stack slots, as the CPU kernel does.
 // Each handler has its own feature region and a single call site.
+//#if SVM_NODE_MASK_BUMP
+// IF_KERNEL_NODES_FEATURE (BUMP) and (BUMP_STATE) of the evaluation in progress, negated: true in the evaluations the
+// pinned kernel makes without those node features (kernel/features.h): the light and background evaluations
+// (KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT and _SURFACE_BACKGROUND, the ones with PATH_RAY_EMISSION: shade_light.h
+// integrate_light_nee, light/sample.h light_sample_shader_eval_forward, shade_background.h, bake/bake.h) and the volume
+// evaluations (KERNEL_FEATURE_NODE_MASK_VOLUME). There svm_node_set_bump, svm_node_displacement and
+// svm_node_vector_displacement store zero (svm/displace.h), and svm_node_set_displacement, svm_node_set_normal,
+// svm_node_enter_bump_eval and svm_node_leave_bump_eval are not called (svm/displace.h, svm/svm.h). Set by
+// svm_evaluate_context_seeded for every evaluation.
+var<private> svm_node_mask_bump:bool;
+//#endif
 //#if SVM_NODE_BUMP
 //#if !CURVES
 // Ordering barriers for svm_node_set_bump outside curve modules (the curve modules use wavefront_curve_math.wgsl's):
@@ -23,6 +34,9 @@ fn bump_dot(a:vec3<f32>,b:vec3<f32>,o:u32)->f32{return bump_fence(bump_fence(bum
 // on the host (KERNEL_FEATURE_NODE_MASK_SURFACE_BACKGROUND): it stores zero.
 fn svm_set_bump(s:ptr<function,SvmState>,node:u32){
     let out=svm_byte(node+N_SetBump_out_offset);
+//#if SVM_NODE_MASK_BUMP
+    if(svm_node_mask_bump){svm_store3(s,out,vec3<f32>(0));return;}
+//#endif
     if(!SVM_SURFACE){svm_store3(s,out,vec3<f32>(0));return;}
     let invert=svm_byte(node+N_SetBump_invert);let object_space=svm_byte(node+N_SetBump_use_object_space);
     if(invert>1u||object_space>1u){svm_error(s,16u);return;}
@@ -82,12 +96,18 @@ fn svm_set_bump(s:ptr<function,SvmState>,node:u32){
 var<private> svm_displaced_P:vec3<f32>;
 fn svm_displacement(s:ptr<function,SvmState>,node:u32,opcode:u32){
     if(opcode==OP_SET_DISPLACEMENT){
+//#if SVM_NODE_MASK_BUMP
+        if(svm_node_mask_bump){return;}
+//#endif
         if(!SVM_SURFACE){return;}
         let dP=svm_load3(s,svm_byte(node+N_SetDisplacement_fac_offset));if((*s).error!=0u){return;}
         (*s).geometry.P=rounded_add3((*s).geometry.P,dP);svm_displaced_P=(*s).geometry.P;return;
     }
     let vector=opcode==OP_VECTOR_DISPLACEMENT;
     let out=svm_byte(node+select(N_Displacement_out_offset,N_VectorDisplacement_displacement_offset,vector));
+//#if SVM_NODE_MASK_BUMP
+    if(svm_node_mask_bump){svm_store3(s,out,vec3<f32>(0));return;}
+//#endif
     if(!SVM_SURFACE){svm_store3(s,out,vec3<f32>(0));return;}
     let sd=(*s).geometry;
     let space=load_word(node+select(N_Displacement_space,N_VectorDisplacement_space,vector));
@@ -125,6 +145,9 @@ fn svm_displacement(s:ptr<function,SvmState>,node:u32,opcode:u32){
 // undisplaced-position branch needs true displacement, which this device does
 // not implement: such a scene reports unsupported (16), never an approximation.
 fn svm_bump_state(s:ptr<function,SvmState>,node:u32,enter:bool){
+//#if SVM_NODE_MASK_BUMP
+    if(svm_node_mask_bump){return;}
+//#endif
     if(!SVM_SURFACE){return;}
     if(enter){
         let offset=svm_byte(node+N_EnterBumpEval_state_offset);
@@ -184,16 +207,22 @@ fn svmd_input1(s:ptr<function,SvmState>,address:u32)->vec3<f32>{
 // bump offset round every product before its sum, and a strong Bump amplifies a last-bit difference of the offset position.
 fn svmd_order()->u32{return load_word(p(17u)+12u);}
 fn svmd_fence3(x:vec3<f32>,o:u32)->vec3<f32>{return bitcast<vec3<f32>>(bitcast<vec3<u32>>(x)^vec3<u32>(o));}
+fn svmd_fence(x:f32,o:u32)->f32{return bitcast<f32>(bitcast<u32>(x)^o);}
 fn svmd_position(sd:SurfaceData)->NormalDual{let o=svmd_order();
     return NormalDual(sd.P,svmd_fence3(svmd_fence3(sd.dPdu*sd.du.x,o)+svmd_fence3(sd.dPdv*sd.dv.x,o),o),svmd_fence3(svmd_fence3(sd.dPdu*sd.du.y,o)+svmd_fence3(sd.dPdv*sd.dv.y,o),o));}
 //#endif
 //#if CURVES
 // With curves in the scene every product and sum through the order word: a bump height is a difference of noise values
 // a differential apart, which amplifies a last-bit difference of the offset position.
+fn svmd_order()->u32{return cv_order();}
+fn svmd_fence3(x:vec3<f32>,o:u32)->vec3<f32>{return cvb3(x,o);}
+fn svmd_fence(x:f32,o:u32)->f32{return cvb(x,o);}
 fn svmd_position(sd:SurfaceData)->NormalDual{let o=cv_order();
     return NormalDual(sd.P,cvb3(cvb3(sd.dPdu*sd.du.x,o)+cvb3(sd.dPdv*sd.dv.x,o),o),cvb3(cvb3(sd.dPdu*sd.du.y,o)+cvb3(sd.dPdv*sd.dv.y,o),o));}
 //#endif
-fn svmd_incoming(sd:SurfaceData)->NormalDual{let a=surface_orthogonal(sd.wi);return NormalDual(sd.wi,sd.dI*a,sd.dI*rounded_cross(sd.wi,a));}
+// shading_incoming<dual3>: `I.dx = sd->dI * dIdx` and `I.dy = sd->dI * dIdy` are rounded products; a later sum or
+// difference (the reflection coordinate, a dual dot product) must not take them unrounded.
+fn svmd_incoming(sd:SurfaceData)->NormalDual{let o=svmd_order();let a=surface_orthogonal(sd.wi);return NormalDual(sd.wi,svmd_fence3(sd.dI*a,o),svmd_fence3(sd.dI*rounded_cross(sd.wi,a),o));}
 fn svmd_const(v:vec3<f32>)->NormalDual{return NormalDual(v,vec3<f32>(0),vec3<f32>(0));}
 // First-order bump offset, then the full dual or only its value.
 fn svmd_output(s:ptr<function,SvmState>,data_in:NormalDual,bump:u32,width:f32,store:u32,out:u32,normalize:bool){
@@ -204,20 +233,33 @@ fn svmd_output(s:ptr<function,SvmState>,data_in:NormalDual,bump:u32,width:f32,st
     if(normalize){data=svmd_safe_normalize(data);}
     if(store!=0u){svmd_store3(s,out,data);}else{svm_store3(s,out,data.value);}
 }
-fn svmd_mul(a:NormalDual,b:NormalDual)->NormalDual{return NormalDual(a.value*b.value,a.value*b.dx+a.dx*b.value,a.value*b.dy+a.dy*b.value);}
+// util/math_dual.h operators, in the kernel's order with every product rounded before a sum or difference takes it
+// (the order word is 0 in every dispatch and the compiler cannot see it): `(uv)' = uv' + u'v`.
+fn svmd_mul(a:NormalDual,b:NormalDual)->NormalDual{let o=svmd_order();
+    return NormalDual(svmd_fence3(a.value*b.value,o),svmd_fence3(svmd_fence3(a.value*b.dx,o)+svmd_fence3(a.dx*b.value,o),o),svmd_fence3(svmd_fence3(a.value*b.dy,o)+svmd_fence3(a.dy*b.value,o),o));}
 // dual3 * dual1 (product rule).
-fn svmd_scale(a:NormalDual,f:vec3<f32>)->NormalDual{return NormalDual(a.value*f.x,a.value*f.y+a.dx*f.x,a.value*f.z+a.dy*f.x);}
+fn svmd_scale(a:NormalDual,f:vec3<f32>)->NormalDual{let o=svmd_order();
+    return NormalDual(svmd_fence3(a.value*f.x,o),svmd_fence3(svmd_fence3(a.value*f.y,o)+svmd_fence3(a.dx*f.x,o),o),svmd_fence3(svmd_fence3(a.value*f.z,o)+svmd_fence3(a.dy*f.x,o),o));}
+// The SSE cross of the kernel (a.yzx * b.zxy - a.zxy * b.yzx, each product rounded).
+fn svmd_cross(a:vec3<f32>,b:vec3<f32>,o:u32)->vec3<f32>{return svmd_fence3(svmd_fence3(a.yzx*b.zxy,o)-svmd_fence3(a.zxy*b.yzx,o),o);}
 fn svmd_add(a:NormalDual,b:NormalDual)->NormalDual{return NormalDual(a.value+b.value,a.dx+b.dx,a.dy+b.dy);}
 fn svmd_sub(a:NormalDual,b:NormalDual)->NormalDual{return NormalDual(a.value-b.value,a.dx-b.dx,a.dy-b.dy);}
 fn svmd_neg(a:NormalDual)->NormalDual{return NormalDual(-a.value,-a.dx,-a.dy);}
 fn svmd_reduce(a:vec3<f32>)->f32{return (a.x+a.y)+a.z;}
 fn svmd_dot(a:NormalDual,b:NormalDual)->vec3<f32>{let m=svmd_mul(a,b);return vec3<f32>(svmd_reduce(m.value),svmd_reduce(m.dx),svmd_reduce(m.dy));}
-fn svmd_mul1(u:vec3<f32>,v:vec3<f32>)->vec3<f32>{return vec3<f32>(u.x*v.x,u.x*v.y+u.y*v.x,u.x*v.z+u.z*v.x);}
-fn svmd_div1(u:vec3<f32>,v:vec3<f32>)->vec3<f32>{let inv=1.0/v.x;let q=u.x/v.x;return vec3<f32>(q,(u.y-q*v.y)*inv,(u.z-q*v.z)*inv);}
-fn svmd_sqrt1(u:vec3<f32>)->vec3<f32>{let f=sqrt(u.x);let k=0.5/f;return vec3<f32>(f,k*u.y,k*u.z);}
+fn svmd_mul1(u:vec3<f32>,v:vec3<f32>)->vec3<f32>{let o=svmd_order();
+    return vec3<f32>(svmd_fence(u.x*v.x,o),svmd_fence(svmd_fence(u.x*v.y,o)+svmd_fence(u.y*v.x,o),o),svmd_fence(svmd_fence(u.x*v.z,o)+svmd_fence(u.z*v.x,o),o));}
+// `(u/v)' = (u' - v' * u/v) / v`.
+fn svmd_div1(u:vec3<f32>,v:vec3<f32>)->vec3<f32>{let o=svmd_order();let inv=1.0/v.x;let q=u.x/v.x;
+    return vec3<f32>(q,svmd_fence(u.y-svmd_fence(q*v.y,o),o)*inv,svmd_fence(u.z-svmd_fence(q*v.z,o),o)*inv);}
+// chain_rule: the derivative products are rounded (the refraction adds them to another dual).
+fn svmd_sqrt1(u:vec3<f32>)->vec3<f32>{let o=svmd_order();let f=sqrt(u.x);let k=0.5/f;return vec3<f32>(f,svmd_fence(k*u.y,o),svmd_fence(k*u.z,o));}
+// inversesqrt(dual1): f = inversesqrtf(u) = 1.0f / sqrtf(u) (0 when u is not positive), df/du = -0.5f * safe_divide(f, u). The
+// square root and the two divisions are correctly rounded on the CPU; a driver may turn 1.0 / sqrt(x) into its reciprocal
+// square root, so they go through rounded_sqrt and rounded_divide (as tn_dual_normalize, wavefront_normals.wgsl).
 fn svmd_inversesqrt1(u:vec3<f32>)->vec3<f32>{
-    var f=0.0;if(u.x>0.0){f=1.0/sqrt(u.x);}
-    var q=0.0;if(u.x!=0.0){q=f/u.x;}let k=-0.5*q;return vec3<f32>(f,k*u.y,k*u.z);
+    var f=0.0;if(u.x>0.0){f=rounded_divide(1.0,rounded_sqrt(u.x));}
+    var q=0.0;if(u.x!=0.0){q=rounded_divide(f,u.x);}let k=-0.5*q;return vec3<f32>(f,k*u.y,k*u.z);
 }
 fn svmd_safe_normalize(a:NormalDual)->NormalDual{
     let len_sq=svmd_dot(a,a);if(len_sq.x==0.0){return svmd_const(vec3<f32>(0));}
@@ -259,6 +301,18 @@ fn svm_geometry_derivative(s:ptr<function,SvmState>,node:u32){
 // svm_node_tex_coord_eval<dual3>. Smooth normals use triangle_smooth_normal
 // with the du/dv offsets; motion-triangle is_smooth normals are motion_triangle_smooth_normal's
 // (SVM_MOTION_NORMAL_DERIVATIVE; without that region they report unsupported, 16).
+// object_inverse_normal_transform (geom/object.h): `safe_normalize(transform_direction_transposed(&tfm, *N))`, that is
+// a * (1.0f / len(a)); the object-to-world direction (object_normal_transform) is the one that divides (normalize).
+//#if !MNEE_MOTION
+fn svmd_inverse_normal(sd:SurfaceData,v:vec3<f32>)->vec3<f32>{
+    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){return rounded_safe_normalize(motion_transpose(sd.motion_tfm,v));}
+    let a=table_at(G_objects,sd.object_id,SIZE_objects)+O_tfm;let x=heap_vec3(a);let y=heap_vec3(a+16u);let z=heap_vec3(a+32u);
+    return rounded_safe_normalize(rounded_add3(rounded_add3(v.x*x,v.y*y),v.z*z));
+}
+//#endif
+//#if MNEE_MOTION
+fn svmd_inverse_normal(sd:SurfaceData,v:vec3<f32>)->vec3<f32>{return rounded_safe_normalize(motion_transpose(surface_object_transform(sd,false),v));}
+//#endif
 fn svmd_smooth_normal(s:ptr<function,SvmState>)->NormalDual{
     let sd=(*s).geometry;var v:array<vec3<f32>,3>;v[0]=sd.N;var count=1u;
     let is_smooth=(sd.primitive_type&PRIMITIVE_TRIANGLE)!=0u&&(sd.shader&SHADER_SMOOTH_NORMAL)!=0u;
@@ -300,15 +354,18 @@ fn svmd_smooth_normal(s:ptr<function,SvmState>)->NormalDual{
 //#endif
         // triangle_smooth_normal at (u,v), (u+du.dx,v+dv.dx) and (u+du.dy,v+dv.dy).
         let uv=array<vec2<f32>,3>(vec2<f32>(sd.u,sd.v),vec2<f32>(sd.u+sd.du.x,sd.v+sd.dv.x),vec2<f32>(sd.u+sd.du.y,sd.v+sd.dv.y));
+        // triangle_interpolate `(1.0f - u - v) * f0 + u * f1 + v * f2`: each product rounded before the sums (the order
+        // word): N_x - N and N_y - N are differences of nearly equal normals, and a Bump height follows them.
+        let o=svmd_order();
         for(var j=0u;j<3u;j++){
-            var r=surface_normalize(((1.0-uv[j].x)-uv[j].y)*n[0]+uv[j].x*n[1]+uv[j].y*n[2]);
+            var r=surface_normalize(svmd_fence3(svmd_fence3(svmd_fence3(((1.0-uv[j].x)-uv[j].y)*n[0],o)+svmd_fence3(uv[j].x*n[1],o),o)+svmd_fence3(uv[j].y*n[2],o),o));
             if(all(r==vec3<f32>(0))){r=sd.Ng;}
             if((sd.runtime_flag&SR_BACKFACING)!=0u){r=-r;}
             v[j]=r;
         }
         count=3u;transform=(sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u;
     }
-    if(transform){for(var j=0u;j<count;j++){v[j]=surface_object_normal(sd,v[j],true);}}
+    if(transform){for(var j=0u;j<count;j++){v[j]=svmd_inverse_normal(sd,v[j]);}}
     if(!is_smooth){return svmd_const(v[0]);}
     return NormalDual(v[0],v[1]-v[0],v[2]-v[0]);
 }
@@ -399,16 +456,17 @@ fn svm_vector_math_derivative(s:ptr<function,SvmState>,node:u32){
         case NODE_VECTOR_MATH_SUBTRACT:{v=svmd_sub(a,b);}
         case NODE_VECTOR_MATH_MULTIPLY:{v=svmd_mul(a,b);}
         case NODE_VECTOR_MATH_DIVIDE:{
-            let inv=1.0/b.value;let q=a.value/b.value;
-            v=svmd_zero_if(b.value==vec3<f32>(0),NormalDual(q,(a.dx-q*b.dx)*inv,(a.dy-q*b.dy)*inv));
+            let inv=1.0/b.value;let q=a.value/b.value;let o=svmd_order();
+            v=svmd_zero_if(b.value==vec3<f32>(0),NormalDual(q,svmd_fence3(a.dx-svmd_fence3(q*b.dx,o),o)*inv,svmd_fence3(a.dy-svmd_fence3(q*b.dy,o),o)*inv));
         }
-        case NODE_VECTOR_MATH_CROSS_PRODUCT:{v=NormalDual(cross(a.value,b.value),cross(a.value,b.dx)+cross(a.dx,b.value),cross(a.value,b.dy)+cross(a.dy,b.value));}
+        case NODE_VECTOR_MATH_CROSS_PRODUCT:{let o=svmd_order();
+            v=NormalDual(svmd_cross(a.value,b.value,o),svmd_fence3(svmd_cross(a.value,b.dx,o)+svmd_cross(a.dx,b.value,o),o),svmd_fence3(svmd_cross(a.value,b.dy,o)+svmd_cross(a.dy,b.value,o),o));}
         case NODE_VECTOR_MATH_PROJECT:{
             let len_sq=svmd_dot(b,b);if(len_sq.x!=0.0){v=svmd_scale(b,svmd_div1(svmd_dot(a,b),len_sq));}
         }
         case NODE_VECTOR_MATH_REFLECT:{
-            let n=svmd_safe_normalize(b);let d=svmd_dot(a,n);
-            v=svmd_sub(a,NormalDual(n.value*d.x*2.0,(n.value*d.y+n.dx*d.x)*2.0,(n.value*d.z+n.dy*d.x)*2.0));
+            let n=svmd_safe_normalize(b);let d=svmd_dot(a,n);let o=svmd_order();
+            v=svmd_sub(a,NormalDual(svmd_fence3(n.value*d.x,o)*2.0,svmd_fence3(svmd_fence3(n.value*d.y,o)+svmd_fence3(n.dx*d.x,o),o)*2.0,svmd_fence3(svmd_fence3(n.value*d.z,o)+svmd_fence3(n.dy*d.x,o),o)*2.0));
         }
         case NODE_VECTOR_MATH_REFRACT:{
             let n=svmd_safe_normalize(b);let NI=svmd_dot(a,n);let eta=param1;
@@ -424,8 +482,8 @@ fn svm_vector_math_derivative(s:ptr<function,SvmState>,node:u32){
         case NODE_VECTOR_MATH_SCALE:{v=svmd_scale(a,param1);}
         case NODE_VECTOR_MATH_NORMALIZE:{v=svmd_safe_normalize(a);}
         case NODE_VECTOR_MATH_SNAP:{
-            let inv=1.0/b.value;let q=a.value/b.value;
-            let divided=svmd_zero_if(b.value==vec3<f32>(0),NormalDual(q,(a.dx-q*b.dx)*inv,(a.dy-q*b.dy)*inv));
+            let inv=1.0/b.value;let q=a.value/b.value;let o=svmd_order();
+            let divided=svmd_zero_if(b.value==vec3<f32>(0),NormalDual(q,svmd_fence3(a.dx-svmd_fence3(q*b.dx,o),o)*inv,svmd_fence3(a.dy-svmd_fence3(q*b.dy,o),o)*inv));
             v=svmd_mul(svmd_floor(divided),b);
         }
         case NODE_VECTOR_MATH_ROUND:{v=svmd_const(floor(a.value+vec3<f32>(0.5)));}
@@ -444,7 +502,8 @@ fn svm_vector_math_derivative(s:ptr<function,SvmState>,node:u32){
             let pm1=vec3<f32>(c_safe_powf(a.value.x,b.value.x-1.0),c_safe_powf(a.value.y,b.value.y-1.0),c_safe_powf(a.value.z,b.value.z-1.0));
             let f=a.value*pm1;let dfdu=b.value*pm1;
             let dfdv=f*select(vec3<f32>(0),log(a.value),a.value>vec3<f32>(0));
-            v=NormalDual(f,dfdu*a.dx+dfdv*b.dx,dfdu*a.dy+dfdv*b.dy);
+            let o=svmd_order();
+            v=NormalDual(f,svmd_fence3(svmd_fence3(dfdu*a.dx,o)+svmd_fence3(dfdv*b.dx,o),o),svmd_fence3(svmd_fence3(dfdu*a.dy,o)+svmd_fence3(dfdv*b.dy,o),o));
         }
         case NODE_VECTOR_MATH_SIGN:{v=svmd_const(vec3<f32>(c_compatible_signf(a.value.x),c_compatible_signf(a.value.y),c_compatible_signf(a.value.z)));}
         case NODE_VECTOR_MATH_MINIMUM:{v=svmd_select(a.value<b.value,a,b);}

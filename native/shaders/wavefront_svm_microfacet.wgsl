@@ -34,7 +34,11 @@ fn svm_glossy(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibili
     if(data_word(D_caustics_reflective)==0u&&(visibility&PATH_RAY_VISIBILITY_DIFFUSE)!=0u){return;}
     let ni=svm_byte(data+N_GlossyBsdfData_normal_offset);var n=(*s).geometry.N;
     if(ni!=SVM_STACK_INVALID){n=svm_load3(s,ni);}
-    if(any(n!=vec3<f32>(0))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
+//#if SVM_NODE_TANGENT else     if(any(n!=vec3<f32>(0))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
+    // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
+    // test is on the bits, since the driver's float != is false for NaN.
+    if(any((bitcast<vec3<u32>>(n)&vec3<u32>(0x7fffffffu))!=vec3<u32>(0u))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
+//#endif
     let weight=max((*s).weight*mix_weight,vec3<f32>(0));let sample_weight=abs((weight.x+weight.y+weight.z)*(1.0/3.0));
     if(!(sample_weight>=1e-5)){return;}
     let i=svm_allocate(s,CLOSURE_BSDF_MICROFACET_GGX_ID,weight);if(i==NONE){return;}
@@ -48,10 +52,18 @@ fn svm_glossy(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibili
     c.alpha_x=rough;c.alpha_y=rough;
     if(ti!=SVM_STACK_INVALID&&abs(anisotropy)>1e-4){
         c.T=svm_load3(s,ti);let rotation=svm_input(s,data+N_GlossyBsdfData_rotation);
+//#if !SVM_NODE_TANGENT
 //#if SVM_BSDF_ROTATION else         if(rotation!=0.0){c.T=microfacet_rotate(c.T,c.N,rotation*6.283185307179586f);}
         // rotate_around_axis with the host's sinf/cosf (the Beckmann and Ashikhmin-Shirley lobes are sharp
         // enough that the driver's sin/cos, about 2^-11 relative, moves their pdf beyond the bound).
         if(rotation!=0.0){c.T=principled_rotate(c.T,c.N,rotation*6.283185307179586f);}
+//#endif
+//#endif
+//#if SVM_NODE_TANGENT
+        // rotation != 0.0f is true for a NaN rotation (svm/closure.h; a NaN reaches it from a Tangent output, native/DEVICE.md, item 150): on the bits.
+//#if SVM_BSDF_ROTATION else         if((bitcast<u32>(rotation)&0x7fffffffu)!=0u){c.T=microfacet_rotate(c.T,c.N,rotation*6.283185307179586f);}
+        if((bitcast<u32>(rotation)&0x7fffffffu)!=0u){c.T=principled_rotate(c.T,c.N,rotation*6.283185307179586f);}
+//#endif
 //#endif
         if(anisotropy<0.0){c.alpha_x=rough/(1.0+anisotropy);c.alpha_y=rough*(1.0+anisotropy);}
         else{c.alpha_x=rough*(1.0-anisotropy);c.alpha_y=rough/(1.0-anisotropy);}
@@ -103,19 +115,29 @@ fn microfacet_lut3(s:ptr<function,SvmState>,x:f32,y:f32,z:f32,offset:u32)->f32{
     let b=microfacet_lut2_size(s,x,y,offset+slice*min(index+1u,LUT3_RES_IOR-1u),LUT3_RES_ROUGH,LUT3_RES_MU);return (1.0-t)*a+t*b;
 }
 fn svm_glass(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibility:u32){
-    let glass=kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID;
+//#if SVM_BSDF_GLASS_MULTISCATTER else     let glass=kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID;
+    // The Glass BSDF with the multiscatter GGX distribution (svm/closure.h, CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID): the
+    // closure is the GGX glass closure (bsdf_microfacet_ggx_glass_setup sets its type) with the energy preservation below.
+    let multi=kind==GLASS_MULTI_GGX_ID;let glass=multi||kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID;
+//#endif
     let reflect=data_word(D_caustics_reflective)!=0u||(visibility&PATH_RAY_VISIBILITY_DIFFUSE)==0u;
     let transmit=data_word(D_caustics_refractive)!=0u||(visibility&PATH_RAY_VISIBILITY_DIFFUSE)==0u;
     if((!glass&&!transmit)||(glass&&!reflect&&!transmit)){return;}
     let normal_offset=select(N_RefractionBsdfData_normal_offset,N_GlassBsdfData_normal_offset,glass);
     let ni=svm_byte(data+normal_offset);var n=(*s).geometry.N;
     if(ni!=SVM_STACK_INVALID){n=svm_load3(s,ni);}
-    if(any(n!=vec3<f32>(0))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
+//#if SVM_NODE_TANGENT else     if(any(n!=vec3<f32>(0))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
+    // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
+    // test is on the bits, since the driver's float != is false for NaN.
+    if(any((bitcast<vec3<u32>>(n)&vec3<u32>(0x7fffffffu))!=vec3<u32>(0u))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
+//#endif
     if(glass){let thickness=svm_input(s,data+N_GlassBsdfData_thin_film_thickness);svm_input(s,data+N_GlassBsdfData_thin_film_ior);
         if(!(thickness<=0.1)){svm_error(s,16u);return;}}
     let weight=max(select((*s).weight*mix_weight,vec3<f32>(mix_weight),glass),vec3<f32>(0));
     let sample_weight=abs((weight.x+weight.y+weight.z)*(1.0/3.0));if(!(sample_weight>=1e-5)){return;}
-    let i=svm_allocate(s,kind,weight);if(i==NONE){return;}
+//#if SVM_BSDF_GLASS_MULTISCATTER else     let i=svm_allocate(s,kind,weight);if(i==NONE){return;}
+    let i=svm_allocate(s,select(kind,CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID,multi),weight);if(i==NONE){return;}
+//#endif
     if(glass){if((*s).output.remaining<GLASS_EXTRA_CLOSURES){(*s).output.count--;(*s).output.remaining++;
             var empty:SvmClosure;svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,empty);return;}
         (*s).output.remaining-=GLASS_EXTRA_CLOSURES;}
@@ -132,8 +154,16 @@ fn svm_glass(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibilit
     if(glass){let anisotropy=clamp(svm_input(s,data+N_GlassBsdfData_anisotropy),-0.99,0.99);let ti=svm_byte(data+N_GlassBsdfData_tangent_offset);
         if(ti!=SVM_STACK_INVALID&&abs(anisotropy)>1e-4){
             let squared=rough*rough;c.T=svm_load3(s,ti);let rotation=svm_input(s,data+N_GlassBsdfData_rotation);
+//#if !SVM_NODE_TANGENT
 //#if SVM_BSDF_ROTATION else             if(rotation!=0.0){c.T=microfacet_rotate(c.T,c.N,rotation*6.283185307179586f);}
             if(rotation!=0.0){c.T=principled_rotate(c.T,c.N,rotation*6.283185307179586f);}
+//#endif
+//#endif
+//#if SVM_NODE_TANGENT
+            // rotation != 0.0f is true for a NaN rotation (svm/closure.h; a NaN reaches it from a Tangent output, native/DEVICE.md, item 150): on the bits.
+//#if SVM_BSDF_ROTATION else             if((bitcast<u32>(rotation)&0x7fffffffu)!=0u){c.T=microfacet_rotate(c.T,c.N,rotation*6.283185307179586f);}
+            if((bitcast<u32>(rotation)&0x7fffffffu)!=0u){c.T=principled_rotate(c.T,c.N,rotation*6.283185307179586f);}
+//#endif
 //#endif
             if(anisotropy<0.0){c.alpha_x=rounded_divide(squared,rounded_add(1.0,anisotropy));c.alpha_y=squared*rounded_add(1.0,anisotropy);}
             else{c.alpha_x=squared*rounded_add(1.0,-anisotropy);c.alpha_y=rounded_divide(squared,rounded_add(1.0,-anisotropy));}
@@ -148,6 +178,18 @@ fn svm_glass(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibilit
         let z=sqrt(abs((c.ior-1.0)/(c.ior+1.0)));let v=microfacet_lut3(s,roughness,microfacet_mu_index(mu),z,data_word(D_ggx_gen_schlick_ior_s));
         let f=(1.0-v)*c.fresnel_f0+v;let albedo=f*c.reflection_tint+(1.0-f)*c.transmission_tint;
         c.sample_weight*=(albedo.x+albedo.y+albedo.z)*(1.0/3.0);
+//#if SVM_BSDF_GLASS_MULTISCATTER
+        // bsdf_microfacet_setup_fresnel_generalized_schlick with preserve_energy (closure/bsdf_microfacet.h): the
+        // average Fresnel is the transmission tint, or, when that is zero (refractive caustics off on a diffuse path, or
+        // a black colour), the reflection tint times mix(f0, f90 = 1, s) with s = saturate(inverse_lerp(F0, 1, Fss)) of
+        // the closure's (flipped) IOR; then microfacet_ggx_preserve_energy, shared with the Principled BSDF. Each
+        // difference and the one sum of a product are rounded on their own, in the pinned order.
+        if(multi){var fss=c.transmission_tint;
+            if(all(fss==vec3<f32>(0))){let real=ggx_f0(c.ior);
+                let t=clamp(rounded_divide(rounded_add(principled_fss(c.ior),-real),rounded_add(1.0,-real)),0.0,1.0);
+                fss=c.reflection_tint*rounded_add(c.fresnel_f0,t*rounded_add(1.0,-c.fresnel_f0));}
+            principled_preserve(s,&c,(*s).geometry.wi,fss);}
+//#endif
     }
 //#if SVM_BSDF_PRINCIPLED
     // Canonical generalized-Schlick fields shared with Principled transmission.
@@ -166,8 +208,10 @@ fn svm_glass(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibilit
 // (error 16) and refused natively before rendering; it is never approximated.
 const PRINCIPLED_LOCAL:u32=0xfffffffeu;
 //#endif
-//#if SVM_BSDF_ROTATE
+//#if SVM_BSDF_AVERAGE
 fn principled_average(v:vec3<f32>)->f32{return (v.x+v.y+v.z)*(1.0/3.0);}
+//#endif
+//#if SVM_BSDF_ROTATE
 // rotate_around_axis with binary32 sinf/cosf: quadrant reduction by a split
 // pi/2 and the bounded precise_disk_sincos adapter (driver sin/cos are only
 // accurate to about 2^-11, which visibly turns sharp anisotropic GGX lobes).
@@ -235,6 +279,8 @@ fn principled_ggx(s:ptr<function,SvmState>,c:ptr<function,SvmClosure>,glass:bool
     (*c).kind=select(CLOSURE_BSDF_MICROFACET_GGX_ID,CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID,glass);
     (*s).output.runtime_flag|=SR_BSDF|select(0u,SR_BSDF_HAS_TRANSMISSION,glass)|select(0u,SR_BSDF_HAS_EVAL,(*c).alpha_x*(*c).alpha_y>2e-10);
 }
+//#endif
+//#if SVM_BSDF_DIELECTRIC_FSS
 fn principled_fss(eta:f32)->f32{
     if(eta<1.0){return 0.997118+eta*(0.1014-eta*(0.965241+eta*0.130607));}return (eta-1.0)/(4.08567+1.00071*eta);
 }
@@ -294,6 +340,8 @@ fn principled_albedo(s:ptr<function,SvmState>,c:SvmClosure,transmission:bool)->v
     let f=f0+v*(vec3<f32>(1)-f0);if(model!=4u){return f;}
     return f*c.reflection_tint+select(vec3<f32>(0),(vec3<f32>(1)-f)*c.transmission_tint,transmission);
 }
+//#endif
+//#if SVM_BSDF_PRESERVE_ENERGY
 // microfacet_ggx_preserve_energy.
 fn principled_preserve(s:ptr<function,SvmState>,c:ptr<function,SvmClosure>,wi:vec3<f32>,fss:vec3<f32>){
     let mu=microfacet_mu_index(dot(wi,(*c).N));let rough=sqrt(sqrt((*c).alpha_x*(*c).alpha_y));var e:f32;var average:f32;
@@ -350,7 +398,10 @@ fn svm_principled(s:ptr<function,SvmState>,data:u32,mix_weight:f32,flag:u32,visi
     if(anisotropic>0.0&&ti!=SVM_STACK_INVALID){
         tangent=svm_load3(s,ti);let aspect=sqrt(1.0-anisotropic*0.9);alpha_x=rounded_divide(alpha_x,aspect);alpha_y*=aspect;
         let rotation=svm_input(s,data+N_PrincipledBsdfData_anisotropic_rotation);
-        if(rotation!=0.0){tangent=principled_rotate(tangent,n,rotation*6.283185307179586f);}
+//#if SVM_NODE_TANGENT else         if(rotation!=0.0){tangent=principled_rotate(tangent,n,rotation*6.283185307179586f);}
+        // rotation != 0.0f is true for a NaN rotation (svm/closure.h; a NaN reaches it from a Tangent output, native/DEVICE.md, item 150): on the bits.
+        if((bitcast<u32>(rotation)&0x7fffffffu)!=0u){tangent=principled_rotate(tangent,n,rotation*6.283185307179586f);}
+//#endif
     }
     let metallic=clamp(svm_input(s,data+N_PrincipledBsdfData_metallic),0.0,1.0);
     let wall=load_word(data+N_PrincipledBsdfData_thin_wall);let wall_offset=svm_byte(data+N_PrincipledBsdfData_thin_wall+4u);
@@ -477,7 +528,10 @@ fn svm_principled(s:ptr<function,SvmState>,data:u32,mix_weight:f32,flag:u32,visi
             weight=min(max(rounded_add3(weight,-coat_layer),vec3<f32>(0)),weight);
         }
         if(lobe==1u){let emission=svm_input3(s,data+N_PrincipledBsdfData_emission_color)*svm_input(s,data+N_PrincipledBsdfData_emission_strength);
-            if(any(emission!=vec3<f32>(0))){let e=emission*weight;if(((*s).output.runtime_flag&SR_EMISSION)!=0u){(*s).output.emission+=e;}else{(*s).output.emission=e;(*s).output.runtime_flag|=SR_EMISSION;}}}
+//#if SVM_NODE_TANGENT else             if(any(emission!=vec3<f32>(0))){let e=emission*weight;if(((*s).output.runtime_flag&SR_EMISSION)!=0u){(*s).output.emission+=e;}else{(*s).output.emission=e;(*s).output.runtime_flag|=SR_EMISSION;}}}
+            // !is_zero(emission) is true for a NaN emission (svm/closure.h principled_bsdf_emission): on the bits.
+            if(any((bitcast<vec3<u32>>(emission)&vec3<u32>(0x7fffffffu))!=vec3<u32>(0u))){let e=emission*weight;if(((*s).output.runtime_flag&SR_EMISSION)!=0u){(*s).output.emission+=e;}else{(*s).output.emission=e;(*s).output.runtime_flag|=SR_EMISSION;}}}
+//#endif
         if(lobe==2u&&metallic>1e-5){weight*=1.0-metallic;}
         if(lobe==4u&&transmission>1e-5){weight*=1.0-transmission;}
     }
@@ -603,7 +657,10 @@ fn svm_metallic(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibi
     c.alpha_x=r*r;c.alpha_y=c.alpha_x;c.T=vec3<f32>(0);let ti=svm_byte(data+N_MetallicBsdfData_tangent_offset);
     if(anisotropy>0.0&&ti!=SVM_STACK_INVALID){
         c.T=svm_load3(s,ti);let aspect=rounded_sqrt(rounded_add(1.0,-(anisotropy*0.9)));c.alpha_x=rounded_divide(c.alpha_x,aspect);c.alpha_y*=aspect;
-        let rotation=svm_input(s,data+N_MetallicBsdfData_rotation);if(rotation!=0.0){c.T=principled_rotate(c.T,n,rotation*6.283185307179586f);}
+//#if SVM_NODE_TANGENT else         let rotation=svm_input(s,data+N_MetallicBsdfData_rotation);if(rotation!=0.0){c.T=principled_rotate(c.T,n,rotation*6.283185307179586f);}
+        // rotation != 0.0f is true for a NaN rotation (svm/closure.h; a NaN reaches it from a Tangent output, native/DEVICE.md, item 150): on the bits.
+        let rotation=svm_input(s,data+N_MetallicBsdfData_rotation);if((bitcast<u32>(rotation)&0x7fffffffu)!=0u){c.T=principled_rotate(c.T,n,rotation*6.283185307179586f);}
+//#endif
     }
     c.N=valid;c.ior=1.0;let film=max(svm_input(s,data+N_MetallicBsdfData_thin_film_ior),1e-5);
     // bsdf_microfacet_ggx_setup: its flags stand even when the Fresnel record does not fit.

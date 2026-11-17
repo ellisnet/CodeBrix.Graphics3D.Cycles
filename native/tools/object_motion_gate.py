@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 from build import REPO, WORK, PACKAGE, REVISION
-from device_gate import sha, save
+from device_gate import sha, save, require_built
 from render_gate import inputs
 import render_replay
 
@@ -27,6 +27,9 @@ def main():
         for name in names:command+=['--target','codebrix_cycles_'+name+'_gate']
         with (out/'build.stdout.txt').open('w') as stdout,(out/'build.stderr.txt').open('w') as stderr:
             subprocess.run(command,stdout=stdout,stderr=stderr,check=True)
+    else:
+        # --skip-build builds nothing: name each missing program and the command that builds it instead of failing on its hash.
+        require_built(names)
     executables={name:WORK/'cycles-build/bin'/('codebrix_cycles_'+name+'_gate') for name in names}
     render_replay.build('linux-x64')
     executables['replay']=render_replay.BASE/'linux-x64/render_replay'

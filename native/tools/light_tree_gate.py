@@ -9,11 +9,11 @@ import json
 import subprocess
 from pathlib import Path
 from build import REPO, WORK, PACKAGE
-from device_gate import sha, save
+from device_gate import sha, save, require_built
 from render_gate import inputs
 import render_replay
 
-CASES = 8
+CASES = 9
 
 
 def main():
@@ -40,6 +40,9 @@ def main():
                                 '--target', 'codebrix_cycles_light_tree_gate'], stdout=log, stderr=subprocess.STDOUT, check=True)
             if not args.skip_replay:
                 render_replay.build('linux-x64')
+        else:
+            # --skip-build builds nothing: name each missing program and the command that builds it instead of failing on its hash.
+            require_built(['light_tree'], None if args.skip_replay else render_replay.BASE/'linux-x64/render_replay')
         binary = WORK/'cycles-build/bin/codebrix_cycles_light_tree_gate'
         pins[str(binary)] = sha(binary)
         if not args.skip_replay:
@@ -75,7 +78,7 @@ def main():
         assert source == inputs() and all(sha(Path(name)) == digest for name, digest in pins.items())
         status.update(complete=True, passed=True, phase='complete', inputsUnchanged=True,
                       scope='Light tree selection, sampling and forward pdfs (lamps, many-triangle, mixed with HDRI world, instanced, '
-                            'moving/deforming emitters, a glass receiver) and light linking on the flat CDF and on the tree, against the original CPU kernels.')
+                            'moving/deforming emitters, a glass receiver, a degenerate area light at a glass receiver) and light linking on the flat CDF and on the tree, against the original CPU kernels.')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error))
         raise

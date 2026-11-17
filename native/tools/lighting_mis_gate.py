@@ -8,7 +8,7 @@ import json
 import subprocess
 from pathlib import Path
 from build import REPO, WORK, PACKAGE
-from device_gate import sha, save
+from device_gate import sha, save, require_built
 from render_gate import inputs
 import render_replay
 
@@ -39,6 +39,9 @@ def main():
             with (out/'build.log').open('w') as log:
                 subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True)
             render_replay.build('linux-x64')
+        else:
+            # --skip-build builds nothing: name each missing program and the command that builds it instead of failing on its hash.
+            require_built(kinds, render_replay.BASE/'linux-x64/render_replay')
         for kind in kinds:
             binary = WORK/'cycles-build/bin'/('codebrix_cycles_'+kind+'_gate')
             pins[str(binary)] = sha(binary)

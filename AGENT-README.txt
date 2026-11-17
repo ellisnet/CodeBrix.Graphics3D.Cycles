@@ -1038,8 +1038,7 @@ read the node's Missing and MissingAlpha.
     from image files, which this library does not read: it stays empty, and
     setting any other value throws NativeFailure (NativeStatus.Invalid, "...
     bind images as UDIM tiles with cbc_host_image_bind_tiles"); use BindTiles.
-  - The CPU and Metal backends render them; the WebGPU backend refuses a
-    scene with a tiles binding (RENDER-TIME REJECTIONS).
+  - Every backend renders them.
 
     ImageTextureNode texture = material.Add<ImageTextureNode>();
     using CyclesImage left = scene.CreateImage<byte>(w, h, ImageFormat.Byte4, leftRgba8);
@@ -1067,8 +1066,7 @@ at least 1). A 64 x 64 image under a limit of 40 loads as 32 x 32.
     loads an image again once it has loaded it, so a different value after
     that throws InvalidOperationException (the same value is accepted); create
     a new scene for another limit.
-  - The CPU and Metal backends render with it; the WebGPU backend refuses a
-    render with a limit (RENDER-TIME REJECTIONS).
+  - Every backend renders with it.
 
     scene.TextureLimit = 2048;                      // before the first render
     using CyclesImage image = scene.CreateImage<byte>(8192, 8192, ImageFormat.Byte4, rgba8);
@@ -1166,11 +1164,12 @@ M3) honours it.
   - A speed setting: it changes how rays find the closest hit, not which one,
     so a film does not change by design (measured: the CPU reference and
     Backend.Cpu render bit for bit the same film with and without it; Metal
-    within its repeat noise). Whether it is faster depends on the scene: long
+    within its repeat noise, WebGPU within the practical criterion). Whether it is faster depends on the scene: long
     thin or overlapping triangles in instanced meshes are where it can help.
   - false, the default, keeps Cycles' default. A change after a render has
     every BVH built again at the next render or bake.
-  - The WebGPU backend refuses a render with it on (RENDER-TIME REJECTIONS).
+  - Every backend renders with it (the WebGPU backend traverses Cycles' BVH2
+    and honours it).
 
     scene.UseBvhSpatialSplit = true;
 
@@ -1201,6 +1200,9 @@ with UseDenoise the whole film denoised once.
     the CPU device, and tiles are small buffers, so a tiled adaptive render can
     stop some pixels at other sample counts than the untiled one (measured: 327
     of 3,072 pixels stopped at 16 of 32 samples in tiles of 16).
+  - Results on the WebGPU backend: within the practical criterion of the CPU
+    film, with adaptive sampling too (measured: in tiles of 16 every pixel
+    stopped at the CPU's sample count).
   - Bakes render in tiles too (scene.Bake with the same TileSize).
   - Memory: the finished tiles take one full-film copy of the render buffers in
     system memory (every pass; two for a moment while they are read back),
@@ -1209,8 +1211,7 @@ with UseDenoise the whole film denoised once.
   - A scene created with HostFlags.ProgressiveResults sends intermediate films
     with the tiles rendered so far (zero where no tile has rendered yet) and
     ends with the returned film.
-  - The CPU and Metal backends render with tiles; the WebGPU backend refuses a
-    render with a tile size other than 0 (RENDER-TIME REJECTIONS).
+  - Every backend renders with tiles.
 
     scene.TileSize = 512;                           // 0 renders one tile
     FilmBuffer film = scene.Render(new RenderSettings(8192, 8192, 256));
@@ -1365,11 +1366,11 @@ noisy (with UseDenoise only the last one is denoised). The option is fixed per
 scene because Cycles then schedules the render's work for display updates (in
 smaller batches; a plain scene renders in the batches of Cycles' headless
 renders): on the CPU the returned film is bit for bit that of a plain scene, on
-Metal within the practical criterion; each update copies the film from the
-device once. Film events are not raised through RenderEventReceived and not for
-bakes. The handler rules of CALLBACKS AND THREADING apply. The WebGPU backend
-refuses a render of such a scene (RENDER-TIME REJECTIONS). With TileSize (TILED
-RENDERING) each film holds the tiles rendered so far.
+the GPU backends within the practical criterion; each update copies the film
+from the device once. Film events are not raised through RenderEventReceived
+and not for bakes. The handler rules of CALLBACKS AND THREADING apply. Every
+backend delivers them. With TileSize (TILED RENDERING) each film holds the
+tiles rendered so far.
 
     await using CyclesScene scene = new(CyclesBackend.Gpu, 1, HostFlags.ProgressiveResults);
     scene.IntermediateFilmReceived += (_, film) => ShowPreview(film.Film, film.SamplesDone);   // return quickly
@@ -1823,11 +1824,6 @@ Every backend:
   - curves and points with a Both displacement shader
   - area lights with an axis of infinities (an axis with no zero component whose length underflows to zero)
 The WebGPU backend:
-  - tiled rendering (a tile size other than 0)
-  - BVH spatial splits
-  - a texture limit (images reduced when they load)
-  - progressive results (intermediate films during a render)
-  - UDIM tiles (several images bound to one Image Texture node)
   - point clouds rendered as Gaussian splats
   - quaternion and spherical-harmonics attributes read by a shader
   - dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0)
@@ -1838,12 +1834,11 @@ The WebGPU backend:
   - BVH time steps
   - volume velocity motion blur
   - sparse or tiled images
-  - area lights whose axis length underflows to zero, with a spread of zero or below 1e-5, or reached by the light tree at a transmissive surface
+  - area lights whose axis length underflows to zero with a spread of zero, or whose axis length overflows with a spread below 1e-5 in a scene with volumes
   - background light portals of zero extent
   - bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)
   - texture, colour and utility shader nodes on Adreno 650 GPUs
   - ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs
-  - Boolean Math, Integer Math and Get Vector Component shader nodes with a linked input
   - shadow catchers with transparent shadows on Adreno 650 GPUs
   - shadow caustics (manifold next-event estimation) on Adreno 650 GPUs
 
@@ -1864,18 +1859,7 @@ implemented by the WebGPU device, whose message is "WebGPU dispersion not
 implemented"; there, leave TransmissionDispersionScale at 0 and unlinked (with
 TransmissionWeight at 0 and unlinked nothing disperses, and the scale is not
 refused). The dlss denoiser is not part of
-the library (use Openimagedenoise). Progressive results are delivered on the
-CPU and Metal backends; the WebGPU device has not been validated with
-intermediate reads of its render buffers, and a render of a scene created with
-HostFlags.ProgressiveResults fails there with "WebGPU progressive results not
-implemented" (create the scene without it). The texture limit reduces images
-before any device sees them; it is refused on the WebGPU backend until a
-WebGPU run has validated it, and a render with CyclesScene.TextureLimit other
-than 0 fails there with "WebGPU texture limit not implemented" (pass images at
-the size you want there). UDIM tiles render on the CPU and Metal
-backends (UDIM TILES); the WebGPU device reads the UDIM table but has not been
-validated with it, and the render fails with "WebGPU UDIM tiles not
-implemented" (bind one image per texture there). Gaussian splats render on the CPU and
+the library (use Openimagedenoise). Gaussian splats render on the CPU and
 Metal backends (GAUSSIAN SPLATS); the WebGPU device does not implement them
 and the render fails with "WebGPU Gaussian splats not implemented" (render the
 cloud as Points there). Quaternion and
@@ -1895,16 +1879,7 @@ DisplacementMethod Bump or True. The Radial Tiling case is binary32 rounding
 residue in Cycles' CPU kernels that Cycles' Metal device does not reproduce
 either; when Sides or Roundness is linked, the render fails at run time with an
 unsupported-parameter error instead. BVH time steps and volume velocity cannot
-be set through this API; the entries name what the device would refuse. BVH
-spatial splits (CyclesScene.UseBvhSpatialSplit) apply on the CPU and Metal
-backends (MetalRT ignores them, as in Cycles); a split BVH references one
-primitive from several leaves, which the WebGPU device's traversal has not
-been validated with, and a render with them fails there with "WebGPU BVH
-spatial splits not implemented" (leave the setting off there). Tiled
-rendering (CyclesScene.TileSize) renders on the CPU and Metal backends; the
-WebGPU device has not been validated with tile offsets and overscan, and a
-render with tiles fails there with "WebGPU tiled rendering not implemented"
-(leave TileSize at 0 there). Tiled
+be set through this API; the entries name what the device would refuse. Tiled
 images (CyclesScene.CreateTiledImage, Cycles' texture cache) render on the CPU
 and Metal backends; the WebGPU device has no tile cache, and a render with one
 fails there with "WebGPU tiled images not implemented" (bind an image from
@@ -1925,7 +1900,14 @@ ray's components, so the CPU and Metal films disagree widely; give the light a
 larger size or scale. An axis that underflows with a zero component (for
 example Sizeu 1e-23 on an unrotated light) holds a NaN instead and renders as
 Cycles renders it, an unlit strip or an emitting plane that casts no light, on
-the CPU and Metal backends; portals are not refused. For the area light, portal and bake entries
+the CPU and Metal backends; portals are not refused. Such a light renders on
+the WebGPU backend too, with the light tree at glass and other transmissive
+surfaces and with a Spread so narrow that the tangent of half of it is below
+1e-5 in a scene with volumes included. Still refused on the WebGPU backend:
+that light with a Spread of zero, and an area light whose axis length
+overflows (a size or object scale above about 1.8e19) with so narrow a Spread
+in a scene with volumes ("WebGPU degenerate area light with a spread below
+1e-5 not implemented"). For the area light, portal and bake entries
 Cycles' own kernels evaluate the light or the texel at a direction that is not
 a number, and the CPU result depends on how each comparison and minimum drops
 that value, which WGSL does not define. The Adreno 650 entries (for example the

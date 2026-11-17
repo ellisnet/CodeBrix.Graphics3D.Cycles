@@ -14,6 +14,13 @@ from build_cycles import UPSTREAM
 OUT=WORK/'device-queue/linux-x64'
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def save(path,data):path.write_text(json.dumps(data,indent=2)+'\n')
+def require_built(kinds,replay=None):
+    """For a gate run with --skip-build, which builds nothing: every gate program of KINDS, and the replay tool when
+    REPLAY is its path, must already exist in this checkout. Each missing one is named with the command that builds it."""
+    needed={WORK/'cycles-build/bin'/('codebrix_cycles_'+kind+'_gate'):'python3 native/tools/build_cycles.py --jobs 6 --target codebrix_cycles_'+kind+'_gate' for kind in kinds}
+    if replay:needed[replay]='python3 native/tools/render_replay.py build --rid linux-x64'
+    missing=['%s (build it with: %s)'%(path,command) for path,command in needed.items() if not Path(path).is_file()]
+    if missing:raise RuntimeError('--skip-build needs programs that were never built in this checkout: '+'; '.join(missing)+'; or run the gate without --skip-build')
 def run():
     OUT.mkdir(parents=True,exist_ok=True)
     with (OUT/'build.log').open('w') as log:

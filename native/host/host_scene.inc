@@ -184,12 +184,8 @@ void validate_unavailable(Host &host) {
   if(host.backend==CBC_HOST_WEBGPU)
     for(auto geom:host.session->scene->geometry)if(auto points=dynamic_cast<PointCloud *>(geom))
       require(points->get_render_as()!=PointCloud::RENDER_AS_GSPLATS,"WebGPU Gaussian splats not implemented",CBC_UNSUPPORTED);
-  // UDIM tiles (cbc_host_image_bind_tiles, PROVISIONAL) render on the CPU device and on Cycles' Metal device. The WGSL
-  // device reads Cycles' UDIM table but has not been validated with one, so a tiles binding in any authoring graph is
-  // refused on the WebGPU backend until a WebGPU run validates it.
-  if(host.backend==CBC_HOST_WEBGPU)
-    for(auto &[shader,stored]:host.graphs)for(auto &[node,binding]:stored->images)
-      require(!udim_binding(binding),"WebGPU UDIM tiles not implemented",CBC_UNSUPPORTED);
+  // UDIM tiles (cbc_host_image_bind_tiles, PROVISIONAL) render on every backend: the WGSL device reads Cycles' UDIM table
+  // (image_sample in native/shaders/wavefront_images.wgsl; oracle scenes images/udim-*).
   // Tiled images (cbc_host_image_create_tiled, PROVISIONAL) render through Cycles' texture cache on the CPU device and on
   // Cycles' Metal device. The WGSL device has no tile cache (it reports a tiled image as its kernel error 256, "tiled image
   // cache not implemented", native/cycles/device.cpp), so a binding of a tiled image in any authoring graph is refused on
@@ -197,23 +193,17 @@ void validate_unavailable(Host &host) {
   if(host.backend==CBC_HOST_WEBGPU)
     for(auto &[shader,stored]:host.graphs)for(auto &[node,binding]:stored->images)for(auto &[tile,data]:binding)
       require(!data->tiled,"WebGPU tiled images not implemented",CBC_UNSUPPORTED);
-  // BVH spatial splits (cbc_host_bvh_spatial_split, PROVISIONAL) apply to Cycles' BVH2 builder and Embree on the CPU and
-  // Metal devices. A split BVH2 references one primitive from several leaves, and the WGSL traversal (its handling of
-  // primitives met twice, as in transparent shadows) has not been run with one, so they are refused on the WebGPU backend.
-  require(host.backend!=CBC_HOST_WEBGPU||!host.session->scene->params.use_bvh_spatial_split,"WebGPU BVH spatial splits not implemented",CBC_UNSUPPORTED);
-  // Tiled rendering (cbc_host_tile_size, PROVISIONAL) on the CPU and Metal devices: Cycles renders tile by tile, with
-  // tile offsets, a sample count pass and, with adaptive sampling, an overscan, and the library keeps the finished tiles
-  // in memory. The WGSL device has not been run with tile offsets and overscan, so a tile size other than 0 is refused on
-  // the WebGPU backend.
-  require(host.backend!=CBC_HOST_WEBGPU||host.tile_size==0,"WebGPU tiled rendering not implemented",CBC_UNSUPPORTED);
+  // BVH spatial splits (cbc_host_bvh_spatial_split, PROVISIONAL) apply to Cycles' BVH2 builder on every backend that
+  // traverses it and to Embree. A split BVH2 references one primitive from several leaves; the WGSL traversal reads
+  // Cycles' packed tables as they are and drops a primitive met twice where the pinned kernel does (a recorded
+  // transparent shadow hit, a local hit at the same distance).
+  // Tiled rendering (cbc_host_tile_size, PROVISIONAL) on every backend: Cycles renders tile by tile, with tile offsets, a
+  // sample count pass and, with adaptive sampling, an overscan, and the library keeps the finished tiles in memory
+  // (oracle scenes render-settings/tiles-*).
   // The texture limit (cbc_host_texture_limit, PROVISIONAL) reduces images on the host before any device sees them, so it
-  // applies to every device; the WebGPU device has not been run with reduced images, so a limit other than 0 is refused
-  // on the WebGPU backend until a WebGPU run validates it.
-  require(host.backend!=CBC_HOST_WEBGPU||host.session->scene->params.texture_limit==0,"WebGPU texture limit not implemented",CBC_UNSUPPORTED);
-  // Progressive results (CBC_HOST_PROGRESSIVE_RESULTS, PROVISIONAL) are delivered on the CPU device and on Cycles' Metal
-  // device. The WGSL device has not been validated with intermediate reads of its render buffers (nor with the
-  // scheduling of a session that is not headless), so a host created with the flag is refused on the WebGPU backend.
-  require(host.backend!=CBC_HOST_WEBGPU||!(host.flags&CBC_HOST_PROGRESSIVE_RESULTS),"WebGPU progressive results not implemented",CBC_UNSUPPORTED);
+  // applies to every backend (oracle scenes images/texture-limit-*).
+  // Progressive results (CBC_HOST_PROGRESSIVE_RESULTS, PROVISIONAL) are delivered on every backend: a display update
+  // reads the render buffers of the device between batches of samples, as the final read does.
   // A Both displacement shader on curves or points: its bump from displacement starts with svm_node_enter_bump_eval,
   // which finds no undisplaced position there (only meshes have one) and saves no differential, so svm_node_set_bump
   // reads stack entries nothing wrote; the pinned kernels have no defined result on any device (native/DEVICE.md 87).

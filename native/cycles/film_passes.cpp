@@ -271,7 +271,10 @@ void WebGPUDevice::enqueue_adaptive_sampling(DeviceKernel kernel,int work,const 
     reset=integer(6);at=7;active=pointer(9);validate(active,4);
   }
   const int offset=integer(at),stride=integer(at+1);
-  require(sx>=0&&sy>=0&&sw>0&&sh>0&&stride>=sx+sw,"Invalid adaptive sampling region");
+  // The region is the effective buffer's (full_x, full_y, width, height) and the pixel index offset + x + y * stride with
+  // BufferParams::update_offset_stride's offset = -(full_x + full_y * width) and stride = width (session/buffers.cpp): a
+  // tile or a camera border away from the left edge has sx + sw above the stride, and a row of the region fits a buffer row.
+  require(sx>=0&&sy>=0&&sw>0&&sh>0&&stride>=sw,"Invalid adaptive sampling region");
   require(work>=(check?sw*sh:kernel==DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_X?sh:sw),"Incomplete adaptive sampling dispatch");
   require(data.film.pass_adaptive_aux_buffer!=PASS_UNUSED&&data.film.pass_adaptive_aux_buffer>=0&&data.film.pass_adaptive_aux_buffer<=data.film.pass_stride-4,
           "Invalid adaptive sampling buffer pass");

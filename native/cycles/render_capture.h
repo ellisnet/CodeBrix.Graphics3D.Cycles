@@ -11,7 +11,7 @@
 // subsequent native scheduling; it may not inject those CPU decisions as data.
 struct RenderCapture final:ccl::WebGPUCommandObserver {
   ccl::WebGPUDevice &device;std::ofstream commands;size_t arena_size;uint64_t count=0;bool sized_dispatch=false;
-  std::array<uint64_t,69> pipeline_dispatches{};
+  std::array<uint64_t,74> pipeline_dispatches{};
   static void file(const std::string &name,const void *data,size_t bytes){std::ofstream out(name,std::ios::binary);out.write(static_cast<const char*>(data),bytes);if(!out)throw std::runtime_error("Capture write failed: "+name);}
   void header(uint32_t kind,uint32_t address,uint32_t bytes){uint32_t h[]={kind,address,bytes};commands.write(reinterpret_cast<const char*>(h),sizeof(h));count++;}
   RenderCapture(ccl::WebGPUDevice &d,const std::string &prefix):device(d),commands(prefix+".commands.bin",std::ios::binary),arena_size(d.arena_bytes){
@@ -26,7 +26,13 @@ struct RenderCapture final:ccl::WebGPUCommandObserver {
     if(d.film_cryptomatte())std::ofstream(out/"film_post.wgsl")<<ccl::film_post_wgsl();
     if(d.data.film.pass_adaptive_aux_buffer!=PASS_UNUSED)std::ofstream(out/"film_adaptive.wgsl")<<ccl::film_adaptive_wgsl();
     if(d.data.film.pass_volume_scatter_denoised!=PASS_UNUSED)std::ofstream(out/"film_volume_guiding.wgsl")<<ccl::film_volume_guiding_wgsl();
-    std::ofstream(out/"surface_raytrace.wgsl")<<ccl::specialize_wgsl(ccl::surface_source(),d.shader_features()|ccl::SF_NODE_RAYTRACE);
+    // A staged shader evaluation (pipelines.h SF_SVM_STAGE_NO_HEAVY): the stage entries as the device built them, each from
+    // its own module variant. The raytrace queue's nodes stage stays entry 26 in surface_raytrace.wgsl.
+    if(d.surface_prepare_raytrace_rounds){std::ofstream(out/"surface_raytrace.wgsl")<<d.svm_stage_module(true,0);
+      std::ofstream(out/"surface_raytrace_heavy.wgsl")<<d.svm_stage_module(true,1);std::ofstream(out/"surface_raytrace_closure.wgsl")<<d.svm_stage_module(true,2);}
+    else std::ofstream(out/"surface_raytrace.wgsl")<<ccl::specialize_wgsl(ccl::surface_source(),d.shader_features()|ccl::SF_NODE_RAYTRACE);
+    if(d.surface_prepare_rounds){std::ofstream(out/"surface_stage_nodes.wgsl")<<d.svm_stage_module(false,0);
+      std::ofstream(out/"surface_stage_heavy.wgsl")<<d.svm_stage_module(false,1);std::ofstream(out/"surface_stage_closure.wgsl")<<d.svm_stage_module(false,2);}
     // The INTERSECT_MNEE module (entries 27-33): the caustic casters' SVM regions and the MNEE entry points (mnee.cpp).
     if((d.shader_features()&ccl::SF_MNEE).any())std::ofstream(out/"surface_mnee.wgsl")<<ccl::specialize_wgsl(ccl::surface_source(),(d.shader_features()&~d.mnee_unused_svm_features())|ccl::SF_MNEE_ENTRIES);
     std::ofstream(out/"volume.wgsl")<<d.module_wgsl(ccl::volume_source());std::ofstream(out/"volume_stack.wgsl")<<d.module_wgsl(ccl::volume_stack_source());
@@ -49,6 +55,9 @@ struct RenderCapture final:ccl::WebGPUCommandObserver {
     // (adaptive_convergence_check, adaptive_filter_x, adaptive_filter_y, film_adaptive.wgsl) and 42
     // (shade_surface_light_background, surface.wgsl), 43-44 (volume_guiding_filter_x, volume_guiding_filter_y,
     // film_volume_guiding.wgsl), 45-46 (shade_volume_segment, shade_volume_light, surface.wgsl), 47 (intersect_subsurface, surface.wgsl), 48 (shade_volume_phase, volume.wgsl), 49 (shade_volume_heterogeneous, volume.wgsl), 50 (shade_volume_ray_marching, volume.wgsl), 51 (shade_volume_tree_select, surface.wgsl), 52 (shade_volume_light_triangle, surface.wgsl), 53 (intersect_dedicated_light, closest.wgsl), 54 (shade_dedicated_light_lamp, background.wgsl), 55-56 (dedicated_light_tree_pdf, shade_dedicated_light, surface.wgsl), 57 (mnee_select, surface_mnee.wgsl), 62 (shade_volume_light_background, surface.wgsl; 61 is not assigned here), 63 (intersect_subsurface_volume_stack, volume_stack.wgsl), 64 (intersect_subsurface_motion, surface.wgsl), 65-66 (mnee_light_sample, mnee_light_update, surface_mnee.wgsl), 67 (shade_volume_heterogeneous_eval, volume.wgsl), 68 (mnee_project, surface_mnee.wgsl). All follow the
+    // 69-73: the staged shader evaluation of the surface stage: 69 (prepare_surface, surface_stage_nodes.wgsl), 70 (prepare_surface_heavy,
+    // surface_stage_heavy.wgsl), 71 (prepare_surface_closure, surface_stage_closure.wgsl), 72 (prepare_surface_raytrace_heavy,
+    // surface_raytrace_heavy.wgsl), 73 (prepare_surface_raytrace_closure, surface_raytrace_closure.wgsl).
     // v5 slots 9-14.
     pipeline_dispatches[entry]++;
     // Kind 3 retains the original implicit size 64. Kind 5 stores the explicit

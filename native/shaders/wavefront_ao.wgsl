@@ -253,9 +253,17 @@ fn svm_ao_occlusion(index:u32,sd:SurfaceData,normal:vec3<f32>,distance:f32,sampl
 // DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE: prepare_surface with the AO
 // node's ray tracing (KERNEL_FEATURE_NODE_MASK_SURFACE). The other surface stages
 // are shared with the SHADE_SURFACE queue (push word 29 names the queue).
+//#if !SVM_STAGE_NO_NODES
 @compute @workgroup_size(64) fn prepare_surface_raytrace(@builtin(global_invocation_id) id:vec3<u32>){
     svm_raytrace=true;surface_prepare(id);
 }
+//#endif
+//#if SVM_STAGE_NO_NODES
+// The heavy and the closure stage of the raytrace queue's staged shader evaluation (wavefront_svm.wgsl SVM_STAGES).
+//#if SVM_STAGE_NO_HEAVY else @compute @workgroup_size(64) fn prepare_surface_raytrace_heavy(@builtin(global_invocation_id) id:vec3<u32>){svm_raytrace=true;surface_prepare(id);}
+@compute @workgroup_size(64) fn prepare_surface_raytrace_closure(@builtin(global_invocation_id) id:vec3<u32>){svm_raytrace=true;surface_prepare(id);}
+//#endif
+//#endif
 //#endif
 //#if RAYTRACE_ANY
 //#if RAYTRACE_LOCAL

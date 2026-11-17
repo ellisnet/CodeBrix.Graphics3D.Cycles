@@ -256,7 +256,10 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#endif
             // _surface_shader_bsdf_eval_mis: every product rounded before its sum (no
             // driver contraction) and correctly rounded scalar quotients, as on the host.
-            let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
+//#if SVM_NODE_TANGENT else             let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
+            // bsdf_pdf != 0.0f is true for a NaN pdf (integrator/surface_shader.h _surface_shader_bsdf_eval_mis; a closure with a NaN tangent or normal, native/DEVICE.md, items 150 and 210): on the bits.
+            let e=surf_evaluate(sd,other,out.wo);if((bitcast<u32>(e.w)&0x7fffffffu)!=0u){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
+//#endif
                 let w=e.w*other.sample_weight;pdf_sum=rounded_add(pdf_sum,w);rough_sum=rounded_add(rough_sum,w*surf_roughness(other));}weight_sum+=other.sample_weight;}
         out.roughness=select(0.0,rounded_divide(rough_sum,pdf_sum),pdf_sum>0.0);out.pdf=select(0.0,rounded_divide(pdf_sum,weight_sum),weight_sum>0.0);
     }
@@ -293,7 +296,10 @@ fn surf_sample_mis(sd:SurfaceData,r:SvmResult,sampled:SurfaceSample)->SurfaceSam
 //#endif
             // _surface_shader_bsdf_eval_mis: every product rounded before its sum (no
             // driver contraction) and correctly rounded scalar quotients, as on the host.
-            let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
+//#if SVM_NODE_TANGENT else             let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
+            // bsdf_pdf != 0.0f is true for a NaN pdf (integrator/surface_shader.h _surface_shader_bsdf_eval_mis; a closure with a NaN tangent or normal, native/DEVICE.md, items 150 and 210): on the bits.
+            let e=surf_evaluate(sd,other,out.wo);if((bitcast<u32>(e.w)&0x7fffffffu)!=0u){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
+//#endif
                 let w=e.w*other.sample_weight;pdf_sum=rounded_add(pdf_sum,w);rough_sum=rounded_add(rough_sum,w*surf_roughness(other));}weight_sum+=other.sample_weight;}
         out.roughness=select(0.0,rounded_divide(rough_sum,pdf_sum),pdf_sum>0.0);out.pdf=select(0.0,rounded_divide(pdf_sum,weight_sum),weight_sum>0.0);
     }
@@ -514,10 +520,27 @@ fn aov_single_pass_done(index:u32,r:SvmResult){
 //#endif
 //#endif
 // Preparation validates inputs and evaluates closures without changing path or film state.
+//#if !SVM_STAGE_NO_NODES
 @compute @workgroup_size(64) fn prepare_surface(@builtin(global_invocation_id) id:vec3<u32>){surface_prepare(id);}
+//#endif
+//#if SVM_STAGE_NO_NODES
+// The heavy and the closure stage of a staged shader evaluation (wavefront_svm.wgsl SVM_STAGES): each module variant holds its own entry.
+//#if SVM_STAGE_NO_HEAVY else @compute @workgroup_size(64) fn prepare_surface_heavy(@builtin(global_invocation_id) id:vec3<u32>){surface_prepare(id);}
+@compute @workgroup_size(64) fn prepare_surface_closure(@builtin(global_invocation_id) id:vec3<u32>){surface_prepare(id);}
+//#endif
+//#endif
 fn surface_prepare(id:vec3<u32>){
     svm_invocation(id.x);
-    if(id.x>=p(1u)){return;}store_word(p(24u)+id.x*SURFACE_STAGE_BYTES,0u);var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+//#if SVM_STAGES else     if(id.x>=p(1u)){return;}store_word(p(24u)+id.x*SURFACE_STAGE_BYTES,0u);var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    // A staged evaluation: the first dispatch of the nodes stage (push word 3 is 0) starts the record; every other
+    // dispatch continues the records that wait for its stage and leaves the others. In the last round (bit 31) a record
+    // that still waits is an error: the host's round count did not end its program.
+    if(id.x>=p(1u)){return;}svm_stage_at=p(24u)+id.x*SURFACE_STAGE_BYTES;svm_stage_resume=SVM_STAGE_THIS!=0u||p(3u)!=0u;
+    if(svm_stage_resume){let waits=load_word(svm_stage_at);
+        if(waits!=SVM_STAGE_WAIT+SVM_STAGE_THIS){if(SVM_STAGE_THIS==0u&&(p(3u)&0x80000000u)!=0u&&waits>=SVM_STAGE_WAIT&&waits<=SVM_STAGE_WAIT+2u){fail();}return;}}
+    else{store_word(svm_stage_at,0u);}
+    var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+//#endif
     if(index>=p(10u)){fail();return;}if(state_half(S_path_queued_kernel,index)!=surf_queue()){fail();return;}
 //#if !SUBSURFACE
 //#if SHADOW_CATCHER else     let flag=state_word(S_path_flag,index);if((flag&SURFACE_UNSUPPORTED_FLAGS)!=0u){fail();return;}
@@ -534,16 +557,28 @@ fn surface_prepare(id:vec3<u32>){
     let group=load_word(object+O_lightgroup);let go=data_word(D_film_pass_lightgroup);if(group!=NONE&&go!=PASS_NONE&&(group>=stride/3u||go>stride-3u*(group+1u))){fail();return;}
     if(volume_enabled()&&(sd.shader_flag&VS_HAS_VOLUME)!=0u){if(volume_stack_count(index)==NONE){return;}}
     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)!=0u){var empty:SvmResult;surface_stage_write(p(24u)+id.x*SURFACE_STAGE_BYTES,sd,empty);return;}
+//#if !SVM_STAGE_NO_NODES
 //#if SUBSURFACE
     // The subsurface exit point (ss_exit): the shader runs only for a bump-mapped BSSRDF normal, through this
     // function's one SVM evaluation (a second call site would inline the SVM interpreter twice).
     let ss_exit_point=(flag&SS_PATH_RAY_SUBSURFACE)!=0u;
     if(ss_exit_point&&(sd.shader_flag&SS_SD_HAS_BSSRDF_BUMP)==0u){var none:SvmResult;ss_exit(id.x,sd,none,false);return;}
 //#endif
+//#endif
 //#if SVM_NODE_AOV
     svm_aov_base=base;
 //#endif
-    var r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){return;}
+//#if SVM_STAGES else     var r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){return;}
+    // A failed evaluation leaves no waiting record; a suspended one has its state in the record (svm_stage_suspend), and
+    // one that the last dispatch of all (the nodes stage of the last round) suspends is the same error as a record left waiting.
+    var r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){store_word(svm_stage_at,0u);return;}
+    if(svm_stage_suspended){if(SVM_STAGE_THIS==0u&&(p(3u)&0x80000000u)!=0u){fail();}return;}
+//#endif
+//#if SVM_STAGE_NO_NODES
+    // The program ends in the nodes stage (NODE_END is its node), which does what follows the evaluation.
+    fail();
+//#endif
+//#if !SVM_STAGE_NO_NODES
 //#if SUBSURFACE
     if(ss_exit_point){ss_exit(id.x,sd,r,true);return;}
 //#endif
@@ -554,6 +589,7 @@ fn surface_prepare(id:vec3<u32>){
     sd.N=r.N;surf_prepare(index,&r);surf_filter_glossy(index,&r);
 //#endif
     surface_stage_write(p(24u)+id.x*SURFACE_STAGE_BYTES,sd,r);
+//#endif
 }
 // Direct lighting runs in two dispatches. shade_surface_light samples the lamp or
 // emissive triangle and the forward-hit triangle MIS weight (state 1 -> 3);
@@ -634,6 +670,12 @@ fn light_selection_compute(index:u32,sd:SurfaceData,r:SvmResult,sample:bool,forw
             out.selection.object=select(load_word(e+LTE_object),walk.object,out.selection.prim>=0);out.selection.pdf=walk.pdf;out.selection.tree=true;out.selection.valid=true;
             out.selection.distribution=u32(walk.emitter);}
     }
+//#if LIGHT_AREA_DEGENERATE
+    // A degenerate area light at a transmissive point (native/DEVICE.md, item 148) can make the tree's selection pdf a NaN.
+    // light_sample then ends with ls->pdf *= ls->pdf_selection and returns ls->pdf > 0, which is false for a NaN: no sample.
+    // The record keeps the emitter and the NaN; the samplers see an invalid selection.
+    if(out.selection.tree&&(bitcast<u32>(out.selection.pdf)&0x7fffffffu)>0x7f800000u){out.selection.valid=false;out.selection.prim= -1;}
+//#endif
     if(out.selection.valid&&!light_link_match(sd.object_id,out.selection.object)){out.selection.valid=false;out.selection.prim= -1;}
     return out;
 }

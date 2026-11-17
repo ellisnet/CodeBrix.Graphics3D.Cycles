@@ -250,6 +250,27 @@ inline constexpr ShaderFeatures SF_PRINCIPLED_VOLUME_ATTRIBUTE=ShaderFeatures::b
 // wavefront_mnee.wgsl, with tanf and atanf correctly rounded through wavefront_trig.wgsl). Without it such a lobe on a
 // caster is the unsupported-handler error 2.
 inline constexpr ShaderFeatures SF_MNEE_ANISOTROPIC=ShaderFeatures::bit(79);
+// The Glass BSDF node with the multiscatter GGX distribution (svm/closure.h, CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID as
+// the node's closure type; the SVM census): a GGX glass closure whose setup preserves energy
+// (bsdf_microfacet_setup_fresnel_generalized_schlick with preserve_energy, microfacet_ggx_preserve_energy;
+// wavefront_svm_microfacet.wgsl svm_glass, the SVM_BSDF_GLASS_MULTISCATTER regions, with the energy helpers it shares
+// with the Principled BSDF). Set together with SF_BSDF_GLASS. Without it such a node is error 16.
+inline constexpr ShaderFeatures SF_BSDF_GLASS_MULTISCATTER=ShaderFeatures::bit(73);
+// LIGHT_SPHERE_INSIDE: a sphere light (a point or spot light with a radius) whose ball reaches the scene's geometry, so that a
+// surface point can lie inside it (light/point.h point_light_sample, "Inside sphere"): there the sample is
+// sample_uniform_sphere or sample_cos_hemisphere, in the oracle's order with the scalar sinf and cosf adapter
+// (wavefront_lighting.wgsl light_sample_lamp; native/DEVICE.md, item 152). Decided conservatively from the top level of
+// the uploaded BVH (WebGPUDevice::sphere_light_reaches_geometry): a leaf's or an instance's box within the radius.
+// Without it such a sample keeps the driver's sine and cosine.
+inline constexpr ShaderFeatures SF_LIGHT_SPHERE_INSIDE=ShaderFeatures::bit(74);
+// SVM_NODE_MASK_BUMP: an evaluation the pinned kernel makes without the BUMP node feature (kernel/features.h: the light,
+// background and volume node masks; svm/displace.h, svm/svm.h) can reach a node that feature gates. There the Bump,
+// Displacement and Vector Displacement nodes store zero and Set Normal, Set Displacement and the bump state nodes do
+// nothing (wavefront_svm.wgsl svm_node_mask_bump; wavefront_svm_derivatives.wgsl). Set when the program of an emitter's
+// shader (a lamp's, an emissive triangle's that light sampling reaches, any emissive shader with shadow linking) or a
+// volume program holds one of those nodes (WebGPUDevice::shader_features). Without it every evaluation of a surface
+// module runs them, which is what the surface and shadow evaluations do.
+inline constexpr ShaderFeatures SF_NODE_MASK_BUMP=ShaderFeatures::bit(85);
 // Film data passes (film_passes.cpp, wavefront_film_passes.wgsl): a data pass the
 // surface stage's film_write_data_passes writes is enabled (depth, position,
 // normal, roughness, UV, object and material index, the diffuse, glossy and
@@ -521,12 +542,32 @@ inline constexpr ShaderFeatures SF_LIGHT_LAMP_SAMPLE=ShaderFeatures::bit(253);
 // MNEE_LIGHT_STAGES, not in SF_ALL: Off and superset modules keep the one-entry walk, and the host dispatches what the
 // module holds.
 inline constexpr ShaderFeatures SF_MNEE_WALK_STAGES=ShaderFeatures::bit(66);
-// Every assigned scene feature (bits 0-61, 63, 64, 65, 76-79, 94-96, 102, 106, 108, 110, 120,
+// BOOLEAN_MATH, INTEGER_MATH, GET_VECTOR_COMPONENT (overflow bits 67 to 69): the Boolean Math and Integer Math nodes
+// (svm/boolean_math.h, svm/integer_math.h) and the Get Vector Component node with its derivative opcode
+// (svm/sepcomb_vector.h svm_node_get_vector_component), wavefront_svm_nodes.wgsl.
+inline constexpr ShaderFeatures SF_NODE_BOOLEAN_MATH=ShaderFeatures::bit(67);
+inline constexpr ShaderFeatures SF_NODE_INTEGER_MATH=ShaderFeatures::bit(68);
+inline constexpr ShaderFeatures SF_NODE_GET_VECTOR_COMPONENT=ShaderFeatures::bit(69);
+inline constexpr ShaderFeatures SF_NODES_INTEGER=SF_NODE_BOOLEAN_MATH|SF_NODE_INTEGER_MATH|SF_NODE_GET_VECTOR_COMPONENT;
+// SVM_STAGE_NO_HEAVY (overflow bit 71) and SVM_STAGE_NO_NODES (overflow bit 72): the module variants of a surface stage
+// whose shader evaluation is built in three entries (wavefront_svm.wgsl SVM_STAGES; native/DEVICE.md 202). A prepare
+// entry (prepare_surface, prepare_surface_raytrace) that inlines to svm_stage_threshold_bytes or more in one entry is
+// built as the nodes stage (bit 71 alone: without the heavy node handlers and without NODE_CLOSURE_BSDF), the heavy
+// stage (bit 72 alone: the Ambient Occlusion, Bevel and Raycast nodes, the displacement nodes, Set Bump and the bump
+// evaluation state) and the closure stage (both bits: NODE_CLOSURE_BSDF); the host dispatches them in turn and the
+// evaluation's state crosses in the stage record (surface.cpp). Size-control variants like MNEE_WALK_STAGES, not in
+// SF_ALL: scenes under the threshold, Off and superset modules keep the one-entry evaluation and compile the same text.
+inline constexpr ShaderFeatures SF_SVM_STAGE_NO_HEAVY=ShaderFeatures::bit(71);
+inline constexpr ShaderFeatures SF_SVM_STAGE_NO_NODES=ShaderFeatures::bit(72);
+// The inlined size (wgsl_inlined_bytes) of a one-entry prepare entry from which its evaluation is staged. It is a
+// fixed number, apart from the size guard's threshold and its override: the guard only warns and never changes what is built.
+inline constexpr size_t svm_stage_threshold_bytes=1110000;
+// Every assigned scene feature (bits 0-61, 63, 64, 65, 67-69, 73, 74, 76-79, 85, 94-96, 102, 106, 108, 110, 120,
 // 128-160, 162-168, 170-180, 186-189, 194-198, 200, 201, 204, 206-209, 216, 218, 220, 221, 223, 226, 227, 232, 233, 238-243, 244-253; bit 62 is unassigned; 107, 161, 169 and 217 are module variants).
 inline constexpr ShaderFeatures SF_ALL=SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|
   SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
   SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|
-  SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_ANISOTROPIC|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE|SF_LIGHT_AREA_DEGENERATE|SF_BAKE_DEFORM|SF_LIGHT_SPOT|SF_LIGHT_LAMP_SAMPLE|SF_DISPLACE_VERTEX_MOTION|SF_LIGHT_PATH_STATE|SF_PRINCIPLED_VOLUME_ATTRIBUTE;
+  SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_ANISOTROPIC|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE|SF_LIGHT_AREA_DEGENERATE|SF_BAKE_DEFORM|SF_LIGHT_SPOT|SF_LIGHT_LAMP_SAMPLE|SF_DISPLACE_VERTEX_MOTION|SF_LIGHT_PATH_STATE|SF_PRINCIPLED_VOLUME_ATTRIBUTE|SF_NODES_INTEGER|SF_BSDF_GLASS_MULTISCATTER|SF_LIGHT_SPHERE_INSIDE|SF_NODE_MASK_BUMP;
 // The families above, for regions shared by all of them (closure classification).
 inline constexpr ShaderFeatures SF_BSDF_FAMILIES=SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_BSDF_HAIR_HUANG;
 inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL;
@@ -539,7 +580,7 @@ inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_POINTS_ALL|SF_BUMP|SF_
   SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|
   SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
   SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|
-  SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_ANISOTROPIC|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE|SF_LIGHT_AREA_DEGENERATE|SF_BAKE_DEFORM|SF_LIGHT_SPOT|SF_LIGHT_LAMP_SAMPLE|SF_DISPLACE_VERTEX_MOTION|SF_LIGHT_PATH_STATE|SF_PRINCIPLED_VOLUME_ATTRIBUTE;
+  SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_ANISOTROPIC|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE|SF_LIGHT_AREA_DEGENERATE|SF_BAKE_DEFORM|SF_LIGHT_SPOT|SF_LIGHT_LAMP_SAMPLE|SF_DISPLACE_VERTEX_MOTION|SF_LIGHT_PATH_STATE|SF_PRINCIPLED_VOLUME_ATTRIBUTE|SF_NODES_INTEGER|SF_BSDF_GLASS_MULTISCATTER|SF_LIGHT_SPHERE_INSIDE|SF_NODE_MASK_BUMP;
 // Specialization modes: Scene (default, only the regions the scene reaches),
 // Superset (the on/off identity check) and Off (every region; diagnostic).
 //
@@ -624,6 +665,8 @@ struct SvmCensus {
   std::string unsupported;
   // Word offsets of the reachable Raycast node records (svm_canonical_padding).
   std::vector<uint32_t> raycast_records;
+  // Distinct decoded records of the nodes the heavy and closure stages own (SVM_STAGES): a bound on the stage rounds of a program.
+  uint64_t stage_service_nodes=0;
 };
 // Mirrors the WGSL interpreter's decode exactly: every program start reachable
 // through a shader header, shader jump or conditional jump, record sizes from
@@ -631,7 +674,7 @@ struct SvmCensus {
 // transforms. Paths stop where the GPU would stop (END, unknown opcode/closure,
 // or a bounds error); the result is a superset of executable handlers.
 // `roots` (optional) limits the program starts to these shader indices.
-SvmCensus svm_census(const std::vector<uint32_t> &words,size_t shader_count,const std::vector<uint32_t> *roots=nullptr,bool displacement=false);
+SvmCensus svm_census(const std::vector<uint32_t> &words,size_t shader_count,const std::vector<uint32_t> *roots=nullptr,bool displacement=false,bool volume=false);
 // The SVM program as uploaded, with the padding byte of every reachable SVMNodeRaycast record cleared: the scene compiler
 // builds the record on the stack, so that byte is whatever the stack held (native/DEVICE.md 55); no kernel reads it.
 void svm_canonical_padding(std::vector<uint32_t> &words);

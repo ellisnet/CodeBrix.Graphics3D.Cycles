@@ -54,7 +54,50 @@ fn lt_fast_acos(value:f32)->f32{
 }
 // glibc cosf (spot energy and the importance cone test) on [0, pi].
 fn lt_cosf(angle:f32)->f32{return native_disk_sincos(angle).y;}
-fn lt_sin_from_cos(c:f32)->f32{return rounded_sqrt(max(rounded_add(1.0,-(c*c)),0.0));}
+//#if LIGHT_AREA_DEGENERATE else fn lt_sin_from_cos(c:f32)->f32{return rounded_sqrt(max(rounded_add(1.0,-(c*c)),0.0));}
+// A zero-length area axis at a transmissive point (native/DEVICE.md, item 148): light_tree_importance is computed from
+// cos_theta_u = FLT_MAX, so its results and the weights, sums and probabilities of the walk hold infinities and NaNs. WGSL
+// defines neither arithmetic nor comparisons on those, so every one of them is decided on the bits here (ltx_*), with the
+// result of the oracle's IEEE arithmetic and of its comparisons, which are false for a NaN operand.
+// safe_sqrtf(1 - c * c) is zero for every |c| >= 1, an infinity included, and for a NaN (max(NaN, 0) = 0).
+fn lt_sin_from_cos(c:f32)->f32{if((bitcast<u32>(c)&0x7fffffffu)>=0x3f800000u){return 0.0;}return rounded_sqrt(max(rounded_add(1.0,-(c*c)),0.0));}
+// The NaN the oracle generates (sign set on x86-64, clear on ARM64); a runtime value, never a constant expression.
+fn ltx_nan()->f32{return bitcast<f32>(rounded_steps(select(0xffc00000u,0x7fc00000u,NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u)));}
+fn ltx_is_nan(x:f32)->bool{return (bitcast<u32>(x)&0x7fffffffu)>0x7f800000u;}
+fn ltx_is_inf(x:f32)->bool{return (bitcast<u32>(x)&0x7fffffffu)==0x7f800000u;}
+fn ltx_is_zero(x:f32)->bool{return (bitcast<u32>(x)&0x7fffffffu)==0u;}
+// x > 0.
+fn ltx_positive(x:f32)->bool{let b=bitcast<u32>(x);return b!=0u&&b<=0x7f800000u;}
+// a < b: both keys ascend with the value, the two zeros share one.
+fn ltx_key(x:f32)->u32{let b=bitcast<u32>(x);if((b&0x7fffffffu)==0u){return 0x80000000u;}return select(b|0x80000000u,~b,(b&0x80000000u)!=0u);}
+fn ltx_less(a:f32,b:f32)->bool{return !ltx_is_nan(a)&&!ltx_is_nan(b)&&ltx_key(a)<ltx_key(b);}
+fn ltx_signed(sign:u32,magnitude:u32)->f32{return bitcast<f32>((sign&0x80000000u)|magnitude);}
+fn ltx_abs(x:f32)->f32{return bitcast<f32>(bitcast<u32>(x)&0x7fffffffu);}
+fn ltx_add(a:f32,b:f32)->f32{
+    if(ltx_is_nan(a)||ltx_is_nan(b)){return ltx_nan();}
+    if(ltx_is_inf(a)){if(ltx_is_inf(b)&&bitcast<u32>(a)!=bitcast<u32>(b)){return ltx_nan();}return a;}
+    if(ltx_is_inf(b)){return b;}
+    return rounded_add(a,b);
+}
+fn ltx_mul(a:f32,b:f32)->f32{
+    if(ltx_is_nan(a)||ltx_is_nan(b)){return ltx_nan();}
+    let sign=bitcast<u32>(a)^bitcast<u32>(b);
+    if(ltx_is_inf(a)||ltx_is_inf(b)){if(ltx_is_zero(a)||ltx_is_zero(b)){return ltx_nan();}return ltx_signed(sign,0x7f800000u);}
+    return a*b;
+}
+fn ltx_div(a:f32,b:f32)->f32{
+    if(ltx_is_nan(a)||ltx_is_nan(b)){return ltx_nan();}
+    let sign=bitcast<u32>(a)^bitcast<u32>(b);
+    if(ltx_is_inf(a)){if(ltx_is_inf(b)){return ltx_nan();}return ltx_signed(sign,0x7f800000u);}
+    if(ltx_is_inf(b)){return ltx_signed(sign,0u);}
+    if(ltx_is_zero(b)){if(ltx_is_zero(a)){return ltx_nan();}return ltx_signed(sign,0x7f800000u);}
+    return rounded_divide(a,b);
+}
+// fmaxf(x, 0): the libm function returns the other operand for a NaN.
+fn ltx_max_zero(x:f32)->f32{if(ltx_is_nan(x)){return 0.0;}if(ltx_is_inf(x)){return select(x,0.0,(bitcast<u32>(x)&0x80000000u)!=0u);}return max(x,0.0);}
+// saturatef: min(max(x, 0), 1) with (a > b) ? a : b and (a < b) ? a : b, so a NaN gives 0.
+fn ltx_saturate(x:f32)->f32{let b=bitcast<u32>(x);if(b>0x7f800000u){return 0.0;}if(b>=0x3f800000u){return 1.0;}return x;}
+//#endif
 fn lt_len(v:vec3<f32>)->f32{return rounded_sqrt(rounded_dot(v,v));}
 // normalize_len: a * (1 / len).
 fn lt_normalize_len(v:vec3<f32>)->vec4<f32>{let t=lt_len(v);return vec4<f32>(v*rounded_divide(1.0,t),t);}
@@ -142,9 +185,15 @@ fn lt_importance(N:vec3<f32>,transmission:bool,to_centroid:vec3<f32>,cos_u:f32,c
 //#if !VOLUME_LIGHT_TREE
     var cos_i=rounded_dot(to_centroid,N);if(transmission){cos_i=abs(cos_i);}
     let sin_i=lt_sin_from_cos(cos_i);
-    let min_incidence=select(rounded_add(cos_i*cos_u,sin_i*sin_u),1.0,cos_i>=cos_u);
-    if(!transmission&&min_incidence<0.0){return vec2<f32>(0);}
-    let max_incidence=max(rounded_add(cos_i*cos_u,-(sin_i*sin_u)),0.0);
+//#if LIGHT_AREA_DEGENERATE else     let min_incidence=select(rounded_add(cos_i*cos_u,sin_i*sin_u),1.0,cos_i>=cos_u);
+    let min_incidence=select(ltx_add(ltx_mul(cos_i,cos_u),sin_i*sin_u),1.0,cos_i>=cos_u);
+//#endif
+//#if LIGHT_AREA_DEGENERATE else     if(!transmission&&min_incidence<0.0){return vec2<f32>(0);}
+    if(!transmission&&ltx_less(min_incidence,0.0)){return vec2<f32>(0);}
+//#endif
+//#if LIGHT_AREA_DEGENERATE else     let max_incidence=max(rounded_add(cos_i*cos_u,-(sin_i*sin_u)),0.0);
+    let max_incidence=ltx_max_zero(ltx_add(ltx_mul(cos_i,cos_u),-(sin_i*sin_u)));
+//#endif
 //#endif
 //#if VOLUME_LIGHT_TREE
     // cos(theta_i') is omitted for a volume segment.
@@ -152,29 +201,51 @@ fn lt_importance(N:vec3<f32>,transmission:bool,to_centroid:vec3<f32>,cos_u:f32,c
     if(!lt_segment){
         var cos_i=rounded_dot(to_centroid,N);if(transmission){cos_i=abs(cos_i);}
         let sin_i=lt_sin_from_cos(cos_i);
-        min_incidence=select(rounded_add(cos_i*cos_u,sin_i*sin_u),1.0,cos_i>=cos_u);
-        if(!transmission&&min_incidence<0.0){return vec2<f32>(0);}
-        max_incidence=max(rounded_add(cos_i*cos_u,-(sin_i*sin_u)),0.0);
+//#if LIGHT_AREA_DEGENERATE else         min_incidence=select(rounded_add(cos_i*cos_u,sin_i*sin_u),1.0,cos_i>=cos_u);
+        min_incidence=select(ltx_add(ltx_mul(cos_i,cos_u),sin_i*sin_u),1.0,cos_i>=cos_u);
+//#endif
+//#if LIGHT_AREA_DEGENERATE else         if(!transmission&&min_incidence<0.0){return vec2<f32>(0);}
+        if(!transmission&&ltx_less(min_incidence,0.0)){return vec2<f32>(0);}
+//#endif
+//#if LIGHT_AREA_DEGENERATE else         max_incidence=max(rounded_add(cos_i*cos_u,-(sin_i*sin_u)),0.0);
+        max_incidence=ltx_max_zero(ltx_add(ltx_mul(cos_i,cos_u),-(sin_i*sin_u)));
+//#endif
     }
 //#endif
     var cos_t=1.0;var sin_t=0.0;
     if(any(cone.axis!=-to_centroid)){cos_t=rounded_dot(cone.axis,-to_centroid);sin_t=lt_sin_from_cos(cos_t);}
-    let cos_minus=rounded_add(cos_t*cos_u,sin_t*sin_u);
+//#if LIGHT_AREA_DEGENERATE else     let cos_minus=rounded_add(cos_t*cos_u,sin_t*sin_u);
+    let cos_minus=ltx_add(ltx_mul(cos_t,cos_u),sin_t*sin_u);
+//#endif
     var min_outgoing=1.0;
-    if(!(cos_t>=cos_u||cos_minus>=o.y)){
+//#if LIGHT_AREA_DEGENERATE else     if(!(cos_t>=cos_u||cos_minus>=o.y)){
+    if(!(cos_t>=cos_u||!(ltx_is_nan(cos_minus)||ltx_less(cos_minus,o.y)))){
+//#endif
         let sum=rounded_add(cone.theta_o,cone.theta_e);
-        if(sum>bitcast<f32>(0x40490fdbu)||cos_minus>cos_sum){min_outgoing=rounded_add(cos_minus*o.y,lt_sin_from_cos(cos_minus)*o.x);}
+//#if LIGHT_AREA_DEGENERATE else         if(sum>bitcast<f32>(0x40490fdbu)||cos_minus>cos_sum){min_outgoing=rounded_add(cos_minus*o.y,lt_sin_from_cos(cos_minus)*o.x);}
+        if(sum>bitcast<f32>(0x40490fdbu)||ltx_less(cos_sum,cos_minus)){min_outgoing=ltx_add(ltx_mul(cos_minus,o.y),lt_sin_from_cos(cos_minus)*o.x);}
+//#endif
         else{return vec2<f32>(0);}
     }
 //#if VOLUME_LIGHT_TREE
     // (theta_b - theta_a) / d, no minimum importance (Eq. 4).
     if(lt_segment){return vec2<f32>(abs(((min_incidence*energy)*min_outgoing)*rounded_divide(lt_theta,min_distance)),0.0);}
 //#endif
-    let maximum=abs(((min_incidence*energy)*min_outgoing)*rounded_divide(1.0,min_distance*min_distance));
-    var minimum=0.0;let cos_plus=rounded_add(cos_t*cos_u,-(sin_t*sin_u));let spread=rounded_add(cone.theta_e,-cone.theta_o);
-    if(!(spread<0.0||cos_t<0.0||cos_u<0.0||cos_plus<cos_spread)){
-        let max_outgoing=rounded_add(cos_plus*o.y,-(lt_sin_from_cos(cos_plus)*o.x));
-        minimum=abs(rounded_divide((max_incidence*energy)*max_outgoing,max_distance*max_distance));
+//#if LIGHT_AREA_DEGENERATE else     let maximum=abs(((min_incidence*energy)*min_outgoing)*rounded_divide(1.0,min_distance*min_distance));
+    let maximum=ltx_abs(ltx_mul(ltx_mul(ltx_mul(min_incidence,energy),min_outgoing),ltx_div(1.0,min_distance*min_distance)));
+//#endif
+//#if LIGHT_AREA_DEGENERATE else     var minimum=0.0;let cos_plus=rounded_add(cos_t*cos_u,-(sin_t*sin_u));let spread=rounded_add(cone.theta_e,-cone.theta_o);
+    var minimum=0.0;let cos_plus=ltx_add(ltx_mul(cos_t,cos_u),-(sin_t*sin_u));let spread=rounded_add(cone.theta_e,-cone.theta_o);
+//#endif
+//#if LIGHT_AREA_DEGENERATE else     if(!(spread<0.0||cos_t<0.0||cos_u<0.0||cos_plus<cos_spread)){
+    if(!(spread<0.0||cos_t<0.0||cos_u<0.0||ltx_less(cos_plus,cos_spread))){
+//#endif
+//#if LIGHT_AREA_DEGENERATE else         let max_outgoing=rounded_add(cos_plus*o.y,-(lt_sin_from_cos(cos_plus)*o.x));
+        let max_outgoing=ltx_add(ltx_mul(cos_plus,o.y),-(lt_sin_from_cos(cos_plus)*o.x));
+//#endif
+//#if LIGHT_AREA_DEGENERATE else         minimum=abs(rounded_divide((max_incidence*energy)*max_outgoing,max_distance*max_distance));
+        minimum=ltx_abs(ltx_div(ltx_mul(ltx_mul(max_incidence,energy),max_outgoing),max_distance*max_distance));
+//#endif
     }
     return vec2<f32>(maximum,minimum);
 }
@@ -256,10 +327,9 @@ fn lt_item_importance(P:vec3<f32>,N:vec3<f32>,transmission:bool,item:u32,item_is
 //#if LIGHT_AREA_DEGENERATE
         // A zero-length area axis (native/DEVICE.md, item 148): the CPU's corners are NaN, so area_light_tree_parameters keeps
         // cos_theta_u = FLT_MAX and both distances (fminf and fmaxf drop a NaN) and returns false (a NaN sum is not above 0).
-        // At a transmissive point (is_visible |= has_transmission) the CPU's importance is then computed from cos_theta_u =
-        // FLT_MAX, which overflows to infinite weights in the reservoir: refused by name (error bit 131072).
+        // At a transmissive point and on a volume segment (is_visible |= has_transmission) the importance is then computed
+        // from cos_theta_u = FLT_MAX (lt_importance and the walk decide its infinities and NaNs on the bits).
         if(kind==LT_LIGHT_AREA+2u&&(heap_float(light+L_area_len_u)==0.0||heap_float(light+L_area_len_v)==0.0)){
-            if(transmission){atomicOr(&heap[p(17u)/4u],131072u);return vec2<f32>(0);}
             corners=0u;cos_u=bitcast<f32>(0x7f7fffffu);visible=false;}
 //#endif
         if(corners!=0u){
@@ -324,12 +394,24 @@ fn lt_item_importance(P:vec3<f32>,N:vec3<f32>,transmission:bool,item:u32,item_is
 // sample_reservoir.
 struct LtReservoir {selected:i32,weight:f32,total:f32,rand:f32}
 fn lt_reservoir(r:LtReservoir,index:i32,weight:f32)->LtReservoir{
-    var out=r;if(!(weight>0.0)){return out;}out.total=rounded_add(out.total,weight);
+//#if LIGHT_AREA_DEGENERATE else     var out=r;if(!(weight>0.0)){return out;}out.total=rounded_add(out.total,weight);
+    var out=r;if(!ltx_positive(weight)){return out;}out.total=ltx_add(out.total,weight);
+//#endif
     if(out.selected== -1){out.selected=index;out.weight=weight;return out;}
+//#if !LIGHT_AREA_DEGENERATE
     let threshold=rounded_divide(weight,out.total);
     if(out.rand<=threshold){out.selected=index;out.weight=weight;out.rand=rounded_divide(out.rand,threshold);}
     else{out.rand=rounded_divide(rounded_add(out.rand,-threshold),rounded_add(1.0,-threshold));}
     out.rand=clamp(out.rand,0.0,1.0);return out;
+//#endif
+//#if LIGHT_AREA_DEGENERATE
+    // An infinite weight over an infinite total is a NaN threshold: rand <= thresh is false, rand becomes NaN and saturatef
+    // gives 0; a later finite weight has the threshold 0, which a rand of 0 reaches (0 / 0, then 0 again).
+    let threshold=ltx_div(weight,out.total);
+    if(!ltx_is_nan(threshold)&&out.rand<=threshold){out.selected=index;out.weight=weight;out.rand=ltx_div(out.rand,threshold);}
+    else{out.rand=ltx_div(ltx_add(out.rand,-threshold),ltx_add(1.0,-threshold));}
+    out.rand=ltx_saturate(out.rand);return out;
+//#endif
 }
 struct LtWalk {emitter:i32,pdf:f32,object:u32}
 // sample: light_tree_sample<false> (emitter, pdf_selection, mesh object).
@@ -379,17 +461,25 @@ fn light_tree_walk(sample:bool,P_in:vec3<f32>,N_in:vec3<f32>,transmission:bool,r
                 let index=i32(first+j);let chosen=select(importance.y,importance.x,sample_max);let measure=select(importance.x,importance.y,sample_max);
                 pick.rand=rand;pick=lt_reservoir(pick,index,chosen);rand=pick.rand;
                 if(pick.selected==index){other_weight=measure;}
-                other_total=rounded_add(other_total,measure);has|=select(0u,1u,importance.x>0.0)<<j;
+//#if LIGHT_AREA_DEGENERATE else                 other_total=rounded_add(other_total,measure);has|=select(0u,1u,importance.x>0.0)<<j;
+                other_total=ltx_add(other_total,measure);has|=select(0u,1u,ltx_positive(importance.x))<<j;
+//#endif
             }else{
-                with_importance+=select(0u,1u,importance.x>0.0);if(first+j==goal){goal_importance=importance;}
-                total=vec2<f32>(rounded_add(total.x,importance.x),rounded_add(total.y,importance.y));
+//#if LIGHT_AREA_DEGENERATE else                 with_importance+=select(0u,1u,importance.x>0.0);if(first+j==goal){goal_importance=importance;}
+                with_importance+=select(0u,1u,ltx_positive(importance.x));if(first+j==goal){goal_importance=importance;}
+//#endif
+//#if LIGHT_AREA_DEGENERATE else                 total=vec2<f32>(rounded_add(total.x,importance.x),rounded_add(total.y,importance.y));
+                total=vec2<f32>(ltx_add(total.x,importance.x),ltx_add(total.y,importance.y));
+//#endif
             }
             j++;
             if(leaf&&sample&&j==count){
                 if(has==0u){return LtWalk(-1,0.0,NONE);}
                 // total_importance[1]: the minimum measure's sum.
                 let min_total=select(pick.total,other_total,sample_max);
-                if(min_total==0.0){
+//#if LIGHT_AREA_DEGENERATE else                 if(min_total==0.0){
+                if(ltx_is_zero(min_total)){
+//#endif
                     if(sample_max){other_weight=1.0;other_total=f32(countOneBits(has));}
                     else{var fallback=LtReservoir(-1,0.0,0.0,rand);var bits=has;
                         for(var i=0u;i<count;i++){fallback=lt_reservoir(fallback,i32(first+i),f32(bits&1u));bits>>=1u;}
@@ -402,33 +492,57 @@ fn light_tree_walk(sample:bool,P_in:vec3<f32>,N_in:vec3<f32>,transmission:bool,r
             // selected/total importance indexed [0] maximum, [1] minimum.
             var weight=vec2<f32>(pick.weight,other_weight);var sums=vec2<f32>(pick.total,other_total);
             if(!sample_max){weight=vec2<f32>(other_weight,pick.weight);sums=vec2<f32>(other_total,pick.total);}
-            pdf_selection*=0.5*rounded_add(rounded_divide(weight.x,sums.x),rounded_divide(weight.y,sums.y));
+//#if LIGHT_AREA_DEGENERATE else             pdf_selection*=0.5*rounded_add(rounded_divide(weight.x,sums.x),rounded_divide(weight.y,sums.y));
+            pdf_selection=ltx_mul(pdf_selection,ltx_mul(0.5,ltx_add(ltx_div(weight.x,sums.x),ltx_div(weight.y,sums.y))));
+//#endif
             let e=lt_emitter(u32(pick.selected));
             if(lt_is_mesh(e)){let object=load_word(e+LTE_mesh_object);local_object=object;node=load_word(e+LTE_mesh_node);
                 let mesh=lt_node(node);if(lt_type(mesh)==LT_LIGHT_TREE_INSTANCE){node=load_word(mesh+LTN_reference);}out.object=object;continue;}
-            out.emitter=pick.selected;out.pdf=pdf_selection*pdf_leaf;return out;
+//#if LIGHT_AREA_DEGENERATE else             out.emitter=pick.selected;out.pdf=pdf_selection*pdf_leaf;return out;
+            out.emitter=pick.selected;out.pdf=ltx_mul(pdf_selection,pdf_leaf);return out;
+//#endif
         }
         if(leaf){
-            if(!(goal_importance.x>0.0)){return LtWalk(-1,0.0,NONE);}
-            pdf*=0.5*rounded_add(rounded_divide(goal_importance.x,total.x),select(rounded_divide(1.0,f32(with_importance)),rounded_divide(goal_importance.y,total.y),total.y>0.0));
+//#if LIGHT_AREA_DEGENERATE else             if(!(goal_importance.x>0.0)){return LtWalk(-1,0.0,NONE);}
+            if(!ltx_positive(goal_importance.x)){return LtWalk(-1,0.0,NONE);}
+//#endif
+//#if LIGHT_AREA_DEGENERATE else             pdf*=0.5*rounded_add(rounded_divide(goal_importance.x,total.x),select(rounded_divide(1.0,f32(with_importance)),rounded_divide(goal_importance.y,total.y),total.y>0.0));
+            pdf=ltx_mul(pdf,ltx_mul(0.5,ltx_add(ltx_div(goal_importance.x,total.x),select(rounded_divide(1.0,f32(with_importance)),ltx_div(goal_importance.y,total.y),ltx_positive(total.y)))));
+//#endif
             if(subtree!=NONE){local_object=goal_object;node=subtree;subtree=NONE;goal=goal_emitter;trail=load_word(lt_emitter(goal_emitter)+LTE_bit_trail);continue;}
             out.pdf=pdf;return out;
         }
         // Inner node: get_left_probability.
-        let total_max=rounded_add(left.x,right.x);if(total_max==0.0){return LtWalk(-1,0.0,NONE);}
-        let total_min=rounded_add(left.y,right.y);let probability_max=rounded_divide(left.x,total_max);
+//#if LIGHT_AREA_DEGENERATE else         let total_max=rounded_add(left.x,right.x);if(total_max==0.0){return LtWalk(-1,0.0,NONE);}
+        let total_max=ltx_add(left.x,right.x);if(ltx_is_zero(total_max)){return LtWalk(-1,0.0,NONE);}
+//#endif
+//#if LIGHT_AREA_DEGENERATE else         let total_min=rounded_add(left.y,right.y);let probability_max=rounded_divide(left.x,total_max);
+        let total_min=ltx_add(left.y,right.y);let probability_max=ltx_div(left.x,total_max);
+//#endif
         // The flags are summed as integers (the same 0, 0.5 or 1): summed as floats,
         // the Intel Direct3D 12 driver rejects the pipeline (docs/TESTING-WINDOWS-X64.md, W1).
-        let probability_min=select(0.5*f32(select(0u,1u,left.x>0.0)+select(0u,1u,right.x==0.0)),rounded_divide(left.y,total_min),total_min>0.0);
-        let left_probability=0.5*rounded_add(probability_max,probability_min);
+//#if LIGHT_AREA_DEGENERATE else         let probability_min=select(0.5*f32(select(0u,1u,left.x>0.0)+select(0u,1u,right.x==0.0)),rounded_divide(left.y,total_min),total_min>0.0);
+        let probability_min=select(0.5*f32(select(0u,1u,ltx_positive(left.x))+select(0u,1u,ltx_is_zero(right.x))),ltx_div(left.y,total_min),ltx_positive(total_min));
+//#endif
+//#if LIGHT_AREA_DEGENERATE else         let left_probability=0.5*rounded_add(probability_max,probability_min);
+        let left_probability=ltx_mul(0.5,ltx_add(probability_max,probability_min));
+//#endif
         let left_index=load_word(at+LTN_left_child);let right_index=load_word(at+LTN_right_child);
         if(sample){
-            var choice=LtReservoir(i32(left_index),0.0,left_probability,rand);choice=lt_reservoir(choice,i32(right_index),rounded_add(1.0,-left_probability));rand=choice.rand;
-            node=u32(choice.selected);pdf_leaf*=select(rounded_add(1.0,-left_probability),left_probability,node==left_index);
+//#if LIGHT_AREA_DEGENERATE else             var choice=LtReservoir(i32(left_index),0.0,left_probability,rand);choice=lt_reservoir(choice,i32(right_index),rounded_add(1.0,-left_probability));rand=choice.rand;
+            var choice=LtReservoir(i32(left_index),0.0,left_probability,rand);choice=lt_reservoir(choice,i32(right_index),ltx_add(1.0,-left_probability));rand=choice.rand;
+//#endif
+//#if LIGHT_AREA_DEGENERATE else             node=u32(choice.selected);pdf_leaf*=select(rounded_add(1.0,-left_probability),left_probability,node==left_index);
+            node=u32(choice.selected);pdf_leaf=ltx_mul(pdf_leaf,select(ltx_add(1.0,-left_probability),left_probability,node==left_index));
+//#endif
         }else{
             trail>>=load_word(at+LTN_bit_skip)&255u;let go_left=(trail&1u)==0u;trail>>=1u;
-            node=select(right_index,left_index,go_left);pdf*=select(rounded_add(1.0,-left_probability),left_probability,go_left);
-            if(pdf==0.0){return LtWalk(-1,0.0,NONE);}
+//#if LIGHT_AREA_DEGENERATE else             node=select(right_index,left_index,go_left);pdf*=select(rounded_add(1.0,-left_probability),left_probability,go_left);
+            node=select(right_index,left_index,go_left);pdf=ltx_mul(pdf,select(ltx_add(1.0,-left_probability),left_probability,go_left));
+//#endif
+//#if LIGHT_AREA_DEGENERATE else             if(pdf==0.0){return LtWalk(-1,0.0,NONE);}
+            if(ltx_is_zero(pdf)){return LtWalk(-1,0.0,NONE);}
+//#endif
         }
     }
     fail();return LtWalk(-1,0.0,NONE);

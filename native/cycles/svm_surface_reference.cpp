@@ -30,6 +30,11 @@ std::vector<ccl::SurfaceSvmRecord> original_surface_svm(ccl::DeviceScene &scene,
     Ray ray{};Intersection isect{};ShaderData sd{};SurfaceSvmRecord result{};
     integrator_state_read_ray(&states[i],&ray);integrator_state_read_isect(&states[i],&isect);
     shader_setup_from_ray(kg,&sd,&ray,&isect);
+    // A state with the arguments of the kernel's light evaluation (integrator/shade_light.h integrate_light_nee and
+    // light/sample.h: PATH_RAY_VISIBILITY_NONE, PATH_RAY_EMISSION) is evaluated as there, with the light node mask.
+    if(states[i].path.visibility==PATH_RAY_VISIBILITY_NONE&&states[i].path.flag==PATH_RAY_EMISSION)
+      surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT>(kg,&states[i],&sd,nullptr,PATH_RAY_VISIBILITY_NONE,PATH_RAY_EMISSION);
+    else
     surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE>(kg,&states[i],&sd,nullptr,
         PathRayVisibility(states[i].path.visibility),states[i].path.flag);
     result.count=sd.num_closure;result.remaining=sd.num_closure_left;

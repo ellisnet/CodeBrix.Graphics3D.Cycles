@@ -108,7 +108,7 @@ void WebGPUDevice::enqueue_subsurface(int work,const DeviceKernelArguments &args
   p[30]=subsurface_stack;
   // The walk evaluates no SVM program: the module variant leaves the scene's node and closure handlers out.
   constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC|
-    SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_NODE_IES|SF_TEX_SKY|SF_TEX_SKY_SCATTERING|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME;
+    SF_NODES_INTEGER|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_NODE_IES|SF_TEX_SKY|SF_TEX_SKY_SCATTERING|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME;
   const ShaderFeatures unused=specialization_mode==SpecializationMode::Scene?shader_features()&svm:SF_NONE;
   // A moving object's transforms at the ray's time for both entries (compiler pressure: wavefront_subsurface.wgsl).
   if(moving){

@@ -8,6 +8,7 @@ that pinned Cycles builds the world volume's octree from (scene/volume.cpp, Volu
 heterogeneous world volume alone and with the heterogeneous box inside it; a heterogeneous world volume under a sun light,
 whose shadow rays end in an octree segment without an end. Two Henyey-Greenstein lobes of different
 anisotropy in one medium lit by the world (the phase-sampled path stores the pdf of all the phase closures).
+Two overlapping heterogeneous boxes that are not closed meshes.
 Usage: python3 native/oracle/scenes/author_volumes_c.py [--check]."""
 import argparse
 import json
@@ -66,8 +67,33 @@ def gradient_world(document):
     return document
 
 
+# Two boxes of the heterogeneous medium with no back face (the face away from the camera), the second starting inside the
+# first: both octrees have the plane x = 0 as a cell boundary.
+OPEN_BOX_INDICES = [0, 2, 1, 1, 2, 3, 0, 4, 2, 2, 4, 6, 1, 3, 5, 3, 7, 5, 0, 1, 4, 1, 5, 4, 2, 6, 3, 3, 6, 7]
+OPEN_BOXES = (('boxa', (-1.6, 1.6, -1.9, 1.4, -1.4, 0.5)), ('boxb', (-1.0, 1.0, -1.0, 1.0, -0.5, 2.2)))
+
+
+def open_boxes(document):
+    """The family scene without its room and its box: two open boxes of the medium in front of the world colour, the sun
+    behind the camera. A path leaves through a missing face with its box still on the volume stack."""
+    nodes = [n for n in document['nodes'] if n.get('create') not in ('mesh', 'object') or n['handle'] == 'sun-object']
+    next(n for n in nodes if n['handle'] == 'sun-object')['set']['tfm'] = [1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0]
+    for handle, (x0, x1, y0, y1, z0, z1) in OPEN_BOXES:
+        positions = [c for z in (z0, z1) for y in (y0, y1) for x in (x0, x1) for c in (x, y, z)]
+        nodes += [{'handle': handle, 'create': 'mesh', 'mesh': {'positions': positions, 'indices': OPEN_BOX_INDICES}, 'set': {'used_shaders': ['medium']}},
+                  {'handle': handle+'-object', 'create': 'object', 'set': {'geometry': handle}}]
+    document['nodes'] = nodes
+    return document
+
+
 def scenes():
     return {
+        'heterogeneous-open-boxes.json': open_boxes(volumes.scene(
+            'volumes/heterogeneous-open-boxes',
+            'Two overlapping boxes of a heterogeneous medium (noise density) that have no back face, lit by a sun behind the '
+            'camera, no room: paths miss with a box still on the volume stack, and both octrees share the plane x = 0, where '
+            'the null-scattering walk depends on the last bits of the ray',
+            lamp='sun', graph=volumes.noise_medium(2.4, 1.2))),
         'mixed-phase-world.json': gradient_world(volumes.scene(
             'volumes/mixed-phase-world',
             'The medium box with two Henyey-Greenstein lobes (anisotropy 0.75 and -0.5) lit only by a gradient world through a '

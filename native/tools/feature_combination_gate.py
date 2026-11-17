@@ -8,7 +8,7 @@ import json
 import subprocess
 from pathlib import Path
 from build import REPO, WORK, PACKAGE
-from device_gate import sha, save
+from device_gate import sha, save, require_built
 from render_gate import inputs
 import render_replay
 
@@ -32,6 +32,9 @@ def main():
                                 '--jobs', '2', '--target', binary.name],
                                stdout=log, stderr=subprocess.STDOUT, check=True)
             render_replay.build('linux-x64')
+        else:
+            # --skip-build builds nothing: name each missing program and the command that builds it instead of failing on its hash.
+            require_built(['feature_combination'], render_replay.BASE/'linux-x64/render_replay')
         replay_binary = render_replay.BASE/'linux-x64/render_replay'
         pins = {str(p): sha(p) for p in (runtime, binary, replay_binary)}
         save(out/'invocation.json', {'productionSourceSha256': source, 'fileSha256': pins})

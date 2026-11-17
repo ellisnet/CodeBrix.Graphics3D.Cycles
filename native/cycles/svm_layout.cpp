@@ -59,6 +59,23 @@ std::string svm_layout(bool surface){
   FIELD(Raycast,bump_filter_width);FIELD(Raycast,only_local);FIELD(Raycast,num_attributes);FIELD(Raycast,is_hit_offset);FIELD(Raycast,is_self_hit_offset);
   FIELD(Raycast,hit_distance_offset);FIELD(Raycast,hit_position_offset);FIELD(Raycast,hit_normal_offset);
   static_assert(offsetof(SVMNodeRaycast,num_attributes)%4<=2);
+  // Boolean Math, Integer Math and Get Vector Component nodes (svm/boolean_math.h, svm/integer_math.h, svm/sepcomb_vector.h).
+  source<<"//#endif\n//#if SVM_NODES_INTEGER\n";
+  constant("N_InputInt_value",offsetof(SVMInputInt,value));constant("N_InputInt_offset",offsetof(SVMInputInt,offset));
+  source<<"//#endif\n//#if SVM_NODE_BOOLEAN_MATH\n";
+  constant("OP_BOOLEAN_MATH",NODE_BOOLEAN_MATH);SIZE(BooleanMath);FIELD(BooleanMath,math_type);FIELD(BooleanMath,value1);FIELD(BooleanMath,value2);FIELD(BooleanMath,result_offset);
+#define KIND(name) constant("BM_" #name,NODE_BOOLEAN_MATH_##name)
+  KIND(AND);KIND(OR);KIND(NOT);KIND(NAND);KIND(NOR);KIND(XNOR);KIND(XOR);KIND(IMPLY);KIND(NIMPLY);
+#undef KIND
+  source<<"//#endif\n//#if SVM_NODE_INTEGER_MATH\n";
+  constant("OP_INTEGER_MATH",NODE_INTEGER_MATH);SIZE(IntegerMath);FIELD(IntegerMath,math_type);FIELD(IntegerMath,value1);FIELD(IntegerMath,value2);FIELD(IntegerMath,value3);FIELD(IntegerMath,result_offset);
+#define KIND(name) constant("IM_" #name,NODE_INTEGER_MATH_##name)
+  KIND(ADD);KIND(SUBTRACT);KIND(MULTIPLY);KIND(DIVIDE);KIND(MULTIPLY_ADD);KIND(POWER);KIND(FLOORED_MODULO);KIND(ABSOLUTE);KIND(MINIMUM);
+  KIND(MAXIMUM);KIND(GCD);KIND(LCM);KIND(NEGATE);KIND(SIGN);KIND(DIVIDE_FLOOR);KIND(DIVIDE_CEIL);KIND(DIVIDE_ROUND);KIND(MODULO);
+#undef KIND
+  source<<"//#endif\n//#if SVM_NODE_GET_VECTOR_COMPONENT\n";
+  constant("OP_GET_VECTOR_COMPONENT",NODE_GET_VECTOR_COMPONENT);constant("OP_GET_VECTOR_COMPONENT_DERIVATIVE",NODE_GET_VECTOR_COMPONENT_DERIVATIVE);
+  SIZE(GetVectorComponent);FIELD(GetVectorComponent,vector);FIELD(GetVectorComponent,index);FIELD(GetVectorComponent,out_offset);
   source<<"//#endif\n//#if SVM_NODE_RADIAL_TILING\n";
   constant("OP_RADIAL_TILING",NODE_RADIAL_TILING);SIZE(RadialTiling);FIELD(RadialTiling,vector);FIELD(RadialTiling,r_gon_sides);FIELD(RadialTiling,r_gon_roundness);
   FIELD(RadialTiling,normalize_r_gon_parameter);FIELD(RadialTiling,segment_coordinates_offset);FIELD(RadialTiling,segment_id_offset);
@@ -331,10 +348,16 @@ std::string svm_layout(bool surface){
   // (Principled and Metallic BSDF). Principled modules keep the same text.
   source<<"//#endif\n//#if SVM_BSDF_FRESNEL_MODELS\n";
   constant("D_ggx_gen_schlick_s",offsetof(KernelData,tables.ggx_gen_schlick_s));
+  // The glass energy tables of microfacet_ggx_preserve_energy: also for the multiscatter Glass BSDF node.
+  source<<"//#endif\n//#if SVM_BSDF_PRESERVE_ENERGY\n";
   constant("D_ggx_glass_E",offsetof(KernelData,tables.ggx_glass_E));constant("D_ggx_glass_Eavg",offsetof(KernelData,tables.ggx_glass_Eavg));
   constant("D_ggx_glass_inv_E",offsetof(KernelData,tables.ggx_glass_inv_E));constant("D_ggx_glass_inv_Eavg",offsetof(KernelData,tables.ggx_glass_inv_Eavg));
   source<<"//#endif\n//#if SVM_BSDF_PRINCIPLED\n";
   constant("D_sheen_ltc",offsetof(KernelData,tables.sheen_ltc));
+  source<<"//#endif\n";
+  // The Glass BSDF node's multiscatter GGX distribution under its own name (the Principled region emits the enum's).
+  source<<"//#if SVM_BSDF_GLASS_MULTISCATTER\n";
+  constant("GLASS_MULTI_GGX_ID",uint32_t(CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID));
   source<<"//#endif\n";
   // Subsurface scattering (svm/closure.h: the Principled BSDF's subsurface lobe and the Subsurface Scattering node,
   // closure/bssrdf.h): emitted only into modules whose scene reaches a BSSRDF closure.

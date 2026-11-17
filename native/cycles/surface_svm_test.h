@@ -62,6 +62,8 @@ static std::string probe_source(){
 // before a dispatch whose programs reach a region the module was built without
 // (typed programs and rejection cases upload new programs after creation).
 static std::string probe_raw,probe_module;static ShaderFeatures probe_features;
+// Regions a negative control leaves out of the probe module although the scene reaches them.
+static ShaderFeatures probe_disabled_features;
 static ShaderFeatures probe_scene_features(WebGPUDevice &d){
   // Native refusals (unsupported Principled features) keep the current module:
   // the case under test then reports through the WGSL handler, as before.
@@ -69,7 +71,7 @@ static ShaderFeatures probe_scene_features(WebGPUDevice &d){
   // roughness, f0 in multiscatter) only in modules with the Principled region;
   // the probe compares those canonical records, so it keeps that region whenever
   // glass is reachable (the arithmetic is identical either way; films match).
-  try{ShaderFeatures f=d.shader_features();if(f&(SF_BSDF_GLASS|SF_BSDF_BECKMANN))f|=SF_BSDF_PRINCIPLED;return f;}
+  try{ShaderFeatures f=d.shader_features();if(f&(SF_BSDF_GLASS|SF_BSDF_BECKMANN))f|=SF_BSDF_PRINCIPLED;return f&~probe_disabled_features;}
   catch(const std::exception&){return probe_features;}
 }
 static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &probe){

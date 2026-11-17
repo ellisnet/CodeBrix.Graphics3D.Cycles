@@ -260,6 +260,9 @@ static void octree_check(WebGPUDevice &gpu,Stats &stats,Profiler &profiler,Metri
   for(size_t i=0;i<nodes[0].size();i++){const auto &e=nodes[0][i],&a=nodes[1][i];require(a.parent==e.parent&&a.first_child==e.first_child,"Octree node "+std::to_string(i)+" structure");m.integers++;
     number(a.sigma.min,e.sigma.min,"octree node="+std::to_string(i)+" min",m);number(a.sigma.max,e.sigma.max,"octree node="+std::to_string(i)+" max",m);identical+=a.sigma.min==e.sigma.min&&a.sigma.max==e.sigma.max;}
   std::cerr<<"Octree: "<<nodes[0].size()<<" nodes, structure identical, "<<identical<<" with bit-identical extrema\n";
+  // The box medium's extinction is a sum of rounded products (closure/volume.h volume_extinction_setup), so its extrema are the
+  // CPU device's bit for bit; a contracted multiply-add there moves last bits, and with them every null-scattering distance.
+  if(!world)require(identical==nodes[0].size(),"Octree extrema differ from the CPU device's in "+std::to_string(nodes[0].size()-identical)+" of "+std::to_string(nodes[0].size())+" nodes");
 }
 // The heterogeneous density prepass (kernel_volume_density_evaluate, 16 positions per voxel) against the pinned
 // kernel: voxels of varied corners and sizes in the box object, with the heterogeneous shader.
@@ -329,7 +332,7 @@ TaskScheduler::init(1);int status=0;try{
   // case and evaluates it COUNT times on one device and scene, one line per evaluation and a summary line on stdout.
   int repeat_case=-1;unsigned repeat_count=0,repeat_failed=0;
   if(const char *r=std::getenv("CODEBRIX_CYCLES_VOLUME_GATE_REPEAT");r&&*r){char *end=nullptr;const unsigned long c=std::strtoul(r,&end,10);
-    require(end&&*end==':'&&c<96,"CODEBRIX_CYCLES_VOLUME_GATE_REPEAT must be CASE:COUNT");const unsigned long n=std::strtoul(end+1,&end,10);
+    require(end&&*end==':'&&c<98,"CODEBRIX_CYCLES_VOLUME_GATE_REPEAT must be CASE:COUNT");const unsigned long n=std::strtoul(end+1,&end,10);
     require(end&&!*end&&n>0&&n<=10000,"CODEBRIX_CYCLES_VOLUME_GATE_REPEAT must be CASE:COUNT");repeat_case=int(c);repeat_count=unsigned(n);}
   // Cases 24-31: volume direct light (VOLUME_LIGHT) with a sphere point light (MIS, distance, equiangular), a
   // disk point light, a sun light, scene rays ending on a triangle and missing, against the pinned kernel.
@@ -356,10 +359,15 @@ TaskScheduler::init(1);int status=0;try{
   // it when the caller has none), alone (90) and with the heterogeneous box inside it (91).
   // Case 95: case 92's scene rendered by the native scheduler (real_paths, 32x24, 16 samples), every volume stage against the
   // pinned kernel on the GPU's input states (native/DEVICE.md 180: a pixel whose guidance scales the majorant about 1858 times).
-  for(unsigned index=0;index<96;index++){
+  // Cases 96-97: the rectangle of case 44 with a spread of 1e-6 and an axis whose length underflows to zero (a size of 1e-23:
+  // the kernels' axis holds NaNs; native/DEVICE.md, item 148), u (96) and v (97), unrotated so that the axis has zero
+  // components: area_light_valid_ray_segment's angle_almost_zero branch with a NaN lane (no segment for u on the SSE oracle;
+  // the slabs of the other two lanes for v). Only whether a segment exists reaches the path state (the light's sample point
+  // is NaN, so the direct light at the scatter point gives nothing): it decides the segment's sample method.
+  for(unsigned index=0;index<98;index++){
     if(repeat_case>=0&&int(index)!=repeat_case)continue;
     const bool het_world=index==90||index==91;const bool moving_camera=index==92||index==95;
-    const unsigned test=index>=90?33:index>=88?(index==88?33:39):index<75?index:index==75?55:index==76||index==80||index==83||index==84||index==86?33:index==85?35:index==77||index==81||index==87?39:index==82?71:24;
+    const unsigned test=index>=96?44:index>=90?33:index>=88?(index==88?33:39):index<75?index:index==75?55:index==76||index==80||index==83||index==84||index==86?33:index==85?35:index==77||index==81||index==87?39:index==82?71:24;
     const bool light_path=index>=84&&index<88;
     const bool denoise=index>=79&&index<82;const bool linking=index>=82&&index<84;
     const int pattern=index==75||index==78?SAMPLING_PATTERN_SOBOL_BURLEY:index==76?SAMPLING_PATTERN_BLUE_NOISE_FIRST:SAMPLING_PATTERN_BLUE_NOISE_PURE;
@@ -438,12 +446,16 @@ TaskScheduler::init(1);int status=0;try{
       if(dcase==28||dcase==31){auto sun=scene.create_node<SunLight>();sun->set_angle(.12f);sun->set_normalize(false);light=sun;}
       else if(shape==1||shape==2){auto spot=scene.create_node<SpotLight>();spot->set_radius(shape==1?.45f:.3f);spot->set_is_sphere(shape==1);spot->set_angle(.9f);spot->set_smooth(.3f);light=spot;}
       else if(shape>=3){auto area=scene.create_node<AreaLight>();area->set_sizeu(shape%2?1.2f:.9f);area->set_sizev(shape%2?.7f:1.1f);area->set_ellipse(shape==4||shape==5);
-        area->set_spread(shape<=4?0.f:shape==5?1.1f:float(M_PI));light=area;}
+        area->set_spread(shape<=4?0.f:shape==5?1.1f:float(M_PI));
+        if(index>=96){area->set_sizeu(index==96?1e-23f:1.2f);area->set_sizev(index==97?1e-23f:.7f);area->set_spread(1e-6f);}light=area;}
       else{auto point=scene.create_node<PointLight>();point->set_radius(test==74?.9f:dcase==27?.3f:.45f);point->set_is_sphere(dcase!=27);light=point;}
       light->set_strength(light->get_light_type()==LIGHT_SUN?make_float3(.6,.7,.8):make_float3(140,100,70));light->set_use_mis(true);
       array<Node*> slots;slots.push_back_slow(emitter);light->set_used_shaders(slots);auto object=scene.create_node<Object>();object->set_geometry(light);
       if(linking)object->set_light_set_membership((1ull<<0)|(1ull<<1));
       object->set_tfm((test==74?transform_translate(make_float3(0.f,0.f,0.f)):transform_translate(make_float3(.6f,1.4f,-1.1f)))*transform_rotate(2.6f,make_float3(0,1,0))*transform_rotate(-.5f,make_float3(1,0,0)));
+      // 96: the rays start inside the v slab, so a device that dropped the NaN lane would find a segment where the SSE oracle
+      // finds none; 97: they start outside the u slab, which some enter before the segment ends and some do not.
+      if(index>=96)object->set_tfm(transform_translate(index==96?make_float3(.6f,.2f,-1.1f):make_float3(-1.f,1.4f,-1.1f)));
       emitter->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
       if(tree){scene.integrator->set_use_light_tree(true);scene.integrator->set_light_sampling_threshold(0.f);}
       if(moving_camera){
@@ -486,6 +498,8 @@ TaskScheduler::init(1);int status=0;try{
     if(denoise)require((data.kernel_features&KERNEL_FEATURE_DENOISING)&&data.film.pass_denoising_albedo!=PASS_UNUSED&&data.film.pass_denoising_normal!=PASS_UNUSED,"Volume denoising case without its passes");
     if(!direct){data.background.use_mis=0;data.integrator.use_direct_light=0;data.integrator.use_light_mis=0;data.integrator.num_lights=0;}
     else require(data.integrator.use_direct_light&&data.integrator.num_lights>0,"Volume direct light fixture without a light");
+    if(index>=96){const KernelLight &l=scene.dscene.lights[0];const float len=index==96?l.area.len_u:l.area.len_v;const auto &axis=index==96?l.area.axis_u:l.area.axis_v;
+      require(l.type==LIGHT_AREA&&len==0&&(std::isnan(axis.x)||std::isnan(axis.y)||std::isnan(axis.z))&&l.area.tan_half_spread>0&&l.area.tan_half_spread<1e-5f,"Degenerate narrow-spread area light case without its NaN axis");}
     data.integrator.use_caustics=0;data.integrator.filter_glossy=FLT_MAX;data.film.pass_flag=0;
     // volume_phase_widen_dD's scale (the integrator's min(1, Filter Glossy)): 0.37, 0 and 1 over the cases.
     data.integrator.differential_widen_scale=index%2?.37f:index%4?0.f:1.f;

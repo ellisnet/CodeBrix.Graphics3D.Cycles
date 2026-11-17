@@ -17,7 +17,12 @@
 // CDF (tree off), 6 light linking on the tree, 7 a GGX glass/diffuse centre quad
 // (transmission: full-sphere importance at its shading points and
 // PATH_RAY_MIS_HAD_TRANSMISSION forward-hit pdfs of the lamps and the emissive
-// panel seen through it). All but case 5 use the tree.
+// panel seen through it), 8 case 7 with a degenerate area light (a u size of 1e-23:
+// the axis length underflows to zero): at a transmissive point the pinned
+// importance is computed from cos_theta_u = FLT_MAX, so the selection and forward
+// pdfs hold NaNs, compared by class (a NaN for a NaN, an infinity for the same
+// infinity; two of three probe states are transmissive there). All but case 5
+// use the tree.
 #include "wavefront_test.h"
 #include "render_capture.h"
 #include "reference_policy.h"
@@ -52,9 +57,13 @@
 using namespace ccl;
 using namespace wavefront_test;
 constexpr unsigned width=32,height=24,samples=8,probe_count=4096;
-constexpr int light_tree_cases=8;
-struct Metrics {uint64_t exact=0,numeric=0,strict=0,selected=0,valid=0,triangles=0,lamps=0,rejected=0,forward=0,film=0,film_strict=0,repeat=0,shadows=0,visible=0,nee=0,guards=0,stages=0;double maximum=0,film_maximum=0;};
+constexpr int light_tree_cases=9;
+struct Metrics {uint64_t exact=0,numeric=0,strict=0,selected=0,valid=0,triangles=0,lamps=0,rejected=0,forward=0,film=0,film_strict=0,repeat=0,shadows=0,visible=0,nee=0,guards=0,stages=0,nonfinite=0,degenerate=0;double maximum=0,film_maximum=0;};
+// Case 8 only: a pinned pdf that is not finite is compared by class.
+static bool nonfinite_by_class=false;
 static void numeric(float actual,float expected,Metrics &m,const std::string &where){
+  if(nonfinite_by_class&&!std::isfinite(expected)){
+    require(std::isnan(expected)?std::isnan(actual):actual==expected,where+" nonfinite got="+std::to_string(actual)+" expected="+std::to_string(expected));m.exact++;m.nonfinite++;return;}
   const double error=std::abs(double(actual)-expected);m.numeric++;m.maximum=std::max(m.maximum,error);m.strict+=error>1e-7+1e-7*std::abs(double(expected));
   require(std::isfinite(actual)&&std::isfinite(expected)&&error<=5e-5+2e-4*std::abs(double(expected)),where+" got="+std::to_string(actual)+" expected="+std::to_string(expected));
 }
@@ -106,7 +115,7 @@ static Fixture fixture(Scene &scene,int c){
   auto diffuse=material(scene,0),mixed=material(scene,1);
   auto wall=quad(scene,diffuse,{make_float3(-4,-3,3),make_float3(4,-3,3),make_float3(4,3,3),make_float3(-4,3,3)});
   auto floor=quad(scene,mixed,{make_float3(-4,-2,-2),make_float3(4,-2,-2),make_float3(4,-2,3),make_float3(-4,-2,3)});
-  auto center=quad(scene,c==7?glass_material(scene):mixed,{make_float3(-.8f,-1.2f,0),make_float3(.8f,-1.2f,0),make_float3(.8f,1.1f,0),make_float3(-.8f,1.1f,0)});
+  auto center=quad(scene,c>=7?glass_material(scene):mixed,{make_float3(-.8f,-1.2f,0),make_float3(.8f,-1.2f,0),make_float3(.8f,1.1f,0),make_float3(-.8f,1.1f,0)});
   f.receivers={wall,floor,center};
   Shader *world=nullptr;
   if(f.world){world=environment_world(scene,EnvironmentWorld::Hdri,0);environment_light(scene,world,true,64);}
@@ -141,7 +150,12 @@ static Fixture fixture(Scene &scene,int c){
     auto other=quad(scene,emitter,{make_float3(-.5,-.3,0),make_float3(.5,-.3,0),make_float3(.5,.3,0),make_float3(-.5,.3,0)});other->set_tfm(aim(make_float3(-1.8f,1.8f,-1.2f),-.3f,.7f));
     object_motion_fixture(scene,*other,2);
     auto p=scene.create_node<PointLight>();p->set_radius(.45f);p->set_is_sphere(true);lamp(scene,p,emitter,aim(make_float3(-2.f,2.f,-1.f),0,0),warm*.3f);}
-  if(c==7){
+  if(c==8){
+    // A rectangle light whose u size underflows (LightManager keeps it: the axis length is zero, the axis holds NaNs).
+    // A point lamp at its centre shares its leaf (the reservoir with an infinite weight beside a finite one).
+    auto a=scene.create_node<AreaLight>();a->set_sizeu(1e-23f);a->set_sizev(1.f);a->set_normalize(true);lamp(scene,a,emitter,aim(make_float3(.4f,2.3f,-1.2f),0,1.2f),warm*1.5f);
+    auto q=scene.create_node<PointLight>();q->set_radius(0.f);lamp(scene,q,emitter,aim(make_float3(.4f,2.3f,-1.2f),0,1.2f),cool*.3f);}
+  if(c>=7){
     // An emissive panel and an area lamp behind the glass quad (seen through it), a point lamp in front.
     auto panel=quad(scene,emitter,{make_float3(-.7,-.5,0),make_float3(.7,-.5,0),make_float3(.7,.5,0),make_float3(-.7,.5,0)});panel->set_tfm(aim(make_float3(.3f,.2f,1.6f),0,0));
     auto a=scene.create_node<AreaLight>();a->set_sizeu(.9f);a->set_sizev(.7f);a->set_spread(1.2f);a->set_normalize(true);lamp(scene,a,emitter,aim(make_float3(-.6f,-.3f,2.2f),0,0),cool*.15f);
@@ -295,7 +309,8 @@ static void probe(WebGPUDevice &d,Scene &scene,const std::filesystem::path &fold
   for(unsigned i=0;i<probe_count;i++){const float *a=output.data()+8+i*16,*e=expected.data()+i*16;const std::string where="probe index="+std::to_string(i);
     require(a[0]==e[0],"Selection validity differs "+where);m.exact++;
     if(std::getenv("CODEBRIX_LIGHT_TREE_CONTINUE")&&e[0]&&(a[1]!=e[1]||std::abs(a[2]-e[2])>5e-5+2e-4*std::abs(e[2]))){static int shown=0;if(shown++<20)std::cerr<<"mismatch "<<where<<" gpu="<<a[1]<<" cpu="<<e[1]<<" gpu_pdf="<<a[2]<<" cpu_pdf="<<e[2]<<" flag="<<states[i].path.flag<<"\n";continue;}
-    if(e[0]){m.selected++;require(a[1]==e[1],"Selected emitter differs "+where+" got="+std::to_string(a[1])+" expected="+std::to_string(e[1]));m.exact++;
+    if(e[0]){m.selected++;if(nonfinite_by_class){const auto &em=scene.dscene.light_tree_emitters[size_t(e[1])];m.degenerate+=em.light.id<0&&scene.dscene.lights[size_t(~em.light.id)].area.len_u==0&&scene.dscene.lights[size_t(~em.light.id)].type==LIGHT_AREA;}
+      require(a[1]==e[1],"Selected emitter differs "+where+" got="+std::to_string(a[1])+" expected="+std::to_string(e[1]));m.exact++;
       numeric(a[2],e[2],m,"Selection pdf "+where);
       require(a[3]==e[3],"Sample validity differs "+where);m.exact++;m.rejected+=!e[3];
       if(e[3]){m.valid++;for(unsigned j=4;j<13;j++)numeric(a[j],e[j],m,"Sample field="+std::to_string(j)+" "+where);
@@ -338,6 +353,9 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(c==3){bool instance=false;for(size_t i=0;i<scene.dscene.light_tree_nodes.size();i++)instance|=scene.dscene.light_tree_nodes[i].type==LIGHT_TREE_INSTANCE;require(instance,"Instanced emitter fixture lacks instance nodes");}
     if(c==6){bool specialized=false;for(int s=1;s<LIGHT_LINK_SET_MAX;s++)specialized|=data.light_link_sets[s].light_tree_root!=0;require(specialized,"Light linking fixture lacks per-receiver trees");}
     if(f.motion)require(data.bvh.have_motion,"Moving emitter fixture lacks motion");
+    nonfinite_by_class=c==8;
+    if(c==8){bool degenerate=false;for(size_t i=0;i<scene.dscene.lights.size();i++){const auto &l=scene.dscene.lights[i];degenerate|=l.type==LIGHT_AREA&&l.area.len_u==0&&std::isnan(l.area.axis_u.y);}
+      require(degenerate,"Degenerate area light fixture lacks a zero axis length");}
     // Probe states: points around the receivers, normals as ray D, receivers and forward targets cycling.
     std::vector<IntegratorStateCPU> states(probe_count);std::vector<LightTreeProbeInput> inputs(probe_count);
     std::vector<int> receivers;for(auto *o:f.receivers)receivers.push_back(int(o->get_device_index()));
@@ -345,7 +363,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     for(size_t e=0;e<scene.dscene.light_tree_emitters.size();e++){const auto &em=scene.dscene.light_tree_emitters[e];
       if(em.light.id<0)targets.push_back({0,int(e)});else if(em.object_id!=OBJECT_NONE)targets.push_back({em.object_id,int(e)});}
     for(unsigned i=0;i<probe_count;i++){auto &s=states[i];s.path.sample=i%64;s.path.rng_pixel=i*2654435761u;s.path.rng_offset=32*(i%4);s.path.bounce=i%3;
-      s.path.flag=(i%3==0)?PATH_RAY_MIS_HAD_TRANSMISSION:0;s.ray.time=float(i%17)/16.f;
+      s.path.flag=(c==8?i%3!=1:i%3==0)?PATH_RAY_MIS_HAD_TRANSMISSION:0;s.ray.time=float(i%17)/16.f;
       s.ray.P=make_float3(float(i%23)*.3f-3.3f,float((i/23)%17)*.3f-2.4f,2.8f-float(i%31)*.2f);
       s.ray.D=normalize(make_float3(.3f*(int(i%5)-2),.2f*(int(i%7)-3)+.05f,i%11?-1.f:1.f));
       inputs[i].receiver=receivers[i%receivers.size()];inputs[i].forward_receiver=receivers[(i/3)%receivers.size()];
@@ -390,11 +408,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(f.tree)require(metrics.forward>100,"Missing forward tree pdf coverage");
     if(f.linking&&!f.tree)require(metrics.rejected>10,"Missing light linking rejections");
     if(c==2)require(metrics.nee>100,"Missing environment light NEE coverage");
+    if(c==8)require(metrics.nonfinite>40&&metrics.degenerate>20,"Missing degenerate area light coverage (nonfinite pdfs "+std::to_string(metrics.nonfinite)+", selections "+std::to_string(metrics.degenerate)+")");
     auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"case\":"<<c<<",\"tree\":"<<(f.tree?"true":"false")<<",\"linking\":"<<(f.linking?"true":"false")
       <<",\"treeNodes\":"<<scene.dscene.light_tree_nodes.size()<<",\"treeEmitters\":"<<scene.dscene.light_tree_emitters.size()
       <<",\"probeSelected\":"<<metrics.selected<<",\"probeValid\":"<<metrics.valid<<",\"probeLamps\":"<<metrics.lamps<<",\"probeTriangles\":"<<metrics.triangles<<",\"probeRejected\":"<<metrics.rejected
       <<",\"forwardPdfs\":"<<metrics.forward<<",\"exactChecks\":"<<metrics.exact<<",\"numericChecks\":"<<metrics.numeric<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum
-      <<",\"guardCases\":"<<metrics.guards<<",\"shadows\":"<<metrics.shadows<<",\"visible\":"<<metrics.visible<<",\"lightNee\":"<<metrics.nee<<",\"stages\":"<<metrics.stages
+      <<",\"nonfinitePdfs\":"<<metrics.nonfinite<<",\"degenerateSelections\":"<<metrics.degenerate<<",\"guardCases\":"<<metrics.guards<<",\"shadows\":"<<metrics.shadows<<",\"visible\":"<<metrics.visible<<",\"lightNee\":"<<metrics.nee<<",\"stages\":"<<metrics.stages
       <<",\"filmChecks\":"<<metrics.film<<",\"filmStrictDifferences\":"<<metrics.film_strict<<",\"filmMaximumAbsoluteError\":"<<metrics.film_maximum<<",\"repeatBitwiseDifferences\":"<<metrics.repeat<<"}\n";};
     std::ofstream details(folder/"result.json");report(details);report(std::cerr);
     total.exact+=metrics.exact;total.numeric+=metrics.numeric;total.strict+=metrics.strict;total.maximum=std::max(total.maximum,metrics.maximum);total.selected+=metrics.selected;total.valid+=metrics.valid;

@@ -618,6 +618,36 @@ fn vl_area_segment(light:u32,P_in:vec3<f32>,D_in:vec3<f32>,range:vec2<f32>)->vec
         // make_transform(axis_u, axis_v, axis): rows u, v, axis.
         P=vec3<f32>(rounded_dot(u,P_in),rounded_dot(v,P_in),rounded_dot(axis,P_in));D=vec3<f32>(rounded_dot(u,D_in),rounded_dot(v,D_in),rounded_dot(axis,D_in));
         axis=vec3<f32>(0.0,0.0,1.0);let half_u=0.5*len_u;let half_v=0.5*len_v;
+//#if LIGHT_AREA_DEGENERATE
+        // An axis of zero length (native/DEVICE.md, item 148; the device's copy holds a zero axis). On the CPU that axis holds a
+        // NaN, so transform_point and transform_direction give P and D a NaN in its lane (x for u, y for v), and the segment
+        // is what each min and max of the pinned code does with that lane:
+        // - ray_infinite_cylinder_intersect (an ellipse): a = dot(D_proj, D_proj), b and c are NaN, and solve_quadratic's
+        //   valid_quadratic = (a != 0.0f) && (discriminant > -1e-5f) and valid_linear = (a == 0.0f) && (b != 0.0f) are both
+        //   false: no segment.
+        // - ray_aabb_intersect (a rectangle): t_lower and t_upper are NaN in that lane, and so are min(t_lower, t_upper) and
+        //   max(t_lower, t_upper); tmin = reduce_max(make_float4(mins, t_range->min)) and tmax = reduce_min(...).
+        //   The SSE oracle: h = max(shuffle<1, 0, 3, 2>(a), a), then max(shuffle<2, 3, 0, 1>(h), h), and _mm_max_ps and
+        //   _mm_min_ps return their second operand when either is a NaN: a NaN in lane x is the result (no segment), a
+        //   NaN in lane y is dropped (the slabs of x and z remain).
+        //   The scalar oracle: max(max(a.x, a.y), max(a.z, a.w)) with (a > b) ? a : b, which returns b for a NaN: a NaN
+        //   in lane x alone is dropped (the slabs of y and z remain), a NaN in lane y drops lanes x and y (the z slab).
+        // - ray_plane_intersect then has DN = dot(ray_D, N) NaN (a NaN lane times zero), so DN > 0.0f is false and
+        //   t_range->max = fminf(t_range->max, t) keeps the maximum (t is NaN): the range is left as it is.
+        let zero_u=len_u==0.0;let zero_v=len_v==0.0;
+        if(zero_u||zero_v){
+            if(heap_float(light+L_area_invarea)<0.0||(zero_u&&TRIANGLE_LIGHT_NATIVE_SSE!=0u)){return vec2<f32>(1.0,0.0);}
+            let inv=vec2<f32>(rounded_divide(1.0,select(D.x,D.y,zero_u)),rounded_divide(1.0,D.z));
+            let lower=vec2<f32>(select(rounded_add(-half_u,-P.x),rounded_add(-half_v,-P.y),zero_u),rounded_add(0.0,-P.z))*inv;
+            let upper=vec2<f32>(select(rounded_add(half_u,-P.x),rounded_add(half_v,-P.y),zero_u),rounded_add(bitcast<f32>(0x7f7fffffu),-P.z))*inv;
+            var mins=min(lower,upper);var maxs=max(lower,upper);
+            // The scalar oracle with a NaN in lane y: the z slab alone.
+            if(zero_v&&TRIANGLE_LIGHT_NATIVE_SSE==0u){mins.x=mins.y;maxs.x=maxs.y;}
+            out=vec2<f32>(max(max(mins.x,mins.y),out.x),min(min(maxs.x,maxs.y),out.y));
+            if(!(out.x<out.y)){return vec2<f32>(1.0,0.0);}
+            return out;
+        }
+//#endif
         if(heap_float(light+L_area_invarea)<0.0){
             // ray_infinite_cylinder_intersect.
             let inv_len=vec2<f32>(rounded_divide(1.0,half_u),rounded_divide(1.0,half_v));var Pp=P.xy*inv_len;let Dp=D.xy*inv_len;

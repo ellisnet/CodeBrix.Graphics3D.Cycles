@@ -1,0 +1,566 @@
+{
+ "cbcOracleScene": 1,
+ "id": "volumes/heterogeneous-open-boxes",
+ "description": "Two overlapping boxes of a heterogeneous medium (noise density) that have no back face, lit by a sun behind the camera, no room: paths miss with a box still on the volume stack, and both octrees share the plane x = 0, where the null-scattering walk depends on the last bits of the ray",
+ "sourceFixture": "native/oracle/scenes/author_volumes.py (a homogeneous medium box in the sampling family room)",
+ "render": {
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "filter_glossy": 0.0,
+    "caustics_reflective": true,
+    "caustics_refractive": true,
+    "sampling_pattern": "tabulated_sobol",
+    "scrambling_distance": 1.0,
+    "max_volume_bounce": 4
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 0.9,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "handle": "wall",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.62,
+        0.65
+       ],
+       "roughness": 0.25
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "floor-material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.5,
+        0.45,
+        0.35
+       ],
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "glossy",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.25,
+       "color": [
+        0.85,
+        0.7,
+        0.4
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "glass",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.1,
+       "IOR": 1.45,
+       "color": [
+        0.9,
+        0.95,
+        0.95
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "matte",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.4,
+        0.55,
+        0.7
+       ],
+       "roughness": 0.4
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.3,
+        0.35,
+        0.42
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "emitter",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "sun",
+   "create": "sunlight",
+   "set": {
+    "angle": 0.08,
+    "strength": [
+     3.0,
+     2.8,
+     2.5
+    ],
+    "use_mis": true,
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "sun-object",
+   "create": "object",
+   "set": {
+    "geometry": "sun",
+    "tfm": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     -1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     -1.0,
+     0.0
+    ]
+   }
+  },
+  {
+   "handle": "medium",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "noise_texture",
+      "set": {
+       "scale": 2.4,
+       "detail": 2.0
+      }
+     },
+     {
+      "handle": "m",
+      "type": "math",
+      "set": {
+       "math_type": "multiply",
+       "value2": 1.2
+      }
+     },
+     {
+      "handle": "a",
+      "type": "absorption_volume",
+      "set": {
+       "density": 0.05,
+       "color": [
+        0.8,
+        0.65,
+        0.4
+       ]
+      }
+     },
+     {
+      "handle": "s",
+      "type": "scatter_volume",
+      "set": {
+       "color": [
+        0.75,
+        0.8,
+        0.9
+       ],
+       "anisotropy": 0.3
+      }
+     },
+     {
+      "handle": "add",
+      "type": "add_closure"
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "Fac",
+      "m",
+      "Value1"
+     ],
+     [
+      "m",
+      "Value",
+      "s",
+      "Density"
+     ],
+     [
+      "a",
+      "Volume",
+      "add",
+      "Closure1"
+     ],
+     [
+      "s",
+      "Volume",
+      "add",
+      "Closure2"
+     ],
+     [
+      "add",
+      "Closure",
+      "output",
+      "Volume"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none",
+    "volume_sampling_method": "multiple_importance"
+   }
+  },
+  {
+   "handle": "boxa",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -1.6,
+     -1.9,
+     -1.4,
+     1.6,
+     -1.9,
+     -1.4,
+     -1.6,
+     1.4,
+     -1.4,
+     1.6,
+     1.4,
+     -1.4,
+     -1.6,
+     -1.9,
+     0.5,
+     1.6,
+     -1.9,
+     0.5,
+     -1.6,
+     1.4,
+     0.5,
+     1.6,
+     1.4,
+     0.5
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     1,
+     2,
+     3,
+     0,
+     4,
+     2,
+     2,
+     4,
+     6,
+     1,
+     3,
+     5,
+     3,
+     7,
+     5,
+     0,
+     1,
+     4,
+     1,
+     5,
+     4,
+     2,
+     6,
+     3,
+     3,
+     6,
+     7
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "medium"
+    ]
+   }
+  },
+  {
+   "handle": "boxa-object",
+   "create": "object",
+   "set": {
+    "geometry": "boxa"
+   }
+  },
+  {
+   "handle": "boxb",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -1.0,
+     -1.0,
+     -0.5,
+     1.0,
+     -1.0,
+     -0.5,
+     -1.0,
+     1.0,
+     -0.5,
+     1.0,
+     1.0,
+     -0.5,
+     -1.0,
+     -1.0,
+     2.2,
+     1.0,
+     -1.0,
+     2.2,
+     -1.0,
+     1.0,
+     2.2,
+     1.0,
+     1.0,
+     2.2
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     1,
+     2,
+     3,
+     0,
+     4,
+     2,
+     2,
+     4,
+     6,
+     1,
+     3,
+     5,
+     3,
+     7,
+     5,
+     0,
+     1,
+     4,
+     1,
+     5,
+     4,
+     2,
+     6,
+     3,
+     3,
+     6,
+     7
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "medium"
+    ]
+   }
+  },
+  {
+   "handle": "boxb-object",
+   "create": "object",
+   "set": {
+    "geometry": "boxb"
+   }
+  }
+ ],
+ "images": []
+}

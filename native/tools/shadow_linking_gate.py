@@ -9,7 +9,7 @@ import json
 import subprocess
 from pathlib import Path
 from build import REPO, WORK, PACKAGE
-from device_gate import sha, save
+from device_gate import sha, save, require_built
 from render_gate import inputs
 import render_replay
 
@@ -40,6 +40,9 @@ def main():
                                 '--target', 'codebrix_cycles_shadow_linking_gate'], stdout=log, stderr=subprocess.STDOUT, check=True)
             if not args.skip_replay:
                 render_replay.build('linux-x64')
+        else:
+            # --skip-build builds nothing: name each missing program and the command that builds it instead of failing on its hash.
+            require_built(['shadow_linking'], None if args.skip_replay else render_replay.BASE/'linux-x64/render_replay')
         binary = WORK/'cycles-build/bin/codebrix_cycles_shadow_linking_gate'
         pins[str(binary)] = sha(binary)
         if not args.skip_replay:

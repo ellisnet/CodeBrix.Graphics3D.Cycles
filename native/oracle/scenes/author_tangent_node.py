@@ -36,6 +36,34 @@ def tangent_bump(handle):
                    ['bump', 'Normal', 'd', 'Normal'], ['d', 'BSDF', 'output', 'Surface']])
 
 
+def nan_value(nodes, connect):
+    """Y + Z of the Tangent node's radial tangent about X: NaN where the frame is degenerate, as the Bump scene's height."""
+    nodes += [{'handle': 'tan', 'type': 'tangent', 'set': {'direction_type': 'radial', 'axis': 'x'}},
+              {'handle': 'sep', 'type': 'separate_xyz', 'set': {}}, {'handle': 'sum', 'type': 'math', 'set': {'math_type': 'add'}}]
+    connect += [['tan', 'Tangent', 'sep', 'Vector'], ['sep', 'Y', 'sum', 'Value1'], ['sep', 'Z', 'sum', 'Value2']]
+
+
+def tangent_glossy_glass(handle):
+    """The radial tangent as the Normal of a Glossy BSDF and of a Glass BSDF node (svm/closure.h: safe_normalize_fallback
+    keeps a NaN normal, and such a closure gives no light)."""
+    return shader(handle, [{'handle': 'tan', 'type': 'tangent', 'set': {'direction_type': 'radial', 'axis': 'x'}},
+                           {'handle': 'g', 'type': 'glossy_bsdf', 'set': {'distribution': 'ggx', 'roughness': 0.35, 'color': [0.8, 0.6, 0.3]}},
+                           {'handle': 't', 'type': 'glass_bsdf', 'set': {'distribution': 'ggx', 'roughness': 0.3, 'IOR': 1.45, 'color': [0.7, 0.85, 0.9]}},
+                           {'handle': 'mix', 'type': 'mix_closure', 'set': {'fac': 0.5}}],
+                  [['tan', 'Tangent', 'g', 'Normal'], ['tan', 'Tangent', 't', 'Normal'], ['g', 'BSDF', 'mix', 'Closure1'], ['t', 'BSDF', 'mix', 'Closure2'],
+                   ['mix', 'Closure', 'output', 'Surface']])
+
+
+def tangent_emission(handle):
+    """A NaN Emission Strength of a Principled BSDF (svm/closure.h principled_bsdf_emission: !is_zero(emission) is true
+    for it, so the NaN emission is recorded)."""
+    nodes = [{'handle': 'p', 'type': 'principled_bsdf', 'set': {'base_color': [0.6, 0.5, 0.4], 'roughness': 0.5, 'emission_color': [0.2, 0.5, 0.9]}}]
+    connect = [['p', 'BSDF', 'output', 'Surface']]
+    nan_value(nodes, connect)
+    connect.append(['sum', 'Value', 'p', 'Emission Strength'])
+    return shader(handle, nodes, connect)
+
+
 def scenes():
     def doc(scene_id, description, material):
         d = geometry.document(scene_id, description, material)
@@ -45,7 +73,11 @@ def scenes():
                                             'and two rotated, scaled instances (degenerate frames on their side faces, as on the CPU)', tangent_colour('z')),
             'tangent-node-radial-y.json': doc('surface-nodes/tangent-node-radial-y', 'Tangent node, radial about Y, as a colour on the same objects', tangent_colour('y')),
             'tangent-node-bump.json': doc('surface-nodes/tangent-node-bump', 'Tangent node, radial about X, driving a Bump node (the tangent with derivatives) on the same objects',
-                                          tangent_bump)}
+                                          tangent_bump),
+            'tangent-node-glossy-glass-normal.json': doc('surface-nodes/tangent-node-glossy-glass-normal', 'Tangent node, radial about X, as the Normal of a Glossy BSDF and of a '
+                                                         'Glass BSDF node on the same objects: a NaN normal at the degenerate frames, kept as on the CPU', tangent_glossy_glass),
+            'tangent-node-emission.json': doc('surface-nodes/tangent-node-emission', 'A value that is NaN at the degenerate frames of a Tangent node as the Emission Strength '
+                                              'of a Principled BSDF on the same objects', tangent_emission)}
 
 
 def main():

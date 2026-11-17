@@ -235,7 +235,7 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                 (*st).residual=((*st).o.t.y-(*st).t)*sigma_max;
                 var advance=true;
                 if(sigma_max!=0.0){
-                    (*st).dt=rounded_divide(-log(1.0-(*st).rscatter),sigma_max);(*st).t+=(*st).dt;
+                    (*st).dt=rounded_divide(-vh_logf(rounded_add(1.0,-(*st).rscatter)),sigma_max);(*st).t+=(*st).dt;
                     let has=equiangular&&((*st).direct_t>=(*st).o.t.x&&(*st).direct_t<=(*st).o.t.y);
                     if(has&&(*st).t>(*st).direct_t&&!(*st).direct_scatter){
                         (*st).direct_scatter=true;(*st).direct=(*st).indirect*(*st).transmittance*(*st).direct_rr_scale;
@@ -252,7 +252,7 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                 (*st).setup_from=1u;(*st).stage=VH_SETUP;
             }
             else if(stage==3u){ // VH_ADVANCE_AFTER: the residual optical depth carries the random number over.
-                (*st).rscatter=clamp(1.0-(1.0-(*st).rscatter)*exp((*st).residual),0.0,1.0);(*st).stage=VH_ADVANCE_WHILE;
+                (*st).rscatter=clamp(rounded_add(1.0,-(rounded_add(1.0,-(*st).rscatter)*vh_expf((*st).residual))),0.0,1.0);(*st).stage=VH_ADVANCE_WHILE;
             }
             else if(stage==4u){ // VH_STEP: volume_russian_roulette_termination, then the shader at t.
                 if((*st).direct_scatter&&(*st).indirect_scatter){(*st).stage=VH_FINAL;continue;}
@@ -378,7 +378,8 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
 //#endif
                 if((*st).setup_from==1u){
                     if(!ok){(*st).stage=VH_FINAL;continue;}
-                    (*st).optical_depth+=(*st).o.sigma.y*((*st).o.t.y-(*st).o.t.x);(*st).t=(*st).o.t.x;(*st).trans_resume=VH_ADVANCE_AFTER;(*st).stage=VH_TRANS_START;continue;
+                    // `vstate.optical_depth += octree.sigma.max * octree.t.length()`: the product rounded before the sum.
+                    (*st).optical_depth=rounded_add((*st).optical_depth,(*st).o.sigma.y*((*st).o.t.y-(*st).o.t.x));(*st).t=(*st).o.t.x;(*st).trans_resume=VH_ADVANCE_AFTER;(*st).stage=VH_TRANS_START;continue;
                 }
                 if(!ok){(*st).stage=VH_DONE;continue;}
                 (*st).optical_depth=(*st).o.sigma.y*((*st).o.t.y-(*st).o.t.x);(*st).stage=VH_INIT;
@@ -626,7 +627,6 @@ fn vr_channel_pdf(albedo:vec3<f32>,throughput:vec3<f32>)->vec3<f32>{
     let weights=abs(throughput*albedo);let sum=rounded_add(rounded_add(weights.x,weights.y),weights.z);
     if(rounded_add(1.0,-sum)<1.0){return vr_div3(weights,sum);}return vec3<f32>(1.0/3.0);
 }
-//#if VOLUME_RAY_MARCHING
 // The oracle kernels' arithmetic on this path. volume_sample_channel rescales rchannel by 1/pdf at every step, so a last-bit
 // difference in the throughput or in sigma grows about threefold per step until the channel pick flips
 // (volumes/ray-marching-heterogeneous-point, native/DEVICE.md). So this path computes the oracle's values exactly on every
@@ -667,6 +667,14 @@ fn vr_log_parts(x:f32)->vec2<f32>{
     let sum=trig_two_sum(le.x,lm.x);return vec2<f32>(sum.x,rounded_add(rounded_add(sum.y,lm.y),tail));
 }
 fn vr_logf(x:f32)->f32{let l=vr_log_parts(x);return rounded_add(l.x,l.y);}
+// The null-scattering advance takes its distances from the same two functions (sample_exponential_distribution's logf and
+// the rescale of the random number by expf of the residual optical depth): a distance a few last bits off moves the
+// scatter position, and where two media's octrees share a plane the next ray's walk then splits into other segments.
+fn vh_expf(x:f32)->f32{let e=vr_exp_parts(x);return ldexp(e.x,i32(e.y));}
+// logf(0) is -inf (a random number rescaled to 1 gives an unbounded distance: the path leaves every voxel); vr_log_parts
+// reads a zero as the smallest normal exponent.
+fn vh_logf(x:f32)->f32{if(x==0.0){return bitcast<f32>(0xff800000u);}return vr_logf(x);}
+//#if VOLUME_RAY_MARCHING
 fn vr_sample_channel(pdf:vec3<f32>,rand:f32)->vec2<f32>{
     var sum=0.0;
     for(var c=0u;c<3u;c++){if(rand<rounded_add(sum,pdf[c])){return vec2<f32>(f32(c),rounded_divide(rounded_add(rand,-sum),pdf[c]));}sum=rounded_add(sum,pdf[c]);}
