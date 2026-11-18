@@ -15,7 +15,7 @@ Selected license: Apache-2.0 AND BSD-3-Clause AND MIT AND Zlib AND LicenseRef-Pu
 Use: Filtered vendored native host, CPU reference and derived WGSL kernels. Registration, OCIO cache-identity and Android platform adaptations are generated from reviewed local snapshots by native/tools/build_cycles.py and build_cycles_android.py. Inventory: third_party/cycles-import.json.
 Attribution: Blender Foundation, Blender Authors, NVIDIA, Intel, Sony Pictures Imageworks, Larry Gritz, Industrial Light & Magic, Francois Beaune and appleseedhq, Inigo Quilez, Aladdin Enterprises, Lukas Hosek, Alexander Wilkie, Fernando Garcia Linan; exact notices retained per file. Two quaternion-to-rotation functions of util/math_float3x3.h are marked as adopted from Ceres Solver (Copyright Google Inc., BSD-3-Clause); its notice is supplied here because the file does not carry it. Public-domain adaptations also credit Austin Appleby (MurmurHash3), Fabian Giesen (half conversion) and NVIDIA Mesh Tools; complete retained comment notices are included.
 Pinned revision: b3f6262640f1a2f2d10b55b6ffccbf310ce0f981 (tag v5.3.0)
-Conditions: Filtered manifest in cycles-import.json; independent Apache-2.0 atomics and build adapter. Historical notice inventory describes excluded upstream files; those implementation files are not imported. The illuminant table of the dispersion code is supplied by the CodeBrix addition kernel/tables_d65_codebrix.h, which kernel/tables.h (recorded as modified) includes.
+Conditions: Filtered manifest in cycles-import.json; independent Apache-2.0 atomics and build adapter. Historical notice inventory describes excluded upstream files; those implementation files are not imported.
 Notices: third_party/licenses/Cycles-Apache-2.0.txt, third_party/licenses/Cycles-BSD-3-Clause.txt, third_party/licenses/Cycles-MIT.txt, third_party/licenses/Cycles-Zlib.txt, third_party/licenses/CeresSolver-BSD-3-Clause.txt, native/THIRD-PARTY-NOTICES.txt, parity/THIRD-PARTY-NOTICES.txt, research/THIRD-PARTY-NOTICES.txt, third_party/Cycles-file-notices.txt, third_party/licenses/source-notices-cycles.txt, third_party/cycles/AUTHORS
 
 OpenImageIO 2.5.18.0
@@ -346,32 +346,13 @@ Pinned revision: 3752b981a6f3b89b5468476a87568a29fd9e0822
 Conditions: MIT option explicitly selected from the upstream dual license. Retain the complete MIT copyright/permission grant and Arm attribution in source and substantial derived portions. CodeBrix modifications retain their Apache-2.0 notice.
 Notices: third_party/arm-optimized-routines/LICENSE, native/THIRD-PARTY-NOTICES.txt
 
-pbrt-v4 (one source file, unchanged documentation copy) commit b0bdf461ba5dd6504b70ebf0932acc0fe7aa744f
+pbrt-v4 commit b0bdf461ba5dd6504b70ebf0932acc0fe7aa744f
 Origin: https://github.com/mmp/pbrt-v4
 Selected license: Apache-2.0
-Use: Unchanged copy of one source file, src/pbrt/util/spectrum.cpp, kept in third_party/pbrt-v4/ for documentation only. It is not compiled, included or used by any build. The complete record is in THIRD-PARTY-NOTICES.txt.
-Attribution: pbrt is Copyright (c) 1998-2020 Matt Pharr, Wenzel Jakob, and Greg Humphreys. PhysLight code contributed by Anders Langlands and Luca Fascione, Copyright (c) 2020, Weta Digital, Ltd. The file's own notices are retained unchanged in the copy.
+Use: The 81 numbers of the array cie_d65_spd in tools/licensing/replacements/tables_d65_codebrix.h were copied from the array CIE_Illum_D6500 of src/pbrt/util/spectrum.cpp. Only the numbers were copied. An unchanged copy of that file is kept in third_party/pbrt-v4/.
+Attribution: pbrt is Copyright (c) 1998-2020 Matt Pharr, Wenzel Jakob, and Greg Humphreys. PhysLight code contributed by Anders Langlands and Luca Fascione, Copyright (c) 2020, Weta Digital, Ltd.
 Pinned revision: b0bdf461ba5dd6504b70ebf0932acc0fe7aa744f
-Conditions: The copy is never edited; its SHA-256 and that of the license text are pinned here and verified by tools/licensing/notices.py and tools/licensing/audit.py.
-Origin record:
-  Repository: https://github.com/mmp/pbrt-v4
-  Commit: b0bdf461ba5dd6504b70ebf0932acc0fe7aa744f
-  File in that repository: src/pbrt/util/spectrum.cpp
-  Raw URL of the file at that commit: https://raw.githubusercontent.com/mmp/pbrt-v4/b0bdf461ba5dd6504b70ebf0932acc0fe7aa744f/src/pbrt/util/spectrum.cpp
-  Last commit that changed the file: b3428aad1b28a41a81f79167385c08d81a79230a (2026-06-07)
-  Our copy: third_party/pbrt-v4/src/pbrt/util/spectrum.cpp, 178,992 bytes (2,848 lines), SHA-256 4c907c7655ad5431bd2797692b963ac34bc6a533c7a053a16e6988aea03c750b
-  Our copy is unchanged, character for character: it is the file at the raw URL above, byte for byte. It is kept for documentation only; it is not compiled, not included and not used by any build or tool, except that tools/licensing/d65_numbers.py reads the numbers named below from it.
-  What was taken: only the numbers of the array CIE_Illum_D6500 for the wavelengths 380 to 780 nm in 5 nm steps (81 values; the array interleaves wavelength and value from 300 to 830 nm and is lines 766 to 798 of the file, the 81 values taken being on lines 771 to 794). Each value is written in the numbers file with exactly the digit string it has in the file, followed by the C float suffix f. No comment, name, layout or code was taken from the file.
-  Where the numbers are used in this repository:
-    tools/licensing/replacements/tables_d65_codebrix.h: the numbers file (array cie_d65_spd). The constant CIE_D65_NORMALIZATION in the same file is computed by this project from those numbers and the colour-matching table of third_party/cycles/src/kernel/tables.h.
-    third_party/cycles/src/kernel/tables_d65_codebrix.h: the same file, placed in the vendored Cycles tree by tools/licensing/import_cycles.py (recorded in third_party/cycles-import.json).
-    tools/licensing/d65_numbers.py: writes the numbers file from our copy; with --check it fails when the numbers file and our copy disagree.
-    third_party/cycles/src/kernel/tables.h: includes the numbers file.
-    third_party/cycles/src/kernel/util/colorspace.h: wavelength_to_rgb_d65 reads cie_d65_spd and CIE_D65_NORMALIZATION.
-    third_party/cycles/src/kernel/integrator/path_state.h: dispersion_throughput_weight and update_path_throughput_for_dispersion call wavelength_to_rgb_d65; they are used by third_party/cycles/src/kernel/integrator/shade_surface.h and third_party/cycles/src/kernel/integrator/mnee.h (the Cycles CPU device, and Cycles' Metal device on macOS arm64).
-    The WebGPU device (native/cycles, native/shaders) holds no copy of the numbers: it does not implement dispersion.
-  License: Apache-2.0. The license file of that repository's root at the same commit, LICENSE.txt (raw URL: https://raw.githubusercontent.com/mmp/pbrt-v4/b0bdf461ba5dd6504b70ebf0932acc0fe7aa744f/LICENSE.txt), is our third_party/pbrt-v4/LICENSE.txt, 11,358 bytes, SHA-256 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30, unchanged and included in full among the texts below.
-  To verify: download the two raw URLs and compare their SHA-256 with the values above (or byte for byte with our copies); then run python3 tools/licensing/d65_numbers.py --check.
+Conditions: The copy and its license text are never edited.
 Notices: third_party/pbrt-v4/LICENSE.txt
 
 FULL LICENSE AND ATTRIBUTION TEXTS
@@ -3777,7 +3758,7 @@ third_party/cycles/src/kernel/svm/voronoi.h
 Sources:
 third_party/cycles/src/kernel/tables.h
 
-// Modified by CodeBrix: the illuminant table and its normalisation constant are included from kernel/tables_d65_codebrix.h; the colour-matching table comment records the table's public-domain origin.
+// Modified by CodeBrix: one include added; one table comment changed.
 // Copyright (c) 2026 Jeremy Ellis and contributors
 
 Sources:

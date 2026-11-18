@@ -31,9 +31,7 @@ policy. See `native/evidence/license-compliance-20261018` and the new
   revision, the released Cycles v5.3.0 (`third_party/cycles-import.json` lists
   every file). The excluded atomic, dependency-target and maintenance files are
   absent. Independent Apache-2.0 atomic and build adapters replace required APIs.
-  The illuminant table of the dispersion code is supplied by a CodeBrix addition
-  (`src/kernel/tables_d65_codebrix.h`). Two
-  functions the release marks as adopted from Ceres Solver carry that project's
+  Two functions the release marks as adopted from Ceres Solver carry that project's
   BSD-3-Clause notice (`third_party/licenses/CeresSolver-BSD-3-Clause.txt`).
   MAINTAINER-README.txt, "THE CYCLES PIN", describes the import.
 - Atomic tests cover integer wraparound, compare/exchange, float representation

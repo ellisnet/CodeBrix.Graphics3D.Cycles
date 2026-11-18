@@ -51,9 +51,7 @@ Deliverables, all on the branch:
 4. **Licence.** Nothing incompatible with Apache-2.0 enters the repository, code or data, including from memory. Blender
    outside Cycles is under a licence that is incompatible with Apache-2.0: read only the pinned Cycles source in this
    repository, and copy nothing from Blender, its exporter or its add-ons. Something usable only with a rights holder's
-   permission is unusable. No new NuGet package and no new third-party source. The illuminant numbers live in
-   `kernel/tables_d65_codebrix.h` and are never retyped, restored from elsewhere or discussed in a comment; a file may
-   name that header and its identifiers and nothing more.
+   permission is unusable. No new NuGet package and no new third-party source.
 5. **Never approximate, never relax.** A request the library cannot honour fails with an error that names the feature. No
    tolerance, comparator, scene or gate expectation is changed to make something pass. A gate follows the pinned kernel.
 6. **What this kit does not touch:** the shared WGSL (`native/shaders`), the WebGPU device (`native/cycles`, `native/src`)
@@ -112,9 +110,7 @@ Watch-points, in the order the build reaches them (all READ):
   `native/work/macos/osx-arm64/host/kernel-sources.json` lists that file under `overlaidInClosure`, that `WITH_WEBGPU` is
   in no compile command (this profile uses Cycles' own half-precision integrator state), and that the staged kernel
   sources are the pinned files.
-- **Dispersion is on.** `kernel/features.h` and `kernel/util/colorspace.h` are the pinned files, and `kernel/tables.h`
-  includes `kernel/tables_d65_codebrix.h`. That header must be in the staged Metal kernel closure. A Metal compile error
-  naming `cie_d65_spd`, `sample_wavelength` or `wavelength_to_rgb_d65` means the closure is incomplete: report it.
+- **Dispersion is on.** `kernel/features.h` and `kernel/util/colorspace.h` are the pinned files.
 - Every Metal kernel recompiles once after the pin change; allow for it in the host gate's budget.
 - `TESTING-MACOS-ARM64.md` step 5 (compare with the previous macOS evidence) has nothing valid to compare with: skip it.
 - Step 7: the Metal reference films under `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64` are void.

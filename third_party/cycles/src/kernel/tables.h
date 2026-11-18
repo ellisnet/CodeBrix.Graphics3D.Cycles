@@ -1,4 +1,4 @@
-// Modified by CodeBrix: the illuminant table and its normalisation constant are included from kernel/tables_d65_codebrix.h; the colour-matching table comment records the table's public-domain origin.
+// Modified by CodeBrix: one include added; one table comment changed.
 // Copyright (c) 2026 Jeremy Ellis and contributors
 /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *

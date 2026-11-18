@@ -10,6 +10,30 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
+VERBATIM_KEYS = {'id', 'verbatimNotice', 'verbatimNoticeSha256', 'pinnedFiles', 'notices'}
+
+
+def directly_copied(c):
+    """The entry of a component whose notice is copied directly: its 'verbatimNotice' lines, unchanged.
+
+    Such a component carries no field this generator would word (name, use, attribution and so on), so the recorded
+    lines are the only text of its entry; 'verbatimNoticeSha256' pins them, so an edit without review fails; a
+    'Notices:' line among them must name exactly the files of 'notices', whose full texts follow as for any component."""
+    extra = sorted(set(c) - VERBATIM_KEYS)
+    if extra:
+        raise RuntimeError('A directly copied notice allows no other notice field: ' + c['id'] + ' ' + ', '.join(extra))
+    lines = c['verbatimNotice']
+    if not lines or any(not isinstance(line, str) or not line or line != line.strip() or '\n' in line for line in lines):
+        raise RuntimeError('A directly copied notice is a list of non-empty lines without surrounding spaces: ' + c['id'])
+    text = ''.join(line + '\n' for line in lines)
+    if hashlib.sha256(text.encode('utf-8')).hexdigest() != c.get('verbatimNoticeSha256'):
+        raise RuntimeError('Directly copied notice changed without review: ' + c['id'])
+    listed = [line for line in lines if line.startswith('Notices: ')]
+    if listed and listed != ['Notices: ' + ', '.join(c['notices'])]:
+        raise RuntimeError('Directly copied notice names other notice files than the component: ' + c['id'])
+    return text
+
+
 def generate(check=False):
     manifest = json.loads((ROOT/'third_party/dependencies.json').read_text())
     header = ('CodeBrix.Graphics3D.Cycles\n'
@@ -23,6 +47,18 @@ def generate(check=False):
     full = header + manifest['scope'] + '\n\n'
     files = []
     for c in manifest['components']:
+        # Files a component pins by hash (an unchanged copy).
+        for name, expected in c.get('pinnedFiles', {}).items():
+            if hashlib.sha256((ROOT/name).read_bytes()).hexdigest() != expected:
+                raise RuntimeError('Pinned unchanged copy differs from its recorded hash: ' + name)
+        if 'verbatimNotice' in c:
+            # A directly copied notice: the reviewed lines are the component's whole entry, written to both files
+            # exactly as recorded. Nothing is added, removed or reworded here.
+            text = directly_copied(c)
+            notice += text + '\n'
+            full += text + '\n'
+            files += c['notices']
+            continue
         block = (c['name'] + ' ' + c['version'] + '\n'
                  + 'Origin: ' + c['source'] + '\n'
                  + 'Selected license: ' + c['license'] + '\n'
@@ -35,13 +71,6 @@ def generate(check=False):
         if c.get('embeddedLicenseForms'):
             block += 'Retained file/license forms: ' + '; '.join(c['embeddedLicenseForms']) + '\n'
         notice += block + '\n'
-        # Files a component pins by hash (an unchanged copy), and the lines of its origin record, which are written
-        # to THIRD-PARTY-NOTICES.txt only.
-        for name, expected in c.get('pinnedFiles', {}).items():
-            if hashlib.sha256((ROOT/name).read_bytes()).hexdigest() != expected:
-                raise RuntimeError('Pinned unchanged copy differs from its recorded hash: ' + name)
-        if c.get('originRecord'):
-            block += 'Origin record:\n' + ''.join('  ' + line + '\n' for line in c['originRecord'])
         full += block + ('Notices: ' + ', '.join(c['notices'])).rstrip() + '\n\n'
         files += c['notices']
     full += 'FULL LICENSE AND ATTRIBUTION TEXTS\n' + '=' * 70 + '\n'

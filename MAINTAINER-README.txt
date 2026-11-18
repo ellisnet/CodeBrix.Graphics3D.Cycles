@@ -1223,6 +1223,17 @@ license, modification and exclusion is recorded in the third_party/ manifests;
 THIRD-PARTY-NOTICES.txt and NOTICE are generated from them by
 tools/licensing/notices.py. Never hand-edit the generated files.
 
+A component of third_party/dependencies.json normally gives its notice as
+fields (name, version, source, license, use, attribution, ...), which the
+generator words into an entry. A component whose notice text is fixed word for
+word gives instead "verbatimNotice", the lines of its whole entry, and
+"verbatimNoticeSha256", the SHA-256 of those lines each followed by a line
+feed. The generator copies the lines directly into both generated files,
+unchanged; it refuses such a component if it also carries a worded field, if
+the lines differ from the hash, or if a "Notices:" line among them names
+other files than the component's "notices". Its license texts are included
+in full like any other component's.
+
 THE CYCLES PIN
 --------------
 third_party/cycles is the filtered import of the standalone Cycles repository
@@ -1262,30 +1273,12 @@ What the importer does to the upstream tree (tools/licensing/import_cycles.py):
                                           ATOMIC-CONTRACT.md)
     src/util/stats.h                      atomic return and load for the
                                           concurrent memory accounting
-    src/kernel/tables.h                   the illuminant table and its
-                                          normalisation constant are included
-                                          from kernel/tables_d65_codebrix.h;
-                                          the comment of the colour matching
+    src/kernel/tables.h                   the comment of the colour matching
                                           table records that table's
                                           public-domain origin
-- The illuminant table and dispersion. The importer drops the illuminant
-  table and its normalisation constant from src/kernel/tables.h, unread,
-  between two anchors, and puts an include of the CodeBrix addition
-  src/kernel/tables_d65_codebrix.h in their place. That file is written by
-  tools/licensing/d65_numbers.py into tools/licensing/replacements/ and placed
-  by the importer like the other additions; never edit it by hand:
-      python3 tools/licensing/d65_numbers.py            write the file
-      python3 tools/licensing/d65_numbers.py --check    fail if the file and
-                                                        its input disagree
-  Every other kernel file of the dispersion code is the pinned file, and
-  src/app/cie_d65_luminance_fit.py is excluded as an unnecessary helper
-  script. Dispersion renders on the CPU device and on Cycles' Metal device;
+- Dispersion renders on the CPU device and on Cycles' Metal device;
   the WebGPU device does not implement it and refuses it by name
   (native/DEVICE.md, open item 187).
-- third_party/pbrt-v4/ is an unchanged documentation copy (its record is in
-  THIRD-PARTY-NOTICES.txt). Nothing compiles or includes it, and it is never
-  edited: tools/licensing/notices.py and the audit compare it with its
-  recorded hash.
 - The Ceres notice. src/util/math_float3x3.h marks two quaternion functions
   "Adopted from Ceres-solver" (BSD-3-Clause) and carries only its Apache-2.0
   header. The importer records both licenses for that file (PORTED_NOTICES)

@@ -96,8 +96,7 @@ def transform(name, text):
         assert text.count(cite)==1
         text=text.replace(cite,' * x, y, and z for wavelengths from 380 to 780 nm, 5 nm wavelength steps.\n'
               ' * Values as in "Colour Rendering of Spectra" (specrend.c) by John Walker, a public-domain program.\n */')
-        return modified(text,'the illuminant table and its normalisation constant are included from '
-                        'kernel/tables_d65_codebrix.h; the colour-matching table comment records the table\'s public-domain origin.')
+        return modified(text,'one include added; one table comment changed.')
     return text
 
 

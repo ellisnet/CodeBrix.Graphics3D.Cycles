@@ -16,6 +16,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import dependency_sources
 import audit
 import metal_sources
+import notices
 import package_check
 
 
@@ -108,6 +109,45 @@ class PlatformPackageTests(unittest.TestCase):
             with self.subTest(runner=name):self.assertIn(name,metal_sources.METAL_SOURCES)
         for name in metal_sources.METAL_SOURCES:
             with self.subTest(path=name):self.assertTrue((self.ROOT/name).exists())
+
+
+class DirectlyCopiedNoticeTests(unittest.TestCase):
+    LINES=['Example 1.0','Origin: https://example.invalid/example','Use: Reviewed words, copied as they stand.',
+           'Notices: third_party/example/LICENSE.txt']
+
+    def write(self,root,**changes):
+        text=''.join(line+'\n' for line in self.LINES)
+        component=dict(id='example',verbatimNotice=list(self.LINES),verbatimNoticeSha256=digest(text.encode()),
+                       notices=['third_party/example/LICENSE.txt'])
+        component.update(changes)
+        licence=root/'third_party/example/LICENSE.txt';licence.parent.mkdir(parents=True,exist_ok=True)
+        licence.write_bytes(b'Example licence text.\n')
+        (root/'third_party/dependencies.json').write_text(json.dumps(dict(
+            scope='Scope.',components=[component],
+            noticeSha256={'third_party/example/LICENSE.txt':digest(licence.read_bytes())})))
+
+    def test_the_recorded_lines_are_written_unchanged_to_both_files(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);self.write(root)
+            with patch.object(notices,'ROOT',root):
+                self.assertEqual(notices.generate(),1)
+                notices.generate(check=True)
+            entry=''.join(line+'\n' for line in self.LINES)+'\n'
+            self.assertTrue((root/'NOTICE').read_text().endswith('\n\n'+entry))
+            full=(root/'THIRD-PARTY-NOTICES.txt').read_text()
+            self.assertIn('Scope.\n\n'+entry+'FULL LICENSE AND ATTRIBUTION TEXTS\n',full)
+            self.assertTrue(full.endswith('Example licence text.\n'))
+
+    def test_an_edited_line_another_notice_field_or_other_notice_files_are_refused(self):
+        cases=[(dict(verbatimNotice=self.LINES[:2]+['Use: Other words.']+self.LINES[3:]),'changed without review'),
+               (dict(use='More words.'),'allows no other notice field'),
+               (dict(verbatimNotice=self.LINES[:3]+[' Notices: x']),'non-empty lines'),
+               (dict(notices=['third_party/example/LICENSE.txt','third_party/example/LICENSE.txt']),'other notice files')]
+        for changes,message in cases:
+            with self.subTest(message=message),tempfile.TemporaryDirectory() as folder:
+                root=Path(folder);self.write(root,**changes)
+                with patch.object(notices,'ROOT',root),self.assertRaisesRegex(RuntimeError,message):
+                    notices.generate()
 
 
 class SourceArtifactGuardTests(unittest.TestCase):
