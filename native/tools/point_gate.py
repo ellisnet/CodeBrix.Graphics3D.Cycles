@@ -27,7 +27,8 @@ def main():
     assert state.returncode == 0, state.stderr[-2000:]
     report['state'] = json.loads(state.stdout)
     assert report['state']['passed'] and report['state']['refused'] == 2
-    assert all(r['pointHits'] > 500 and r['decisionMismatches'] == 0 and r['shadowDecisionMismatches'] == 0 and r['shadowBlocked'] > 500 and r['shadowClear'] > 500 for r in report['state']['rows'])
+    assert sum(r['splatHits'] > 500 for r in report['state']['rows']) == 9 and len(report['state']['rows']) == 17
+    assert all(r['pointHits']+r['splatHits'] > 500 and r['decisionMismatches'] == 0 and r['shadowDecisionMismatches'] == 0 and r['shadowBlocked'] > 500 and r['shadowClear'] > 500 for r in report['state']['rows'])
     render = subprocess.run([str(WORK/'cycles-build/bin/codebrix_cycles_point_render_gate'), str(out/'render')], capture_output=True, text=True, timeout=1500)
     (out/'render.stderr.txt').write_text(render.stderr)
     (out/'render.json').write_text(render.stdout)

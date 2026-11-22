@@ -80,7 +80,8 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
     if(test==15){principled(program,{.metallic=1});ds.data.tables.ggx_gen_schlick_s=ds.lookup_table.size();}
 #endif
 #ifdef CBC_GLASS_FIXTURE
-    if(test==11)program.glass(.3f,1.5f,100);
+    // The Glass BSDF node's thin film is implemented (typed programs below): here its table is out of bounds.
+    if(test==11){program.glass(.3f,1.5f,100);ds.data.tables.thin_film_table=ds.lookup_table.size()-3000;}
     if(test==12)program.refraction(.3f,1.5f);
     if(test==13)program.glass(.3f,1.5f,0,7);
     if(test==14){program.glass(.3f,1.5f);ds.data.tables.ggx_gen_schlick_ior_s=ds.lookup_table.size()-4095;}
@@ -100,7 +101,12 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
 #ifdef CBC_PRINCIPLED_FIXTURE
       4,512,512,512,512
 #else
-      16,4,8,512,
+#ifdef CBC_GLASS_FIXTURE
+      512,
+#else
+      16,
+#endif
+      4,8,512,
 #ifdef CBC_GLASS_FIXTURE
       512,16
 #else
@@ -703,7 +709,64 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
           evaluate(d,scene,shader,layout,initial,small,"Typed microfacet "+std::to_string(typed++),m);
         }
 #endif
-#ifdef CBC_PRINCIPLED_FIXTURE
+#if defined(CBC_PRINCIPLED_FIXTURE) && CBC_PRINCIPLED_FIXTURE==2
+    // The dispersion fixture: typed Principled records whose Transmission Dispersion Scale and Abbe Number are constants
+    // or stack slots (svm/closure.h: saturatef, fmaxf and safe_divide of the two inputs, then bsdf_glass_ior). The closure
+    // records hold the index of refraction of each path's wavelength; SR_BSDF_HAS_DISPERSION is in the runtime flag.
+    // `small` is on graphs 0 to 2, whose shaders need a wavelength; `plain` is on graphs 8 and 9, whose shaders do not
+    // (bsdf_glass_ior returns the input there, whatever the record says).
+    unsigned typed=0;const float nan=std::numeric_limits<float>::quiet_NaN();
+    std::vector<int> plain(ids.begin()+8*17,ids.begin()+10*17),both=small;both.insert(both.end(),plain.begin(),plain.end());
+    auto run=[&](const PrincipledArgs &a,float scale,float abbe,bool linked=false,const std::vector<int> *paths=nullptr){
+      Program p(ds);p.weight(.2,.5,.9);
+      p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=make_float3(.8,.3,.2)});
+      p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=3,.value=typed%2?make_float3(.2,.3,1):zero_float3()});
+      p.add(NODE_VALUE_F,SVMNodeValueF{.value=.37f,.out_offset=9});
+      p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=10,.value=make_float3(.3,.9,.6)});
+      p.add(NODE_VALUE_F,SVMNodeValueF{.value=scale,.out_offset=13});p.add(NODE_VALUE_F,SVMNodeValueF{.value=abbe,.out_offset=14});
+      principled(p,a);
+      // The two dispersion inputs of the record just written.
+      SVMNodePrincipledBsdfData n;const size_t words=sizeof(n)/4;std::memcpy(static_cast<void*>(&n),p.words.data()+p.words.size()-words,sizeof(n));
+      n.transmission_dispersion_scale=linked?SVMInputFloat{SVM_INPUT_STACK_OFFSET_MASK|13u}:value(scale);
+      n.transmission_dispersion_abbe_number=linked?SVMInputFloat{SVM_INPUT_STACK_OFFSET_MASK|14u}:value(abbe);
+      std::memcpy(p.words.data()+p.words.size()-words,static_cast<const void*>(&n),sizeof(n));
+      p.install(ds);evaluate(d,scene,shader,layout,initial,paths?*paths:small,"Typed dispersion "+std::to_string(typed++),m);
+    };
+    // The scale and the Abbe number over their ranges and beyond them, on a smooth and a rough lobe, constants and links.
+    for(float scale:{0.f,1e-6f,.25f,.5f,1.f,2.f,-1.f})for(float abbe:{0.f,-5.f,1.f,5.f,20.f,60.f,1e6f}){
+      run({.roughness=typed%3?.2f:0.f,.ior=1.5f,.transmission=1,.multi=bool(typed%2)},scale,abbe,typed%4==3);}
+    // The index of refraction at the d line: below one, one, near one, high; both distributions; a partial transmission.
+    for(float ior:{.7f,1.f,1.00001f,1.33f,2.4f})for(float rough:{0.f,.05f,.5f,1.f})for(bool multi:{false,true})
+      run({.roughness=rough,.ior=ior,.transmission=multi?1.f:.5f,.multi=multi,.tinted=multi},1,rough>.4f?8.f:20.f,rough==.05f);
+    // A NaN scale (saturatef gives 0) and a NaN Abbe number (fmaxf gives 0), from stack slots (a NaN constant is not
+    // representable in a record: its bits are the stack-slot encoding): no closure disperses.
+    for(bool multi:{false,true}){run({.roughness=.1f,.ior=1.5f,.transmission=1,.multi=multi},nan,20,true);run({.roughness=.1f,.ior=1.5f,.transmission=1,.multi=multi},1,nan,true);
+      run({.roughness=.1f,.ior=1.5f,.transmission=1,.multi=multi},nan,nan,true);run({.roughness=.1f,.ior=1.5f,.transmission=1,.multi=multi},-nan,20,true);
+      run({.roughness=.1f,.ior=1.5f,.transmission=1,.multi=multi},1,-nan,true);}
+    // An infinite Abbe number (the quotient is 0: nothing disperses) and an infinite scale (saturated to 1).
+    run({.roughness=.1f,.ior=1.5f,.transmission=1},1,std::numeric_limits<float>::infinity());run({.roughness=.1f,.ior=1.5f,.transmission=1},std::numeric_limits<float>::infinity(),20);
+    // Beside the other layers: thin film on the transmission lobe (the back-face film IOR follows the dispersive IOR),
+    // anisotropy with a tangent, metallic, coat, sheen and emission, alpha; a thin wall has no dispersive closure.
+    for(float film:{.5f,300.f,900.f})for(float film_ior:{1.33f,2.f})run({.roughness=.1f,.ior=1.4f,.transmission=1,.thin_film=film,.film_ior=film_ior,.multi=film_ior<1.5f},1,15);
+    for(float aniso:{.5f,1.f})run({.roughness=.4f,.ior=1.5f,.transmission=1,.anisotropic=aniso,.rotation=.3f,.normal=3,.tangent=0},.8f,12);
+    run({.metallic=.3f,.ior=1.6f,.transmission=.4f,.coat=.6f,.sheen=.7f,.level=.7f,.alpha=.8f,.emission=1,.diffuse_roughness=.4f,.tinted=true,.coat_normal=3,.linked=9},1,10);
+    run({.roughness=.2f,.ior=1.5f,.transmission=1,.thin_wall=1},1,20);run({.roughness=0,.ior=1.5f,.transmission=1,.thin_wall=1},1,20,true);
+    run({.roughness=.2f,.ior=1.5f,.transmission=1,.wall_link=9},1,20);
+    // A zero transmission weight: no transmission lobe, whatever the dispersion inputs.
+    run({.roughness=.2f,.ior=1.5f},1,20);run({.metallic=1,.roughness=.2f,.transmission=1},1,20);
+    // The closure capacity.
+    for(int cap:{1,2,3,5}){limit(cap);run({.metallic=.3f,.transmission=.6f,.coat=.6f,.sheen=.7f,.alpha=.8f,.tinted=true},1,15);}limit(MAX_CLOSURE);
+    // The other evaluation modes: no closure is made for a shadow evaluation or an emission evaluation. (The last typed
+    // record below runs on the initial states again, which the rejection cases that follow expect.)
+    for(unsigned mode=0;mode<3;mode++){auto states=initial;for(int i:both){if(mode==0)states[i].path.flag=PATH_RAY_TERMINATE;if(mode==1)states[i].path.flag=PATH_RAY_EMISSION;if(mode==2)states[i].path.visibility=PATH_RAY_VISIBILITY_SHADOW;}
+      Program p(ds);p.weight(.2,.5,.9);principled(p,{.roughness=.1f,.ior=1.5f,.transmission=1});
+      SVMNodePrincipledBsdfData n;const size_t words=sizeof(n)/4;std::memcpy(static_cast<void*>(&n),p.words.data()+p.words.size()-words,sizeof(n));
+      n.transmission_dispersion_scale=value(1);n.transmission_dispersion_abbe_number=value(15);std::memcpy(p.words.data()+p.words.size()-words,static_cast<const void*>(&n),sizeof(n));
+      p.install(ds);evaluate(d,scene,shader,layout,states,both,"Typed dispersion mode "+std::to_string(mode),m);}
+    // Shaders with and without SD_REQUIRES_WAVELENGTH under one record.
+    for(float abbe:{0.f,5.f,20.f})for(bool linked:{false,true})run({.roughness=.1f,.ior=1.5f,.transmission=1},1,abbe,linked,&both);
+    run({.roughness=.3f,.ior=.7f,.transmission=.5f,.multi=false},.5f,9,false,&plain);
+#elif defined(CBC_PRINCIPLED_FIXTURE)
     unsigned typed=0;
     auto run=[&](const PrincipledArgs &a){
       Program p(ds);p.weight(.2,.5,.9);
@@ -816,6 +879,13 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       p.glass(rough,ior,0,0,CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);p.install(ds);
       evaluate(d,scene,shader,layout,initial,small,"Typed multiscatter glass "+std::to_string(typed++),m);
     }
+    // The Beckmann Glass BSDF's thin film (svm/closure.h: the glass node's film whatever the distribution; the helper's
+    // film IOR is 1.3): below and above the cutoff, sharp and rough, an IOR above and below 1.
+    for(float thickness:{.1f,.6f,320.f,900.f})for(float rough:{0.f,.3f})for(float ior:{.7f,1.5f}){
+      Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=typed%2?make_float3(.2,.3,1):zero_float3()});
+      p.glass(rough,ior,thickness,0,CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);p.install(ds);
+      evaluate(d,scene,shader,layout,initial,small,"Typed Beckmann thin-film glass "+std::to_string(typed++),m);
+    }
 #endif
 #if CBC_BSDF_FIXTURE==2
     unsigned typed=0;
@@ -861,6 +931,15 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       auto n=SVMNodeSimpleBsdfData{.param1=value(sigma),.normal_offset=SVMStackOffset(typed%3?3:SVM_STACK_INVALID)};
       auto b=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),b.begin(),b.end());p.install(ds);
       evaluate(d,scene,shader,layout,initial,small,"Typed velvet "+std::to_string(typed++),m);
+    }
+    // Sheen (microfiber) records: roughness = clamp(saturate(param1), 1e-3, 1), the LTC table at dot(N, wi); the normal
+    // input on the stack or not.
+    for(float roughness:{-1.f,0.f,.0005f,.05f,.3f,.7f,1.f,2.f}){
+      Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=3,.value=typed%2?make_float3(.2,.3,1):zero_float3()});
+      p.add(NODE_CLOSURE_BSDF,SVMNodeClosureBsdf{.closure_type=CLOSURE_BSDF_SHEEN_ID,.mix_weight_offset=SVM_STACK_INVALID});
+      auto n=SVMNodeSimpleBsdfData{.param1=value(roughness),.normal_offset=SVMStackOffset(typed%3?3:SVM_STACK_INVALID)};
+      auto b=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),b.begin(),b.end());p.install(ds);
+      evaluate(d,scene,shader,layout,initial,small,"Typed sheen "+std::to_string(typed++),m);
     }
     // Toon records: size clamped to [1e-5, 1], smooth saturated, both scaled by pi/2.
     for(auto kind:{CLOSURE_BSDF_DIFFUSE_TOON_ID,CLOSURE_BSDF_GLOSSY_TOON_ID})for(float size:{-1.f,0.f,1e-6f,.3f,1.f,2.f})for(float smooth:{-1.f,0.f,.2f,1.f,3.f}){
@@ -941,6 +1020,40 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       multi_glass(p,rough,multi%3?1.5f:.7f,aniso,rotation,0,3,make_float3(.2f,.5f,.9f));p.install(ds);
       evaluate(d,scene,shader,layout,initial,small,"Typed multiscatter glass anisotropic "+std::to_string(multi++),m);
     }
+    // The Glass BSDF node's thin film (svm/closure.h: `fresnel->thin_film.thickness = thinfilm_thickness;
+    // fresnel->thin_film.ior = (sd->runtime_flag & SR_BACKFACING) ? thinfilm_ior / ior : thinfilm_ior`;
+    // closure/bsdf_microfacet.h generalized_schlick_fresnel's iridescence branch, and bsdf_microfacet_estimate_albedo,
+    // which reads no table for an active film): thicknesses on both sides of THINFILM_THICKNESS_CUTOFF, a film under a
+    // nanometre, film IORs from the 1e-5 floor up, on the GGX and the multiscatter GGX glass, sharp and rough, with the
+    // node's IOR above and below 1 (the film IOR over the IOR on backfacing paths), then anisotropic with a tangent.
+    auto film_glass=[&](Program &p,ClosureType kind,float rough,float ior,float thickness,float film_ior,float aniso,SVMStackOffset tangent,SVMStackOffset normal){
+      p.add(NODE_CLOSURE_BSDF,SVMNodeClosureBsdf{.closure_type=kind,.mix_weight_offset=SVM_STACK_INVALID});
+      auto n=SVMNodeGlassBsdfData{.color=color(.2f,.5f,.9f),.roughness=value(rough),.anisotropy=value(aniso),.rotation=value(.2f),.ior=value(ior),
+        .thin_film_thickness=value(thickness),.thin_film_ior=value(film_ior),.normal_offset=normal,.tangent_offset=tangent};
+      auto bits=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),bits.begin(),bits.end());};
+    unsigned film=0;
+    for(const ClosureType kind:{CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID})
+      for(float thickness:{.05f,.1f,.10001f,.6f,320.f,900.f})for(float film_ior:{0.f,1.f,1.33f,2.f})for(unsigned shape=0;shape<3;shape++){
+        Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=film%2?make_float3(.2,.3,1):zero_float3()});
+        film_glass(p,kind,shape==0?0.f:shape==1?.3f:.6f,shape==2?.7f:1.5f,thickness,film_ior,0,SVM_STACK_INVALID,0);p.install(ds);
+        evaluate(d,scene,shader,layout,initial,small,"Typed thin-film glass "+std::to_string(film++),m);
+      }
+    for(const ClosureType kind:{CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID})for(float aniso:{-.6f,.5f})for(float thickness:{.6f,450.f}){
+      Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=make_float3(.8,.3,.2)});
+      p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=3,.value=film%2?make_float3(.2,.3,1):zero_float3()});
+      film_glass(p,kind,.4f,film%3?1.5f:.7f,thickness,1.45f,aniso,0,3);p.install(ds);
+      evaluate(d,scene,shader,layout,initial,small,"Typed thin-film glass anisotropic "+std::to_string(film++),m);
+    }
+    // The film on diffuse paths with caustics switched off (one tint or both are zero).
+    {auto states=initial;unsigned n=0;const uint vis[]={PATH_RAY_VISIBILITY_DIFFUSE,PATH_RAY_VISIBILITY_CAMERA,PATH_RAY_VISIBILITY_DIFFUSE,PATH_RAY_VISIBILITY_GLOSSY,PATH_RAY_VISIBILITY_TRANSMIT};
+      for(int i:small)states[i].path.visibility=vis[n++%5];
+      const auto caustics=[&](int reflective,int refractive){ds.data.integrator.caustics_reflective=reflective;ds.data.integrator.caustics_refractive=refractive;limit(MAX_CLOSURE);};
+      for(unsigned mode=0;mode<4;mode++)for(const ClosureType kind:{CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID}){
+        caustics(mode&1,(mode>>1)&1);Program p(ds);p.weight(.2,.5,.9);
+        film_glass(p,kind,.3f,1.5f,320.f,1.33f,0,SVM_STACK_INVALID,SVM_STACK_INVALID);p.install(ds);
+        evaluate(d,scene,shader,layout,states,small,"Typed thin-film glass caustics "+std::to_string(film++),m);
+      }
+      caustics(1,1);}
 #endif
     // The scene-exchange passes (reference_policy.h) do no GPU work; the rejections run in the import pass.
     if(!svm_exchange_mode()){
@@ -985,7 +1098,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(m.closures.count(kind),"Missing BSDF fixture closure family "+std::to_string(kind));
 #elif CBC_BSDF_FIXTURE==3
   for(uint kind:{uint(CLOSURE_BSDF_DIFFUSE_ID),uint(CLOSURE_BSDF_OREN_NAYAR_ID),uint(CLOSURE_BSDF_MICROFACET_GGX_ID),uint(CLOSURE_BSDF_TRANSPARENT_ID),uint(CLOSURE_BSDF_TRANSLUCENT_ID),
-                 uint(CLOSURE_BSDF_ASHIKHMIN_VELVET_ID),uint(CLOSURE_BSDF_DIFFUSE_TOON_ID),uint(CLOSURE_BSDF_GLOSSY_TOON_ID)})
+                 uint(CLOSURE_BSDF_ASHIKHMIN_VELVET_ID),uint(CLOSURE_BSDF_DIFFUSE_TOON_ID),uint(CLOSURE_BSDF_GLOSSY_TOON_ID),uint(CLOSURE_BSDF_SHEEN_ID)})
     require(m.closures.count(kind),"Missing BSDF fixture closure family "+std::to_string(kind));
 #elif CBC_BSDF_FIXTURE==4
   for(uint kind:{uint(CLOSURE_BSDF_DIFFUSE_ID),uint(CLOSURE_BSDF_OREN_NAYAR_ID),uint(CLOSURE_BSDF_MICROFACET_GGX_ID),

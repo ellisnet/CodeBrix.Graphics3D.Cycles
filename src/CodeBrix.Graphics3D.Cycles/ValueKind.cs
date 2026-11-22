@@ -64,14 +64,13 @@ public enum ValueKind : uint
     Byte4 = 17,
 
     /// <summary>
-    /// A quaternion, four floats in Cycles' order w, x, y, z (geometry attributes only). Provisional: the native ABI
-    /// marks this value kind provisional.
+    /// A quaternion, four floats in Cycles' order w, x, y, z (geometry attributes only).
     /// </summary>
     Quaternion = 18,
 
     /// <summary>
     /// Spherical-harmonics coefficients of bands 1 to 3, 45 floats: 15 RGB coefficients, each in [-1, 1] and stored at
-    /// 8 bits (geometry attributes only). Provisional: the native ABI marks this value kind provisional.
+    /// 8 bits (geometry attributes only).
     /// </summary>
     SphericalHarmonicsRest = 19
 }

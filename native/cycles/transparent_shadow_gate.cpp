@@ -55,7 +55,7 @@ static void upload(WebGPUDevice &d,const std::vector<Field> &layout,const States
     for(size_t i=0;i<states.size();i++)std::memcpy(bytes.data()+i*f.stride,reinterpret_cast<const uint8_t*>(&states[i])+f.offset,f.stride);
     d.upload(f.address,bytes.data(),bytes.size());}
 }
-struct Metrics {uint64_t exact=0,floats=0,strict=0,paths=0,blocked=0,clear=0,excluded=0,attenuated=0,resumed=0,max_hits=0,four_hit_stages=0,overflow_stages=0;unsigned cases=0,direct=0,instances=0;double maximum=0;};
+struct Metrics {uint64_t exact=0,floats=0,strict=0,paths=0,blocked=0,clear=0,excluded=0,attenuated=0,resumed=0,max_hits=0,four_hit_stages=0,overflow_stages=0,wide_limit_paths=0,wide_counts=0,wide_bounces=0;unsigned cases=0,direct=0,instances=0;double maximum=0;};
 static void compare(WebGPUDevice &d,const std::vector<Field> &layout,const States &expected,Metrics &m){
   for(auto &f:layout){std::vector<uint8_t> bytes(expected.size()*f.stride);d.download(f.address,bytes.data(),bytes.size());
     const bool numeric=f.name=="shadow_path.throughput"||f.name=="shadow_ray.tmin"||(f.name.starts_with("shadow_isect.t")&&!f.name.starts_with("shadow_isect.type"))||f.name.starts_with("shadow_isect.u")||f.name.starts_with("shadow_isect.v");
@@ -143,18 +143,25 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));bool cancel=false;ShadowScheduler scheduler(&d,scene.film,&scene.dscene,&cancel);
     scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);const auto original=scene.dscene.data;
     BufferParams bp;bp.width=193;bp.height=1;bp.pass_stride=48;auto buffers=scheduler.get_render_buffers();buffers->reset(bp);
-    for(int variant=0;variant<12;variant++)for(int count:{1,63,64,65,193}){
+    // Variants 12-15: the transparent shadow hit limit (native/DEVICE.md, items 288 and 289). 12 and 13: limits above 4095 with
+    // the shadow paths' transparent_bounce just below them (the comparisons and the 16-bit counter past 4095, up to 65534);
+    // 14: hit counts above 4095 in packed_num_hits before the shade stage (shade_shadow.h takes the whole 16-bit count on
+    // the CPU); 15: a negative limit (intersect_shadow.h max(limit - transparent_bounce, 0)).
+    for(int variant=0;variant<16;variant++)for(int count:{1,63,64,65,193}){
       if(light_path&&!((variant==0||variant==6||variant==7)&&count==193))continue;
+      if(variant>=12&&count!=193)continue;
       std::cerr<<"shadow variant="<<variant<<" count="<<count<<(light_path?" light-path":"")<<"\n";
       scene.dscene.data=original;auto &data=scene.dscene.data;
       if(variant>=6){data.integrator.transparent_max_bounce=4;data.integrator.sample_clamp_direct=100;data.integrator.sample_clamp_indirect=100;}
       if(variant==10){data.film.light_pass_flag=0;data.film.pass_adaptive_aux_buffer=PASS_UNUSED;}
       if(variant==11){data.film.pass_glossy_direct=PASS_UNUSED;data.film.pass_transmission_indirect=PASS_UNUSED;}
+      if(variant>=12)data.integrator.transparent_max_bounce=variant==12?4100:variant==13?65534:variant==14?5000:-3;
       d.const_copy_to("data",&data,sizeof(data));scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Shadow reset failed");
-      auto expected=initial(193,variant%6);std::vector<int> indices;
+      auto expected=initial(193,variant>=12?0:variant%6);std::vector<int> indices;
+      if(variant==12||variant==13)for(int i=0;i<193;i++){expected[i].shadow_path.transparent_bounce=uint16_t(variant==12?4090+i%8:65530+i%5);m.wide_limit_paths++;}
       if(light_path)for(int i=0;i<193;i++){auto &p=expected[i].shadow_path;p.bounce=uint16_t(i%5);p.diffuse_bounce=uint16_t(i%3);p.glossy_bounce=uint16_t((i/3)%2);p.transmission_bounce=uint16_t((i/7)%3);}
       for(int i=0;i<count;i++)if(variant<6||i%3!=0){expected[i].shadow_path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW;indices.push_back(i);}
-      if(variant%6==1||variant%6==2){
+      if(variant<12&&(variant%6==1||variant%6==2)){
         auto before=expected;std::vector<float> unused(buffers->buffer.size());original_shadow(scene.dscene,DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW,indices,before,unused);
         for(int i:indices)if(before[i].shadow_path.packed_num_hits&&before[i].shadow_path.queued_kernel){const auto &hit=before[i].shadow_isect[0];
           if(variant%6==1){expected[i].shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1].object=hit.object;expected[i].shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1].prim=hit.prim;}
@@ -182,7 +189,9 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
         compare(d,layout,expected,m);film_compare(d,buffers->buffer,film,m);if(capture)d.observer=capture.get();
         std::vector<int> visible;for(int i:pending){if(expected[i].shadow_path.queued_kernel)visible.push_back(i);else m.blocked++;}
         m.clear+=visible.size();for(int i:visible){const auto hits=expected[i].shadow_path.packed_num_hits;m.max_hits=std::max(m.max_hits,uint64_t(hits));m.four_hit_stages+=hits==4;m.overflow_stages+=hits>4;}
+        if(variant==14&&round==0){for(int i:visible)if(expected[i].shadow_path.packed_num_hits>=INTEGRATOR_SHADOW_ISECT_SIZE_GPU){expected[i].shadow_path.packed_num_hits=uint16_t(4096+(i*977)%61440);m.wide_counts++;}upload(d,layout,expected);}
         const auto before=expected;original_shadow(scene.dscene,DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW,visible,expected,film);
+        if(variant==12||variant==13)for(int i:visible)m.wide_bounces+=expected[i].shadow_path.transparent_bounce>4095&&expected[i].shadow_path.transparent_bounce>before[i].shadow_path.transparent_bounce;
         for(int i:visible){m.attenuated+=expected[i].shadow_path.transparent_bounce>before[i].shadow_path.transparent_bounce;m.resumed+=expected[i].shadow_path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW;}
         if(!visible.empty()){scheduler.enqueue_path_iteration(DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW);require(scheduler.update_queue_counter_and_cache(),"Transparent shade failed: "+d.error_message());}
         if(capture)d.observer=nullptr;
@@ -195,12 +204,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       }
       compare(d,layout,expected,m);film_compare(d,buffers->buffer,film,m);
     }
-    require(m.blocked>100&&m.clear>100&&m.attenuated>100&&m.resumed>50&&m.max_hits>=7&&m.four_hit_stages>50&&m.overflow_stages>50&&m.excluded>50,"Insufficient transparent shadow coverage");
+    require(m.blocked>100&&m.clear>100&&m.attenuated>100&&m.resumed>50&&m.max_hits>=7&&m.four_hit_stages>50&&m.overflow_stages>50&&m.excluded>50&&m.wide_counts>20&&m.wide_bounces>20,"Insufficient transparent shadow coverage");
   }
   require(stats.mem_used==0,"Shadow gate leaked Cycles allocations");unsigned rejected=0;
   std::ofstream(prefix+".library.txt")<<d.gpu.library_path;std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".wgsl")<<shadow_source();
   std::cout<<std::setprecision(17)<<"{\"passed\":true,\"originalCpuShadowKernels\":true,\"originalAlgorithmsWithGpuHitCapacity\":4,\"originalGpuScheduler\":true,\"transparentTriangleShadowSliceProven\":true,\"directLightingProven\":false,\"cases\":"<<m.cases
-    <<",\"fourHitStages\":"<<m.four_hit_stages<<",\"overflowStages\":"<<m.overflow_stages<<",\"attenuatedStages\":"<<m.attenuated<<",\"resumedStages\":"<<m.resumed<<",\"maximumHitCount\":"<<m.max_hits<<",\"paths\":"<<m.paths<<",\"blocked\":"<<m.blocked<<",\"unoccluded\":"<<m.clear<<",\"selfOrLightExclusions\":"<<m.excluded<<",\"nativeInstanceLeaves\":"<<m.instances
+    <<",\"fourHitStages\":"<<m.four_hit_stages<<",\"overflowStages\":"<<m.overflow_stages<<",\"attenuatedStages\":"<<m.attenuated<<",\"resumedStages\":"<<m.resumed<<",\"maximumHitCount\":"<<m.max_hits<<",\"wideLimitPaths\":"<<m.wide_limit_paths<<",\"wideHitCounts\":"<<m.wide_counts<<",\"attenuationsAbove4095\":"<<m.wide_bounces<<",\"paths\":"<<m.paths<<",\"blocked\":"<<m.blocked<<",\"unoccluded\":"<<m.clear<<",\"selfOrLightExclusions\":"<<m.excluded<<",\"nativeInstanceLeaves\":"<<m.instances
     <<",\"directDispatchCases\":"<<m.direct<<",\"exactStateChecks\":"<<m.exact<<",\"stateAndFilmFloatChecks\":"<<m.floats<<",\"strictDifferences\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum
     <<",\"recordedShadowCases\":2,\"invalidCasesRejected\":"<<rejected<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

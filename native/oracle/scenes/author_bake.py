@@ -24,7 +24,7 @@ f32 = room.f32
 
 def uv_sphere(handle, material, center, radius, stacks=8, slices=12, smooth=True):
     """A sphere with a corner UV layout: (longitude, latitude), each face a rectangle of the [0, 1] square. The zero-area
-    triangles at the poles are left out (a texel on one is refused on the WebGPU device, native/DEVICE.md item 115)."""
+    triangles at the poles are left out (author_bake_motion.py keeps them: native/DEVICE.md item 149)."""
     positions, indices, uv = [], [], []
     for i in range(stacks+1):
         for j in range(slices+1):

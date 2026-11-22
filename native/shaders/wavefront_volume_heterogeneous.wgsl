@@ -29,6 +29,9 @@ fn vh_eval(index:u32,P:vec3<f32>,direction:vec3<f32>,base:u32)->VhCoefficients{
     var sd:SurfaceData;sd.P=P;sd.N=-direction;sd.Ng=-direction;sd.wi=-direction;sd.prim=NONE;sd.primitive_type=V_PRIMITIVE_VOLUME;
     sd.time=heap_float(state_address(S_ray_time,index,4u));sd.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
     var r:SvmResult;r.runtime_flag=sd.runtime_flag;r.remaining=data_word(D_max_closures);r.closure_base=base;
+//#if TILED_VOLUMES
+    r.lcg_state=image_tile_volume_lcg;
+//#endif
     let limit=data_word(D_volume_stack_size);
     for(var slot=0u;slot<limit;slot++){
         sd.shader=load_word(volume_stack_address(index,slot,VS_shader));if(sd.shader==NONE){break;}
@@ -52,6 +55,9 @@ fn vh_eval(index:u32,P:vec3<f32>,direction:vec3<f32>,base:u32)->VhCoefficients{
             }
         }
     }
+//#if TILED_VOLUMES
+    image_tile_volume_lcg=r.lcg_state;
+//#endif
     out.flag=r.runtime_flag;out.count=r.count;
     if((r.runtime_flag&SR_EXTINCTION)!=0u){out.sigma_t=r.transparency;}
     if((r.runtime_flag&SR_EMISSION)!=0u){out.emission=r.emission;}
@@ -66,6 +72,9 @@ fn vh_eval(index:u32,P:vec3<f32>,direction:vec3<f32>,base:u32,only_object:u32,on
     sd.time=heap_float(state_address(S_ray_time,index,4u));sd.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
     // volume_estimate_extrema evaluates one entry and allocates no closures (num_closure_left = 0).
     var r:SvmResult;r.runtime_flag=sd.runtime_flag;r.remaining=select(data_word(D_max_closures),0u,only_shader!=NONE);r.closure_base=base;
+//#if TILED_VOLUMES
+    r.lcg_state=image_tile_volume_lcg;
+//#endif
     let limit=data_word(D_volume_stack_size);
     for(var slot=0u;slot<limit;slot++){
         sd.shader=load_word(volume_stack_address(index,slot,VS_shader));if(sd.shader==NONE){break;}
@@ -90,6 +99,9 @@ fn vh_eval(index:u32,P:vec3<f32>,direction:vec3<f32>,base:u32,only_object:u32,on
             }
         }
     }
+//#if TILED_VOLUMES
+    image_tile_volume_lcg=r.lcg_state;
+//#endif
     out.flag=r.runtime_flag;out.count=r.count;
     if((r.runtime_flag&SR_EXTINCTION)!=0u){out.sigma_t=r.transparency;}
     if((r.runtime_flag&SR_EMISSION)!=0u){out.emission=r.emission;}
@@ -156,6 +168,11 @@ struct VhState {
     // Denoising features: the path writes them, vstate.albedo and the reservoir candidate's albedo.
     denoise:bool, albedo:vec3<f32>, cand_albedo:vec3<f32>,
 //#endif
+//#if TILED_VOLUMES
+    // The lcg state of the integration (volume_integrate: 0x15b4f88d), before the last evaluation, of the reservoir's
+    // candidate (VolumeSampleCandidate::lcg_state), of the sample being added, and the candidate's at finalize.
+    lcg:u32, prev_lcg:u32, cand_lcg:u32, add_lcg:u32, final_lcg:u32,
+//#endif
 //#if VOLUME_LIGHT_PATH
     // Light Path extrema: the path's visibility, the resumable volume_octree_setup (done, result, entry index, skipped entry,
     // the entry's local octree) and the estimate in progress (its entry is the one vh_eval evaluates; NONE: the stack).
@@ -170,6 +187,9 @@ const VH_SETUP=12u;const VH_TRANS_START=13u;const VH_FINAL2=14u;
 fn vh_reservoir_add(st:ptr<function,VhState>,weight:f32,emission:vec3<f32>,t:f32,throughput:vec3<f32>,pdf:f32){
     if(!(weight>0.0)){return;}
     (*st).res_total+=weight;let thresh=rounded_divide(weight,(*st).res_total);
+//#if TILED_VOLUMES
+    if(((*st).res_rand<=thresh)||((*st).res_total==weight)){(*st).cand_lcg=(*st).add_lcg;}
+//#endif
 //#if FILM_DENOISING else     if(((*st).res_rand<=thresh)||((*st).res_total==weight)){(*st).cand_emission=emission;(*st).cand_t=t;(*st).cand_throughput=throughput;(*st).cand_pdf=pdf;(*st).res_rand=rounded_divide((*st).res_rand,thresh);}
     if(((*st).res_rand<=thresh)||((*st).res_total==weight)){(*st).cand_emission=emission;(*st).cand_t=t;(*st).cand_throughput=throughput;(*st).cand_pdf=pdf;(*st).res_rand=rounded_divide((*st).res_rand,thresh);(*st).cand_albedo=(*st).albedo;}
 //#endif
@@ -291,6 +311,10 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                         let albedo=vh_safe_divide(c.sigma_s,c.sigma_t,1.0);let channel_pdf=vr_channel_pdf(albedo,(*st).indirect);
                         let prob_s=rounded_dot(vh_divide(c.sigma_s,c.sigma_s+sigma_n),channel_pdf);
                         let weight=(*st).transmittance*prob_s;let throughput=vr_div3((*st).indirect*c.sigma_s,prob_s);
+//#if TILED_VOLUMES
+                        // volume_integrate_step_scattering: the candidate keeps the lcg state from before this evaluation.
+                        (*st).add_lcg=(*st).prev_lcg;
+//#endif
                         if((*st).vspg){(*st).add=true;(*st).add_weight=weight;(*st).add_t=(*st).t;(*st).add_throughput=throughput;(*st).add_pdf=weight*sigma_max;}
                         else if(!(*st).indirect_scatter){
                             if((*st).res_rand<=prob_s){
@@ -321,6 +345,10 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                     continue;
                 }
                 if(sample_distance){(*st).direct=(*st).cand_throughput*(*st).res_total;(*st).distance_pdf=(*st).cand_pdf;}
+//#if TILED_VOLUMES
+                // volume_distance_sampling_finalize: the candidate's lcg state, read before the transmitted sample joins.
+                (*st).final_lcg=(*st).cand_lcg;(*st).add_lcg=0u;
+//#endif
                 // util/math_base.h mix(a, b, t) = a + t * (b - a), each operation rounded once (WGSL's built-in mix is not that form).
                 (*st).emission=rounded_add3((*st).emission,(*st).res_total*rounded_add3((*st).cand_emission,-(*st).emission));
 //#if FILM_DENOISING
@@ -339,6 +367,10 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                 let scale=select(rounded_divide(1.0-unguided,1.0-guided),rounded_divide(unguided,guided),scatter);
                 (*st).indirect=(*st).cand_throughput*scale;
                 if(!scatter&&!sample_distance){continue;}
+//#if TILED_VOLUMES
+                // sd->lcg_state = lcg_state before the evaluation at the candidate.
+                (*st).lcg=(*st).final_lcg;
+//#endif
                 (*st).request=select(0.0,1.0,scatter)+select(0.0,2.0,sample_distance);(*st).stage=VH_FINAL_EVAL;return (*st).cand_t;
             }
             else if(stage==7u){ // VH_FINAL_EVAL: the phases at the chosen candidate.
@@ -518,6 +550,10 @@ fn vh_coefficients_load(at:u32)->VhCoefficients{
     var st:VhState;var x:VhContext;var c:VhCoefficients;var have=false;
     if(status==VH_SPLIT_RESUME){
         vh_state_load(record+VH_SPLIT_STATE,&st);x=vh_context_load(record);c=vh_coefficients_load(record);have=true;
+//#if TILED_VOLUMES
+        // Record words 144 to 152: the lcg state the evaluation left, the candidate's, the state before the evaluation.
+        st.lcg=load_word(record+144u);st.cand_lcg=load_word(record+148u);st.prev_lcg=load_word(record+152u);
+//#endif
         if(c.error!=0u){store_word(record,VH_SPLIT_DONE);return;}
     }else{
     store_word(record,VH_SPLIT_DONE);
@@ -557,6 +593,10 @@ fn vh_coefficients_load(at:u32)->VhCoefficients{
     // volume_integrate_heterogeneous (the octree setup and the guidance run as the first stages).
     st.o.t=vec2<f32>(tmin,bitcast<f32>(0x7f7fffffu));st.o.node=NONE;st.o.object=NONE;st.o.shader=NONE;st.o.scale=VH_MANTISSA_BITS;
     st.film=base;st.offset=offset;st.setup_from=0u;st.stage=VH_SETUP;
+//#if TILED_VOLUMES
+    // volume_integrate: sd.lcg_state = lcg_state_init(rng_pixel, rng_offset, sample, 0x15b4f88d).
+    st.lcg=image_tile_lcg_init(pixel,offset,sample,0x15b4f88du);st.cand_lcg=0u;
+//#endif
 //#if VOLUME_LIGHT_PATH
     st.visibility=state_byte(S_path_visibility,index);
 //#endif
@@ -570,6 +610,9 @@ fn vh_coefficients_load(at:u32)->VhCoefficients{
     if(t>=0.0){
         vh_state_save(record+VH_SPLIT_STATE,&st);vh_context_save(record,x);
         vhs_f(record+128u,t);store_word(record+132u,st.scratch);
+//#if TILED_VOLUMES
+        store_word(record+144u,st.lcg);store_word(record+148u,st.cand_lcg);store_word(record+152u,st.lcg);
+//#endif
 //#if VOLUME_LIGHT_PATH
         store_word(record+136u,select(NONE,st.est.object,st.estimating));store_word(record+140u,select(NONE,st.est.shader,st.estimating));
 //#endif
@@ -616,8 +659,14 @@ fn vh_coefficients_load(at:u32)->VhCoefficients{
     if(id.x>=p(1u)||load_word(p(17u))!=0u){return;}
     let record=vh_split_record(id.x);if(load_word(record)!=VH_SPLIT_EVAL){return;}
     let index=load_word(record+4u);let origin=heap_vec3(record+24u);let direction=heap_vec3(record+36u);let t=heap_float(record+128u);let scratch=load_word(record+132u);
+//#if TILED_VOLUMES
+    image_tile_volume_lcg=load_word(record+144u);
+//#endif
 //#if VOLUME_LIGHT_PATH else     let c=vh_eval(index,rounded_add3(origin,direction*t),direction,scratch);
     let c=vh_eval(index,rounded_add3(origin,direction*t),direction,scratch,load_word(record+136u),load_word(record+140u));
+//#endif
+//#if TILED_VOLUMES
+    store_word(record+144u,image_tile_volume_lcg);
 //#endif
     vh_coefficients_save(record,c);store_word(record,VH_SPLIT_RESUME);
 }
@@ -735,6 +784,11 @@ fn vr_sample_channel(pdf:vec3<f32>,rand:f32)->vec2<f32>{
     var emission=vec3<f32>(0);
 //#if FILM_DENOISING
     var denoising_albedo=vec3<f32>(0);let denoise=(flag&DN_PATH_RAY_DENOISING_FEATURES)!=0u;
+//#endif
+//#if TILED_VOLUMES
+    // volume_integrate_ray_marching: sd.lcg_state = lcg_state_init(rng_pixel, rng_offset, sample, 0x15b4f88d), every step's
+    // evaluation continuing it.
+    image_tile_volume_lcg=image_tile_lcg_init(pixel,offset,sample,0x15b4f88du);
 //#endif
     for(var step=0;step<0x7fffffff;step++){
         // volume_ray_marching_advance.

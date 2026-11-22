@@ -110,7 +110,10 @@ fn ggx_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>,disk:vec2<f32>)->Surf
     let ch=rounded_dot(h,sd.wi);let f=ggx_fresnel(c,ch);if(all(f.reflection==vec3<f32>(0))&&all(f.transmission==vec3<f32>(0))){return out;}
     let reflection_pdf=ggx_reflection_pdf(f);let transmit=random.z>=reflection_pdf;let inv_eta=rounded_divide(1.0,c.ior);
     out.wo=rounded_add3(2.0*ch*h,-sd.wi);if(transmit){out.wo=rounded_add3(rounded_add(inv_eta*ch,f.cos_transmit)*h,-inv_eta*sd.wi);}
-    let co=rounded_dot(c.N,out.wo);if((rounded_dot(sd.Ng,out.wo)<0.0)!=transmit||(co<0.0)!=transmit){return out;}
+//#if BAKE_ZERO_AREA else     let co=rounded_dot(c.N,out.wo);if((rounded_dot(sd.Ng,out.wo)<0.0)!=transmit||(co<0.0)!=transmit){return out;}
+    // bsdf_microfacet_sample: `(cos_NgO < 0) != do_refract || (cos_NO < 0) != do_refract` at the normal of a zero-area bake texel.
+    let co=rounded_dot(c.N,out.wo);if(zero_area_less(zero_area_rounded_dot(sd.Ng,out.wo),0.0)!=transmit||zero_area_less(co,0.0)!=transmit){return out;}
+//#endif
     out.pdf=select(reflection_pdf,1.0-reflection_pdf,transmit);out.eval=select(f.reflection,f.transmission,transmit);
     singular=singular||(transmit&&abs(c.ior-1.0)<1e-4);
     if(singular){out.pdf*=1e6;out.eval*=1e6;}
@@ -123,7 +126,7 @@ fn ggx_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>,disk:vec2<f32>)->Surf
     }
     out.eval*=c.energy_scale;out.roughness=alpha2;out.label=select(LABEL_REFLECT,LABEL_TRANSMIT,transmit)|select(LABEL_GLOSSY,LABEL_SINGULAR,singular);return out;
 }
-//#if SVM_BSDF_PRINCIPLED
+//#if SVM_BSDF_SHEEN_CLOSURE
 // bsdf_sheen_eval / bsdf_sheen_sample (LTC; T, B and the transform in the record).
 fn sheen_value(c:SvmClosure,o:vec3<f32>,cosine:f32)->f32{
     let x=c.a*o.x+c.b*o.z;let y=c.a*o.y;let length2=x*x+y*y+o.z*o.z;let r=c.a/length2;return INV_PI*cosine*(r*r);
@@ -133,7 +136,10 @@ fn sheen_sample(sd:SurfaceData,c:SvmClosure,disk:vec2<f32>)->SurfaceSample{
     var out:SurfaceSample;let z=ggx_unit_sqrt(rounded_add(disk.x*disk.x,disk.y*disk.y));
     let o=surface_native_normalize(vec3<f32>(rounded_add(disk.x,-z*c.b),disk.y,z*c.a));
     out.wo=rounded_add3(rounded_add3(o.x*c.T,o.y*c.multiscatter),o.z*c.N);out.label=LABEL_REFLECT|LABEL_DIFFUSE;
-    if(rounded_dot(sd.Ng,out.wo)<=0.0){return out;}
+//#if BAKE_ZERO_AREA else     if(rounded_dot(sd.Ng,out.wo)<=0.0){return out;}
+    // bsdf_sheen_sample: `if (dot(Ng, *wo) <= 0)` at the normal of a zero-area bake texel (false for a NaN).
+    if(zero_area_less_equal(zero_area_rounded_dot(sd.Ng,out.wo),0.0)){return out;}
+//#endif
     out.pdf=sheen_value(c,o,o.z);out.eval=vec3<f32>(out.pdf);return out;
 }
 //#endif
@@ -331,7 +337,10 @@ fn microfacet_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>,disk:vec2<f32>
     let ch=rounded_dot(h,sd.wi);let f=ggx_fresnel(g,ch);if(all(f.reflection==vec3<f32>(0))&&all(f.transmission==vec3<f32>(0))){return out;}
     let reflection_pdf=ggx_reflection_pdf(f);let transmit=random.z>=reflection_pdf;let inv_eta=rounded_divide(1.0,c.ior);
     out.wo=rounded_add3(2.0*ch*h,-sd.wi);if(transmit){out.wo=rounded_add3(rounded_add(inv_eta*ch,f.cos_transmit)*h,-inv_eta*sd.wi);}
-    let co=rounded_dot(c.N,out.wo);if((rounded_dot(sd.Ng,out.wo)<0.0)!=transmit||(co<0.0)!=transmit){return out;}
+//#if BAKE_ZERO_AREA else     let co=rounded_dot(c.N,out.wo);if((rounded_dot(sd.Ng,out.wo)<0.0)!=transmit||(co<0.0)!=transmit){return out;}
+    // bsdf_microfacet_sample: `(cos_NgO < 0) != do_refract || (cos_NO < 0) != do_refract` at the normal of a zero-area bake texel.
+    let co=rounded_dot(c.N,out.wo);if(zero_area_less(zero_area_rounded_dot(sd.Ng,out.wo),0.0)!=transmit||zero_area_less(co,0.0)!=transmit){return out;}
+//#endif
     out.pdf=select(reflection_pdf,1.0-reflection_pdf,transmit);out.eval=select(f.reflection,f.transmission,transmit);
     singular=singular||(transmit&&abs(c.ior-1.0)<1e-4);
     if(singular){out.pdf*=1e6;out.eval*=1e6;}
@@ -458,7 +467,10 @@ fn as_sample(sd:SurfaceData,c:SvmClosure,random:vec2<f32>)->SurfaceSample{
     var h=rounded_add3(rounded_add3((sin_theta*sc.y)*b.X,(sin_theta*sc.x)*b.Y),cos_theta*c.N);
     let hi=rounded_dot(h,sd.wi);if(hi<0.0){h=-h;}
     out.wo=rounded_add3(-sd.wi,(2.0*hi)*h);out.label=LABEL_REFLECT|LABEL_GLOSSY;
-    if(rounded_dot(sd.Ng,out.wo)<0.0){out.label=0u;return out;}
+//#if BAKE_ZERO_AREA else     if(rounded_dot(sd.Ng,out.wo)<0.0){out.label=0u;return out;}
+    // bsdf_ashikhmin_shirley_sample: `if (dot(Ng, *wo) < 0.0f)` at the normal of a zero-area bake texel (false for a NaN).
+    if(zero_area_less(zero_area_rounded_dot(sd.Ng,out.wo),0.0)){out.label=0u;return out;}
+//#endif
     if(max(c.alpha_x,c.alpha_y)<=1e-4){out.pdf=1e6;out.eval=vec3<f32>(1e6);out.label=LABEL_REFLECT|LABEL_SINGULAR;}
     else{let e=as_evaluate(c,sd.wi,out.wo);out.eval=e.xyz;out.pdf=e.w;}
     return out;
@@ -498,7 +510,10 @@ fn velvet_sample(sd:SurfaceData,c:SvmClosure,d:vec2<f32>)->SurfaceSample{
     var out:SurfaceSample;let z=1.0-(d.x*d.x+d.y*d.y);let xy=d*sqrt(max(z+1.0,0.0));
     var b:SvmClosure;b.N=c.N;let basis=ggx_basis(b);
     out.wo=xy.x*basis.X+xy.y*basis.Y+z*c.N;out.pdf=0.5*INV_PI;
-    if(!(dot(sd.Ng,out.wo)>0.0)){out.pdf=0.0;return out;}
+//#if BAKE_ZERO_AREA else     if(!(dot(sd.Ng,out.wo)>0.0)){out.pdf=0.0;return out;}
+    // bsdf_ashikhmin_velvet_sample: `if (!(dot(Ng, *wo) > 0))` at the normal of a zero-area bake texel (true for a NaN).
+    if(!zero_area_less(0.0,zero_area_plain_dot(sd.Ng,out.wo))){out.pdf=0.0;return out;}
+//#endif
     let value=velvet_value(c,sd.wi,out.wo,dot(c.N,sd.wi),dot(c.N,out.wo),true);if(value<0.0){out.pdf=0.0;return out;}
     out.eval=vec3<f32>(value);out.label=LABEL_REFLECT|LABEL_DIFFUSE;return out;
 }
@@ -529,7 +544,10 @@ fn toon_sample(sd:SurfaceData,c:SvmClosure,d:vec2<f32>)->SurfaceSample{
     if(omc>0.0){let r2=d.x*d.x+d.y*d.y;cos_theta=1.0-r2*omc;
         let xy=d*sqrt(max(omc*(2.0-omc*r2),0.0));out.pdf=0.15915494309189535/omc;
         var b:SvmClosure;b.N=axis;let basis=ggx_basis(b);out.wo=xy.x*basis.X+xy.y*basis.Y+cos_theta*axis;}
-    if(!(dot(sd.Ng,out.wo)>0.0)||(glossy&&!(dot(c.N,out.wo)>0.0))){out.pdf=0.0;return out;}
+//#if BAKE_ZERO_AREA else     if(!(dot(sd.Ng,out.wo)>0.0)||(glossy&&!(dot(c.N,out.wo)>0.0))){out.pdf=0.0;return out;}
+    // bsdf_diffuse_toon_sample and bsdf_glossy_toon_sample: `dot(Ng, *wo) > 0.0f` at the normal of a zero-area bake texel (false for a NaN).
+    if(!zero_area_less(0.0,zero_area_plain_dot(sd.Ng,out.wo))||(glossy&&!zero_area_less(0.0,dot(c.N,out.wo)))){out.pdf=0.0;return out;}
+//#endif
     out.eval=vec3<f32>(out.pdf*toon_intensity(c.a,c.b,trig_acos(cos_theta)));out.label=LABEL_REFLECT|select(LABEL_DIFFUSE,LABEL_GLOSSY,glossy);return out;
 }
 //#endif

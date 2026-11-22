@@ -17,6 +17,8 @@
 #   CONTAINER_ENGINE=podman|docker   default: podman, then docker
 #   FORCE_IMAGE_REBUILD=1            rebuild the derived image even if it exists
 #   NUGET_PACKAGES                   the NuGet cache (default ~/.nuget/packages)
+#   SOURCE_DATE_EPOCH                the date of the host library's version (default: the committer
+#                                    time of the newest commit that changed a native source)
 #
 # What it does: makes sure the derived image exists (Containerfile.x86_64; building it is the only
 # step that may use the network), then runs container-build.sh in it WITH THE NETWORK DISABLED.
@@ -102,8 +104,23 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "cycles" ]; then
     fi
 fi
 
+# The host library's version carries a date (native/host/targets.cmake), which CMake takes from
+# SOURCE_DATE_EPOCH when it is set and from the UTC clock otherwise. The caller's value if set;
+# otherwise the committer time of the newest commit that changed a native source of this build
+# (the paths of NATIVE_SOURCES in tools/licensing/package_check.py), so that the same sources
+# build the same library on any day; unset outside a git checkout (the UTC configure date).
+EPOCH="${SOURCE_DATE_EPOCH:-}"
+if [ -z "$EPOCH" ]; then
+    EPOCH="$(git -C "$REPO" log -1 --format=%ct HEAD -- native/host native/cycles native/shaders native/oracle/runner.cpp \
+        native/manylinux third_party/cycles third_party/deps tools/dependencies 2> /dev/null || true)"
+fi
+case "$EPOCH" in
+    ''|*[!0-9]*) EPOCH=""; EPOCH_ARGS=() ;;
+    *) EPOCH_ARGS=(-e SOURCE_DATE_EPOCH="$EPOCH") ;;
+esac
+
 started="$SECONDS"
-echo "build: $MODE in $DERIVED ($IMAGE_ID), checkout $REPO at $CONTAINER_ROOT, network none" >&2
+echo "build: $MODE in $DERIVED ($IMAGE_ID), checkout $REPO at $CONTAINER_ROOT, network none, SOURCE_DATE_EPOCH ${EPOCH:-unset}" >&2
 rc=0
 "$ENGINE" run --rm --pull=never --network none \
     --name "$DERIVED_IMAGE_PREFIX-$$-$RANDOM" --label "$LABEL_PREFIX=1" \
@@ -115,6 +132,7 @@ rc=0
     -e CODEBRIX_BUILD_BASE_IMAGE="$IMAGE_X64" -e CODEBRIX_BUILD_BASE_DIGEST="$IMAGE_X64_DIGEST" \
     -e GCC_VERSION="$GCC_VERSION" -e CMAKE_VERSION="$CMAKE_VERSION" -e GLIBC_VERSION="$GLIBC_VERSION" \
     -e PYTHON_IN_IMAGE="$PYTHON_IN_IMAGE" -e ISPC_SHA256="$ISPC_SHA256" \
+    "${EPOCH_ARGS[@]}" \
     "$DERIVED" bash "$CONTAINER_ROOT/native/manylinux/container-build.sh" "$MODE" "$@" || rc=$?
 echo "build: $MODE finished with exit $rc in $(( SECONDS - started )) s" >&2
 exit "$rc"

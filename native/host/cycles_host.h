@@ -37,7 +37,7 @@ typedef struct CBCRenderConfig {
   uint32_t reserved[4];
 } CBCRenderConfig;
 /* Stable C value kinds; independent of native enum values or structure layout.
- * PROVISIONAL (ABI.md): CBC_VALUE_QUATERNION and CBC_VALUE_SPHERICAL_HARMONICS_REST are geometry attribute kinds only. A
+ * CBC_VALUE_QUATERNION and CBC_VALUE_SPHERICAL_HARMONICS_REST are geometry attribute kinds only (ABI.md). A
  * quaternion is 4 floats per element in Cycles' order w, x, y, z. Spherical-harmonics "rest" coefficients are 45 floats
  * per element: the 15 RGB coefficients of bands 1 to 3 in Cycles' order (L1 M-1, L1 M0, L1 M1, L2 M-2, ..., L3 M3), each
  * in [-1, 1]; Cycles stores them at 8 bits over that range. */
@@ -58,7 +58,7 @@ enum { CBC_ATTR_MESH = 1, CBC_ATTR_FACE = 2, CBC_ATTR_VERTEX = 3,
        CBC_ATTR_CORNER = 4, CBC_ATTR_CURVE = 5, CBC_ATTR_CURVE_KEY = 6,
        CBC_ATTR_VERTEX_NORMAL = 7, CBC_ATTR_CORNER_NORMAL = 8,
        CBC_ATTR_CORNER_BYTE = 9, CBC_ATTR_CURVE_KEY_NORMAL = 10 };
-/* CBC_ATTR_SPLAT_BOUNDING_RADIUS (PROVISIONAL, ABI.md "Point clouds"): cbc_host_attribute_get_floats only; reads the
+/* CBC_ATTR_SPLAT_BOUNDING_RADIUS (ABI.md "Point clouds"): cbc_host_attribute_get_floats only; reads the
  * bounding radius Cycles computed for each splat of a Gaussian splat cloud (render_as gaussian_splats) at the last
  * render or bake, instead of the authored radius. Name "radius"; CBC_NOT_READY until a render has computed it for the
  * cloud as it is (before the first render and after an edit of the cloud). */
@@ -123,12 +123,12 @@ int cbc_host_registry_json(char *json, uint64_t capacity, uint64_t *required);
  * radius, tangent, tangent_sign, ...) for applicable geometry/domain combinations.
  * Other names create custom attributes. Normal domains use native packed-normal
  * storage; readback returns its decoded direction. Existing topology must be
- * established first. Quaternion attributes (PROVISIONAL) are accepted on meshes,
+ * established first. Quaternion attributes are accepted on meshes,
  * point clouds and curves (CBC_ATTR_CURVE, CBC_ATTR_CURVE_KEY, CBC_ATTR_MESH),
- * spherical-harmonics attributes (PROVISIONAL) on meshes and point clouds only;
+ * spherical-harmonics attributes on meshes and point clouds only;
  * spherical-harmonics values outside [-1, 1] are CBC_INVALID, and readback returns
  * the stored 8-bit value.
- * PROVISIONAL (ABI.md): on point clouds the standard names radiance:base
+ * On point clouds (ABI.md) the standard names radiance:base
  * (CBC_VALUE_FLOAT4), scale (CBC_VALUE_VECTOR), rotation (CBC_VALUE_QUATERNION) and
  * radiance:sh (CBC_VALUE_SPHERICAL_HARMONICS_REST), on CBC_ATTR_VERTEX, are the
  * attributes of a Gaussian splat (render_as gaussian_splats). */
@@ -171,7 +171,7 @@ int cbc_host_curve_subdivisions(CBCHost host, uint32_t subdivisions);
 /* Point cloud geometry, like cbc_host_curves: xyz has 3 floats and radius 1 float per point. Values are validated and
  * copied; every point initially uses material 0 (the shader socket). Replaces the geometry and removes its motion;
  * further point attributes follow it, since their size derives from it. A cloud rendered as Gaussian splats
- * (PROVISIONAL) is bounded by the radius Cycles computes from radiance:base and scale; reads of radius and the center
+ * is bounded by the radius Cycles computes from radiance:base and scale; reads of radius and the center
  * step of cbc_host_point_motion keep the radius given here. */
 int cbc_host_points(CBCHost host, CBCNode pointcloud, const float *xyz, const float *radius, uint64_t count);
 /* Deformation motion for a point cloud: steps (odd, 3..129) time-ordered arrays, count = steps * point_count entries,
@@ -447,11 +447,10 @@ typedef int (*CBCImageTileReadCallback)(void *user_data, uint32_t level, uint32_
 typedef void (*CBCReleaseCallback)(void *user_data);
 /* A tiled image: Cycles' texture cache loads only the tiles (64 x 64, or config->tile_size, PROVISIONAL) and mip levels
  * a render samples, through read, on demand (the CPU device at once, the Metal device after a cache miss restarts the
- * path). config as for cbc_host_image_create (width, height, one of the eight formats) plus tile_size; read is
+ * path, the WebGPU device before it runs the kernel that missed again). config as for cbc_host_image_create (width, height, one of the eight formats) plus tile_size; read is
  * required, release may be NULL. Bind it with
  * cbc_host_image_bind or as UDIM tiles of tiled images only; cbc_host_image_update of it is CBC_INVALID. A read that
- * fails, or a reader stopped by a cancel, is read again by the next render. On the WebGPU backend a render or bake of a
- * scene that binds one is CBC_UNSUPPORTED ("WebGPU tiled images not implemented"). */
+ * fails, or a reader stopped by a cancel, is read again by the next render (ABI.md "Tiled images"). */
 int cbc_host_image_create_tiled(CBCHost host, const CBCImageConfig *config, CBCImageTileReadCallback read,
                                 CBCReleaseCallback release, void *user_data, CBCImage *image);
 #ifdef __cplusplus

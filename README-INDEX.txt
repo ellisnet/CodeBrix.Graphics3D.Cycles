@@ -35,9 +35,11 @@ MAINTAINER AND EXTRAS
       branch: what is outstanding there (validation at the current commit,
       Metal references, the payload), or a statement that nothing is.
   docs/KIT-MACOS-ARM64-history.md
-      Record of the first Apple Silicon work order, carried out and
-      integrated: the base validation at the current pin, the survey of what
-      the Metal device renders, and the host work that made it reachable.
+      Records of the Apple Silicon work orders that were carried out and
+      integrated: the first (the base validation at the current pin, the
+      survey of what the Metal device renders, and the host work that made it
+      reachable) and the second (the three Metal references of the integer
+      and component node test and the oracle scenes new at that time).
   docs/TESTING-MACOS-X64.md
       Test procedure for Intel Macs: WGSL on the shipped WebGPU runtime's
       Metal route.

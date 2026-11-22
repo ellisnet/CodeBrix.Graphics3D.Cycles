@@ -1528,6 +1528,9 @@ fn rt_prepare(r_gon_sides:f32,r_gon_roundness:f32,coord:vec2<f32>){
 // with two-part pi/2 and pi, summed through rounded_add (the shader compiler
 // reassociates plain sums with constants).
 fn rt_atan2_precise(y:f32,x:f32)->f32{
+    // atan2f(+-0, +-0) (C99 Annex F, which the CPU's atan2f follows): +-0 for x = +0, +-pi for x = -0, the sign of y's; WGSL
+    // leaves atan2(0, 0) undefined (an unlinked Vector input is the origin).
+    if(y==0.0&&x==0.0){let r=select(0.0,3.1415927410125732,(bitcast<u32>(x)&0x80000000u)!=0u);return bitcast<f32>(bitcast<u32>(r)|(bitcast<u32>(y)&0x80000000u));}
     if(y!=0.0&&abs(y)<1e-6*abs(x)){let q=rounded_divide(y,x);if(x>0.0){return q;}
         return select(rounded_add(-3.1415927410125732,rounded_add(8.742278e-8,q)),rounded_add(3.1415927410125732,rounded_add(-8.742278e-8,q)),y>0.0);}
     if(x!=0.0&&abs(x)<1e-6*abs(y)){let q=rounded_divide(x,y);

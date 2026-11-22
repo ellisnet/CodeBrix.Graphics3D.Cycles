@@ -59,8 +59,8 @@ public sealed class BackendScope
 
     /// <summary>
     /// (Provisional) Gets the largest tile side of a tiled image (<see cref="CyclesScene.CreateTiledImage"/>) on the
-    /// backend: 128 on Cycles' Metal device, 1024 on the CPU backends and on WebGPU (which refuses tiled images at
-    /// render); <see langword="null"/> when the report does not state it. See <see cref="TiledImage"/>.
+    /// backend: 128 on Cycles' Metal device, 1024 on the CPU backends and on WebGPU;
+    /// <see langword="null"/> when the report does not state it. See <see cref="TiledImage"/>.
     /// </summary>
     public long? MaxImageTileSize { get; }
 }

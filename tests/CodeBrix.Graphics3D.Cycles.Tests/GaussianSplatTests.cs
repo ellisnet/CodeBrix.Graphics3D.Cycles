@@ -13,7 +13,7 @@ using Xunit;
 namespace CodeBrix.Graphics3D.Cycles.Tests;
 
 // Point clouds rendered as Gaussian splats (PointCloudRenderAs.GaussianSplats) with the standard point attributes
-// radiance:base, scale and rotation, and optionally radiance:sh (provisional), on the CPU backends.
+// radiance:base, scale and rotation, and optionally radiance:sh, on the CPU backends.
 public class GaussianSplatTests
 {
     private const int Count = 24;
@@ -326,7 +326,7 @@ public class GaussianSplatTests
         return MathF.Max(MathF.Max(MathF.Abs(factor * scales[3 * i]), MathF.Abs(factor * scales[3 * i + 1])), MathF.Abs(factor * scales[3 * i + 2]));
     }).ToArray();
 
-    // Provisional (AttributeFlags.SplatBoundingRadius): the radius Cycles computed for each splat at the last render, read
+    // AttributeFlags.SplatBoundingRadius: the radius Cycles computed for each splat at the last render, read
     // beside the authored one; not ready before the first render and after an edit of the cloud, until a render computes
     // it again; a splat whose opacity is below 0.01 bounds nothing (0).
     [Fact]

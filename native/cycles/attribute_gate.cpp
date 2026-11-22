@@ -24,7 +24,18 @@ static const AttributeSpec specs[]={
   {"corner_float4",TypeFloat4,ATTR_ELEMENT_CORNER},
   {"mesh_float",TypeFloat,ATTR_ELEMENT_MESH},
 };
-static constexpr unsigned graph_count=std::size(specs)*3+3;
+// Quaternion and spherical-harmonics attributes (svm/attribute.h: a quaternion converts as make_float4 of it; a
+// spherical-harmonics attribute that is found reads 0 with Alpha 1 and is never fetched). One native graph reads all of
+// them (the last one; a graph each would exceed the fixture's path states) and the typed programs read each alone.
+static const AttributeSpec kind_specs[]={
+  {"vertex_quaternion",TypeQuaternion,ATTR_ELEMENT_VERTEX},
+  {"face_quaternion",TypeQuaternion,ATTR_ELEMENT_FACE},
+  {"corner_quaternion",TypeQuaternion,ATTR_ELEMENT_CORNER},
+  {"mesh_quaternion",TypeQuaternion,ATTR_ELEMENT_MESH},
+  {"vertex_harmonics",TypePackedSphericalHarmonicsRest,ATTR_ELEMENT_VERTEX},
+  {"mesh_harmonics",TypePackedSphericalHarmonicsRest,ATTR_ELEMENT_MESH},
+};
+static constexpr unsigned graph_count=std::size(specs)*3+4;
 
 static void prepare_attributes(Scene &scene){
   scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);
@@ -37,8 +48,18 @@ static void prepare_attributes(Scene &scene){
     ShaderOutput *output=nullptr;
     if(i<std::size(specs)*3){auto a=g->create_node<AttributeNode>();a->set_attribute(ustring(specs[i/3].name));
       const char *outputs[]={"Color","Fac","Alpha"};output=a->output(outputs[i%3]);}
-    else if(i<graph_count-1){auto c=g->create_node<VertexColorNode>();c->set_layer_name(ustring(i==graph_count-3?"corner_byte":"vertex_color"));output=c->output("Color");}
-    else{auto uv=g->create_node<UVMapNode>();output=uv->output("UV");}
+    else if(i<graph_count-2){auto c=g->create_node<VertexColorNode>();c->set_layer_name(ustring(i==graph_count-4?"corner_byte":"vertex_color"));output=c->output("Color");}
+    else if(i==graph_count-2){auto uv=g->create_node<UVMapNode>();output=uv->output("UV");}
+    else{
+      // The sum of every kind attribute's Color, and of its Fac and Alpha as the strength.
+      ShaderOutput *strength=nullptr;
+      for(auto &spec:kind_specs){auto a=g->create_node<AttributeNode>();a->set_attribute(ustring(spec.name));
+        auto add=[&](ShaderOutput *left,ShaderOutput *right,bool vector)->ShaderOutput*{if(!left)return right;
+          if(vector){auto n=g->create_node<VectorMathNode>();n->set_math_type(NODE_VECTOR_MATH_ADD);g->connect(left,n->input("Vector1"));g->connect(right,n->input("Vector2"));return n->output("Vector");}
+          auto n=g->create_node<MathNode>();n->set_math_type(NODE_MATH_ADD);g->connect(left,n->input("Value1"));g->connect(right,n->input("Value2"));return n->output("Value");};
+        output=add(output,a->output("Color"),true);strength=add(add(strength,a->output("Fac"),false),a->output("Alpha"),false);}
+      g->connect(strength,e->input("Strength"));
+    }
     g->connect(output,e->input("Color"));g->connect(e->output("Emission"),g->output()->input("Surface"));
     auto sh=scene.create_node<Shader>();sh->set_graph(std::move(g));sh->tag_update(&scene);shaders.push_back_slow(sh);
   }
@@ -53,7 +74,8 @@ static void prepare_attributes(Scene &scene){
       m->get_shader()[2*i]=i;m->get_shader()[2*i+1]=i;m->get_smooth()[2*i]=false;m->get_smooth()[2*i+1]=false;
     }
     m->tag_triangles_modified();
-    for(auto &spec:specs){
+    std::vector<AttributeSpec> all(std::begin(specs),std::end(specs));all.insert(all.end(),std::begin(kind_specs),std::end(kind_specs));
+    for(auto &spec:all){
       if(spec.element==ATTR_ELEMENT_NONE||std::string(spec.name)=="object_color")continue;
       // Only the later mesh owns byte colors: native global corner indices
       // then require a negative descriptor offset into this compact table.
@@ -66,6 +88,9 @@ static void prepare_attributes(Scene &scene){
         else if(spec.type==TypeFloat)a->data_for_write<float>()[j]=x;
         else if(spec.type==TypeFloat2)a->data_for_write<float2>()[j]=make_float2(x,y);
         else if(spec.type==TypeFloat4||spec.type==TypeRGBA)a->data_for_write<float4>()[j]=make_float4(x,y,z,w);
+        else if(spec.type==TypeQuaternion)a->data_for_write<Quaternion>()[j]=make_quaternion(w+.05f,x-.2f,y,z-.1f);
+        else if(spec.type==TypePackedSphericalHarmonicsRest){auto &packed=a->data_for_write<PackedSphericalHarmonicsRest>()[j];
+          for(int k=0;k<3*PackedSphericalHarmonicsRest::MAX_COEFFICIENTS;k++)packed.coefficients[k]=uint8_t((j*37+k*11)%256);}
         else a->data_for_write<packed_float3>()[j]=make_float3(x,y,z);
       }
     }
@@ -137,6 +162,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     std::vector<int> small;
     for(unsigned ob=0;ob<3;ob++)for(unsigned i=0;i<4;i++)small.push_back(ids[ob*graph_count*8+i]);
     std::vector<int> attributes;for(auto &spec:specs)attributes.push_back(int(scene.shader_manager->get_attribute_id(ustring(spec.name))));
+    for(auto &spec:kind_specs)attributes.push_back(int(scene.shader_manager->get_attribute_id(ustring(spec.name))));
     attributes.push_back(int(scene.shader_manager->get_attribute_id(ATTR_STD_GENERATED)));attributes.push_back(int(scene.shader_manager->get_attribute_id(ATTR_STD_UV)));
     for(int attr:attributes)for(unsigned output=0;output<3;output++)for(unsigned variant=0;variant<6;variant++){
       Program p(ds);bool derivative=variant!=0;bool stored=variant>=3;unsigned bump=variant==1?1:variant==2?2:0;

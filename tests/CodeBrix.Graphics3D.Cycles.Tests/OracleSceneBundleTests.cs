@@ -207,7 +207,7 @@ public class OracleSceneBundleTests
         a.Span.SequenceEqual(b.Span).Should().BeTrue();
     }
 
-    // The committed scene with both provisional attribute kinds (native/oracle/scenes/attributes): the loader passes the
+    // The committed scene with both of these attribute kinds (native/oracle/scenes/attributes): the loader passes the
     // value names "quaternion" and "spherical_harmonics_rest" to the host, which reads the quaternions back exactly and the
     // coefficients within half an 8-bit step, and the scene renders repeat-identically.
     [Fact]
@@ -300,6 +300,36 @@ public class OracleSceneBundleTests
         missingTile.Span.SequenceEqual(first.Span).Should().BeFalse();
         badKey.Should().Throw<FormatException>().Which.Message.Should().Contain("UDIM tile 'u1003'");
         badImage.Should().Throw<FormatException>().Which.Message.Should().Contain("Unknown image handle for UDIM tile 1003");
+    }
+
+    // A committed tiled image scene (native/oracle/scenes/images, provisional): an images entry with "tiled" becomes a
+    // tiled image whose levels the loader serves from the entry's file and the files of "tiled.levels", which the bundle
+    // lists among its files; a second scene renders it within the practical criterion (the last bits of a Linear or Cubic
+    // lookup follow the order in which Cycles' texture cache loaded the tiles, which several threads do not fix), and
+    // unlike the same document with its smallest level replaced by black pixels (the quad that shows the whole image reads
+    // that level).
+    [Fact]
+    public void a_committed_tiled_image_scene_reads_its_levels_through_the_loader()
+    {
+        //Arrange
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+        string path = Path.Combine(RepositoryPaths.Root, "native", "oracle", "scenes", "images", "tiled-mip-planes.json");
+        OracleSceneBundle bundle = OracleSceneBundle.Load(path);
+        Dictionary<string, byte[]> files = bundle.FileNames.ToDictionary(name => name, bundle.ReadFile);
+        const string smallest = "tiled-mip-planes.image.level-2.byte4";
+        Dictionary<string, byte[]> blackened = new(files) { [smallest] = new byte[files[smallest].Length] };
+        OracleSceneBundle withBlackLevel = OracleSceneBundle.FromJson(bundle.Json, blackened);
+
+        //Act
+        FilmBuffer first = Render(bundle);
+        FilmBuffer second = Render(bundle);
+        FilmBuffer black = Render(withBlackLevel);
+
+        //Assert
+        bundle.FileNames.Should().Contain(new[] { "tiled-mip-planes.image.level-0.byte4", "tiled-mip-planes.image.level-1.byte4", smallest });
+        FilmComparison.Compare(first.Span, second.Span).PracticalFailures.Should().Be(0);
+        first.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        FilmComparison.Compare(black.Span, first.Span).PracticalFailures.Should().BeGreaterThan(0);
     }
 
     // The texture limit (provisional render.textureLimit): the loader sets the scene's TextureLimit before it binds the

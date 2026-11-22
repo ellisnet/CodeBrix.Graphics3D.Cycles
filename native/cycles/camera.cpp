@@ -224,9 +224,52 @@ std::string wavefront_layout(){
   const unsigned point_table_index=table_index+5 CBC_CURVE_TABLES(TABLE);
 #undef TABLE
   source<<"//#if POINTS\n";
-  constant("G_points",point_table_index);constant("G_points_shader",point_table_index+1);constant("PRIMITIVE_POINT",PRIMITIVE_POINT);constant("PT_PRIMITIVE_MOTION",PRIMITIVE_MOTION);
+  constant("G_points",point_table_index);constant("G_points_shader",point_table_index+1);
+  // Gaussian splats (wavefront_gsplat.wgsl): a splat is a point of a point cloud, and every place of the device that
+  // treats a point treats a splat the same way (PRIMITIVE_ANY_POINT in the pinned kernel), so in a module with splats the
+  // point test's mask covers both kinds. The two places that tell them apart (the intersection test and the normal) use
+  // GS_PRIMITIVE_POINT and GS_PRIMITIVE_GSPLAT. KernelObject.gsplat holds the splat attributes' offsets.
+  source<<"//#if GSPLATS else const PRIMITIVE_POINT:u32="<<unsigned(PRIMITIVE_POINT)<<"u;\n";
+  constant("PRIMITIVE_POINT",PRIMITIVE_ANY_POINT);constant("GS_PRIMITIVE_POINT",PRIMITIVE_POINT);constant("GS_PRIMITIVE_GSPLAT",PRIMITIVE_GSPLAT);
+  constant("GS_O_scale",offsetof(KernelObject,gsplat.scale_offset_and_flag));constant("GS_O_rotation",offsetof(KernelObject,gsplat.rotation_offset_and_flag));
+  constant("GS_O_radiance_base",offsetof(KernelObject,gsplat.radiance_base_offset_and_flag));
+  constant("GS_O_radiance_rest",offsetof(KernelObject,gsplat.radiance_spherical_harmonics_rest_offset));
+  constant("GS_NOT_FOUND",uint32_t(ATTR_STD_NOT_FOUND));constant("GS_STD_RADIANCE",ATTR_STD_GSPLAT_RADIANCE);
+  source<<"//#endif\n";
+  constant("PT_PRIMITIVE_MOTION",PRIMITIVE_MOTION);
   source<<"//#endif\n//#if SVM_NODE_PARTICLE_INFO\n";
   constant("G_particles",point_table_index+2);constant("SIZE_particles",sizeof(KernelParticle));
+  source<<"//#endif\n";
+  // Quaternion and spherical-harmonics attributes: their tables follow the particle table (closest.cpp scene_tables).
+  source<<"//#if ATTRIBUTE_QUATERNION\n";
+  constant("G_attributes_quaternion",point_table_index+3);constant("SIZE_attributes_quaternion",sizeof(Quaternion));constant("QA_KIND_QUATERNION",NODE_ATTR_QUATERNION);
+  source<<"//#endif\n//#if ATTRIBUTE_SPHERICAL_HARMONICS\n";
+  constant("G_attributes_spherical_harmonics_rest",point_table_index+4);constant("SIZE_attributes_spherical_harmonics_rest",sizeof(PackedSphericalHarmonicsRest));constant("SH_KIND_SPHERICAL_HARMONICS_REST",NODE_ATTR_SPHERICAL_HARMONICS_REST);
+  source<<"//#endif\n";
+  // Tiled images: the tile descriptors, the tile access state and the device's miss word follow the particle table
+  // (closest.cpp scene_tables), present only in scenes with a tiled image.
+  // The quaternion and spherical-harmonics tables come before the tile tables (closest.cpp scene_tables): with either
+  // of them the tile tables are two places further, and a scene without them keeps the indices above.
+  auto tile_tables=[&](unsigned first){constant("G_image_texture_tile_descriptors",first);
+    constant("G_image_texture_tile_access_state",first+1);constant("G_image_tile_miss",first+2);};
+  source<<"//#if TILED_IMAGES\n";
+  source<<"//#if !ATTRIBUTE_QUATERNION\n//#if !ATTRIBUTE_SPHERICAL_HARMONICS\n";tile_tables(point_table_index+3);source<<"//#endif\n//#endif\n";
+  source<<"//#if ATTRIBUTE_QUATERNION\n";tile_tables(point_table_index+5);source<<"//#endif\n";
+  source<<"//#if !ATTRIBUTE_QUATERNION\n//#if ATTRIBUTE_SPHERICAL_HARMONICS\n";tile_tables(point_table_index+5);source<<"//#endif\n//#endif\n";
+  constant("IT_tile_size_shift",offsetof(KernelImageTexture,tile_size_shift));constant("IT_tile_levels",offsetof(KernelImageTexture,tile_levels));
+  constant("IT_width",offsetof(KernelImageTexture,width));constant("IT_height",offsetof(KernelImageTexture,height));
+  constant("IT_extension",offsetof(KernelImageTexture,extension));constant("IT_average_color",offsetof(KernelImageTexture,average_color));
+  constant("D_image_mip_bias",offsetof(KernelData,image.mip_bias));
+  constant("KERNEL_TILE_LOAD_REQUEST",KERNEL_TILE_LOAD_REQUEST);constant("KERNEL_TILE_LOAD_FAILED",KERNEL_TILE_LOAD_FAILED);
+  constant("KERNEL_TILE_ACCESS_REQUESTED",KERNEL_TILE_ACCESS_REQUESTED);constant("KERNEL_TILE_ACCESS_USED",KERNEL_TILE_ACCESS_USED);
+  constant("KERNEL_IMAGE_TEX_PADDING",KERNEL_IMAGE_TEX_PADDING);
+  // The Clip extension under its own name: the modules' shared enum constants are those every scene's text uses
+  // (native/tools/build_cycles.py), and only the tiled lookup names this one.
+  constant("ITE_CLIP",EXTENSION_CLIP);
+  // The shadow path's rng fields for a shadow evaluation's lcg state (svm_lcg_shadow): their own names, since the shadow
+  // and surface modules also define the S_shadow_path_* set.
+  constant("ITS_rng_pixel",offsetof(IntegratorStateGPU,shadow_path.rng_pixel));constant("ITS_rng_offset",offsetof(IntegratorStateGPU,shadow_path.rng_offset));
+  constant("ITS_sample",offsetof(IntegratorStateGPU,shadow_path.sample));
   source<<"//#endif\n";
   constant("O_tfm",offsetof(KernelObject,tfm));constant("O_motion_offset",offsetof(KernelObject,motion_offset));
   constant("O_num_tfm_steps",offsetof(KernelObject,num_tfm_steps));

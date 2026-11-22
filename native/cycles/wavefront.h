@@ -50,6 +50,9 @@ std::string bake_wgsl();}
 // Points and particles: appended after the curve descriptors only in scenes with points or a Particle Info node.
 #define CBC_POINT_TABLES(X) X(points,float4) X(points_shader,uint)
 #define CBC_PARTICLE_TABLES(X) X(particles,KernelParticle)
-#define CBC_SCENE_TABLES(X) CBC_SCENE_CORE_TABLES(X) CBC_LIGHT_TREE_TABLES(X) CBC_CURVE_TABLES(X) CBC_POINT_TABLES(X) CBC_PARTICLE_TABLES(X)
+// Quaternion and spherical-harmonics attributes (kernel/data_arrays.h): appended after the particle descriptors only in
+// scenes whose arrays hold data. A spherical-harmonics element is 45 bytes, so its array need not end on a word.
+#define CBC_ATTRIBUTE_KIND_TABLES(X) X(attributes_quaternion,Quaternion) X(attributes_spherical_harmonics_rest,PackedSphericalHarmonicsRest)
+#define CBC_SCENE_TABLES(X) CBC_SCENE_CORE_TABLES(X) CBC_LIGHT_TREE_TABLES(X) CBC_CURVE_TABLES(X) CBC_POINT_TABLES(X) CBC_PARTICLE_TABLES(X) CBC_ATTRIBUTE_KIND_TABLES(X)
 
 #define CBC_DEVICE_TABLES(X) X(image_info,KernelImageInfo) X(image_bounds,uint2)

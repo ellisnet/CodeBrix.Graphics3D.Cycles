@@ -8,7 +8,11 @@
 #include "microfacet_fixture.h"
 #endif
 #ifdef CBC_PRINCIPLED_FIXTURE
+#if CBC_PRINCIPLED_FIXTURE>=2
+#include "dispersion_fixture.h"
+#else
 #include "principled_fixture.h"
+#endif
 #endif
 #ifdef CBC_BSDF_FIXTURE
 #include "bsdf_fixture.h"

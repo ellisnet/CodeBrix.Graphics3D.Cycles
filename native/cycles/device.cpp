@@ -227,8 +227,14 @@ void WebGPUDevice::sync(){
     for(auto [bit,label]:{std::pair{1u," invalid state/data"},std::pair{2u," unsupported SVM opcode or scene-specialized handler"},
         std::pair{4u," SVM bytecode outside table"},std::pair{8u," invalid/uninitialized SVM stack"},
         std::pair{16u," unsupported SVM parameter"},std::pair{32u," SVM instruction limit"},std::pair{64u," invalid attribute map/data"},
-        std::pair{128u," invalid image descriptor/data"},std::pair{256u," tiled image cache not implemented"},
-        std::pair{65536u," WebGPU bake of a texel on a zero-area triangle not implemented"}})
+        std::pair{128u," invalid image descriptor/data"},std::pair{256u," tiled image in a module without the tile cache regions"},
+        // 65536: a bake texel on a zero-area triangle in a module built without BAKE_ZERO_AREA, which the scan of the bake
+        // target's triangles (pipelines.cpp bake_zero_area) rules out: an internal inconsistency, not a refusal.
+        std::pair{65536u," bake texel on a zero-area triangle that the scan of the bake target did not find"},
+        // A light sample with a NaN direction at a closure whose value is NaN there, with a light pass that the pinned kernel
+        // then fills with a NaN (wavefront_lighting.wgsl surface_direct_light; native/DEVICE.md, item 148).
+        std::pair{131072u," WebGPU degenerate area light with a spread of zero not implemented"},
+        std::pair{262144u," WebGPU degenerate background light portal not implemented"}})
       if(error&bit)message+=label;
     throw std::runtime_error(message);
   }
@@ -242,7 +248,10 @@ void WebGPUDevice::mem_alloc(device_memory &mem){guard([&]{if(mem.type==MEM_IMAG
     require(image.image_info_id<gpu.limits.maxStorageBufferBindingSize/(sizeof(KernelImageInfo)+8),"Image descriptor index exceeds device limit");
     auto it=images.find(image.image_info_id);require(it==images.end()||it->second==&image,"Duplicate image descriptor ownership");
   }
-  if(!mem.device_pointer&&mem.memory_size()){mem.device_pointer=allocate(mem.memory_size());mem.device_size=mem.memory_size();stats.mem_alloc(mem.device_size);}});}
+  if(!mem.device_pointer&&mem.memory_size()){mem.device_pointer=allocate(mem.memory_size());mem.device_size=mem.memory_size();stats.mem_alloc(mem.device_size);
+    // What no kernel writes (image.cpp tile_transaction): scene tables except the tile access state, read-only inputs, images.
+    if(mem.type==MEM_READ_ONLY||mem.type==MEM_IMAGE_TEXTURE||(mem.type==MEM_GLOBAL&&std::strcmp(mem.global_name(),"image_texture_tile_access_state")!=0))
+      tile_readonly.insert(uint32_t(mem.device_pointer));}});}
 void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);require(!have_error(),"WebGPU allocation failed");
   if(fingerprint){fingerprint->label=mem.log_name();
     // KernelImageTexture is built on the stack and copied whole: the 8 bytes before transform_3d are whatever was on the stack (a pointer on Android).
@@ -259,14 +268,18 @@ void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);requ
     if(std::strcmp(mem.global_name(),"lights")==0){copy(light_records);
       // An area light whose axis length underflows (normalize_len of a vector whose squared length is zero) holds NaNs and
       // infinities in that axis, one whose length overflows a zero axis of infinite length. The device's copy holds a zero
-      // axis of zero length in both cases (native/DEVICE.md, item 148; the WGSL regions LIGHT_AREA_DEGENERATE give the CPU's
-      // comparisons with the NaN axis). An axis of infinities without a NaN is left as it is and refused (lighting.cpp).
+      // axis of zero length in both cases, +0 for the NaN axis and -0 for the overflowed one (native/DEVICE.md, items 148
+      // and 233; the WGSL regions LIGHT_AREA_DEGENERATE give the CPU's comparisons with the NaN axis, LIGHT_AREA_OVERFLOW
+      // the arithmetic with the infinite length). An axis of infinities without a NaN is left as it is and refused
+      // (lighting.cpp).
       bool degenerate=false;light_axis_overflow.assign(light_records.size(),0);
       for(KernelLight &light:light_records)if(light.type==LIGHT_AREA)
         for(auto [axis,len]:{std::pair{&light.area.axis_u,&light.area.len_u},std::pair{&light.area.axis_v,&light.area.len_v}}){
           const bool nan=std::isnan(axis->x)||std::isnan(axis->y)||std::isnan(axis->z);
-          if(std::isinf(*len))light_axis_overflow[size_t(&light-light_records.data())]=1;
-          if((*len==0&&nan)||std::isinf(*len)){*axis=zero_float3();*len=0;degenerate=true;}}
+          if(std::isinf(*len))light_axis_overflow[size_t(&light-light_records.data())]|=uint8_t(axis==&light.area.axis_u?1:2);
+          // The overflowed axis keeps a length of -0, which the LIGHT_AREA_OVERFLOW regions read (item 233). This file is
+          // compiled without signed zeros, so the marker is written as its bits and read from light_axis_overflow.
+          if((*len==0&&nan)||std::isinf(*len)){const uint32_t bits=std::isinf(*len)?0x80000000u:0u;*axis=zero_float3();std::memcpy(len,&bits,sizeof(bits));degenerate=true;}}
       if(degenerate)upload(uint32_t(mem.device_pointer),light_records.data(),mem.memory_size());}
     if(std::strcmp(mem.global_name(),"light_distribution")==0)copy(light_distribution_records);
     if(std::strcmp(mem.global_name(),"light_tree_nodes")==0)copy(light_tree_nodes);
@@ -275,6 +288,8 @@ void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);requ
     if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
     if(std::strcmp(mem.global_name(),"bvh_nodes")==0){copy(bvh_node_words);svm_generation++;}
     if(std::strcmp(mem.global_name(),"object_flag")==0){copy(object_flag_records);object_flag_memory=&mem;}
+    if(std::strcmp(mem.global_name(),"tri_vindex")==0){tri_vindex_memory=&mem;svm_generation++;}
+    if(std::strcmp(mem.global_name(),"tri_verts")==0){tri_verts_memory=&mem;svm_generation++;}
     if(std::strcmp(mem.global_name(),"curves")==0){copy(curve_records);svm_generation++;}
     if(std::strcmp(mem.global_name(),"points_shader")==0){copy(point_shader_words);svm_generation++;}
     if(std::strcmp(mem.global_name(),"tri_shader")==0){smooth_triangles=false;
@@ -284,6 +299,8 @@ void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);requ
     if(std::strcmp(mem.global_name(),"tri_shader")==0){copy(tri_shader_words);svm_generation++;}
     if(std::strcmp(mem.global_name(),"prim_index")==0){copy(prim_index_words);mnee_generation++;}
     if(std::strcmp(mem.global_name(),"prim_object")==0){copy(prim_object_words);mnee_generation++;}
+    // Tile descriptors of tiled images: the scene's modules take the TILED_IMAGES regions (pipelines.cpp shader_features).
+    if(std::strcmp(mem.global_name(),"image_texture_tile_descriptors")==0&&tiled_images!=(mem.memory_size()!=0)){tiled_images=mem.memory_size()!=0;svm_generation++;}
     if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"light_tree_emitters")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;
   }
   if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);images[image.image_info_id]=&image;
@@ -295,7 +312,7 @@ void WebGPUDevice::mem_copy_from(device_memory &mem,size_t y,size_t w,size_t h,s
   if(bytes)download(mem.device_pointer+offset,static_cast<char*>(mem.host_pointer)+offset,bytes);});}
 void WebGPUDevice::mem_zero(device_memory &mem){guard([&]{mem_alloc(mem);require(!have_error(),"WebGPU allocation failed");if(mem.memory_size())zero(uint32_t(mem.device_pointer),mem.memory_size());});}
 void WebGPUDevice::mem_free(device_memory &mem){std::lock_guard lock(mutex);try{
-  if(mem.device_pointer){flush();release(uint32_t(mem.device_pointer));stats.mem_free(mem.device_size);
+  if(mem.device_pointer){flush();release(uint32_t(mem.device_pointer));stats.mem_free(mem.device_size);tile_readonly.erase(uint32_t(mem.device_pointer));
     if(mem.type==MEM_GLOBAL){globals.erase(mem.global_name());
       if(std::strcmp(mem.global_name(),"lights")==0)light_records.clear();
       if(std::strcmp(mem.global_name(),"light_distribution")==0)light_distribution_records.clear();
@@ -305,6 +322,8 @@ void WebGPUDevice::mem_free(device_memory &mem){std::lock_guard lock(mutex);try{
       if(std::strcmp(mem.global_name(),"objects")==0)object_records.clear();
       if(std::strcmp(mem.global_name(),"bvh_nodes")==0){bvh_node_words.clear();svm_generation++;}
       if(std::strcmp(mem.global_name(),"object_flag")==0){object_flag_records.clear();object_flag_memory=nullptr;}
+      if(std::strcmp(mem.global_name(),"tri_vindex")==0)tri_vindex_memory=nullptr;
+      if(std::strcmp(mem.global_name(),"tri_verts")==0)tri_verts_memory=nullptr;
       if(std::strcmp(mem.global_name(),"curves")==0){curve_records.clear();svm_generation++;}
       if(std::strcmp(mem.global_name(),"points_shader")==0){point_shader_words.clear();svm_generation++;}
       if(std::strcmp(mem.global_name(),"tri_shader")==0)smooth_triangles=false;
@@ -312,6 +331,7 @@ void WebGPUDevice::mem_free(device_memory &mem){std::lock_guard lock(mutex);try{
       if(std::strcmp(mem.global_name(),"tri_shader")==0){tri_shader_words.clear();svm_generation++;}
       if(std::strcmp(mem.global_name(),"prim_index")==0){prim_index_words.clear();mnee_generation++;}
       if(std::strcmp(mem.global_name(),"prim_object")==0){prim_object_words.clear();mnee_generation++;}
+      if(std::strcmp(mem.global_name(),"image_texture_tile_descriptors")==0&&tiled_images){tiled_images=false;svm_generation++;}
       if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"light_tree_emitters")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;}
     if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);images.erase(image.image_info_id);
       globals.erase("image_pixels_"+std::to_string(image.image_info_id));image_info_dirty=true;}
@@ -319,12 +339,17 @@ void WebGPUDevice::mem_free(device_memory &mem){std::lock_guard lock(mutex);try{
   }catch(const std::exception &e){set_error(e.what());}}
 void WebGPUDevice::mem_move_to_host(device_memory&){set_error("WebGPU host-memory fallback not implemented");}
 void WebGPUDevice::const_copy_to(const char *name,void *host,size_t size){guard([&]{
-  if(std::strcmp(name,"data")==0){require(size==sizeof(data),"KernelData layout mismatch");data=*static_cast<KernelData*>(host);svm_generation++;}
+  const void *bytes=host;KernelData uploaded;
+  if(std::strcmp(name,"data")==0){require(size==sizeof(data),"KernelData layout mismatch");data=*static_cast<KernelData*>(host);svm_generation++;
+    // A negative transparent_max_bounce reads as 0 in every kernel comparison (path_state.h path_state_next, shade_light.h,
+    // intersect_dedicated_light.h: a count of at least 1 against it; intersect_shadow.h: max(limit - count, 0)); the WGSL
+    // compares unsigned, so the device's copy holds 0 (native/DEVICE.md, item 289).
+    if(data.integrator.transparent_max_bounce<0){uploaded=data;uploaded.integrator.transparent_max_bounce=0;bytes=&uploaded;}}
   else if(std::strcmp(name,"integrator_state")==0){require(size==sizeof(state),"IntegratorStateGPU layout mismatch");update_state(*static_cast<IntegratorStateGPU*>(host));}
   else throw std::runtime_error("Unsupported WebGPU constant: "+std::string(name));
   auto &address=constants[name];if(address&&remaining(address)!=size){release(address);address=0;}
   if(!address)address=allocate(size);
-  upload(address,host,size);
+  upload(address,bytes,size);
 });}
 // Recorder entries 27-33: the INTERSECT_MNEE entries in dispatch order (35 = shade_surface_sample, 36 =
 // shade_surface_passes, 37 = cryptomatte_postprocess, 38 = connect_surface_ao, 42 = shade_surface_light_background,

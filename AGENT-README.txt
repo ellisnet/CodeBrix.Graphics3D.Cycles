@@ -620,7 +620,7 @@ Shared value types and enums (root namespace)
     ValueKind       Unsupported, Boolean, Int, UInt, UInt64, Float, Color,
                     Vector, Point, Normal, Point2, String, Enum, Transform,
                     Node, Closure, Float4, Byte4, Quaternion,
-                    SphericalHarmonicsRest (the last two provisional)
+                    SphericalHarmonicsRest
     PropertyFlags   None, Array, Linkable, Internal, Readable, Writable
     AttributeValue, AttributeDomain, AttributeFlags (geometry attributes)
     CurveShape      Ribbon, Thick, ThickLinear
@@ -637,7 +637,10 @@ cbcOracleScene version 1 format (scene singletons, created nodes, shader graphs,
 meshes, curves, attributes and images, addressed by their registered Cycles node,
 socket and enum names) plus the raw files it names, all in one directory. The
 same bundle can be rendered on any machine and backend, so it is a convenient
-way to move a scene between processes, devices and tools.
+way to move a scene between processes, devices and tools. An images entry with
+"tiled" (provisional) is a tiled image (TILED IMAGES): its "file" is level 0,
+"tiled.levels" names the raw files of the further levels and "tiled.tileSize"
+the tile side (absent or 0: the default).
 
 OracleSceneBundle                                       (sealed)
     static OracleSceneBundle Load(string jsonPath)
@@ -883,10 +886,10 @@ AttributeFlags.Standard these names are Cycles' standard attributes:
     curve_length and curve_random (per curve), for the Hair Info node;
   - point clouds: uv, generated, radius, point_random (the Point Info node),
     and radiance:base, scale, rotation and radiance:sh, the attributes of a
-    Gaussian splat (provisional; GAUSSIAN SPLATS below).
+    Gaussian splat (GAUSSIAN SPLATS below).
   Any other name is a custom attribute, read by the Attribute node.
   Quaternion and spherical-harmonics attributes (AttributeValue.Quaternion and
-  .SphericalHarmonicsRest; provisional) go on meshes (the Mesh, Face, Vertex
+  .SphericalHarmonicsRest) go on meshes (the Mesh, Face, Vertex
   and Corner domains) and point clouds (Mesh and Vertex), as custom attributes;
   quaternions also on curves (HairNode: the Mesh, Curve and CurveKey domains,
   per key interpolated along each segment as Cycles reads them):
@@ -904,9 +907,8 @@ AttributeFlags.Standard these names are Cycles' standard attributes:
     alpha 1: Cycles has no shader reading of these coefficients. Not a
     subdivision attribute (AttributeFlags.Subdivision throws).
   Both throw NativeStatus.Unsupported on volume geometry, and spherical
-  harmonics on hair too (Cycles reads them only for Gaussian splats); the
-  WebGPU backend refuses a scene in which a shader reads one (RENDER-TIME
-  REJECTIONS).
+  harmonics on hair too (Cycles reads them only for Gaussian splats). Every
+  backend renders them.
   A node that asks for an attribute by name (AttributeNode, UvMapNode) gets
   the attribute of that name, also when it is one of the names above set
   without AttributeFlags.Standard; a node that asks for a standard attribute
@@ -921,7 +923,11 @@ AttributeFlags.Standard these names are Cycles' standard attributes:
 Shader graphs: a link between different value types (a colour into a float
 input, a float into a colour or vector input, a value into a shader input)
 gets Cycles' own conversion node, as in Blender; the Convert*Node classes do
-the same explicitly. A shader output links only into a shader input.
+the same explicitly. A shader output links only into a shader input. A Boolean
+input (MapRangeNode.ClampInput, UvmapNode.FromDupliInput) cannot be linked:
+Cycles has no conversion to a Boolean socket, so Connect throws NativeFailure
+(NativeStatus.Unsupported, "A Boolean input cannot be linked ..."); set the
+node's property (Clamp, FromDupli) instead.
 Displacement: ShaderNode.DisplacementMethod Bump, True or Both, with a
 DisplacementNode or VectorDisplacementNode into OutputNode.DisplacementInput;
 BumpNode for bump mapping inside a graph. Both is for meshes: curves and points
@@ -951,10 +957,9 @@ Subsurface: SubsurfaceScatteringNode or PrincipledBsdfNode with the
 RandomWalk, RandomWalkLegacy or Burley (Christensen-Burley) method, also on a
 thin-walled PrincipledBsdfNode.
 
-GAUSSIAN SPLATS (provisional). A PointCloudNode with RenderAs =
-PointCloudRenderAs.GaussianSplats renders each point as a 3D Gaussian, on the
-CPU and Metal backends (the WebGPU backend refuses it: RENDER-TIME
-REJECTIONS). Set these point attributes after SetPoints, each with
+GAUSSIAN SPLATS. A PointCloudNode with RenderAs =
+PointCloudRenderAs.GaussianSplats renders each point as a 3D Gaussian, on
+every backend. Set these point attributes after SetPoints, each with
 AttributeDomain.Vertex and AttributeFlags.Standard (Cycles finds them only as
 standard attributes):
   - radiance:base, AttributeValue.Float4: the band-0 spherical-harmonics
@@ -993,15 +998,14 @@ standard attributes):
     opacity and the scale, at each render; the radii given to SetPoints are
     kept: GetAttribute("radius") returns them and SetMotion takes them as the
     center step. GetAttribute("radius", AttributeFlags.SplatBoundingRadius)
-    (provisional) returns the radius Cycles computed for each splat at the
+    returns the radius Cycles computed for each splat at the
     last render or bake instead: 0 for an opacity below 0.01, else the largest
     component of |sqrt(2 ln(opacity / 0.01)) * scale|. It throws
     (NativeStatus.NotReady, "The bounding radius of a Gaussian splat cloud is
     Cycles' and is read after a render or bake has computed it ...") before
     the first render and after an edit of the cloud, until the next render;
     Invalid for any other geometry or name ("... reads the bounding radius of
-    a Gaussian splat cloud only"); Unsupported on the WebGPU backend ("WebGPU
-    Gaussian splats not implemented").
+    a Gaussian splat cloud only").
   - Motion: object motion (ObjectNode.Motion) and PointCloudNode.SetMotion
     (positions; Cycles bounds each step itself). The splat attributes
     themselves have no motion here.
@@ -1129,13 +1133,16 @@ images only.
   - Cycles keeps the tiles it loaded for later renders of the scene. Closest
     filtering renders bit for bit like the same pixels from CreateImage, also
     in a render in tiles (TileSize) and with a camera border; Linear
-    and Cubic agree with it within rounding inside the image. Outside the
+    and Cubic agree with it within rounding inside the image, and their last
+    bits can differ between two renders of one scene on several threads (they
+    follow the order in which Cycles loaded the tiles). Outside the
     image (UVs beyond 0..1) Cycles' tiled path wraps the UV before filtering, so
     Linear with Extension Black and Cubic with Black or Clamp differ from a
     plain image there, as in Cycles.
   - CyclesImage.Update is refused (InvalidOperationException).
-  - The CPU and Metal backends render it; the WebGPU backend refuses a render
-    with a tiled image (RENDER-TIME REJECTIONS).
+  - Every backend renders it. On the WebGPU backend a tile that is not loaded
+    yet is read between two steps of the render, as on Metal, and the film
+    meets the practical criterion against the CPU's.
 
     sealed class LevelFiles(string[] levelPaths) : ITiledImageReader
     {
@@ -1285,12 +1292,14 @@ BAKING TEXTURES
 scene.Bake bakes one mesh's UV layout into a raw float film through Cycles' bake
 kernel, one BakeType at a time. The CPU backends and the WebGPU device bake,
 every BakeType on each, also of meshes with deformation motion (baked at the
-mesh's static positions, as Cycles bakes). On the WebGPU device a bake of a
-mesh whose UV layout covers triangles with no area throws NativeFailure
-(status 3) naming it, for every BakeType but Position, Background and Normal
-(Normal through a shader with a bump is refused too); a flat Normal bake of
-such a texel fails on every backend (its normal is not a number). A bake never
-falls back to the CPU. On Apple Silicon it runs Cycles' Metal bake kernel,
+mesh's static positions, as Cycles bakes). A mesh whose UV layout covers
+triangles with no area in 3D bakes on every backend as Cycles bakes it: the
+geometric normal of such a texel is not a number, so its lit BakeTypes read
+what Cycles' arithmetic leaves there (often 0), and a bake whose film would
+hold a value that is not a number throws NativeFailure (status 3, "Nonfinite
+bake output") on every backend: the flat Normal type, and the Diffuse, Glossy
+and Transmission types and their Direct types where a glossy closure shades
+such a texel. A bake never falls back to the CPU. On Apple Silicon it runs Cycles' Metal bake kernel,
 which is not validated yet.
 GetCapabilities().BakingBackends states which (validated, unvalidated),
 BakeTypes the types.
@@ -1824,23 +1833,22 @@ Every backend:
   - curves and points with a Both displacement shader
   - area lights with an axis of infinities (an axis with no zero component whose length underflows to zero)
 The WebGPU backend:
-  - point clouds rendered as Gaussian splats
-  - quaternion and spherical-harmonics attributes read by a shader
-  - dispersion (a Principled BSDF whose Transmission Dispersion Scale and Transmission Weight are each linked or not 0)
   - custom (OSL) cameras
   - path guiding (the integrator's use_guiding) and its passes
   - a Radial Tiling node with at most two sides and a roundness strictly between 0 and 1
+  - a Set Normal node whose Direction input is not linked
   - scenes whose device data does not fit the GPU (there is no host-memory fallback)
   - BVH time steps
   - volume velocity motion blur
-  - sparse or tiled images
-  - area lights whose axis length underflows to zero with a spread of zero, or whose axis length overflows with a spread below 1e-5 in a scene with volumes
-  - background light portals of zero extent
-  - bakes of texels on triangles with no area, for every bake type but Position, Background and Normal (Normal through a shader with a bump is refused too)
+  - sparse images
+  - area lights whose axis length underflows to zero with a spread of zero, in a scene with a heterogeneous volume or volume ray marching, with an emission shader that is not constant, as a shadow-caustics light, or with a diffuse, glossy or transmission pass at a surface whose closures give no number for that light
+  - area lights with one axis whose length overflows and one whose length underflows to zero, and area lights whose axis length overflows as a shadow-caustics light or, when not normalized, under a light tree
+  - background light portals whose axis length overflows, rotated portals whose axis length underflows to zero, and portals of zero extent on a background light without an importance map when the world's emission is not constant, the scene has volumes or shadow caustics, or a diffuse, glossy or transmission pass is written at a surface whose closures give no number for that light
   - texture, colour and utility shader nodes on Adreno 650 GPUs
   - ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs
   - shadow catchers with transparent shadows on Adreno 650 GPUs
   - shadow caustics (manifold next-event estimation) on Adreno 650 GPUs
+  - transparent shadows with an integrator TransparentMaxBounce above 65534 or below -2147418113 (Cycles' transparent shadow hit counters overflow there)
 
 Why. OSL, OpenSubdiv and OpenVDB/NanoVDB (whose sparse images and velocity
 grids two of the WebGPU entries concern) are outside this package. A bake of
@@ -1854,36 +1862,28 @@ object's subdivision surface is diced in Pixel space, which the bake would see
 diced in the camera of the last render; give every subdivision surface of a
 scene you bake SubdAdaptiveSpace Object (ReadBakeMap is not affected). Dispersion
 (a Principled BSDF with TransmissionDispersionScale and TransmissionWeight
-each linked or not 0) renders on the CPU and Metal backends and is not
-implemented by the WebGPU device, whose message is "WebGPU dispersion not
-implemented"; there, leave TransmissionDispersionScale at 0 and unlinked (with
-TransmissionWeight at 0 and unlinked nothing disperses, and the scale is not
-refused). The dlss denoiser is not part of
-the library (use Openimagedenoise). Gaussian splats render on the CPU and
-Metal backends (GAUSSIAN SPLATS); the WebGPU device does not implement them
-and the render fails with "WebGPU Gaussian splats not implemented" (render the
-cloud as Points there). Quaternion and
-spherical-harmonics attributes render on the CPU and Metal backends; the
-WebGPU device has no tables for them and refuses a scene in which a shader
-reads one ("WebGPU quaternion attributes not implemented", "WebGPU spherical
-harmonics attributes not implemented"); an attribute that no shader reads is
-not sent to the device and is not refused. BooleanMathNode, IntegerMathNode and
-GetVectorComponentNode are not implemented by the WebGPU device; with constant
-inputs Cycles folds them away and every backend renders them, with a linked
-input the CPU and Metal backends render them. Path
-guiding is not part of Cycles' Metal device either. A Both displacement shader
+each linked or not 0) renders on every backend. The dlss denoiser is not part of
+the library (use Openimagedenoise). BooleanMathNode, IntegerMathNode and
+GetVectorComponentNode render on every backend, with constant and with linked
+inputs. Path
+guiding is not part of Cycles' Metal device either. Cycles counts the transparent
+hits of a shadow ray in 16 bits and subtracts that count from TransparentMaxBounce
+in a signed int, so past the TransparentMaxBounce range above the result is not
+defined (Cycles' own kernels disagree there); every value inside it renders, and
+a negative value is a limit of 0. A Both displacement shader
 (DisplacementMethod Both with OutputNode.DisplacementInput linked) on curves or
 points makes Cycles' own kernels read values they never set, so that scene has
 no defined result on any backend; give curves and points a shader with
 DisplacementMethod Bump or True. The Radial Tiling case is binary32 rounding
 residue in Cycles' CPU kernels that Cycles' Metal device does not reproduce
 either; when Sides or Roundness is linked, the render fails at run time with an
-unsupported-parameter error instead. BVH time steps and volume velocity cannot
+unsupported-parameter error instead. A Set Normal node whose Direction input
+has no link makes Cycles' own kernels read past the end of the shader stack,
+so that scene has no defined result; link the Direction input. BVH time steps and volume velocity cannot
 be set through this API; the entries name what the device would refuse. Tiled
-images (CyclesScene.CreateTiledImage, Cycles' texture cache) render on the CPU
-and Metal backends; the WebGPU device has no tile cache, and a render with one
-fails there with "WebGPU tiled images not implemented" (bind an image from
-CreateImage there). A
+images (CyclesScene.CreateTiledImage, Cycles' texture cache) render on every
+backend through the Image Texture and Environment Texture nodes, every
+projection and in volume shaders. A
 scene larger than the GPU's storage binding fails (see EXCEEDING THE GPU
 STORAGE-BINDING LIMIT) instead of moving device data to host memory, as on
 Cycles' Metal device. Open Image Denoise on the CPU, which the CPU and WebGPU
@@ -1902,12 +1902,37 @@ example Sizeu 1e-23 on an unrotated light) holds a NaN instead and renders as
 Cycles renders it, an unlit strip or an emitting plane that casts no light, on
 the CPU and Metal backends; portals are not refused. Such a light renders on
 the WebGPU backend too, with the light tree at glass and other transmissive
-surfaces and with a Spread so narrow that the tangent of half of it is below
-1e-5 in a scene with volumes included. Still refused on the WebGPU backend:
-that light with a Spread of zero, and an area light whose axis length
-overflows (a size or object scale above about 1.8e19) with so narrow a Spread
-in a scene with volumes ("WebGPU degenerate area light with a spread below
-1e-5 not implemented"). For the area light, portal and bake entries
+surfaces, with a Spread so narrow that the tangent of half of it is below
+1e-5 in a scene with volumes, and with a Spread of zero, where Cycles lights
+the scene from a direction that is not a number: glossy and glass surfaces
+then receive light that nothing shadows, as on the CPU. A light portal whose
+SizeU or SizeV is zero (or so small that its square underflows) renders as
+well. Still refused on the WebGPU backend, each with its entry's message: the
+Spread-zero light in a scene with a heterogeneous volume or volume ray
+marching, with an emission shader that is not constant, or as a
+shadow-caustics light ("WebGPU degenerate area light with a spread of zero
+not implemented"); a portal of zero extent on a background light without an
+importance map when the world's emission is not constant or the scene has
+volumes or shadow caustics, a portal whose axis length overflows, and a
+rotated portal so small that its axis length underflows to zero ("WebGPU
+degenerate background light portal not implemented"). An area light whose
+axis length overflows (a size or object scale above about 1.8e19) renders as
+Cycles renders it too: no light when it is normalized, an emitting strip
+otherwise; refused are such an axis beside an underflowed one on the same
+light ("WebGPU degenerate area light with an overflowed and an underflowed
+axis not implemented"), such a light as a shadow-caustics light ("WebGPU
+degenerate area light with an overflowed axis and shadow caustics not
+implemented") and, when it is not normalized, such a light in a scene that
+uses the light tree ("WebGPU degenerate area light with an overflowed axis,
+not normalized, under a light tree not implemented"). One case is
+found only while rendering: where the Spread-zero light or the zero-extent
+portal lights a surface whose closures give no number for its direction (an
+anisotropic Glossy BSDF, a Metallic BSDF with a physical conductor, a
+Principled BSDF with coat or sheen, a Sheen BSDF, a Principled Hair BSDF) and
+the render has a Diffuse, Glossy or Transmission pass, Cycles' own kernels
+write a value that is not a number into that pass; the WebGPU render fails
+there with the light's message instead of returning such a film. For the
+area light, portal and bake entries
 Cycles' own kernels evaluate the light or the texel at a direction that is not
 a number, and the CPU result depends on how each comparison and minimum drops
 that value, which WGSL does not define. The Adreno 650 entries (for example the

@@ -300,6 +300,14 @@ fn raytrace_bounds(origin:vec3<f32>,inv:vec3<f32>,tmin:f32,tmax:f32,node:u32,vis
 fn raytrace_traverse(sd:SurfaceData,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,local:u32,self_object:u32,self_prim:u32,visibility:u32,lcg:u32,reservoir:bool)->LocalHits{
     var hits:LocalHits;hits.lcg=lcg;hits.object=local;
     let global=local==NONE;
+//#if BAKE_ZERO_AREA
+    // scene_intersect and scene_intersect_local (bvh/bvh.h) return no hit, the local hit count 0 and the LCG state untouched
+    // when !intersection_ray_valid(ray) (bvh/util.h: isfinite_safe(ray->P.x) && isfinite_safe(ray->D.x) &&
+    // len_squared(ray->D) != 0.0f && ray->tmin < FLT_MAX). At a flat-shaded zero-area bake texel the Raycast node's default
+    // direction (sd->N = sd->Ng) and every Bevel ray's origin and direction (disk_N = sd->Ng) are NaNs or infinities in
+    // every lane; a NaN or an infinity in the origin's y or z hits no primitive (wavefront_closest.wgsl).
+    if(!((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)&&!zero_area_not_finite(origin.y)&&!zero_area_not_finite(origin.z))){return hits;}
+//#endif
     if(table_count(G_prim_index)==0u||(!global&&local>=table_count(G_object_node))){return hits;}
     let dir0=ao_clamp_direction(direction);let inv0=ao_inverse_direction(dir0);
     var pos=origin;var dir=dir0;var inv=inv0;var object=NONE;var applied=false;var motion=NativeTransform();var motion_inverse_tfm=NativeTransform();

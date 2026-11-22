@@ -44,9 +44,11 @@ def run(android=False):
     report = json.loads(result.stdout)
     expected = {'cases':11, 'paths':12066, 'cameraHits':240, 'hitObjects':9, 'integerChecks':84462,
                 'floatChecks':337848, 'stateChecks':1576960, 'untouchedGuardBytes':5324,
-                'invalidCasesRejected':12, 'cyclesAllocationBytesAfterCleanup':0}
+                'invalidCasesRejected':11, 'zeroAreaTrianglesMatched':1, 'cyclesAllocationBytesAfterCleanup':0,
+                'objectNormalPaths':18876, 'objectNormalIntegerChecks':396396}
     assert all(report[k] for k in ['passed','originalCpuShaderSetup','nativeSceneTables'])
     assert all(report[k] == v for k, v in expected.items()), 'Shader-data coverage changed'
+    assert report['objectNormalDivisionDifferences'] > 0
     assert all(report['projectionAxes']) and all(report[k] for k in
         ['backfacing','smooth','cornerNormals','instanceTransforms','appliedTransforms','negativeScale','negativePositionOffsets','negativeNormalOffsets'])
     loaded = Path((OUT/'run.library.txt').read_text()).resolve()

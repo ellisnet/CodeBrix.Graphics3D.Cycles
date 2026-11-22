@@ -45,7 +45,12 @@ static std::string probe_source(){
   std::ostringstream s;s<<svm_surface_source();
   s<<"@compute @workgroup_size(64) fn surface_svm_probe(@builtin(global_invocation_id) id:vec3<u32>){\n"
       "svm_invocation(id.x);if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}\n"
-      "let sd=surface_cached(id.x);if(sd.error!=0u){return;}let r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){return;}\n"
+      "let sd=surface_cached(id.x);if(sd.error!=0u){return;}\n"
+#if defined(CBC_PRINCIPLED_FIXTURE) && CBC_PRINCIPLED_FIXTURE==2
+      // The dispersion fixture: shader_setup_wavelength before the evaluation, as the surface stage makes it.
+      "//#if DISPERSION\nif((sd.shader_flag&DISP_SD_REQUIRES_WAVELENGTH)!=0u){disp_setup_wavelength(index);}\n//#endif\n"
+#endif
+      "let r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){return;}\n"
       "let base=p(4u)+id.x*"<<sizeof(SurfaceSvmRecord)<<"u;\n";
   const char *components[]={".x",".y",".z"};
   auto emit=[&](const OutputField &f,const std::string &base,const std::string &expression,size_t offset){
@@ -185,6 +190,10 @@ static void evaluate(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const st
   device_vector<uint> output(&d,"svm_surface_output",MEM_READ_WRITE);output.alloc(16+ids.size()*sizeof(SurfaceSvmRecord)/4);std::fill_n(output.data(),output.size(),0xa5a5a5a5u);output.copy_to_device();
   device_vector<uint> scratch(&d,"svm_surface_closures",MEM_READ_WRITE);scratch.alloc(16+ids.size()*MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);std::fill_n(scratch.data(),scratch.size(),0xa5a5a5a5u);std::fill(scratch.data()+8,scratch.data()+scratch.size()-8,0);scratch.copy_to_device();
   std::array<uint32_t,32> p{};p[1]=ids.size();p[2]=dense?0:selected.device_pointer;p[4]=output.device_pointer+32;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=states.size();p[14]=d.scene_tables();p[17]=d.error_word;p[21]=scene.dscene.svm_nodes.device_pointer;p[22]=scene.dscene.svm_nodes.size();p[23]=scratch.device_pointer+32;
+#if defined(CBC_PRINCIPLED_FIXTURE) && CBC_PRINCIPLED_FIXTURE==2
+  // The dispersion fixture: shader_setup_wavelength's draw reads the sample pattern table.
+  p[9]=scene.dscene.sample_pattern_lut.device_pointer;
+#endif
   refresh_probe(d,shader);PreparedSurfaceCache cache(d,p);
   if(!capture.empty()){
     std::ofstream(capture+".wgsl")<<probe_module;
@@ -199,6 +208,10 @@ static void evaluate(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const st
     for(auto &f:output_fields())for(size_t k=0;k<f.size;k+=4){uint a,e;std::memcpy(&a,bytes+32+i*sizeof(SurfaceSvmRecord)+f.offset+k,4);std::memcpy(&e,reinterpret_cast<const char*>(&expected[i])+f.offset+k,4);
       if(!f.floating){m.integers++;require(a==e,label+" integer "+f.name+" path "+std::to_string(i)+" actual="+std::to_string(a)+" expected="+std::to_string(e));}
       else{m.floats++;float av=std::bit_cast<float>(a),ev=std::bit_cast<float>(e);double error=std::abs(double(av)-ev);m.maximum=std::max(m.maximum,error);m.strict+=error>1e-7+1e-7*std::abs(double(ev));
+#if defined(CBC_PRINCIPLED_FIXTURE) && CBC_PRINCIPLED_FIXTURE==2
+        // The dispersion fixture lists every value past the strict bound (a diagnostic of which closure field holds it).
+        if(error>1e-7+1e-7*std::abs(double(ev)))std::cerr<<"STRICT "<<label<<" "<<f.name<<" path "<<i<<" component "<<k/4<<std::hex<<" actual=0x"<<a<<" expected=0x"<<e<<std::dec<<'\n';
+#endif
         if(!(std::isfinite(av)&&std::isfinite(ev)&&error<=5e-5+2e-4*std::abs(double(ev)))){SurfaceSvmRecord got{};std::memcpy(&got,bytes+32+i*sizeof(got),sizeof(got));auto &want=expected[i];std::cerr<<std::hex<<"Oren diagnostic a="<<std::bit_cast<uint>(got.closures[0].a)<<"/"<<std::bit_cast<uint>(want.closures[0].a)<<" b="<<std::bit_cast<uint>(got.closures[0].b)<<"/"<<std::bit_cast<uint>(want.closures[0].b)<<std::dec<<'\n';}
         require(std::isfinite(av)&&std::isfinite(ev)&&error<=5e-5+2e-4*std::abs(double(ev)),label+" float "+f.name+" path "+std::to_string(i)+" component "+std::to_string(k/4)+" actual="+std::to_string(av)+" expected="+std::to_string(ev));}}
     for(unsigned j=0;j<expected[i].count;j++)m.closures.insert(expected[i].closures[j].kind);

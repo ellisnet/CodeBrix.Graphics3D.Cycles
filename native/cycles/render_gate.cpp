@@ -274,6 +274,10 @@ static void fixture(Scene &scene,const char *asset,bool attributes=false,bool im
     n->set_transmission_weight(k.transmission);n->set_coat_weight(k.coat);n->set_coat_roughness(.15f);n->set_coat_tint(make_float3(.9f,.85f,.7f));
     n->set_sheen_weight(k.sheen);n->set_sheen_roughness(.4f);n->set_sheen_tint(make_float3(.9f,.8f,1));n->set_specular_tint(make_float3(.95f,.8f,.6f));
     n->set_anisotropic(k.anisotropic);n->set_diffuse_roughness(.3f);n->set_emission_color(make_float3(1,.5f,.2f));n->set_emission_strength(k.emission);
+#if CBC_PRINCIPLED_FIXTURE==2
+    // The dispersion image gate: every transmissive look disperses (the smooth glass with a low Abbe number).
+    if(k.transmission>0){n->set_transmission_dispersion_scale(1);n->set_transmission_dispersion_abbe_number(k.roughness>0?25.f:12.f);}
+#endif
     if(k.anisotropic>0){auto tangent=pg->create_node<ColorNode>();tangent->set_value(make_float3(.8,.3,.2));pg->connect(tangent->output("Color"),n->input("Tangent"));}
     pg->connect(n->output("BSDF"),pg->output()->input("Surface"));auto sh=scene.create_node<Shader>();sh->set_graph(std::move(pg));sh->tag_update(&scene);return sh;};
   if(asset){model_shader=principled_shader({0,.45f,1.45f,0,.6f,.5f,0,0,make_float3(.55,.33,.18)});

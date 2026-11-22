@@ -41,7 +41,7 @@ def main():
             assert Path((folder/'run.library.txt').read_text().strip()).resolve()==runtime.resolve()
             if kind=='shadow':
                 assert report['originalCpuShadowKernels'] and report['originalGpuScheduler']
-                assert report['cases']==60 and report['paths']==3846 and report['directDispatchCases']==30 and report['invalidCasesRejected']==18
+                assert report['cases']==60 and report['paths']==3846 and report['directDispatchCases']==30 and report['invalidCasesRejected']==19
                 assert report['blocked']>100 and report['unoccluded']>100 and report['selfOrLightExclusions']>50
             # 21 = the original 16 closest negative cases plus 5 object-motion/deforming
             # rejections (tests 16-20 in closest_gate.cpp, added with object motion);

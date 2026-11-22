@@ -10,7 +10,9 @@
 #include "pipeline_cache.h"
 #include <array>
 #include <cstring>
+#include <functional>
 #include <map>
+#include <set>
 #include <span>
 #include <mutex>
 #include <stdexcept>
@@ -77,6 +79,10 @@ class WebGPUDevice final:public Device {
   // The object flag table's Cycles memory: ObjectManager::apply_static_transforms sets SD_OBJECT_TRANSFORM_APPLIED in it
   // without an upload, ahead of the curve transparency evaluation (shadow.cpp).
   device_memory *object_flag_memory=nullptr;
+  // The triangle tables' Cycles memory (vertex indices and positions): read when the scene's features are decided, to
+  // find a bake target's zero-area triangles (pipelines.cpp bake_zero_area; SF_BAKE_ZERO_AREA).
+  device_memory *tri_vindex_memory=nullptr,*tri_verts_memory=nullptr;
+  bool bake_zero_area() const;
   // Curve records (shader ids and shapes for the census; closest.cpp validate_curves).
   std::vector<KernelCurve> curve_records;
   // Point shaders (points_shader words, for the census).
@@ -96,6 +102,9 @@ class WebGPUDevice final:public Device {
   uint64_t unsupported_generation=~uint64_t(0);ShaderFeatures principled_features;ShaderFeatures attribute_features;ShaderFeatures displacement_features;ShaderFeatures displacement_program_features;std::string unsupported_feature;
   // A referenced shader can make an anisotropic transmission lobe (SvmCensus::anisotropic_transmission; SF_MNEE_ANISOTROPIC).
   bool anisotropic_transmission=false;
+  // A referenced shader reads an image with derivatives through a sphere, tube or environment projection
+  // (SvmCensus::derivative_image_projection; SF_IMAGE_TILED_PROJECTION in a scene with tiled images).
+  bool derivative_image_projection=false;
   std::vector<uint32_t> tri_shader_words; // per-triangle shader words (Principled census roots)
   // BVH primitive -> triangle and object (the MNEE caster census, mnee_unused_svm_features); mnee_generation counts
   // their uploads, and the census is kept per (svm_generation, mnee_generation).
@@ -155,6 +164,8 @@ class WebGPUDevice final:public Device {
   std::string pipeline_report_json() const;
   std::string adapter_report_json() const;
   void validate_geometry_motion() const;
+  // KernelData bvh.have_motion when an object or a primitive of the scene moves (closest.cpp).
+  bool bvh_motion() const;
   void validate_curves();
   void validate_points();
   void validate_lighting(bool sampling) const;
@@ -304,6 +315,18 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline mnee_project;
   uint32_t mnee_records=0;size_t mnee_record_bytes_allocated=0;
   std::map<uint32_t,device_image*> images;
+  // Tiled images (pipelines.h SF_IMAGE_TILED; device.cpp tile_transaction): the scene holds tile descriptors; the device's
+  // miss word, which the image sampler sets when it requests a tile; the snapshot of what a kernel may write.
+  bool tiled_images=false;uint32_t tile_miss_word=0;
+  cbc::Buffer tile_snapshot;size_t tile_snapshot_bytes=0;std::vector<uint8_t> tile_snapshot_host;
+  // Allocations no kernel writes (scene tables, read-only inputs, image pixels): left out of the snapshot.
+  std::set<uint32_t> tile_readonly;std::vector<std::pair<uint32_t,size_t>> tile_snapshot_ranges;
+  uint64_t tile_misses=0,tile_restarts=0;
+  // Runs one shader-evaluating kernel of a scene with tiled images as a transaction: when the kernel requested a tile,
+  // what it wrote is put back, the tiles are loaded (the pinned ImageManager::device_gpu_load_requested) and it runs again.
+  void tile_transaction(DeviceQueue &queue,const std::function<void()> &kernel,const char *name);
+  bool tile_written(uint32_t address) const;
+  void tile_copy(WGPUBuffer from,WGPUBuffer to);
   bool image_info_dirty=false;
   uint32_t image_info_address=0,image_bounds_address=0;
   void load_image_info();

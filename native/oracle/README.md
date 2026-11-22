@@ -52,7 +52,8 @@ reciprocal math and are not comparable bit for bit.
 `render` (`width`, `height`, `samples`, `repeats`, default 2; optional
 `textureLimit`, provisional: Cycles' texture limit, set before any image loads,
 `cbc_host_texture_limit`; optional `bvhSpatialSplit`, provisional, a boolean:
-Cycles' BVH spatial splits, `cbc_host_bvh_spatial_split`; optional `tileSize`, provisional:
+Cycles' BVH spatial splits, `cbc_host_bvh_spatial_split`; optional `threads`, provisional: the render threads the scene
+pins, overriding `--threads` (the tiled image scenes pin 1: see "Image binding scenes"); optional `tileSize`, provisional:
 Cycles' tile size, 0 or 8 to 128 or a multiple of 128 up to 8192, `cbc_host_tile_size`), `colorConfig` (`null`
 or an OCIO config path relative to the scene), `nodes` and `images`.
 `scenes/author_starters.py` regenerates the starter scenes exactly.
@@ -75,7 +76,7 @@ Each node entry has a unique `handle` and either `scene` (a singleton:
   `set`; object and camera motion are their `motion` transform arrays.
   An attribute's `value` is one of `float`, `color`, `vector`, `point`, `normal`, `point2`, `transform`, `float4`,
   `byte4`, `quaternion` (4 floats, w, x, y, z) and `spherical_harmonics_rest` (45 floats in [-1, 1]); the last two are the
-  provisional value kinds of `native/host/ABI.md`.
+  attribute value kinds of `native/host/ABI.md`.
 - `subdivision` (on a `mesh`, instead of `mesh`): a control cage, `positions` (x, y, z triples), `faceCorners` (the
   corner count of each face) and `corners` (vertex indices in face order), `cbc_host_subd_mesh`, with optional
   `attributes` as for a mesh; `subdivision_type` and the `subd_*` dicing sockets go in `set`.
@@ -103,7 +104,11 @@ Each node entry has a unique `handle` and either `scene` (a singleton:
 
 `images` entries name a raw pixel file beside the scene: tightly packed rows,
 bottom row first, in one of `float`, `float4`, `half`, `half4`, `byte`, `byte4`,
-`ushort`, `ushort4`. Anything the loader cannot express fails with the socket named.
+`ushort`, `ushort4`. An entry with `tiled` (provisional; `native/host/ABI.md` "Tiled images") is a tiled image,
+`cbc_host_image_create_tiled`: `file` is its level 0, `tiled.levels` the raw files of levels 1 and up in the same format
+(level L is `max(1, width >> L)` x `max(1, height >> L)` pixels; the levels are the document's own pixels) and
+`tiled.tileSize` the tile side (0 or absent: the default); the runner serves the rectangles the host asks for from those
+files. Anything the loader cannot express fails with the socket named.
 To reproduce a scene exactly across backends, set every integrator, film and
 camera control the result depends on; do not rely on defaults.
 
@@ -201,7 +206,7 @@ origin, read with `cbc_host_pass_floats`, so through the pinned pass accessor),
 and `meta.json` lists each pass's name, type, components and film SHA-256.
 Scenes without named passes write no pass fields. `compare.py` judges every pass
 of the reference of a pair against the candidate's pass of the same name with the
-pair's role: float passes with the practical criterion (strict reported), the
+pair's role, in every repeat (see "Run, compare and bundle"): float passes with the practical criterion (strict reported), the
 object and material index exactly, cryptomatte per pixel as the set of (id,
 weight) slots (ids exactly, weights by the practical criterion, the slot order
 of equal weights reported), and render time reported only (it is this run's
@@ -267,7 +272,7 @@ Each is written by its family's script, whose `--check` still reproduces every c
   BSDF's Anisotropic input on its transmission lobe) and `bsdf/principled-layers` (a tinted fractional coat, an emissive
   base under sheen and a tinted coat, rough thin-wall transmission).
 - `author_bsdf.py`: `bsdf/principled-dispersion` (the Principled BSDF's Transmission Dispersion Scale and Abbe Number).
-  It renders on the CPU backends; the WebGPU device refuses it ("WebGPU dispersion not implemented").
+  It renders on the CPU backends and on the WebGPU device.
 - `author_shadow_linking.py`, `author_curves_b.py`, `author_points.py`: `shadow-linking/emissive-textured`,
   `curves-b/linking-emissive-textured` and `points/shadow-linking-emissive-textured` (shadow-linked emitters whose
   emission is not constant: a panel, a point lamp, curves and points).
@@ -305,22 +310,28 @@ pinned result is defined. Each is written by its family's script, whose `--check
 - `author_bsdf.py`: `bsdf/glass-multiscatter` (the Glass BSDF with the multiscatter GGX distribution).
 - `author_points.py`: `points/geometry-tangent` and `points/geometry-tangent-bump` (the Geometry node's Tangent output on
   points, as a colour and as a Bump height).
-- `author_degenerate_lights.py`: `lamps/area-degenerate-spread-zero`, `-ellipse-spread-zero` (with the Glossy Direct pass;
-  the degenerate area light cases the WebGPU device refuses by name, native/DEVICE.md item 148), and `-spread-tiny`,
+- `author_degenerate_lights.py`: `lamps/area-degenerate-spread-zero`, `-ellipse-spread-zero` (a spread of zero, with the
+  Glossy Direct pass: the light sample with a NaN direction, native/DEVICE.md item 239), and `-spread-tiny`,
   `-spread-tiny-volume` and `-tree-transmissive` (a spread of 1e-6 without and with a volume, and the light tree at a
-  transmissive point, which every backend renders). The axes of infinities without a NaN (`lamps/area-degenerate-infinite-axis`) are
+  transmissive point), and `lamps/area-overflow-*` (a size of 1e30, whose squared length overflows: normalized and not, a
+  rectangle and an ellipse with a spread, the light tree, and a world volume with a spread of 1e-6 and with the default
+  spread; native/DEVICE.md item 233); every backend renders them. The axes of infinities without a NaN (`lamps/area-degenerate-infinite-axis`) are
   refused by the host on every backend and have no committed scene; `--scratch DIR` writes that document outside the
   corpus, for a survey build that lifts the refusal.
 - `author_world.py`: `world/portal-zero-u`, `world/portal-zero` and `world/portal-underflow` (the window portal of zero
-  extent).
+  extent, which every backend renders: native/DEVICE.md item 238).
 - `author_bake_motion.py`: `bake/zero-area-<type>` (the shading bake types that are finite on the sphere whose zero-area
   pole triangles are in the UV layout; its flat Normal bake and its diffuse, diffuse direct, glossy, glossy direct,
-  transmission and transmission direct bakes fail with "Nonfinite bake output" on every backend and have no scene).
+  transmission and transmission direct bakes fail with "Nonfinite bake output" on every backend and have no scene) and
+  `bake/zero-area-flat-<type>` (the same sphere flat-shaded, where the shading normal of a pole texel is the
+  not-a-number geometric normal: the light-dependent types, one colour and one data type), and
+  `bake/zero-area-flat-raycast` (that sphere's Raycast node read out through the colour AOV: at a pole texel its default
+  direction is that normal, which no traversal accepts; native/DEVICE.md item 245).
 
 ## Attribute value kind scenes (`scenes/attributes/`)
 
 `author_attributes.py` (`--check`) writes `scenes/attributes/`: the quaternion and spherical-harmonics attribute kinds
-(provisional, `native/host/ABI.md`) on meshes and point clouds, and quaternions on curves, in the sampling family's room,
+(`native/host/ABI.md`) on meshes and point clouds, and quaternions on curves, in the sampling family's room,
 read through Attribute nodes.
 `quaternion-mesh` puts a quaternion on the mesh, face, vertex (not all of unit length) and corner domains of four spheres,
 `quaternion-points` on the vertex domain of one cloud and the mesh domain of another, `quaternion-curves` on the curve
@@ -328,9 +339,8 @@ key domain (mixed along each segment) and the curve domain of two tufts of thick
 ribbons; one graph uses its Color (w, x, y), Fac (their average) and Alpha (z). `spherical-harmonics-mesh` and `spherical-harmonics-points` put coefficients on the
 mesh, face and vertex domains of spheres and the vertex and mesh domains of clouds, beside a sphere and a cloud with none:
 the found attributes read black with alpha 1, the missing ones the Missing inputs. `quaternion-and-spherical-harmonics`
-reads both kinds and a colour and a float attribute in one graph, on a sphere and on a cloud on two objects. The WebGPU
-device refuses all six by name ("WebGPU quaternion attributes not implemented", "WebGPU spherical harmonics attributes not
-implemented"); the CPU and Metal backends render them.
+reads both kinds and a colour and a float attribute in one graph, on a sphere and on a cloud on two objects. Every
+backend renders all six (the WGSL device: `native/DEVICE.md` item 260).
 
 ## Image binding scenes (`scenes/images/`)
 
@@ -350,6 +360,31 @@ films are equal bit for bit. `texture-limit-checker` binds a 64x64 checker of 16
 pixels 24 levels lighter and darker, under a limit of 16: quartered, the single-pixel pattern averages away and a flat
 checker of 4x4 squares renders. Every backend renders them.
 
+Tiled images (provisional, `native/host/ABI.md` "Tiled images"): an images entry with `tiled`, read in tiles of 64 and mip
+levels through the tile callback; the script writes every level (2 x 2 box reductions in integers). `tiled-mip-planes`
+shows one image (192x128, three levels) on six quads whose UV spans select different levels from the ray footprint
+(the smallest level, two mixed stochastically, level 0 across a tile corner with Linear, Cubic and Closest interpolation,
+and UVs beyond 0 to 1); `tiled-ground-extensions` an image whose sides are no multiples of the tile (200x136) on a ground
+plane in perspective and on cards with the Extend, Clip and Mirror extensions; `tiled-box-projection` an sRGB image
+through the box projection with a blend on a smooth sphere. Three scenes read the image in evaluations that are not the
+camera path's surface evaluation: `tiled-emission-nee` (an emissive quad beside the view, sampled as a light: only the
+light samples' shader evaluations read it), `tiled-alpha-shadow` (a quad beside the view whose transparency is the image's
+alpha, between a point light and a wall: only the transparent shadow evaluations read it) and `tiled-lamp-shader` (an area light whose emission colour is the image on its UV: the
+lamp's shader for light samples and for the paths that hit it). `tiled-texture-limit` is `tiled-mip-planes` under a
+texture limit of 64 (Cycles skips the larger levels of a tiled image instead of reducing pixels), and `tiled-displacement`
+displaces a grid by the image's height with true displacement (the displacement evaluation reads the image during scene
+preparation, without a path). Three scenes reach the projections whose coordinate Cycles maps with dual numbers for a
+tiled image: `tiled-environment` (a world's Environment Texture through the equirectangular projection, also sampled as a
+background light), `tiled-environment-mirror-ball` (the mirror ball projection) and `tiled-sphere-tube-projection` (the
+Sphere and Tube projections of the Image Texture node on generated coordinates). `tiled-volume` and
+`tiled-volume-ray-marching` read tiled images in a heterogeneous medium's shader (null scattering, and ray marching) and in
+a transparent quad that casts its shadow in that scene. Every backend renders them; on a GPU backend the tiles
+load between kernel steps. These scenes pin one render thread (`render.threads`): a Linear or Cubic lookup of a tiled
+image adds the tile's pool slot to its pixel coordinate (`kernel_image_tile_map`), so its last bits follow the order in
+which Cycles' texture cache loaded the tiles, and with several CPU threads that order, and the CPU film's last bits,
+change from one process to the next (measured: the same scene on four threads gave two different films in six runs, on
+one thread the same film in six).
+
 ## Render-setting scenes (`scenes/render-settings/`)
 
 `author_render_settings.py` (`--check`) writes `scenes/render-settings/`: tiled rendering (provisional, `native/host/ABI.md`
@@ -365,7 +400,7 @@ tiles; practical criterion). Every backend renders the tiled scenes.
 ## Gaussian splat scenes (`scenes/gsplat/`)
 
 `author_gsplat.py` (`--check`) writes `scenes/gsplat/`: point clouds with `render_as` `gaussian_splats` in the sampling
-family's room, with the standard point attributes a splat needs (provisional, `native/host/ABI.md`): `radiance:base`
+family's room, with the standard point attributes a splat needs (`native/host/ABI.md`): `radiance:base`
 (`float4`: band-0 colour coefficients and an opacity), `scale` (`vector`) and `rotation` (`quaternion`, from an axis and an
 angle, of lengths 0.6 to 1.4), and `radiance:sh` (`spherical_harmonics_rest`, bands 1 to 3) where named. `band0` uses
 Cycles' default splat shader with band 0 only, two of its splats below the opacity 0.01 that Cycles bounds;
@@ -377,13 +412,20 @@ blur. `beside-meshes` puts splats in the room with its spheres, `beside-volume` 
 `volumes/absorption-point`, `transparent-shadows` behind a transparent sheet with an opaque and a transparent splat shader,
 and `with-points` beside a plain point cloud. Whether a ray hits a splat depends on a hash of the hit position, which the
 last bit of that position changes, so the CPU films and the two Metal films of these scenes differ pixel by pixel as
-renders with different random numbers do; the comparisons are reported. The WebGPU backend refuses all eleven by name
-("WebGPU Gaussian splats not implemented").
+renders with different random numbers do; the comparisons are reported. The WGSL device reproduces the x64 CPU
+arithmetic of the test, so its films are judged against the CPU films like those of every other family.
+Splats beside the features with kernels of their own: `beside-light-tree` and `beside-light-linking` (the light tree,
+with emissive and lit clouds, and light sets), `beside-shadow-linking` and `shadow-linking-emissive` (splats as blockers
+of a shadow set, and emissive splats the dedicated light kernels pick), `beside-shadow-catcher` and
+`shadow-catcher-splats` (a catcher floor under splats, and a cloud that is a catcher itself), `bake-combined` and
+`bake-diffuse` (bakes of a mesh whose rays meet splats), `denoising-features`, `data-passes`, `motion-pass` and
+`denoise-on` (the passes of splat hits, and a denoised render), `beside-ao-node`, `beside-raycast` and `beside-caustics`
+(the Ambient Occlusion and Raycast nodes and the caustic walk with splats in the scene).
 
 ## Denoising scenes (`scenes/denoise/`)
 
 `author_denoise.py` (`--check`) writes `scenes/denoise/` from committed scenes:
-`enclosure-emissive-panel` (combinations), `beckmann` (bsdf) and
+`enclosure-emissive-panel` (combinations), `beckmann` and `principled-dispersion` (bsdf) and
 `catcher-point-light` (shadow-catcher), each with Open Image Denoise on (`-on`:
 prefilter accurate, quality high, start sample 0, CPU device) and as a control
 with denoising off (`-off`); the shadow catcher pair also requests the noisy
@@ -391,6 +433,22 @@ passes (`-on-noisy`, `-off-noisy`). Every backend denoises with CPU Open Image
 Denoise, so the WGSL film is judged against the CPU film denoised the same way,
 with `compare.py` like every scene. Light groups with denoising are refused by
 the product, so that combination has no scene.
+
+## Dispersion scenes
+
+Scenes with a dispersive Principled BSDF (a Transmission Dispersion Scale above zero with a Transmission Weight) beyond
+`bsdf/principled-dispersion`, each written by its family's script:
+
+- `author_bsdf.py`: `bsdf/principled-dispersion-rough` (rough glass, both GGX distributions, a high IOR),
+  `bsdf/principled-dispersion-linked` (the scale from a Checker Texture, the scale and the Abbe number from a Noise
+  Texture, a dispersive glass mixed with a diffuse BSDF) and `bsdf/principled-dispersion-zero-link` (the materials of
+  `bsdf/principled-dispersion` with a linked scale that is 0 on every path at run time: the shaders ask for a wavelength
+  and no closure disperses).
+- `author_mnee.py`: `mnee/dispersion-caustic` and `mnee/dispersion-rough-caustic` (shadow caustics through a smooth and a
+  rough dispersive caster: the manifold walk refracts at the index of refraction of the path's wavelength).
+- `author_volumes_c.py`: `volumes/dispersion-in-medium` (a dispersive glass sphere inside the homogeneous medium box).
+- `author_shadow_catcher.py`: `shadow-catcher/catcher-dispersion` (a dispersive glass sphere above the shadow catcher).
+- `author_denoise.py`: `denoise/principled-dispersion-on` and `-off` (the denoising feature passes of dispersive glass).
 
 ## Curve scenes (`scenes/curves/`)
 
@@ -517,9 +575,14 @@ backends first, so a Mac bundle drops in as more directories) and reports the
 pairwise matrix: practical failures, strict differences, maximum absolute and
 relative error, RMS, the worst pixel and NaN/Inf counts, plus every backend's
 repeat films re-read and compared with film-0. Its pass or fail verdict rests on
-the first repeat (film-0) of each backend; a validation pass judges every repeat
-against the reference with the same criterion (the first full pass on Cycles
-v5.3.0 did: native/DEVICE.md, "First full pass on Cycles v5.3.0").
+every repeat: repeat N of a pair's candidate (`film-N.f32` and its named passes)
+is judged against repeat N of the reference (the reference's repeat 0 when it has
+no film-N) with the pair's role and the same criteria. The pair's numbers and the
+report's `problems` are repeat 0's, as they always were; each pair's
+`repeatResults` lists every repeat (repeat 0 first, with `referenceRepeat`), a
+gating failure of a later repeat is listed in `repeatProblems`, and
+`everyRepeatPassed` (per pair and for the run's gating pairs) says whether every
+repeat passed.
 
 Two gold standards. The unmodified pinned Cycles CPU kernels (`cpu-*` backends)
 and the unmodified pinned Cycles Metal backend (`metal-*`) are both reference
@@ -547,7 +610,7 @@ candidate-versus-Metal pairs, the pairs of gold standards and candidate-versus-c
 with the same numbers and never fail the run: Metal's differences from the CPU
 (path divergence, hardware texture filtering, MetalRT's motion interpolation)
 are characteristics of a second reference renderer, not defects or deviations.
-The verdict is `perfect` when every gating pair passes and nothing else failed;
+The verdict is `perfect` (`passed` true, exit 0) when every gating pair passes in every repeat and nothing else failed;
 the table and the JSON mark each pair `gating` or `reported` and list the
 `goldStandards` and `candidates`. A run without a CPU gold standard is invalid
 input ("no gold standard", exit 2). NaN/Inf, shape or scene mismatches and films

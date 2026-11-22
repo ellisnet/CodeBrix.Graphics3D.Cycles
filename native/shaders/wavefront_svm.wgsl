@@ -363,6 +363,11 @@ fn svm_gradient(s:ptr<function,SvmState>,kind:u32,v:vec3<f32>)->f32{
 fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32,flag:u32,visibility:u32,lcg:u32,volume:bool,previous:SvmResult)->SvmResult{
     var s:SvmState;s.output=previous;s.volume=volume;s.geometry=geometry;s.pc=(geometry.shader&SHADER_MASK)*(1u+SZ_ShaderJump/4u);
     s.output.runtime_flag=geometry.runtime_flag;s.output.N=geometry.N;s.output.lcg_state=lcg;
+//#if TILED_IMAGES
+    // An emission evaluation made for a path has no path index of its own here: it takes the lcg state the pinned
+    // surface_shader_eval initializes from that path (image_tile_lcg, set by the entry; 0 elsewhere, as the bake state's).
+    if(index==NONE&&lcg==0u){s.output.lcg_state=image_tile_lcg;}
+//#endif
 //#if SVM_NODE_MASK_BUMP
     svm_node_mask_bump=(flag&PATH_RAY_EMISSION)!=0u||volume;
 //#endif
@@ -1119,6 +1124,10 @@ fn svm_evaluate_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,closure_
     var flag=0u;var visibility=VIS_CAMERA;var lcg=previous.lcg_state;
     // Homogeneous density preparation has no integrator path to dereference.
     if(index!=NONE){flag=state_word(S_path_flag,index);visibility=state_byte(S_path_visibility,index);lcg=svm_lcg(index);}
+//#if TILED_VOLUMES
+    // A volume evaluation continues the lcg state of the volume's own sampling, which the caller passes in previous.
+    if(volume){lcg=previous.lcg_state;}
+//#endif
     return svm_evaluate_context_seeded(index,geometry,closure_limit,closure_base,flag,visibility,lcg,volume,previous);
 }
 //#if SVM_RAYTRACE_NODES

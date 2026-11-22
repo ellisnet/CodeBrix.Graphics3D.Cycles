@@ -61,6 +61,15 @@ NATIVE_SOURCES=['native/host','native/cycles','native/shaders','native/oracle/ru
 def digest(data):return hashlib.sha256(data).hexdigest()
 
 
+def normal(version):
+ """NuGet's normalized form of a four-part version: the packer drops a fourth part that is 0 (1.0.321.0 is packed
+ as 1.0.321), which the pack driver's version has in the minute 00:00 UTC. Brackets of an exact range are kept."""
+ exact=version.startswith('[') and version.endswith(']');parts=(version[1:-1] if exact else version).split('.')
+ if len(parts)==4 and parts[3].isdigit() and int(parts[3])==0:parts=parts[:3]
+ text='.'.join(parts)
+ return '['+text+']' if exact else text
+
+
 def nuspec_of(archive):
  names=[n for n in archive.namelist() if n.endswith('.nuspec') and '/' not in n]
  if len(names)!=1:raise RuntimeError('Expected one nuspec, found '+str(names))
@@ -143,7 +152,8 @@ def check_dependencies(package_id,dependencies,version,webgpu_pin):
   return
  wanted={CORE:f'[{version}]'}
  if package_id not in NO_WEBGPU:wanted[WEBGPU]=f'[{webgpu_pin}]'
- if dependencies!=wanted:raise RuntimeError(f'{package_id} dependencies are {dependencies}, expected {wanted}')
+ if {name:normal(value) for name,value in dependencies.items()}!={name:normal(value) for name,value in wanted.items()}:
+  raise RuntimeError(f'{package_id} dependencies are {dependencies}, expected {wanted}')
 
 
 def main():
@@ -164,7 +174,7 @@ def main():
  for package in packages:
   with zipfile.ZipFile(package) as archive:
    package_id,version,dependencies,nuspec=nuspec_of(archive)
-   if version!=args.version:raise RuntimeError(f'{package.name} has version {version}, expected {args.version}')
+   if normal(version)!=normal(args.version):raise RuntimeError(f'{package.name} has version {version}, expected {args.version}')
    check_dependencies(package_id,dependencies,version,webgpu_pin)
    files,warning=expected_files(package_id,archive,nuspec,payloads)
   if warning:warnings.append(warning)

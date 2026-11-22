@@ -66,7 +66,7 @@ def collect():
             assert current_sources[name] == digest, 'Regression source changed: '+name
     native = json.loads((OUT/'linux-x64/run.stdout.txt').read_text())
     assert native['passed'] and native['originalCpuSurfaceSvm']
-    expected = {'nativeGraphs':48, 'typedPrograms':328, 'cases':329, 'paths':5088,
+    expected = {'nativeGraphs':49, 'typedPrograms':436, 'cases':437, 'paths':6408,
                 'invalidCasesRejected':7, 'cyclesAllocationBytesAfterCleanup':0}
     assert all(native[k] == v for k, v in expected.items())
     assert native['negativeAttributeOffsets'] > 0 and native['attributeMapChains'] > 0
@@ -101,7 +101,7 @@ def collect():
     report = dict(passed=True, fullCyclesParity=False, cyclesRevision=REVISION,
         scope='Static-triangle native attribute transport and surface SVM, plus a repeated native UV-checker render',
         nativeAttributes=native, nativeRender=render, replays=replays,
-        replayScope='48 native graphs / 1152 evaluations and complete UV-render commands on four GPUs; typed derivative and invalid-input programs execute on Linux only. Android native hosts remain pending.',
+        replayScope='49 native graphs / 1176 evaluations and complete UV-render commands on four GPUs; typed derivative and invalid-input programs execute on Linux only. Android native hosts remain pending.',
         oracle='Unmodified original CPU shader_setup_from_ray/surface_shader_eval and independent complete CPU film',
         remaining='Motion/curve/point/voxel/matrix attributes, general bump state, production image/cache coverage, general materials and all nine native hosts',
         absoluteTolerance=5e-5, relativeTolerance=2e-4, strictAbsoluteTolerance=1e-7, strictRelativeTolerance=1e-7,

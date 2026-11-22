@@ -149,7 +149,7 @@ public sealed class OracleSceneBundle
     {
         ArgumentNullException.ThrowIfNull(scene);
         using JsonDocument document = Parse(Json);
-        Builder builder = new(scene.Host, readFile);
+        Builder builder = new(scene.Host, readFile, scene);
         try
         {
             if (Required(document.RootElement, "render").TryGetProperty("curveSubdivisions", out JsonElement subdivisions))
@@ -194,7 +194,14 @@ public sealed class OracleSceneBundle
         using JsonDocument document = Parse(json);
         JsonElement root = document.RootElement;
         if (root.TryGetProperty("images", out JsonElement images))
-            foreach (JsonElement image in images.EnumerateArray()) Add(image, "file");
+            foreach (JsonElement image in images.EnumerateArray())
+            {
+                Add(image, "file");
+                // A tiled image (provisional): the raw files of its levels 1 and up.
+                if (image.TryGetProperty("tiled", out JsonElement tiled) && tiled.TryGetProperty("levels", out JsonElement levels))
+                    foreach (JsonElement level in levels.EnumerateArray())
+                        if (level.ValueKind == JsonValueKind.String && !names.Contains(level.GetString())) names.Add(CheckName(level.GetString()));
+            }
         if (root.TryGetProperty("nodes", out JsonElement nodes))
             foreach (JsonElement entry in nodes.EnumerateArray())
             {
@@ -233,11 +240,28 @@ public sealed class OracleSceneBundle
         private readonly CyclesHost host;
         private readonly Func<string, byte[]> readFile;
         private readonly Dictionary<string, Image> images = new(StringComparer.Ordinal);
+        private readonly CyclesScene scene;
+        private readonly List<CyclesImage> tiledImages = new();
 
-        internal Builder(CyclesHost host, Func<string, byte[]> readFile)
+        internal Builder(CyclesHost host, Func<string, byte[]> readFile, CyclesScene scene)
         {
             this.host = host;
             this.readFile = readFile;
+            this.scene = scene;
+        }
+
+        // The levels of a tiled image entry (provisional), served to Cycles' texture cache: level 0 is the entry's file,
+        // the further levels the files of its "tiled.levels".
+        private sealed class LevelFiles(byte[][] levels, uint width, uint height, int pixelBytes) : ITiledImageReader
+        {
+            public void ReadTile(int level, int x, int y, int tileWidth, int tileHeight, Span<byte> destination, int rowBytes)
+            {
+                int levelWidth = (int)Math.Max(1u, width >> level), levelHeight = (int)Math.Max(1u, height >> level);
+                if (level < 0 || level >= levels.Length || x < 0 || y < 0 || tileWidth > levelWidth - x || tileHeight > levelHeight - y)
+                    throw new InvalidOperationException($"Tile outside the image: level {level}, x {x}, y {y}, {tileWidth} x {tileHeight}.");
+                for (int row = 0; row < tileHeight; row++)
+                    levels[level].AsSpan(((y + row) * levelWidth + x) * pixelBytes, tileWidth * pixelBytes).CopyTo(destination.Slice(row * rowBytes));
+            }
         }
 
         internal Dictionary<string, Node> Nodes { get; } = new(StringComparer.Ordinal);
@@ -245,7 +269,11 @@ public sealed class OracleSceneBundle
         internal void ReleaseImages()
         {
             // Bindings keep their own reference to the pixels.
-            foreach (Image image in images.Values) host.ReleaseImage(image);
+            foreach (CyclesImage image in tiledImages) image.Dispose();
+            HashSet<Image> tiled = tiledImages.Select(image => image.Handle).ToHashSet();
+            tiledImages.Clear();
+            foreach (Image image in images.Values)
+                if (!tiled.Contains(image)) host.ReleaseImage(image);
             images.Clear();
         }
 
@@ -257,6 +285,22 @@ public sealed class OracleSceneBundle
             byte[] pixels = readFile(Required(entry, "file").GetString());
             if ((ulong)pixels.LongLength != (ulong)width * height * (ulong)format.Bytes) throw new FormatException("Raw pixel file size does not match " + handle);
             if (images.ContainsKey(handle)) throw new FormatException("Duplicate image handle: " + handle);
+            // A tiled image (provisional): "tiled" holds the tile size ("tileSize", absent or 0 for the default) and the raw
+            // files of levels 1 and up ("levels"); the entry's file is level 0.
+            if (entry.TryGetProperty("tiled", out JsonElement tiled))
+            {
+                List<byte[]> levels = new() { pixels };
+                if (tiled.TryGetProperty("levels", out JsonElement files))
+                    foreach (JsonElement file in files.EnumerateArray()) levels.Add(readFile(file.GetString()));
+                for (int level = 0; level < levels.Count; level++)
+                    if (level > 31 || (ulong)levels[level].LongLength != (ulong)Math.Max(1u, width >> level) * Math.Max(1u, height >> level) * (ulong)format.Bytes)
+                        throw new FormatException($"Raw pixel file size of level {level} does not match {handle}");
+                uint tileSize = tiled.TryGetProperty("tileSize", out JsonElement size) && size.GetUInt32() != 0 ? size.GetUInt32() : TiledImage.TileSize;
+                CyclesImage image = scene.CreateTiledImage(width, height, format.Format, new LevelFiles(levels.ToArray(), width, height, format.Bytes), tileSize);
+                tiledImages.Add(image);
+                images.Add(handle, image.Handle);
+                return;
+            }
             images.Add(handle, host.CreateImage(width, height, format.Format, pixels));
         }
 

@@ -26,6 +26,8 @@ inline const std::vector<HuangMaterial> &huang_materials(){
     {"low-roughness-longitudinal",.02f,2.f,1.55f,1.f,NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION,1,1,1,0,0,0},
     {"mix-diffuse",.3f,2.f,1.55f,.85f,NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION,1,1,1,0,0,1},
     {"mix-two-hairs",.3f,2.f,1.55f,1.f,NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION,1,1,1,0,0,2},
+    // A large tilt (40 degrees).
+    {"tilt-large",.3f,40.f,1.55f,1.f,NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION,1,1,1,0,0,0},
   };
   return materials;
 }

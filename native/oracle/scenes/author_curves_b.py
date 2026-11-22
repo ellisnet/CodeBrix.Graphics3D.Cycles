@@ -165,6 +165,12 @@ def shadow_scenes():
         transparent_material(color=(0.05, 0.02, 0.03)), hair('tuft', 'see-through', 'thick', curves=24), place('tuft-object', 'tuft'))
     out['shadow-limit.json'] = with_nodes(base('shadow-limit', 'The transparent bounce limit through curves', {'transparent_max_bounce': 2}),
         transparent_material(), hair('tuft', 'see-through', 'thick', curves=24), place('tuft-object', 'tuft'))
+    # The limit past 4095 and below 0: Cycles counts shadow hits in 16 bits and reads a negative limit as 0.
+    for name, limit, description in (('shadow-limit-wide', 5000, 'A transparent bounce limit above 4095 through curves and a transparent sphere'),
+                                     ('shadow-limit-negative', -1, 'A negative transparent bounce limit through curves and a transparent sphere')):
+        out[name+'.json'] = with_nodes(base(name, description, {'transparent_max_bounce': limit}),
+            transparent_material(), hair('tuft', 'see-through', 'thick', curves=24), place('tuft-object', 'tuft'),
+            *room.sphere('sphere-t', 'see-through', (1.8, -1.0, 0.4), 0.9))
     document = base('shadow-motion', 'Transparent shadows through deforming and moving curves')
     motion_on(document)
     out['shadow-motion.json'] = with_nodes(document, transparent_material(mix=0.5), swung(hair('tuft', 'see-through', 'thick')), place('tuft-object', 'tuft'),

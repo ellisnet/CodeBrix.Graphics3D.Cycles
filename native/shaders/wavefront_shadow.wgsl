@@ -38,7 +38,10 @@ fn shadow_transition(index:u32,current:u32,next:u32){
 //#if CURVE_SHADOW
     var curve_throughput=vec3<f32>(1);
 //#endif
-    if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)){
+//#if BAKE_ZERO_AREA else     if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)){
+    // A NaN or an infinity in the origin's y or z (a shadow ray leaving a zero-area bake texel): no primitive is hit (wavefront_closest.wgsl).
+    if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)&&!zero_area_not_finite(origin.y)&&!zero_area_not_finite(origin.z)){
+//#endif
         let self_object=state_word(S_shadow_self_object,index);let self_prim=state_word(S_shadow_self_prim,index);
         let light_object=state_word(S_shadow_ray_self_light_object,index);let light_prim=state_word(S_shadow_ray_self_light_prim,index);
         if(transparent){let maximum=data_word(D_integrator_transparent_max_bounce);let used=state_half(S_shadow_path_transparent_bounce,index);
@@ -60,6 +63,11 @@ fn shadow_transition(index:u32,current:u32,next:u32){
 //#endif
     }
     if(load_word(p(17u))!=0u){return;}
+//#if SHADOW_WIDE_LIMIT
+    // intersect_shadow.h writes the whole hit count to the 16-bit packed_num_hits; past 65535 Cycles' own 16-bit count has
+    // wrapped (bvh/intersect_filter.h num_recorded_hits) and the kernels with 1024 and with 4 recorded hits part ways.
+    if(transparent&&!hit&&count>0xffffu){fail();return;}
+//#endif
     if(transparent){if(hit){state_vec3(S_shadow_path_throughput,index,heap_vec3(state_address(S_shadow_path_throughput,index,12u))*vec3<f32>(0));count=0u;}
         else if(count>0u){shadow_hit_sort(index,min(count,SHADOW_HIT_CAPACITY));}state_u16(S_shadow_path_packed_num_hits,index,count);
 //#if CURVE_SHADOW
@@ -83,7 +91,10 @@ fn shadow_transition(index:u32,current:u32,next:u32){
 //#if CURVE_SHADOW
     var curve_throughput=vec3<f32>(1);
 //#endif
-    if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)){
+//#if BAKE_ZERO_AREA else     if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)){
+    // A NaN or an infinity in the origin's y or z (a shadow ray leaving a zero-area bake texel): no primitive is hit (wavefront_closest.wgsl).
+    if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)&&!zero_area_not_finite(origin.y)&&!zero_area_not_finite(origin.z)){
+//#endif
         let self_object=state_word(S_shadow_self_object,index);let self_prim=state_word(S_shadow_self_prim,index);
         let light_object=state_word(S_shadow_ray_self_light_object,index);let light_prim=state_word(S_shadow_ray_self_light_prim,index);
         if(transparent){let maximum=data_word(D_integrator_transparent_max_bounce);let used=state_half(S_shadow_path_transparent_bounce,index);
@@ -97,6 +108,11 @@ fn shadow_transition(index:u32,current:u32,next:u32){
         }else{fail();return;}
     }
     if(load_word(p(17u))!=0u){return;}
+//#if SHADOW_WIDE_LIMIT
+    // intersect_shadow.h writes the whole hit count to the 16-bit packed_num_hits; past 65535 Cycles' own 16-bit count has
+    // wrapped (bvh/intersect_filter.h num_recorded_hits) and the kernels with 1024 and with 4 recorded hits part ways.
+    if(transparent&&!hit&&count>0xffffu){fail();return;}
+//#endif
     if(transparent){if(hit){state_vec3(S_shadow_path_throughput,index,heap_vec3(state_address(S_shadow_path_throughput,index,12u))*vec3<f32>(0));count=0u;}
         else if(count>0u){shadow_hit_sort(index,min(count,SHADOW_HIT_CAPACITY));}state_u16(S_shadow_path_packed_num_hits,index,count);
 //#if CURVE_SHADOW
@@ -200,7 +216,10 @@ fn shadow_write_film(index:u32){
     svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}let count=state_half(S_shadow_path_packed_num_hits,index);
-    if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||count>4095u){return;}
+//#if SHADOW_WIDE_LIMIT else     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||count>4095u){return;}
+    // Every 16-bit hit count is the kernel's (shade_shadow.h shadow_num_hits_get without __KERNEL_GPU__).
+    if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE){return;}
+//#endif
     let recorded=min(count,SHADOW_HIT_CAPACITY);
     for(var slot=0u;slot<recorded;slot++){
         let hit=shadow_hit_load(index,slot);
@@ -234,8 +253,16 @@ fn shadow_write_film(index:u32){
     svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}let flag=state_word(S_shadow_path_flag,index);let count=state_half(S_shadow_path_packed_num_hits,index);
+//#if !SHADOW_WIDE_LIMIT
 //#if SHADOW_CATCHER else     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag)||count>4095u){fail();return;}
     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag&~SC_FLAGS)||count>4095u){fail();return;}
+//#endif
+//#endif
+//#if SHADOW_WIDE_LIMIT
+    // Every 16-bit hit count is the kernel's (shade_shadow.h shadow_num_hits_get without __KERNEL_GPU__).
+//#if SHADOW_CATCHER else     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag)){fail();return;}
+    if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag&~SC_FLAGS)){fail();return;}
+//#endif
 //#endif
     let recorded=min(count,SHADOW_HIT_CAPACITY);
 //#if LIGHT_PATH_STATE
@@ -266,7 +293,12 @@ fn shadow_write_film(index:u32){
         r=SvmResult();r.transparency=vec3<f32>(1);
         if(need){
             var previous:SvmResult;previous=SvmResult();var flag:u32;flag=0u;var path:u32;path=index;if(volume){previous=seg.r;flag=PATH_RAY_EXTINCTION;path=NONE;}
-            r=svm_evaluate_context_seeded(path,geometry,0u,0u,flag,PATH_RAY_VISIBILITY_SHADOW,0u,volume,previous);
+//#if TILED_VOLUMES else             r=svm_evaluate_context_seeded(path,geometry,0u,0u,flag,PATH_RAY_VISIBILITY_SHADOW,0u,volume,previous);
+            // The medium continues the segment's lcg state; a surface takes the shadow path's (integrator_state_lcg_init).
+            var lcg=svm_lcg_shadow(index);if(volume){lcg=seg.lcg;}
+            r=svm_evaluate_context_seeded(path,geometry,0u,0u,flag,PATH_RAY_VISIBILITY_SHADOW,lcg,volume,previous);
+            if(volume){seg.lcg=r.lcg_state;}
+//#endif
         }
         if(stage==1u){
             // The medium: evaluate the next stack entry, or the segment's next position, until it ends.
@@ -299,7 +331,10 @@ fn shadow_write_film(index:u32){
         let hit=shadow_hit_load(index,slot);
         let sd=surface_cached(id.x*SHADOW_HIT_CAPACITY+slot);
         if(sd.error!=0u){return;}if((sd.shader_flag&SHADOW_ONLY_VOLUME)!=0u){fail();return;}
-        let r=svm_evaluate_context(index,sd,0u,0u,0u,PATH_RAY_VISIBILITY_SHADOW,0u,false);if(r.error!=0u){return;}
+//#if TILED_IMAGES else         let r=svm_evaluate_context(index,sd,0u,0u,0u,PATH_RAY_VISIBILITY_SHADOW,0u,false);if(r.error!=0u){return;}
+        // surface_shader_eval of a shadow path: integrator_state_lcg_init of the shadow state (the stochastic mip level).
+        let r=svm_evaluate_context(index,sd,0u,0u,0u,PATH_RAY_VISIBILITY_SHADOW,svm_lcg_shadow(index),false);if(r.error!=0u){return;}
+//#endif
 //#if RAY_PORTAL else         let throughput=heap_vec3(state_address(S_shadow_path_throughput,index,12u))*r.transparency;
         // integrate_transparent_surface_shadow: a ray portal blocks the shadow ray; the transparency counts only with
         // SR_TRANSPARENT (a Ray Portal BSDF without a closure slot added its weight but set neither flag).
@@ -413,6 +448,10 @@ fn vl_shadow_stack_enter_exit(index:u32,object:u32,shader:u32,backfacing:bool){
 // Homogeneous media: the stack's extinction at the segment start, the transmittance over the segment.
 struct VlShadow {
     sd:SurfaceData, r:SvmResult, entry:u32, count:u32, tmin:f32, tmax:f32, origin:vec3<f32>, direction:vec3<f32>, throughput:vec3<f32>,
+//#if TILED_VOLUMES
+    // The segment's lcg state (the shadow ShaderData's lcg_state), which every evaluation of the medium continues.
+    lcg:u32,
+//#endif
 //#if VOLUME_HETEROGENEOUS
     hs:VhShadow,
 //#endif
@@ -431,6 +470,12 @@ fn vl_shadow_begin(index:u32,hit:u32,recorded:u32,seg:ptr<function,VlShadow>)->b
     sd.time=heap_float(state_address(S_shadow_ray_time,index,4u));sd.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;(*seg).sd=sd;
     (*seg).r=SvmResult();(*seg).r.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
     (*seg).throughput=heap_vec3(state_address(S_shadow_path_throughput,index,12u));
+//#if TILED_VOLUMES
+    // volume_shadow_null_scattering and volume_shadow_ray_marching: sd->lcg_state = lcg_state_init(rng_pixel, rng_offset,
+    // sample, 0xd9111870) of the shadow path. (A homogeneous medium's one evaluation reads the shadow ShaderData's lcg
+    // state without that initialization; its lookups have no derivatives, so the level, and the film, do not depend on it.)
+    (*seg).lcg=image_tile_lcg_init(state_word(S_shadow_path_rng_pixel,index),state_half(S_shadow_path_rng_offset,index),state_word(S_shadow_path_sample,index),0xd9111870u);
+//#endif
 //#if VOLUME_HETEROGENEOUS
     var hs:VhShadow;hs.walk=vh_shadow_heterogeneous(index,count);
     if(hs.walk){
@@ -498,6 +543,13 @@ fn vl_shadow_step(index:u32,seg:ptr<function,VlShadow>,r:SvmResult,evaluated:boo
 //#endif
         if(!walk&&!rm){
             if(all(r.transparency==vec3<f32>(0))){return 1u;}
+//#if LIGHT_NAN_DIRECTION
+            // A shadow ray with a NaN direction and distance (a light sample with a NaN direction: native/DEVICE.md, item 148)
+            // through a homogeneous stack: volume_shadow_null_scattering multiplies the throughput by
+            // volume_color_transmittance(extinction, ray->tmax - ray->tmin) when the extinction is not zero, NaN in every
+            // channel (a zero channel's -0 * NaN too), and film_clamp_light's ensure_finite then drops the contribution.
+            if((bitcast<u32>((*seg).direction.x)&0x7fffffffu)>0x7f800000u){return 2u;}
+//#endif
             let throughput=(*seg).throughput*exp(-r.transparency*((*seg).tmax-(*seg).tmin));
             if(all(throughput==vec3<f32>(0))){return 2u;}
             state_vec3(S_shadow_path_throughput,index,throughput);return 1u;

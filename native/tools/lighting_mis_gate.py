@@ -68,7 +68,7 @@ def main():
         for kind in ('lighting_mis', 'lighting'):
             status['phase'] = kind+'-replay'
             save(out/'status.json', status)
-            for case in range(8):
+            for case in range(reports[kind]['cases']):
                 name = kind+'-replay-'+str(case)
                 with (out/(name+'.log')).open('w') as log, contextlib.redirect_stdout(log):
                     render_replay.run('linux-x64', out/kind/'run'/('case-'+str(case)), out/name)

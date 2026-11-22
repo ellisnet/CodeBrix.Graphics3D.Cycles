@@ -1,0 +1,760 @@
+{
+ "cbcOracleScene": 1,
+ "id": "images/tiled-texture-limit",
+ "description": "The scene tiled-mip-planes under a texture limit of 64: Cycles skips the mip levels of a tiled image that are larger than the limit instead of reducing pixels, so every quad reads the smallest level",
+ "sourceFixture": "native/oracle/scenes/author_images.py (tiled images)",
+ "render": {
+  "width": 96,
+  "height": 64,
+  "samples": 16,
+  "repeats": 2,
+  "threads": 1,
+  "textureLimit": 64
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "sampling_pattern": "tabulated_sobol",
+    "seed": 0,
+    "use_adaptive_sampling": false,
+    "use_light_tree": false,
+    "use_guiding": false,
+    "use_denoise": false,
+    "min_bounce": 3,
+    "max_bounce": 8,
+    "max_diffuse_bounce": 4,
+    "max_glossy_bounce": 4,
+    "max_transmission_bounce": 8,
+    "max_volume_bounce": 0,
+    "transparent_min_bounce": 0,
+    "transparent_max_bounce": 8,
+    "sample_clamp_direct": 0.0,
+    "sample_clamp_indirect": 0.0,
+    "caustics_reflective": false,
+    "caustics_refractive": false,
+    "filter_glossy": 0.0,
+    "light_sampling_threshold": 0.01,
+    "use_sample_subset": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "camera_type": "perspective",
+    "fov": 0.9,
+    "nearclip": 0.1,
+    "farclip": 100.0,
+    "matrix": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     -3
+    ]
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "exposure": 1.0,
+    "filter_type": "box",
+    "filter_width": 1.0
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.2,
+        0.2,
+        0.2
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "transparent": false,
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "linear",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.0
+      }
+     },
+     {
+      "handle": "t",
+      "type": "image_texture",
+      "set": {
+       "image": "image",
+       "colorspace": "scene_linear",
+       "alpha_type": "unassociated",
+       "interpolation": "linear",
+       "extension": "periodic"
+      }
+     },
+     {
+      "handle": "uv",
+      "type": "uvmap"
+     }
+    ],
+    "connect": [
+     [
+      "uv",
+      "UV",
+      "t",
+      "Vector"
+     ],
+     [
+      "t",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "cubic",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.0
+      }
+     },
+     {
+      "handle": "t",
+      "type": "image_texture",
+      "set": {
+       "image": "image",
+       "colorspace": "scene_linear",
+       "alpha_type": "unassociated",
+       "interpolation": "cubic",
+       "extension": "periodic"
+      }
+     },
+     {
+      "handle": "uv",
+      "type": "uvmap"
+     }
+    ],
+    "connect": [
+     [
+      "uv",
+      "UV",
+      "t",
+      "Vector"
+     ],
+     [
+      "t",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "closest",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.0
+      }
+     },
+     {
+      "handle": "t",
+      "type": "image_texture",
+      "set": {
+       "image": "image",
+       "colorspace": "scene_linear",
+       "alpha_type": "unassociated",
+       "interpolation": "closest",
+       "extension": "periodic"
+      }
+     },
+     {
+      "handle": "uv",
+      "type": "uvmap"
+     }
+    ],
+    "connect": [
+     [
+      "uv",
+      "UV",
+      "t",
+      "Vector"
+     ],
+     [
+      "t",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "whole",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -1.46,
+     0.04,
+     0,
+     -0.54,
+     0.04,
+     0,
+     -0.54,
+     0.96,
+     0,
+     -1.46,
+     0.96,
+     0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       1.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       1.0
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "linear"
+    ]
+   }
+  },
+  {
+   "handle": "whole-object",
+   "create": "object",
+   "set": {
+    "geometry": "whole",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "half",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.46,
+     0.04,
+     0,
+     0.46,
+     0.04,
+     0,
+     0.46,
+     0.96,
+     0,
+     -0.46,
+     0.96,
+     0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       0.268,
+       0.268,
+       0.732,
+       0.732,
+       0.732,
+       0.268,
+       0.268,
+       0.268,
+       0.268,
+       0.732,
+       0.732,
+       0.732
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "linear"
+    ]
+   }
+  },
+  {
+   "handle": "half-object",
+   "create": "object",
+   "set": {
+    "geometry": "half",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "quarter",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     0.54,
+     0.04,
+     0,
+     1.46,
+     0.04,
+     0,
+     1.46,
+     0.96,
+     0,
+     0.54,
+     0.96,
+     0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       0.21733333333333332,
+       0.384,
+       0.4493333333333333,
+       0.616,
+       0.4493333333333333,
+       0.384,
+       0.21733333333333332,
+       0.384,
+       0.21733333333333332,
+       0.616,
+       0.4493333333333333,
+       0.616
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "linear"
+    ]
+   }
+  },
+  {
+   "handle": "quarter-object",
+   "create": "object",
+   "set": {
+    "geometry": "quarter",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "cubic-corner",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -1.46,
+     -0.96,
+     0,
+     -0.54,
+     -0.96,
+     0,
+     -0.54,
+     -0.04,
+     0,
+     -1.46,
+     -0.04,
+     0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       0.2733333333333333,
+       0.44,
+       0.3933333333333333,
+       0.56,
+       0.3933333333333333,
+       0.44,
+       0.2733333333333333,
+       0.44,
+       0.2733333333333333,
+       0.56,
+       0.3933333333333333,
+       0.56
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "cubic"
+    ]
+   }
+  },
+  {
+   "handle": "cubic-corner-object",
+   "create": "object",
+   "set": {
+    "geometry": "cubic-corner",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "closest-corner",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.46,
+     -0.96,
+     0,
+     0.46,
+     -0.96,
+     0,
+     0.46,
+     -0.04,
+     0,
+     -0.46,
+     -0.04,
+     0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       0.2733333333333333,
+       0.44,
+       0.3933333333333333,
+       0.56,
+       0.3933333333333333,
+       0.44,
+       0.2733333333333333,
+       0.44,
+       0.2733333333333333,
+       0.56,
+       0.3933333333333333,
+       0.56
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "closest"
+    ]
+   }
+  },
+  {
+   "handle": "closest-corner-object",
+   "create": "object",
+   "set": {
+    "geometry": "closest-corner",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "repeat",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     0.54,
+     -0.96,
+     0,
+     1.46,
+     -0.96,
+     0,
+     1.46,
+     -0.04,
+     0,
+     0.54,
+     -0.04,
+     0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       -0.5,
+       -0.5,
+       1.5,
+       1.5,
+       1.5,
+       -0.5,
+       -0.5,
+       -0.5,
+       -0.5,
+       1.5,
+       1.5,
+       1.5
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "linear"
+    ]
+   }
+  },
+  {
+   "handle": "repeat-object",
+   "create": "object",
+   "set": {
+    "geometry": "repeat",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  }
+ ],
+ "images": [
+  {
+   "handle": "image",
+   "width": 192,
+   "height": 128,
+   "format": "byte4",
+   "file": "tiled-texture-limit.image.level-0.byte4",
+   "tiled": {
+    "tileSize": 64,
+    "levels": [
+     "tiled-texture-limit.image.level-1.byte4",
+     "tiled-texture-limit.image.level-2.byte4"
+    ]
+   },
+   "provenance": "native/oracle/scenes/author_images.py (formula); rows bottom-up; levels: 2 x 2 box reductions"
+  }
+ ]
+}

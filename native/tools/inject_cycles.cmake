@@ -581,6 +581,14 @@ function(codebrix_add_cycles_device)
   target_include_directories(codebrix_cycles_image_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
     "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_image_gate PRIVATE ${codebrix_device_libs})
+  add_executable(codebrix_cycles_image_tile_gate "${CODEBRIX_NATIVE_ROOT}/cycles/image_tile_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/image_tile_reference.cpp")
+  target_compile_features(codebrix_cycles_image_tile_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_image_tile_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_image_tile_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_image_tile_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_image_tile_gate PRIVATE ${codebrix_device_libs})
   add_executable(codebrix_cycles_image_file_gate "${CODEBRIX_NATIVE_ROOT}/cycles/image_file_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/image_sampling_reference.cpp")
   target_compile_features(codebrix_cycles_image_file_gate PRIVATE cxx_std_20)
@@ -673,6 +681,58 @@ function(codebrix_add_cycles_device)
       "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
     target_link_libraries(${gate_target} PRIVATE ${codebrix_device_libs})
   endforeach()
+  # Dispersion: original-CPU surface integration of dispersive Principled BSDF graphs on the principled fixture
+  # (native/cycles/dispersion_fixture.h, CBC_PRINCIPLED_FIXTURE 2).
+  add_executable(codebrix_cycles_dispersion_bounce_gate "${CODEBRIX_NATIVE_ROOT}/cycles/surface_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp")
+  target_compile_features(codebrix_cycles_dispersion_bounce_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_dispersion_bounce_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_dispersion_bounce_gate PRIVATE ${definitions} CBC_PRINCIPLED_FIXTURE=2)
+  target_include_directories(codebrix_cycles_dispersion_bounce_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_dispersion_bounce_gate PRIVATE ${codebrix_device_libs})
+  # The other dispersion gates on that fixture: the closure records (svm_surface_gate.cpp) and an independent image with
+  # lockstep stage checks (render_gate.cpp), and a second set of graphs through the surface stage (CBC_PRINCIPLED_FIXTURE 3).
+  foreach(kind IN ITEMS svm bounce2 render)
+    set(dispersion_fixture 2)
+    if(kind STREQUAL "svm")
+      set(gate_source svm_surface_gate.cpp)
+      set(reference_source svm_surface_reference.cpp)
+    elseif(kind STREQUAL "bounce2")
+      set(gate_source surface_gate.cpp)
+      set(reference_source surface_reference.cpp)
+      set(dispersion_fixture 3)
+    else()
+      set(gate_source render_gate.cpp)
+      set(reference_source surface_reference.cpp)
+    endif()
+    set(gate_target codebrix_cycles_dispersion_${kind}_gate)
+    add_executable(${gate_target} "${CODEBRIX_NATIVE_ROOT}/cycles/${gate_source}"
+      "${CODEBRIX_NATIVE_ROOT}/cycles/${reference_source}")
+    if(kind STREQUAL "render")
+      target_sources(${gate_target} PRIVATE "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp"
+        "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp")
+    endif()
+    target_compile_features(${gate_target} PRIVATE cxx_std_20)
+    target_compile_options(${gate_target} PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+    target_compile_definitions(${gate_target} PRIVATE ${definitions} CBC_PRINCIPLED_FIXTURE=${dispersion_fixture})
+    target_include_directories(${gate_target} PRIVATE "${PROJECT_SOURCE_DIR}/src"
+      "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+    target_link_libraries(${gate_target} PRIVATE ${codebrix_device_libs})
+  endforeach()
+  # Manifold next-event estimation through dispersive casters: the lockstep state gate (mnee_gate.cpp) on cases 0 to 2 of
+  # the caustic fixture with dispersive Principled casters (CBC_MNEE_DISPERSION, native/cycles/mnee_fixture.h).
+  add_executable(codebrix_cycles_dispersion_mnee_gate "${CODEBRIX_NATIVE_ROOT}/cycles/mnee_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/mnee_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/volume_reference.cpp")
+  target_compile_features(codebrix_cycles_dispersion_mnee_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_dispersion_mnee_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_dispersion_mnee_gate PRIVATE ${definitions} CBC_MNEE_DISPERSION=1)
+  target_include_directories(codebrix_cycles_dispersion_mnee_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_dispersion_mnee_gate PRIVATE ${codebrix_device_libs})
   # Remaining SVM BSDF families: original-CPU closure setup, surface integration and
   # render; bsdf = Metallic and Beckmann, bsdf2 = Ashikhmin-Shirley, bsdf3 = velvet
   # and Toon (native/cycles/bsdf_fixture.h).

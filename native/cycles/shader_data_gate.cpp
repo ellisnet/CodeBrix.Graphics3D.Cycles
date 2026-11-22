@@ -27,6 +27,7 @@ struct Metrics {
   unsigned cases=0,camera_hits=0,backfacing=0,smooth=0,corner=0,instances=0,applied=0,negative=0;
   std::array<unsigned,3> projection_axes{};unsigned negative_position_offsets=0,negative_normal_offsets=0;
   double maximum_error=0;std::set<int> objects;
+  uint64_t object_normal_paths=0,object_normal_checks=0;unsigned object_normal_division_differences=0;
 };
 static void prepare(Scene &scene){
   scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);
@@ -75,11 +76,26 @@ static std::string probe_source(){
 #undef FIELD
   code<<"}\n";return code.str();
 }
-static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &source){
+// surface_object_normal of a path's ShaderData applied to the CPU's own N and P (read from the record) and to zero,
+// in both directions, against geom/object.h (original_object_normals): the record's words are compared exactly.
+static std::string object_normal_source(ShaderFeatures enabled){
+  std::ostringstream code;code<<specialize_wgsl(shader_data_source(),enabled);
+  code<<"@compute @workgroup_size(64) fn object_normal_probe(@builtin(global_invocation_id) id:vec3<u32>){\n"
+        " if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}\n"
+        " let sd=surface_from_ray(index);if(sd.error!=0u){return;}\n"
+        " let base=p(4u)+id.x*"<<sizeof(ObjectNormalRecord)<<"u;var v:array<vec3<f32>,2>;\n"
+        " for(var k=0u;k<2u;k++){v[k]=bitcast<vec3<f32>>(vec3<u32>(load_word(base+12u*k),load_word(base+12u*k+4u),load_word(base+12u*k+8u)));}\n"
+        " var out=array<vec3<f32>,5>(surface_object_normal(sd,v[0],true),surface_object_normal(sd,v[0],false),surface_object_normal(sd,v[1],true),\n"
+        "  surface_object_normal(sd,v[1],false),surface_object_normal(sd,vec3<f32>(0),true));\n"
+        " for(var k=0u;k<5u;k++){let w=bitcast<vec3<u32>>(out[k]);store_word(base+24u+12u*k,w.x);store_word(base+28u+12u*k,w.y);store_word(base+32u+12u*k,w.z);}\n"
+        "}\n";
+  return code.str();
+}
+static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &source,const char *entry="shader_data_probe"){
   WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={source.data(),source.size()};
   WGPUShaderModuleDescriptor desc{};desc.nextInChain=&wgsl.chain;d.gpu.push_scope();
   cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(wgpuDeviceCreateShaderModule(d.gpu.get(),&desc));d.gpu.pop_scope();
-  return d.gpu.pipeline(module,d.pipeline_layout,"shader_data_probe");
+  return d.gpu.pipeline(module,d.pipeline_layout,entry);
 }
 static void evaluate(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const std::vector<Field> &layout,
                      const std::vector<IntegratorStateCPU> &states,const std::vector<int> &indices,
@@ -139,6 +155,25 @@ static void evaluate(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const st
   }
   m.paths+=indices.size();m.cases++;
 }
+static void evaluate_object_normals(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const std::vector<Field> &layout,
+                                    const std::vector<IntegratorStateCPU> &states,const std::vector<int> &indices,
+                                    const std::string &label,Metrics &m){
+  auto expected=original_object_normals(scene.dscene,indices,states,m.object_normal_division_differences);upload(d,layout,states);
+  device_vector<int> selected(&d,"object_normal_indices",MEM_READ_WRITE);selected.alloc(indices.size());std::copy(indices.begin(),indices.end(),selected.data());selected.copy_to_device();
+  device_vector<uint> output(&d,"object_normal_output",MEM_READ_WRITE);output.alloc(16+indices.size()*sizeof(ObjectNormalRecord)/4);std::fill_n(output.data(),output.size(),0xa5a5a5a5u);
+  for(size_t i=0;i<indices.size();i++)std::memcpy(reinterpret_cast<char*>(output.data())+32+i*sizeof(ObjectNormalRecord),&expected[i],2*sizeof(packed_float3));
+  output.copy_to_device();
+  std::array<uint32_t,32> p{};p[1]=indices.size();p[2]=selected.device_pointer;p[4]=output.device_pointer+32;
+  p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=states.size();p[14]=d.scene_tables();p[17]=d.error_word;
+  d.dispatch(p,indices.size()+63,shader);d.sync();healthy(d);output.copy_from_device();healthy(d);
+  const auto bytes=reinterpret_cast<const uint8_t*>(output.data());
+  for(size_t i=0;i<indices.size();i++)for(size_t k=0;k<sizeof(ObjectNormalRecord);k+=4){
+    uint a,e;std::memcpy(&a,bytes+32+i*sizeof(ObjectNormalRecord)+k,4);std::memcpy(&e,reinterpret_cast<const char*>(&expected[i])+k,4);
+    require(a==e,label+" object normal word "+std::to_string(k/4)+" path "+std::to_string(i)+" actual="+std::to_string(a)+" expected="+std::to_string(e));m.object_normal_checks++;
+  }
+  for(unsigned i=0;i<32;i++)require(bytes[i]==0xa5&&bytes[output.size()*4-1-i]==0xa5,label+" object normal output guard");
+  m.object_normal_paths+=indices.size();
+}
 static std::vector<int> direct_states(Scene &scene,std::vector<IntegratorStateCPU> &states,unsigned mode){
   std::vector<int> indices;
   for(auto ob:scene.objects)for(unsigned triangle=0;triangle<2;triangle++)for(unsigned j=0;j<73;j++){
@@ -153,7 +188,7 @@ static std::vector<int> direct_states(Scene &scene,std::vector<IntegratorStateCP
   return indices;
 }
 static unsigned rejected(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const std::vector<Field> &layout,
-                         const std::vector<IntegratorStateCPU> &initial){
+                         const std::vector<IntegratorStateCPU> &initial,unsigned &zero_area_matched){
   unsigned count=0;
   for(unsigned test=0;test<12;test++){
     auto states=initial;states[0]=initial[0];auto &s=states[0];auto object=scene.dscene.objects[s.isect.object];auto flags=scene.dscene.object_flag[s.isect.object];auto tri=scene.dscene.tri_vindex[s.isect.prim];auto sh=scene.dscene.tri_shader[s.isect.prim];
@@ -172,7 +207,20 @@ static unsigned rejected(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,cons
     upload(d,layout,states);device_vector<uint> out(&d,"invalid_shader_data",MEM_READ_WRITE);out.alloc(sizeof(ShaderDataRecord)/4);std::fill_n(out.data(),out.size(),0xa5a5a5a5u);out.copy_to_device();
     device_vector<int> selected(&d,"invalid_shader_data_index",MEM_READ_WRITE);selected.alloc(1);selected[0]=test==9?states.size():0;selected.copy_to_device();
     std::array<uint32_t,32> p{};p[1]=1;p[2]=selected.device_pointer;p[4]=out.device_pointer;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=states.size();p[14]=d.scene_tables();p[17]=d.error_word;
-    d.dispatch(p,1,shader);uint error=0;d.download(d.error_word,&error,4);require(error==1,"Invalid surface data did not report failure "+std::to_string(test));
+    d.dispatch(p,1,shader);uint error=0;d.download(d.error_word,&error,4);
+    if(test==10){
+      // Two equal vertex indices make a zero-area triangle, which is valid input to the pinned kernel: triangle_shader_setup
+      // takes `const float3 Ng = triangle_normal(kg, sd);` (geom/triangle_intersect.h), that is
+      // `return normalize(cross(v1 - v0, v2 - v0));` (geom/triangle.h) of a zero cross product, and shader_setup_from_ray
+      // goes on with its NaN normal. The probe is compiled with every region, BAKE_ZERO_AREA included, where the device
+      // does the same: every word of the record equals the CPU kernel's (its NaNs bit for bit).
+      require(error==0,"Zero-area triangle reported failure");out.copy_from_device();healthy(d);
+      auto expected=original_shader_data(scene.dscene,{0},states);
+      for(size_t k=0;k<sizeof(ShaderDataRecord)/4;k++){uint e;std::memcpy(&e,reinterpret_cast<const char*>(expected.data())+4*k,4);
+        require(out.data()[k]==e,"Zero-area triangle word "+std::to_string(k)+" actual="+std::to_string(out.data()[k])+" expected="+std::to_string(e));}
+      d.zero(d.error_word,4);scene.dscene.objects[initial[0].isect.object]=object;scene.dscene.object_flag[initial[0].isect.object]=flags;scene.dscene.tri_vindex[initial[0].isect.prim]=tri;scene.dscene.tri_shader[initial[0].isect.prim]=sh;zero_area_matched++;continue;
+    }
+    require(error==1,"Invalid surface data did not report failure "+std::to_string(test));
     out.copy_from_device();healthy(d);require(std::all_of(out.data(),out.data()+out.size(),[](uint x){return x==0xa5a5a5a5u;}),"Invalid surface data wrote output");
     d.zero(d.error_word,4);scene.dscene.objects[initial[0].isect.object]=object;scene.dscene.object_flag[initial[0].isect.object]=flags;scene.dscene.tri_vindex[initial[0].isect.prim]=tri;scene.dscene.tri_shader[initial[0].isect.prim]=sh;count++;
   }
@@ -180,18 +228,24 @@ static unsigned rejected(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,cons
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: shader_data_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";std::string prefix=argv[1];capture_prefix=prefix;auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"shader_data_gate device creation");Metrics m;unsigned invalid=0;
+  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"shader_data_gate device creation");Metrics m;unsigned invalid=0,zero_area_matched=0;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);if(motion){for(size_t i=0;i<scene.objects.size();i++)if(i%3<2)object_motion_fixture(scene,*scene.objects[i],unsigned(i));}if(deform)for(size_t i=0;i<scene.objects.size();i++)deforming_motion_fixture(scene,*scene.objects[i],unsigned(i));Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Scene update failed");
     scene.dscene.data.integrator.use_light_mis=0;scene.dscene.data.integrator.use_caustics=0;d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();auto layout=fields(d);
     auto source=probe_source();std::ofstream(prefix+".wgsl")<<source;auto shader=pipeline(d,source);
+    // The host-exact motion text (every scene with motion) and, without object or deformation motion, the default text.
+    auto exact_normals=pipeline(d,object_normal_source(SF_ALL),"object_normal_probe");
+    auto default_normals=pipeline(d,object_normal_source(SF_ALL&~(SF_MNEE_MOTION|SF_FILM_MOTION_EXACT)),"object_normal_probe");
+    auto object_normals=[&](const std::vector<IntegratorStateCPU> &s,const std::vector<int> &ids,const std::string &label){
+      evaluate_object_normals(d,scene,exact_normals,layout,s,ids,label+" object normals",m);
+      if(!motion&&!deform)evaluate_object_normals(d,scene,default_normals,layout,s,ids,label+" object normals (default text)",m);};
     BufferParams bp;bp.width=64;bp.height=48;bp.pass_stride=scene.dscene.data.film.pass_stride;auto buffers=scheduler.get_render_buffers();buffers->reset(bp);buffers->zero();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Reset failed");
     KernelWorkTile tile{};tile.w=64;tile.h=48;tile.stride=64;tile.num_samples=1;tile.start_sample=3;scheduler.enqueue_work_tiles(DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA,&tile,1,0,0);require(scheduler.update_queue_counter_and_cache(),"Camera failed");
     scheduler.enqueue_path_iteration(DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);require(scheduler.update_queue_counter_and_cache(),"Closest failed");auto states=download(d,layout,scheduler.capacity());std::vector<int> indices;
     for(unsigned i=0;i<states.size();i++)if(states[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)indices.push_back(i);
-    require(indices.size()>200,"Camera fixture has too few surface hits");m.camera_hits=indices.size();evaluate(d,scene,shader,layout,states,indices,"Camera hits",m);
-    for(unsigned mode=0;mode<7;mode++){states.assign(scheduler.capacity(),{});indices=direct_states(scene,states,mode);evaluate(d,scene,shader,layout,states,indices,"Directions "+std::to_string(mode),m);}
+    require(indices.size()>200,"Camera fixture has too few surface hits");m.camera_hits=indices.size();evaluate(d,scene,shader,layout,states,indices,"Camera hits",m);object_normals(states,indices,"Camera hits");
+    for(unsigned mode=0;mode<7;mode++){states.assign(scheduler.capacity(),{});indices=direct_states(scene,states,mode);evaluate(d,scene,shader,layout,states,indices,"Directions "+std::to_string(mode),m);object_normals(states,indices,"Directions "+std::to_string(mode));}
     // Dense dispatch uses the same original inputs and tests the null-index branch.
     auto sparse=states;for(size_t i=0;i<indices.size();i++){states[i]=sparse[indices[i]];indices[i]=i;}evaluate(d,scene,shader,layout,states,indices,"Dense",m,true);
     evaluate(d,scene,shader,layout,states,{},"Zero work",m);
@@ -203,10 +257,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     for(auto ob:scene.objects){unsigned id=ob->get_device_index();ds.objects[id].position_offset-=17;if(!(ds.object_flag[id]&SD_OBJECT_HAS_CORNER_NORMALS))ds.objects[id].mesh_volume.normal_offset-=17;}
     ds.tri_vindex.copy_to_device();ds.objects.copy_to_device();evaluate(d,scene,shader,layout,states,indices,"Signed attribute offsets",m,true);
     std::copy(saved_tri.begin(),saved_tri.end(),ds.tri_vindex.data());std::copy(saved_objects.begin(),saved_objects.end(),ds.objects.data());ds.tri_vindex.copy_to_device();ds.objects.copy_to_device();
-    invalid=rejected(d,scene,shader,layout,states);
+    invalid=rejected(d,scene,shader,layout,states,zero_area_matched);
   }
   require(stats.mem_used==0,"Shader-data test leaked Cycles allocations");require(m.objects.size()==9&&m.smooth&&m.corner&&m.applied&&m.instances&&m.negative&&m.backfacing,"Incomplete surface coverage");
+  require(zero_area_matched==1,"The zero-area triangle case did not run");
+  require(m.object_normal_division_differences>0,"The object normal case does not tell safe_normalize from normalize");
   require(std::all_of(m.projection_axes.begin(),m.projection_axes.end(),[](unsigned n){return n!=0;})&&m.negative_position_offsets&&m.negative_normal_offsets,"Missing differential/signed-offset branch coverage");
   std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".library.txt")<<d.gpu.library_path;
-  std::cout<<"{\"passed\":true,\"originalCpuShaderSetup\":true,\"nativeSceneTables\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"cameraHits\":"<<m.camera_hits<<",\"hitObjects\":"<<m.objects.size()<<",\"backfacing\":"<<m.backfacing<<",\"smooth\":"<<m.smooth<<",\"cornerNormals\":"<<m.corner<<",\"instanceTransforms\":"<<m.instances<<",\"appliedTransforms\":"<<m.applied<<",\"negativeScale\":"<<m.negative<<",\"projectionAxes\":["<<m.projection_axes[0]<<","<<m.projection_axes[1]<<","<<m.projection_axes[2]<<"],\"negativePositionOffsets\":"<<m.negative_position_offsets<<",\"negativeNormalOffsets\":"<<m.negative_normal_offsets<<",\"integerChecks\":"<<m.int_checks<<",\"floatChecks\":"<<m.float_checks<<",\"stateChecks\":"<<m.state_checks<<",\"untouchedGuardBytes\":"<<m.guard_bytes<<",\"strictFloatFailures\":"<<m.strict_failures<<",\"maximumAbsoluteError\":"<<m.maximum_error<<",\"invalidCasesRejected\":"<<invalid<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+  std::cout<<"{\"passed\":true,\"originalCpuShaderSetup\":true,\"nativeSceneTables\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"cameraHits\":"<<m.camera_hits<<",\"hitObjects\":"<<m.objects.size()<<",\"backfacing\":"<<m.backfacing<<",\"smooth\":"<<m.smooth<<",\"cornerNormals\":"<<m.corner<<",\"instanceTransforms\":"<<m.instances<<",\"appliedTransforms\":"<<m.applied<<",\"negativeScale\":"<<m.negative<<",\"projectionAxes\":["<<m.projection_axes[0]<<","<<m.projection_axes[1]<<","<<m.projection_axes[2]<<"],\"negativePositionOffsets\":"<<m.negative_position_offsets<<",\"negativeNormalOffsets\":"<<m.negative_normal_offsets<<",\"integerChecks\":"<<m.int_checks<<",\"floatChecks\":"<<m.float_checks<<",\"stateChecks\":"<<m.state_checks<<",\"untouchedGuardBytes\":"<<m.guard_bytes<<",\"strictFloatFailures\":"<<m.strict_failures<<",\"maximumAbsoluteError\":"<<m.maximum_error<<",\"invalidCasesRejected\":"<<invalid<<",\"zeroAreaTrianglesMatched\":"<<zero_area_matched<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"objectNormalPaths\":"<<m.object_normal_paths<<",\"objectNormalIntegerChecks\":"<<m.object_normal_checks<<",\"objectNormalDivisionDifferences\":"<<m.object_normal_division_differences<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

@@ -1051,6 +1051,15 @@ extern "C" int cbc_host_connect(CBCHost handle, CBCNode from, const char *output
     require(source && target, "Unknown shader link socket");
     const bool same = source->type() == target->type() || (SocketType::is_float3(source->type()) && SocketType::is_float3(target->type()));
     require(same || source->type() != SocketType::CLOSURE, "A shader output can link to a shader input only", CBC_UNSUPPORTED);
+    // Cycles converts a link between different value types with a ConvertNode, and has one only between the eight types of
+    // ConvertNode::get_node_types (float, int, colour, vector, point, normal, string, closure). For any other type
+    // (the Boolean inputs: the UV Map node's "from dupli", the Map Range node's "Clamp") ShaderGraph::connect would build
+    // a ConvertNode from a null node type when the render graph is made: the pinned Cycles has no defined result.
+    const auto converts = [](SocketType::Type type) {
+      return type == SocketType::FLOAT || type == SocketType::INT || type == SocketType::STRING || type == SocketType::CLOSURE || SocketType::is_float3(type);
+    };
+    require(same || target->type() != SocketType::BOOLEAN, "A Boolean input cannot be linked: Cycles has no conversion to a Boolean socket (set the input's value instead)", CBC_UNSUPPORTED);
+    require(same || (converts(source->type()) && converts(target->type())), "Cycles has no conversion between the value types of this link", CBC_UNSUPPORTED);
     std::set<ShaderNode *> visited; require(!reaches(second, first, visited), "Shader link would create a cycle");
     if (target->link) a.graph->authoring->disconnect(target);
     if (same) a.graph->authoring->connect(source, target);

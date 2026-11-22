@@ -52,6 +52,15 @@ inline bool mnee_uses_linking(int mode){return mode==13||mode==14;}
 inline bool mnee_samples(int mode){const int base=mnee_base(mode);return (base==0||base==1)&&mode!=8;}
 inline ccl::Shader *mnee_shader(ccl::Scene &scene,int kind){
   using namespace ccl;auto graph=std::make_unique<ShaderGraph>();ShaderOutput *out;
+#ifdef CBC_MNEE_DISPERSION
+  // The dispersion gate (CBC_MNEE_DISPERSION): the refractive casters are dispersive Principled BSDFs, the sphere smooth
+  // and the slab rough, so that the walk's shader evaluations take the index of refraction of the path's wavelength and
+  // its contribution the throughput weight (integrator/mnee.h, under __SPECTRAL__).
+  if(kind==1||kind==2){auto n=graph->create_node<PrincipledBsdfNode>();n->set_distribution(kind==1?CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID:CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+    n->set_base_color(make_float3(.95f,.97f,1.f));n->set_roughness(kind==1?0.f:.2f);n->set_ior(kind==1?1.45f:1.33f);n->set_transmission_weight(1);n->set_subsurface_weight(0);
+    n->set_transmission_dispersion_scale(1);n->set_transmission_dispersion_abbe_number(15);out=n->output("BSDF");}
+  else
+#endif
   if(kind==0){auto n=graph->create_node<DiffuseBsdfNode>();n->set_color(make_float3(.7f,.65f,.6f));out=n->output("BSDF");}
   else if(kind==1){auto n=graph->create_node<GlassBsdfNode>();n->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);n->set_roughness(0.f);n->set_IOR(1.45f);n->set_color(make_float3(.95f,.97f,1.f));out=n->output("BSDF");}
   else if(kind==2||kind==4){auto n=graph->create_node<RefractionBsdfNode>();n->set_distribution(kind==4?CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID:CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);n->set_roughness(.2f);n->set_IOR(1.33f);n->set_color(make_float3(.9f,.95f,1.f));out=n->output("BSDF");}

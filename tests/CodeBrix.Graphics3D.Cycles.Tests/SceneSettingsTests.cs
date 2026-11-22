@@ -299,38 +299,6 @@ public class SceneSettingsTests
     }
 
     [Fact]
-    public void Dispersion_is_refused_by_name_on_the_webgpu_backend()
-    {
-        //Arrange
-        TestScenes.RequireNativeHost();
-        if (CyclesScene.ResolveBackend(CyclesBackend.Gpu) != Backend.WebGpu) Assert.Skip("This binary's GPU backend is not WebGPU.");
-        CyclesScene created;
-        try
-        {
-            created = new CyclesScene(CyclesBackend.Gpu);
-        }
-        catch (CyclesException unavailable)
-        {
-            Assert.Skip("No GPU device is available to the native host: " + unavailable.Message);
-            return;
-        }
-        using CyclesScene scene = created;
-        (ShaderNode material, _, _) = TestScenes.BuildTyped(scene);
-        PrincipledBsdfNode principled = material.Add<PrincipledBsdfNode>();
-        material.Connect(principled.BsdfOutput, material.Output.SurfaceInput);
-        principled.TransmissionDispersionScale = .5f;
-        principled.TransmissionWeight = 1f;
-
-        //Act
-        Action render = () => scene.Render(Small);
-
-        //Assert
-        CyclesException error = render.Should().Throw<CyclesException>().Which;
-        error.NativeStatus.Should().Be(NativeStatus.Unsupported);
-        error.Message.Should().Contain("WebGPU dispersion not implemented");
-    }
-
-    [Fact]
     public void Dlss_denoiser_is_refused_by_name_when_denoising()
     {
         //Arrange
@@ -353,7 +321,7 @@ public class SceneSettingsTests
         again.Should().NotThrow();
     }
 
-    // Gaussian splats render on the CPU and Metal backends with their standard attributes (GaussianSplatTests); a cloud
+    // Gaussian splats render on every backend with their standard attributes (GaussianSplatTests); a cloud
     // without them is refused by name instead of rendering as plain points, as the pinned Cycles would with no message.
     [Fact]
     public void Point_cloud_rendered_as_gaussian_splats_without_its_attributes_is_refused_by_name()

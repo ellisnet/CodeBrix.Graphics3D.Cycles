@@ -135,6 +135,17 @@ def scenes():
                               {'handle': 'a-object', 'create': 'object', 'set': {'geometry': 'a', 'tfm': rotate_y(0.4, (1.0, 1.0, 1.0), (-1.5, -1.4, 0.4))}},
                               grid('b', 'bump-vector', 2.6, 6, True),
                               {'handle': 'b-object', 'create': 'object', 'set': {'geometry': 'b', 'tfm': [1, 0, 0, 1.5, 0, 1, 0, 0, 0, 0, 1, 0.4]}}])
+    # True and Both with nothing linked to the Displacement output: the shaders carry SD_HAS_DISPLACEMENT (the method), but no
+    # displacement program runs (Cycles compiles NODE_SET_DISPLACEMENT only for a link and displaces no vertex).
+    a = material('true-unlinked', 'true', [], [], [0.6, 0.45, 0.3])
+    b = material('both-unlinked', 'both', [], [], [0.35, 0.5, 0.6])
+    out['unlinked.json'] = scene('unlinked', 'Displacement methods True (left, smooth grid) and Both (right, flat grid) with nothing linked to '
+                                 'the Displacement output: nothing is displaced',
+                                 [a, b],
+                                 [grid('left', 'true-unlinked', 2.6, 8, True, 0.0),
+                                  {'handle': 'left-object', 'create': 'object', 'set': {'geometry': 'left', 'tfm': rotate_y(0.4, (1.0, 1.0, 1.0), (-1.5, -1.4, 0.4))}},
+                                  grid('right', 'both-unlinked', 2.6, 8, False),
+                                  {'handle': 'right-object', 'create': 'object', 'set': {'geometry': 'right', 'tfm': [1, 0, 0, 1.5, 0, 1, 0, 0, 0, 0, 1, 0.4]}}])
     return out
 
 

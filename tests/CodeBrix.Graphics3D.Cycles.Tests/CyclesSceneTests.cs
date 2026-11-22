@@ -334,6 +334,29 @@ public class CyclesSceneTests
     }
 
     [Fact]
+    public void Connect_refuses_a_link_into_a_boolean_input()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        ShaderNode shader = scene.CreateShader();
+        MathNode math = shader.Add<MathNode>();
+        MapRangeNode range = shader.Add<MapRangeNode>();
+        UvmapNode map = shader.Add<UvmapNode>();
+
+        //Act
+        Action clamp = () => shader.Connect(math.ValueOutput, range.ClampInput);
+        Action fromDupli = () => shader.Connect(math.ValueOutput, map.FromDupliInput);
+
+        //Assert
+        foreach (Action link in new[] { clamp, fromDupli })
+        {
+            NativeFailure error = link.Should().Throw<NativeFailure>().Which;
+            error.NativeStatus.Should().Be(NativeStatus.Unsupported);
+            error.Message.Should().Contain("A Boolean input cannot be linked");
+        }
+    }
+
+    [Fact]
     public void Connect_rejects_sockets_from_another_graph()
     {
         //Arrange

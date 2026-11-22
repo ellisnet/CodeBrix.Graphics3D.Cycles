@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 from build import REPO, WORK, PACKAGE, REVISION
-from device_gate import sha, save
+from device_gate import sha, save, require_built
 from render_gate import inputs
 
 
@@ -24,6 +24,7 @@ def main():
             subprocess.run([sys.executable,str(REPO/'native/tools/build_cycles.py'),'--jobs','2',
                 '--target','codebrix_cycles_camera_gate','--target','codebrix_cycles_render_gate'],
                 stdout=stdout,stderr=stderr,check=True)
+    else:require_built(['camera','render'])
     executables={name:WORK/'cycles-build/bin'/('codebrix_cycles_'+name+'_gate') for name in ['camera','render']}
     runtime=PACKAGE/'runtimes/linux-x64/native/libcodebrix_wgpu.so'
     pins={str(p):sha(p) for p in [*executables.values(),runtime]};save(out/'binary-pins.json',pins)

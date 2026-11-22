@@ -43,6 +43,9 @@ CPU_REFERENCE, CPU_EMBREE, WEBGPU = 2, 5, 1
 BACKEND = CPU_REFERENCE
 # Cases about the CPU backends themselves, left out of the WebGPU half.
 CPU_ONLY = {'embree_backend_agrees', 'repeatable_across_threads'}
+# Cases that build a WebGPU host and a CPU host themselves: run once, in the CPU half.
+BOTH_BACKENDS = {'webgpu_matches_cpu_every_type', 'zero_area_smooth_matches_cpu_every_type', 'zero_area_flat_matches_cpu_every_type',
+                 'zero_area_raytrace_nodes_match_cpu'}
 BAKE = {name: i + 1 for i, name in enumerate(
     ('combined emission background ao diffuse diffuse_direct diffuse_indirect diffuse_color glossy glossy_direct glossy_indirect glossy_color '
      'transmission transmission_direct transmission_indirect transmission_color position normal uv roughness object_id material_id depth mist aov_color aov_value').split())}
@@ -1040,8 +1043,8 @@ def refusals_and_size_queries():
         return 'all refused by name'
 
 
-def type_scene(s):
-    """Every bake type has something to read: a lit, shadowed, textured mix of diffuse, glossy and refraction with AOVs, ids and a camera."""
+def type_scene(s, zero_area=False, smooth=False):
+    """Every bake type has something to read: a lit, shadowed, textured mix of diffuse, glossy and refraction with AOVs, ids and a camera. zero_area: four triangles with no area in 3D and area in UV are added (ZERO_AREA_TRIANGLES), flat or smooth."""
     s.world(.3, .35, .45)
     shader = s.create('shader'); mix = s.node(shader, 'mix_closure'); mix2 = s.node(shader, 'mix_closure')
     diffuse = s.node(shader, 'diffuse_bsdf'); glossy = s.node(shader, 'glossy_bsdf'); refraction = s.node(shader, 'refraction_bsdf')
@@ -1062,7 +1065,12 @@ def type_scene(s):
     s.set(s.camera, 'matrix', -1., 0., 0., .5, 0., 1., 0., -.5, 0., 0., -1., 6.)
     s.set(s.film, 'mist_start', 1.0); s.set(s.film, 'mist_depth', 8.0)
     s.ints(s.integrator, 'max_bounce', 3)
-    m = s.mesh(shader, QUAD, QUAD_TRIANGLES, QUAD_UV); o = s.object(m); s.ints(o, 'pass_id', 7)
+    if zero_area:
+        m = s.mesh(shader, QUAD + ZERO_AREA_POSITIONS, QUAD_TRIANGLES + ZERO_AREA_TRIANGLES, QUAD_UV + ZERO_AREA_ALL_UV)
+        if smooth: s.ints(m, 'smooth', 1, 1, 1, 1, 1, 1)
+    else:
+        m = s.mesh(shader, QUAD, QUAD_TRIANGLES, QUAD_UV)
+    o = s.object(m); s.ints(o, 'pass_id', 7)
     blocker = s.mesh(s.diffuse((.4, .4, .4)), (-50., -50., 2., 0., -50., 2., 0., 50., 2., -50., 50., 2.), QUAD_TRIANGLES)
     s.object(blocker)
     return o
@@ -1105,29 +1113,155 @@ def deformation_motion():
         return compare(s.bake(o, 'position', W, H), per_pixel(points_for()[0], lambda p: p, 3), 'position under deformation motion')
 
 
+# Triangles with no area in 3D and area in UV. A zero cross product (the kernel's geometric normal is a NaN in every lane): all
+# three corners at one vertex (a point), and two corners at one vertex of the quad (the quad's diagonal, a segment whose
+# points lie on the lit plane). A cross product whose squared length underflows to zero (the normal has infinities): corners
+# 4e-12 apart in the quad's plane (cross product (0, 0, 1.6e-23): NaN, NaN, +infinity) and around the origin (cross
+# product (-8e-24, 8e-24, 8e-24): -infinity, +infinity, +infinity).
+ZERO_AREA_UV = (0.9, 0.9, 0.97, 0.9, 0.97, 0.97)
+ZERO_AREA_SEGMENT_UV = (0.60, 0.62, 0.86, 0.62, 0.86, 0.86)
+ZERO_AREA_POSITIONS = (0.5, 0.5, 0.5,
+                       0.0, 0.0, 0.5, 4e-12, 0.0, 0.5, 0.0, 4e-12, 0.5,
+                       0.0, 0.0, 0.0, 3e-12, 1e-12, 2e-12, 1e-12, 3e-12, -2e-12)
+ZERO_AREA_TRIANGLES = (4, 4, 4, 0, 2, 2, 5, 6, 7, 8, 9, 10)
+ZERO_AREA_ALL_UV = ZERO_AREA_UV + ZERO_AREA_SEGMENT_UV + (0.885, 0.62, 0.99, 0.62, 0.99, 0.86) + (0.60, 0.88, 0.86, 0.88, 0.86, 0.99)
+
+
 @case
 def zero_area_triangle():
-    """A texel on a triangle with no area in 3D but area in UV: the CPU kernel's normal is not a number there (its path ends, Combined reads 0 with alpha 1); the WebGPU device refuses the bake by name and writes nothing, and bakes the other texels of a mesh without it."""
+    """A texel on a triangle with no area in 3D but area in UV: the kernel's geometric normal is not a number there (normalize of a zero cross product) and it shades on; an emission shader's value is 0 (closure/emissive.h emissive_pdf: `(cosNI > 0.0f) ? 1.0f : 0.0f`), so Combined reads 0 with alpha 1 on every backend, and the mesh's other texels read the emission."""
     xyz = QUAD + (0.5, 0.5, 0.5)
     tris = QUAD_TRIANGLES + (4, 4, 4)
-    uv = QUAD_UV + (0.9, 0.9, 0.97, 0.9, 0.97, 0.97)
+    uv = QUAD_UV + ZERO_AREA_UV
     with Scene() as s:
         o = s.object(s.mesh(s.emission((1, 1, 1)), xyz, tris, uv))
-        if BACKEND != WEBGPU:
-            film = s.bake(o, 'combined', W, H, 1)
-            triangles, _ = s.map(o, W, H)
-            hit = [i for i, t in enumerate(triangles) if t == 2]
-            require(hit and all(film[i * 4:i * 4 + 4] == [0.0, 0.0, 0.0, 1.0] for i in hit), 'the CPU texels on the zero-area triangle')
-            return f'CPU: {len(hit)} texels read (0, 0, 0, 1)'
-        config = s.config(o, 'combined', W, H)
-        values = (C.c_float * (W * H * 4))(*([-7.0] * (W * H * 4))); required, components = C.c_uint64(), C.c_uint32()
-        got = L.cbc_host_bake(s.h, C.byref(config), values, W * H * 4, C.byref(required), C.byref(components))
-        message = last_error()
-        require(got == FAILED and 'zero-area triangle not implemented' in message, f'status {got}: {message}')
-        require(all(v == -7.0 for v in values), 'a refused bake wrote the output')
-        _, o2 = quad_scene(s, s.emission((1, 1, 1)))
-        compare(s.bake(o2, 'emission', W, H, 1), per_pixel(points_for()[0], lambda p: (1.0, 1.0, 1.0), 3), 'the host bakes after the refusal')
-        return message
+        film = s.bake(o, 'combined', W, H, 1)
+        triangles, _ = s.map(o, W, H)
+        hit = [i for i, t in enumerate(triangles) if t == 2]
+        require(hit and all(film[i * 4:i * 4 + 4] == [0.0, 0.0, 0.0, 1.0] for i in hit), 'the texels on the zero-area triangle')
+        lit = [i for i, t in enumerate(triangles) if t in (0, 1)]
+        require(lit and all(film[i * 4:i * 4 + 4] == [1.0, 1.0, 1.0, 1.0] for i in lit), 'the texels on the other triangles')
+        return f'{len(hit)} texels read (0, 0, 0, 1), {len(lit)} read the emission'
+
+
+def zero_area_every_type(smooth):
+    resolved = C.c_uint32()
+    if L.cbc_host_resolve_backend(WEBGPU, C.byref(resolved)) != OK:
+        return 'not compiled'
+    try:
+        Scene(WEBGPU).close()
+    except RuntimeError as error:
+        return f'no WebGPU device here: {error}'
+    rows = []
+    with Scene(WEBGPU) as gpu, Scene(CPU_REFERENCE) as cpu:
+        a, b = type_scene(cpu, zero_area=True, smooth=smooth), type_scene(gpu, zero_area=True, smooth=smooth)
+        cpu_map, gpu_map = cpu.map(a, W, H), gpu.map(b, W, H)
+        require(gpu_map == cpu_map, 'the map differs on the WebGPU host')
+        texels = {t: sum(1 for x in cpu_map[0] if x == t) for t in (2, 3, 4, 5)}
+        require(all(texels.values()), f'a zero-area triangle without a texel: {texels}')
+        on_zero_area = [i for i, t in enumerate(cpu_map[0]) if t >= 2]
+        for kind in BAKE:
+            aov = {'aov_color': 'Mine', 'aov_value': 'Mine Value'}.get(kind)
+            components = COMPONENTS.get(kind, 3); size = W * H * components
+            results = []
+            for s, target in ((cpu, a), (gpu, b)):
+                config = s.config(target, kind, W, H, 16, 0, aov=aov)
+                values = (C.c_float * size)(); required, got_components = C.c_uint64(), C.c_uint32()
+                status = L.cbc_host_bake(s.h, C.byref(config), values, size, C.byref(required), C.byref(got_components))
+                results.append((status, last_error() if status != OK else '', list(values)))
+            (cpu_status, cpu_message, expected), (gpu_status, gpu_message, actual) = results
+            if cpu_status != OK:
+                require(cpu_status == FAILED and 'Nonfinite bake output' in cpu_message, f'{kind}: the CPU bake: status {cpu_status}: {cpu_message}')
+                require(gpu_status == FAILED and 'Nonfinite bake output' in gpu_message, f'{kind}: the CPU bake is not finite, the WebGPU bake: status {gpu_status}: {gpu_message}')
+                rows.append(dict(label=kind, type=kind, nonfinite=True))
+                continue
+            require(gpu_status == OK, f'{kind}: the WebGPU bake: status {gpu_status}: {gpu_message}')
+            row = compare(actual, expected, kind)
+            row.update(type=kind, nonfinite=False, zeroAreaTexels=texels,
+                       zeroAreaNonzero=sum(1 for i in on_zero_area if any(expected[i * components + c] != 0.0 for c in range(min(components, 3)))),
+                       bitIdentical=sum(struct.pack('f', x) == struct.pack('f', y) for x, y in zip(actual, expected)))
+            rows.append(row)
+    finite = [r for r in rows if not r['nonfinite']]
+    require(len(finite) < len(rows) and len(finite) >= 15, f'{len(finite)} finite bakes of {len(rows)}')
+    return rows
+
+
+@case
+def zero_area_smooth_matches_cpu_every_type():
+    """Every bake type on a smooth-shaded mesh with zero-area triangles that have UV area (a point and a segment, whose geometric normal is a NaN in every lane, and two whose cross product underflows, whose normal has infinities), on the WebGPU device and on the CPU reference backend: where the CPU bake is finite the two agree per value by the practical criterion (strict reported), and where the CPU bake fails ("Nonfinite bake output": a not-a-number reaches the film) the WebGPU bake fails with the same text."""
+    return zero_area_every_type(True)
+
+
+@case
+def zero_area_flat_matches_cpu_every_type():
+    """The same mesh flat-shaded: the shading normal of such a texel is the geometric one, so the bake ray, the closures and the light sampling read its NaNs and infinities too."""
+    return zero_area_every_type(False)
+
+
+def raytrace_nodes_scene(s, smooth):
+    """The quad and the four zero-area triangles of ZERO_AREA_TRIANGLES under a blocker; the shader's colour and value AOVs read the
+    Raycast node (default position and direction: sd->P, sd->N) and the Bevel node."""
+    shader = s.create('shader'); diffuse = s.node(shader, 'diffuse_bsdf'); s.set(diffuse, 'color', .5, .5, .5)
+    s.link(diffuse, 'BSDF', s.output(shader), 'Surface')
+    ray = s.node(shader, 'raycast'); s.set(ray, 'length', 2.5)
+    bevel = s.node(shader, 'bevel'); s.set(bevel, 'radius', .3); s.ints(bevel, 'samples', 8)
+    for socket, node, out, kind, name in (('Color', ray, 'Hit Distance', 'aov_color', 'Ray'), ('Value', ray, 'Is Hit', 'aov_value', 'Hit'),
+                                          ('Color', bevel, 'Normal', 'aov_color', 'Bevel')):
+        aov = s.node(shader, 'aov_output'); s.string(aov, 'name', name); s.link(node, out, aov, socket)
+        p = s.create('pass'); s.string(p, 'type', kind); s.string(p, 'name', name)
+    s.string(shader, 'emission_sampling_method', 'none')
+    m = s.mesh(shader, QUAD + ZERO_AREA_POSITIONS, QUAD_TRIANGLES + ZERO_AREA_TRIANGLES, QUAD_UV + ZERO_AREA_ALL_UV)
+    if smooth: s.ints(m, 'smooth', 1, 1, 1, 1, 1, 1)
+    o = s.object(m)
+    blocker = s.mesh(s.diffuse((.4, .4, .4)), (-50., -50., 2., 0., -50., 2., 0., 50., 2., -50., 50., 2.), QUAD_TRIANGLES)
+    s.object(blocker)
+    return o
+
+
+@case
+def zero_area_raytrace_nodes_match_cpu():
+    """The Raycast and Bevel nodes at texels of the zero-area triangles (a point and a segment: NaN normal; two underflow triangles:
+    a normal with infinities), smooth and flat, read out through AOVs on the WebGPU device and on the CPU reference backend: per
+    value the practical criterion, the CPU's non-finite bakes failing alike. Flat, the Raycast node's default direction (sd->N,
+    the geometric normal) and every Bevel ray (disk_N = sd->Ng) have a non-finite x, and scene_intersect and
+    scene_intersect_local (bvh/bvh.h) test intersection_ray_valid (bvh/util.h) first: no hit, so Is Hit reads 0 and Hit
+    Distance the length there; the Bevel node then returns sd->N, whose bake is not finite when flat."""
+    resolved = C.c_uint32()
+    if L.cbc_host_resolve_backend(WEBGPU, C.byref(resolved)) != OK:
+        return 'not compiled'
+    try:
+        Scene(WEBGPU).close()
+    except RuntimeError as error:
+        return f'no WebGPU device here: {error}'
+    rows = []
+    for smooth in (True, False):
+        with Scene(WEBGPU) as gpu, Scene(CPU_REFERENCE) as cpu:
+            a, b = raytrace_nodes_scene(cpu, smooth), raytrace_nodes_scene(gpu, smooth)
+            cpu_map = cpu.map(a, W, H)
+            require(gpu.map(b, W, H) == cpu_map, 'the map differs on the WebGPU host')
+            on_zero_area = [i for i, t in enumerate(cpu_map[0]) if t >= 2]
+            require(on_zero_area, 'no texel on a zero-area triangle')
+            for kind, name in (('aov_color', 'Ray'), ('aov_value', 'Hit'), ('aov_color', 'Bevel')):
+                components = COMPONENTS[kind]; size = W * H * components; results = []
+                for s, target in ((cpu, a), (gpu, b)):
+                    config = s.config(target, kind, W, H, 16, 0, aov=name)
+                    values = (C.c_float * size)(); required, got_components = C.c_uint64(), C.c_uint32()
+                    status = L.cbc_host_bake(s.h, C.byref(config), values, size, C.byref(required), C.byref(got_components))
+                    results.append((status, last_error() if status != OK else '', list(values)))
+                (cpu_status, cpu_message, expected), (gpu_status, gpu_message, actual) = results
+                label = f'{name} {"smooth" if smooth else "flat"}'
+                if cpu_status != OK:
+                    require(cpu_status == FAILED and 'Nonfinite bake output' in cpu_message, f'{label}: the CPU bake: status {cpu_status}: {cpu_message}')
+                    require(gpu_status == FAILED and 'Nonfinite bake output' in gpu_message, f'{label}: the CPU bake is not finite, the WebGPU bake: status {gpu_status}: {gpu_message}')
+                    rows.append(dict(label=label, nonfinite=True))
+                    continue
+                require(gpu_status == OK, f'{label}: the WebGPU bake: status {gpu_status}: {gpu_message}')
+                row = compare(actual, expected, label)
+                row.update(nonfinite=False, zeroAreaTexels=len(on_zero_area),
+                           zeroAreaBitIdentical=sum(all(struct.pack('f', actual[i * components + c]) == struct.pack('f', expected[i * components + c]) for c in range(components)) for i in on_zero_area))
+                rows.append(row)
+    require(sum(1 for r in rows if not r['nonfinite']) >= 5, f'finite bakes: {rows}')
+    return rows
 
 
 @case
@@ -1135,7 +1269,7 @@ def zero_area_triangle_normal():
     """The Normal bake of a zero-area triangle: flat, the kernel writes its not-a-number normal (the WebGPU device stores the same quiet NaN) and the host fails the bake ("Nonfinite bake output") on every backend; smooth, the interpolated normal is defined and both devices bake it."""
     xyz = QUAD + (0.5, 0.5, 0.5)
     tris = QUAD_TRIANGLES + (4, 4, 4)
-    uv = QUAD_UV + (0.9, 0.9, 0.97, 0.9, 0.97, 0.97)
+    uv = QUAD_UV + ZERO_AREA_UV
     rows = []
     for smooth in (False, True):
         with Scene() as s:
@@ -1218,7 +1352,7 @@ def main():
     rows = []
     for function in CASES:
         if args.case not in function.__name__: continue
-        if BACKEND == WEBGPU and (function.__name__ in CPU_ONLY or function.__name__ == 'webgpu_matches_cpu_every_type'): continue
+        if BACKEND == WEBGPU and (function.__name__ in CPU_ONLY or function.__name__ in BOTH_BACKENDS): continue
         started = time.time()
         try:
             detail = function(); passed = True
@@ -1229,7 +1363,7 @@ def main():
         print(('PASS ' if passed else 'FAIL ') + function.__name__ + f' ({rows[-1]["seconds"]} s)' + ('' if passed else ': ' + str(detail)), flush=True)
     passed = all(r['passed'] for r in rows) and bool(rows)
     (out/'status.json').write_text(json.dumps(dict(complete=True, passed=passed, backend=args.backend, cases=len(rows),
-                                                   leftOut=sorted(CPU_ONLY | {'webgpu_matches_cpu_every_type'}) if BACKEND == WEBGPU else [], failed=[r['case'] for r in rows if not r['passed']], rows=rows), indent=1, default=str))
+                                                   leftOut=sorted(CPU_ONLY | BOTH_BACKENDS) if BACKEND == WEBGPU else [], failed=[r['case'] for r in rows if not r['passed']], rows=rows), indent=1, default=str))
     return 0 if passed else 1
 
 

@@ -25,12 +25,12 @@ public enum AttributeFlags : uint
     Subdivision = 2,
 
     /// <summary>
-    /// Provisional; reads only (<c>GetAttribute</c>): the bounding radius Cycles computed for each splat of a Gaussian
+    /// Reads only (<c>GetAttribute</c>): the bounding radius Cycles computed for each splat of a Gaussian
     /// splat cloud (<c>RenderAs</c> <c>GaussianSplats</c>) at the last render or bake, from its opacity and scale, instead
     /// of the authored radius that a read without this flag returns. The name must be <c>radius</c>. A
     /// <see cref="CyclesException"/> with <see cref="NativeStatus.NotReady"/> until a render has computed it for the cloud
     /// as it is (before the first render and after an edit of the cloud); <see cref="NativeStatus.Invalid"/> for any other
-    /// geometry; <see cref="NativeStatus.Unsupported"/> on the WebGPU backend, which does not render splats.
+    /// geometry.
     /// </summary>
     SplatBoundingRadius = 4
 }

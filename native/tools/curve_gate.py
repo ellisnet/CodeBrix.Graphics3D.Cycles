@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Curves on the WebGPU device against the unmodified CPU kernels (Linux): the state gates (closest and opaque shadow
 traversal, curve shader data, motion, BVH2's unaligned nodes on and off; the baked transparency and shadow_all), the image
-gate and its command replays.
+gate and its command replays, and a scene without curves after one with curves on one device.
 Usage: python3 native/tools/curve_gate.py --output DIR [--skip-replay]."""
 import argparse
 import contextlib
@@ -41,6 +41,13 @@ def main():
     assert render.returncode == 0, render.stderr[-2000:]
     report['render'] = json.loads(render.stdout)
     assert report['render']['passed'] and report['render']['cyclesAllocationBytesAfterCleanup'] == 0
+    # A scene without curves after one with curves on one device builds a new device's pipelines (native/DEVICE.md 266).
+    free = subprocess.run([str(WORK/'cycles-build/bin/codebrix_cycles_curve_render_gate'), str(out/'curve-free'), 'curve-free'], capture_output=True, text=True, timeout=1500)
+    (out/'curve-free.stderr.txt').write_text(free.stderr)
+    (out/'curve-free.json').write_text(free.stdout)
+    assert free.returncode == 0, free.stderr[-2000:]
+    report['curve-free'] = json.loads(free.stdout)
+    assert report['curve-free']['passed'] and report['curve-free']['rendered'] and report['curve-free']['pipelinesCompared'] > 0
     if not args.skip_replay:
         render_replay.build('linux-x64')
         for case in range(report['render']['cases']):

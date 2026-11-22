@@ -6,7 +6,7 @@
 // Modified from Cycles: selected surface integration, BSDF mixtures, native
 // path-state updates and film writes in WGSL. See native/THIRD-PARTY-NOTICES.txt.
 //#if !SVM_BSDF_FAMILIES
-//#if SVM_BSDF_PRINCIPLED else fn surf_diffuse(kind:u32)->bool{return kind==CLOSURE_BSDF_DIFFUSE_ID||kind==CLOSURE_BSDF_OREN_NAYAR_ID||kind==CLOSURE_BSDF_TRANSLUCENT_ID;}
+//#if SVM_BSDF_SHEEN_CLOSURE else fn surf_diffuse(kind:u32)->bool{return kind==CLOSURE_BSDF_DIFFUSE_ID||kind==CLOSURE_BSDF_OREN_NAYAR_ID||kind==CLOSURE_BSDF_TRANSLUCENT_ID;}
 // CLOSURE_IS_BSDF_DIFFUSE also covers the Principled sheen closure.
 //#if SVM_BSDF_THIN_SUBSURFACE else fn surf_diffuse(kind:u32)->bool{return kind==CLOSURE_BSDF_DIFFUSE_ID||kind==CLOSURE_BSDF_OREN_NAYAR_ID||kind==CLOSURE_BSDF_TRANSLUCENT_ID||kind==CLOSURE_BSDF_SHEEN_ID;}
 // ... and the rough translucent closure of a thin wall's subsurface lobe.
@@ -108,7 +108,7 @@ fn surf_evaluate_closure(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
 //#endif
 //#endif
     }
-//#if SVM_BSDF_PRINCIPLED
+//#if SVM_BSDF_SHEEN_CLOSURE
     if(c.kind==CLOSURE_BSDF_SHEEN_ID){let value=sheen_evaluate(c,wo);return vec4<f32>(vec3<f32>(value*bump),value);}
 //#endif
     let cosine=select(rounded_dot(c.N,wo),-rounded_dot(c.N,wo),c.kind==CLOSURE_BSDF_TRANSLUCENT_ID);let pdf=max(cosine,0.0)*INV_PI;
@@ -218,7 +218,7 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#endif
 //#endif
     }
-//#if SVM_BSDF_PRINCIPLED
+//#if SVM_BSDF_SHEEN_CLOSURE
 //#if CURVES else     else if(c.kind==CLOSURE_BSDF_SHEEN_ID){out=sheen_sample(sd,c,disk);value=out.eval;shade_terminator=true;}
     else if(c.kind==CLOSURE_BSDF_SHEEN_ID){out=sheen_sample(surf_sample_data(sd,c),c,disk);value=out.eval;shade_terminator=true;}
 //#endif
@@ -231,8 +231,18 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
         let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID||rough_translucent;let sampled=surface_cos_hemisphere_disk(select(c.N,-c.N,c.kind==CLOSURE_BSDF_TRANSLUCENT_ID),disk);
 //#endif
         out.wo=sampled.xyz;out.pdf=sampled.w;out.label=LABEL_DIFFUSE|select(LABEL_REFLECT,LABEL_TRANSMIT,transmission);
+//#if !BAKE_ZERO_AREA
 //#if CURVES else         let valid=select(dot(sd.Ng,out.wo)>0.0,dot(sd.Ng,out.wo)<0.0,transmission);
         let sample_Ng=surf_sample_data(sd,c).Ng;let valid=select(dot(sample_Ng,out.wo)>0.0,dot(sample_Ng,out.wo)<0.0,transmission);
+//#endif
+//#endif
+//#if BAKE_ZERO_AREA
+        // bsdf_diffuse_sample, bsdf_oren_nayar_sample: `if (dot(Ng, *wo) > 0.0f)`; bsdf_translucent_sample: `if (dot(Ng, *wo) < 0)`,
+        // at the normal of a zero-area bake texel (both false for a NaN: the sample is then invalid).
+//#if CURVES else         let sample_Ng=sd.Ng;
+        let sample_Ng=surf_sample_data(sd,c).Ng;
+//#endif
+        let valid=select(zero_area_less(0.0,zero_area_plain_dot(sample_Ng,out.wo)),zero_area_less(zero_area_plain_dot(sample_Ng,out.wo),0.0),transmission);
 //#endif
 //#if SVM_BSDF_THIN_SUBSURFACE else         if(valid){value=vec3<f32>(out.pdf);if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){value=surf_oren(c,sd.wi,out.wo);}
         if(valid){value=vec3<f32>(out.pdf);if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){value=surf_oren(c,sd.wi,out.wo);}
@@ -256,7 +266,7 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#endif
             // _surface_shader_bsdf_eval_mis: every product rounded before its sum (no
             // driver contraction) and correctly rounded scalar quotients, as on the host.
-//#if SVM_NODE_TANGENT else             let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
+//#if NAN_CLOSURE else             let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
             // bsdf_pdf != 0.0f is true for a NaN pdf (integrator/surface_shader.h _surface_shader_bsdf_eval_mis; a closure with a NaN tangent or normal, native/DEVICE.md, items 150 and 210): on the bits.
             let e=surf_evaluate(sd,other,out.wo);if((bitcast<u32>(e.w)&0x7fffffffu)!=0u){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
 //#endif
@@ -296,7 +306,7 @@ fn surf_sample_mis(sd:SurfaceData,r:SvmResult,sampled:SurfaceSample)->SurfaceSam
 //#endif
             // _surface_shader_bsdf_eval_mis: every product rounded before its sum (no
             // driver contraction) and correctly rounded scalar quotients, as on the host.
-//#if SVM_NODE_TANGENT else             let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
+//#if NAN_CLOSURE else             let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
             // bsdf_pdf != 0.0f is true for a NaN pdf (integrator/surface_shader.h _surface_shader_bsdf_eval_mis; a closure with a NaN tangent or normal, native/DEVICE.md, items 150 and 210): on the bits.
             let e=surf_evaluate(sd,other,out.wo);if((bitcast<u32>(e.w)&0x7fffffffu)!=0u){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
 //#endif
@@ -398,6 +408,28 @@ fn surf_ray_offset_at(sd:SurfaceData,P:vec3<f32>,direction:vec3<f32>)->vec3<f32>
     var pos=P;var dir=direction;if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){pos=surface_object_point(sd,pos,true);dir=surface_object_direction(sd,dir,true);}
     let vertices=native_triangle_vertices(sd.object_id,sd.prim,sd.primitive_type,sd.time);
     let a=vertices.a-pos;let b=vertices.b-pos;let c=vertices.c-pos;
+//#if BAKE_ZERO_AREA
+    // ray_offset (kernel/bvh/util.h) with the normal of a zero-area bake texel. `(int)(int_scale * Ng.x)` of a NaN or an
+    // infinity is INT_MIN on the x86-64 oracle (cvttss2si); on ARM64 (fcvtzs) it is 0 for a NaN, INT_MAX for +infinity and
+    // INT_MIN for -infinity. Added to the float's bits (negated first for a negative component; INT_MIN's negation is
+    // INT_MIN), INT_MIN flips the sign bit and 0 leaves the component. `fabsf(P.x) < origin ? P.x + float_scale * Ng.x :
+    // p_i.x`: a component within 1/32 of zero takes the normal's lane (the NaN, or the infinity).
+    if(zero_area_not_finite(sd.Ng.x)){
+        // ray_triangle_intersect_self first. On such a triangle U, V and W are zero or rounding residues that cancel, so the
+        // result hangs on single bits: the oracle's products and sums one by one (exact_tri_cross, exact_tri_dot), and its
+        // min, max and comparisons, which a NaN direction (a sample about a NaN normal) fails.
+        let eu=exact_tri_dot(exact_tri_cross(c+a,c-a),dir);let ev=exact_tri_dot(exact_tri_cross(a+b,a-b),dir);let ew=exact_tri_dot(exact_tri_cross(b+c,b-c),dir);
+        let ee=1.1920928955078125e-7*abs(eu+ev+ew);
+        if(zero_area_less_equal(ee,zero_area_min(eu,zero_area_min(ev,ew)))||zero_area_less_equal(zero_area_max(eu,zero_area_max(ev,ew)),-ee)){return P;}
+        var add=vec3<u32>(0x80000000u);
+        if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){
+            let lanes=bitcast<vec3<u32>>(sd.Ng);
+            let amount=select(select(vec3<u32>(0x7fffffffu),vec3<u32>(0x80000000u),(lanes&vec3<u32>(0x80000000u))!=vec3<u32>(0u)),vec3<u32>(0u),(lanes&vec3<u32>(0x7fffffffu))>vec3<u32>(0x7f800000u));
+            add=select(amount,vec3<u32>(0u)-amount,P<vec3<f32>(0));
+        }
+        return select(bitcast<vec3<f32>>(bitcast<vec3<u32>>(P)+add),sd.Ng,abs(P)<vec3<f32>(1.0/32.0));
+    }
+//#endif
     let u=c_ray_triangle_dot(c_ray_triangle_cross(c+a,c-a),dir);let v=c_ray_triangle_dot(c_ray_triangle_cross(a+b,a-b),dir);let w=c_ray_triangle_dot(c_ray_triangle_cross(b+c,b-c),dir);
     let eps=1.1920928955078125e-7*abs(u+v+w);if(min(u,min(v,w))>=eps||max(u,max(v,w))<=-eps){return P;}
     let amount=vec3<i32>(256.0*sd.Ng);let bits=bitcast<vec3<i32>>(P)+select(amount,-amount,P<vec3<f32>(0));
@@ -557,6 +589,10 @@ fn surface_prepare(id:vec3<u32>){
     let group=load_word(object+O_lightgroup);let go=data_word(D_film_pass_lightgroup);if(group!=NONE&&go!=PASS_NONE&&(group>=stride/3u||go>stride-3u*(group+1u))){fail();return;}
     if(volume_enabled()&&(sd.shader_flag&VS_HAS_VOLUME)!=0u){if(volume_stack_count(index)==NONE){return;}}
     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)!=0u){var empty:SvmResult;surface_stage_write(p(24u)+id.x*SURFACE_STAGE_BYTES,sd,empty);return;}
+//#if DISPERSION
+    // shader_setup_wavelength (integrate_surface_shader_setup): the wavelength sample of this evaluation, in every stage of it.
+    if((sd.shader_flag&DISP_SD_REQUIRES_WAVELENGTH)!=0u){disp_setup_wavelength(index);}
+//#endif
 //#if !SVM_STAGE_NO_NODES
 //#if SUBSURFACE
     // The subsurface exit point (ss_exit): the shader runs only for a bump-mapped BSSRDF normal, through this
@@ -579,6 +615,11 @@ fn surface_prepare(id:vec3<u32>){
     fail();
 //#endif
 //#if !SVM_STAGE_NO_NODES
+//#if DISPERSION
+    // integrate_surface, after the shader evaluation: the path is monochromatic from its first dispersive closure on
+    // (update_path_throughput_for_dispersion), before anything of this stage reads the throughput.
+    if((r.runtime_flag&DISP_SR_BSDF_HAS_DISPERSION)!=0u){disp_update_path_throughput(index);}
+//#endif
 //#if SUBSURFACE
     if(ss_exit_point){ss_exit(id.x,sd,r,true);return;}
 //#endif
@@ -795,9 +836,18 @@ fn surface_light_combined(li:SurfaceLightInputs){
     let dedicated_emitter=(state_byte(S_path_visibility,index)&VIS_CAMERA)==0u&&!shadow_link_membership_all(sd.object_id);
     let dedicated_flag=r.runtime_flag;if(dedicated_emitter){r.runtime_flag&=~SR_EMISSION;}
 //#endif
+//#if !BAKE_ZERO_AREA
 //#if LIGHT_LINKING else if((r.runtime_flag&SR_EMISSION)!=0u){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,abs(dot(sd.Ng,sd.wi))>0.0),heap_float(at+304u));}
     // integrate_surface_emission: an indirect ray sees only emitters linked to its receiver.
     if((r.runtime_flag&SR_EMISSION)!=0u&&light_link_forward_visible(index,sd.object_id)){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,abs(dot(sd.Ng,sd.wi))>0.0),heap_float(at+304u));}
+//#endif
+//#endif
+//#if BAKE_ZERO_AREA
+//#if LIGHT_LINKING else if((r.runtime_flag&SR_EMISSION)!=0u){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,zero_area_less(0.0,abs(zero_area_plain_dot(sd.Ng,sd.wi)))),heap_float(at+304u));}
+    // integrate_surface_emission: an indirect ray sees only emitters linked to its receiver. emissive_pdf (closure/emissive.h):
+    // `(cosNI > 0.0f) ? 1.0f : 0.0f` at the normal of a zero-area bake texel: 0 for a NaN dot product, 1 for an infinite one.
+    if((r.runtime_flag&SR_EMISSION)!=0u&&light_link_forward_visible(index,sd.object_id)){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,zero_area_less(0.0,abs(zero_area_plain_dot(sd.Ng,sd.wi)))),heap_float(at+304u));}
+//#endif
 //#endif
 //#if SHADOW_LINKING
     r.runtime_flag=dedicated_flag;
@@ -892,7 +942,11 @@ fn surf_safe_divide3(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
     var out=vec3<f32>(0);let count=rounded_steps(3u);
     for(var k=0u;k<count;k++){
         let d=select(select(b.z,b.y,k==1u),b.x,k==0u);
-        let q=select(0.0,rounded_divide(select(select(a.z,a.y,k==1u),a.x,k==0u),d),d!=0.0);
+//#if BAKE_ZERO_AREA else         let q=select(0.0,rounded_divide(select(select(a.z,a.y,k==1u),a.x,k==0u),d),d!=0.0);
+        // safe_divide's `(b.x != 0.0f) ? a.x / b.x : 0.0f` is the division for a NaN divisor (bsdf_eval_pass_diffuse_weight and
+        // bsdf_eval_pass_glossy_weight of a sample whose value is a NaN, at a zero-area bake texel): the test on the bits.
+        let q=select(0.0,rounded_divide(select(select(a.z,a.y,k==1u),a.x,k==0u),d),(bitcast<u32>(d)&0x7fffffffu)!=0u);
+//#endif
         out=select(out,vec3<f32>(q),vec3<u32>(0u,1u,2u)==vec3<u32>(k));
     }
     return out;

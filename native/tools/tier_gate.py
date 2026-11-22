@@ -27,7 +27,7 @@ import time
 from pathlib import Path
 
 from build import REPO, ROOT, WORK
-from device_gate import sha, save
+from device_gate import sha, save, require_built
 
 UNKNOWN = 'TestVendor|testarch|CodeBrix Test GPU|Test driver 1.0'
 UNKNOWN_B = 'TestVendor|testarch|CodeBrix Test GPU B|Test driver 1.0'
@@ -121,6 +121,7 @@ def main():
                 subprocess.run([sys.executable, ROOT/'tools/build_cycles.py', '--jobs', args.jobs, '--target', 'codebrix_cycles_host',
                                 '--target', 'codebrix_host_tier_test', '--target', 'codebrix_host_session_reference'],
                                stdout=stdout, stderr=stderr, check=True, timeout=1800)
+        else: require_built([], targets={library: 'codebrix_cycles_host', binary/'codebrix_host_tier_test': 'codebrix_host_tier_test', binary/'codebrix_host_session_reference': 'codebrix_host_session_reference'})
         pins = {str(p): sha(p) for p in [library, binary/'codebrix_host_tier_test', binary/'codebrix_host_session_reference']}
         save(out/'binary-pins.json', pins)
         # Independent original native CPU session for the same fixture (round 0).

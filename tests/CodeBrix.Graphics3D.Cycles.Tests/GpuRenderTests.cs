@@ -236,7 +236,8 @@ public class GpuRenderTests(ITestOutputHelper output)
     }
 
     // The integer and component nodes with a linked input (a constant one is folded away before the device sees it):
-    // every backend renders them, and the WebGPU film is judged against the CPU film.
+    // every backend renders them, and the GPU film is judged against the authority for this GPU (the CPU film for WebGPU,
+    // the recorded Metal reference for Metal).
     [Theory]
     [InlineData("Boolean Math")]
     [InlineData("Integer Math")]
@@ -288,10 +289,7 @@ public class GpuRenderTests(ITestOutputHelper output)
         onCpu.Span.ToArray().All(float.IsFinite).Should().BeTrue();
         // The emitter the node drives is in the picture: the film is not the scene's without it.
         onCpu.Span.SequenceEqual(RenderCpu(WebGpuValidationScenes.DiffuseSun).Span).Should().BeFalse();
-        // Cycles' Metal device is judged against recorded Metal references, and none is recorded for these three scenes:
-        // there the render must succeed and be finite.
-        if (gpu.Backend == Backend.Metal) film.Span.ToArray().All(float.IsFinite).Should().BeTrue();
-        else Judge(gpu, "integer-and-component-nodes-" + node.Replace(' ', '-').ToLowerInvariant(), film, onCpu).PracticalFailures.Should().Be(0);
+        Judge(gpu, "integer-and-component-nodes-" + node.Replace(' ', '-').ToLowerInvariant(), film, onCpu).PracticalFailures.Should().Be(0);
     }
 
     // A small quad whose material samples a 16385 x 1 image, which Cycles' Metal device rejects.
@@ -1471,11 +1469,10 @@ public class GpuRenderTests(ITestOutputHelper output)
         return (quad, points);
     }
 
-    // Quaternion and spherical-harmonics attributes (provisional value kinds) render on Cycles' Metal device, judged against
-    // its recorded reference; the WGSL device has no tables for them and refuses a scene that reads either, by name, until
-    // neither is read (RENDER-TIME REJECTIONS).
+    // Quaternion and spherical-harmonics attributes render on the GPU backends, judged against the backend's authority: the
+    // quaternion is fetched and interpolated as on the CPU, the coefficients read black with alpha 1.
     [Fact]
-    public async Task quaternion_and_spherical_harmonics_attributes_render_on_metal_and_are_refused_by_name_on_webgpu()
+    public async Task quaternion_and_spherical_harmonics_attributes_render_on_the_gpu_backends()
     {
         //Arrange
         RenderSettings settings = new(48, 32, 8);
@@ -1484,35 +1481,34 @@ public class GpuRenderTests(ITestOutputHelper output)
         using CyclesScene cpu = TestScenes.CreateCpuScene();
         BuildAttributeKinds(cpu);
         FilmBuffer reference = cpu.Render(settings);
-        Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
 
-        //Act / Assert
+        //Act
+        FilmBuffer film = await gpu.RenderAsync(settings, null, Token);
+
+        //Assert
         reference.Span.ToArray().Where((value, index) => index % 4 == 0).Distinct().Count().Should().BeGreaterThan(10);
-        if (gpu.Backend == Backend.WebGpu)
-        {
-            (await render.Should().ThrowAsync<NativeFailure>()).Which.Message.Should().Contain("WebGPU quaternion attributes not implemented");
-            quad.RemoveAttribute("q");
-            points.RemoveAttribute("q");
-            (await render.Should().ThrowAsync<NativeFailure>()).Which.Message.Should().Contain("WebGPU spherical harmonics attributes not implemented");
-            quad.RemoveAttribute("sh");
-            points.RemoveAttribute("sh");
-            (await render()).Span.ToArray().All(float.IsFinite).Should().BeTrue();
-            return;
-        }
-        FilmBuffer film = await render();
         Judge(gpu, "attribute-quaternion-spherical-harmonics", film, reference).PracticalFailures.Should().Be(0);
+        gpu.IsFaulted.Should().BeFalse();
+        if (gpu.Backend != Backend.WebGpu) return;
+        // The WGSL device takes the attribute tables from each render's scene: without the attributes it renders the
+        // Attribute nodes' Missing values.
+        foreach (string name in new[] { "q", "sh" })
+        {
+            quad.RemoveAttribute(name);
+            points.RemoveAttribute(name);
+        }
+        (await gpu.RenderAsync(settings, null, Token)).Span.ToArray().All(float.IsFinite).Should().BeTrue();
         gpu.IsFaulted.Should().BeFalse();
     }
 
-    // Provisional (decision 23): a quaternion on the CurveKey, Curve and Mesh domains of a thick curve covering the view,
-    // read by an Attribute node as an emission (GeometryAttributeTests' output scene, one sample): on Metal each output
-    // pixel holds the quaternion's w, x, y (Color), their average (Fac) and z (Alpha) as on the CPU; on WebGPU the device
-    // refuses the attribute table by name.
+    // A quaternion on the CurveKey, Curve and Mesh domains of a thick curve covering the view, read by an Attribute node as
+    // an emission (GeometryAttributeTests' output scene, one sample): on the GPU backends each output pixel holds the
+    // quaternion's w, x, y (Color), their average (Fac) and z (Alpha) as on the CPU.
     [Theory]
     [InlineData("curves-key")]
     [InlineData("curves-curve")]
     [InlineData("curves-mesh")]
-    public async Task quaternion_attributes_on_curves_render_on_metal_like_the_cpu_and_are_refused_by_name_on_webgpu(string domain)
+    public async Task quaternion_attributes_on_curves_render_on_the_gpu_backends_like_the_cpu(string domain)
     {
         //Arrange
         float[] q = [.625f, .25f, .375f, .8125f];
@@ -1527,15 +1523,9 @@ public class GpuRenderTests(ITestOutputHelper output)
             using CyclesScene cpu = TestScenes.CreateCpuScene();
             GeometryAttributeTests.BuildOutputScene(cpu, placed, "q", socket);
             FilmBuffer reference = cpu.Render(settings);
-            Func<Task<FilmBuffer>> render = () => gpu.RenderAsync(settings, null, Token);
-            if (gpu.Backend == Backend.WebGpu)
-            {
-                (await render.Should().ThrowAsync<NativeFailure>()).Which.Message.Should().Contain("WebGPU quaternion attributes not implemented");
-                continue;
-            }
-            FilmBuffer film = await render();
+            FilmBuffer film = await gpu.RenderAsync(settings, null, Token);
             FilmComparison comparison = FilmComparison.Compare(film.Span, reference.Span);
-            output.WriteLine($"{domain}, {socket}: Metal vs CPU {comparison}");
+            output.WriteLine($"{domain}, {socket}: {gpu.Backend} vs CPU {comparison}");
             float[] centre = GeometryAttributeTests.Centre(film);
             centre.Should().Equal(GeometryAttributeTests.Centre(reference));
             if (socket == "Color") centre.Should().Equal(q[0], q[1], q[2]);
@@ -1545,7 +1535,7 @@ public class GpuRenderTests(ITestOutputHelper output)
         }
     }
 
-    // The lit triangle scene with two Gaussian splat clouds in front of it (provisional standard attributes radiance:base,
+    // The lit triangle scene with two Gaussian splat clouds in front of it (standard attributes radiance:base,
     // scale and rotation): one with Cycles' default splat shader (an emission of the radiance of band 0), one with bands 1
     // to 3 (radiance:sh) and a caller shader that reads the radiance as a diffuse colour plus an emission, on a rotated and
     // uniformly scaled single-user object (never baked: splats stay in object space).
@@ -1587,11 +1577,11 @@ public class GpuRenderTests(ITestOutputHelper output)
         return clouds;
     }
 
-    // Gaussian splats (a point cloud rendered as splats, with the provisional standard attributes) render on Cycles' Metal
-    // device, judged against its recorded reference; the WGSL device does not implement them and the host refuses them
-    // there by the device's own words until the clouds render as points (RENDER-TIME REJECTIONS).
+    // Gaussian splats (a point cloud rendered as splats, with the standard attributes) render on the GPU backends, each
+    // judged against its reference; rendered as points afterwards, the same clouds still render (the device takes the
+    // splat feature from each render's scene).
     [Fact]
-    public async Task gaussian_splats_render_on_metal_and_are_refused_by_name_on_webgpu()
+    public async Task gaussian_splats_render_on_the_gpu_backends()
     {
         //Arrange
         RenderSettings settings = new(48, 32, 8);
@@ -1604,27 +1594,20 @@ public class GpuRenderTests(ITestOutputHelper output)
 
         //Act / Assert
         reference.Span.ToArray().Where((value, index) => index % 4 == 0).Distinct().Count().Should().BeGreaterThan(10);
-        if (gpu.Backend == Backend.WebGpu)
-        {
-            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
-            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
-            refused.Message.Should().Contain("WebGPU Gaussian splats not implemented");
-            foreach (PointCloudNode cloud in clouds) cloud.RenderAs = PointCloudRenderAs.Points;
-            (await render()).Span.ToArray().All(float.IsFinite).Should().BeTrue();
-            return;
-        }
         FilmBuffer film = await render();
         Judge(gpu, "gaussian-splats", film, reference).PracticalFailures.Should().Be(0);
         gpu.IsFaulted.Should().BeFalse();
         clouds[1].GetAttribute("radius").Should().Equal(Enumerable.Repeat(.1f, 20).ToArray());
+        foreach (PointCloudNode cloud in clouds) cloud.RenderAs = PointCloudRenderAs.Points;
+        (await render()).Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        gpu.IsFaulted.Should().BeFalse();
     }
 
-    // Provisional (AttributeFlags.SplatBoundingRadius): the bounding radius of each splat, which Cycles' device update
-    // computes on the host for every device (PointCloud::update_gsplat_radii), reads on Metal after a render bit for bit as
-    // on the CPU and as GaussianSplatTests.BoundingRadii computes it, and is not ready before; the WebGPU backend, which
-    // renders no splats, refuses the read by name.
+    // AttributeFlags.SplatBoundingRadius: the bounding radius of each splat, which Cycles' device update computes on the
+    // host for every device (PointCloud::update_gsplat_radii), reads on the GPU backends after a render bit for bit as on
+    // the CPU and as GaussianSplatTests.BoundingRadii computes it, and is not ready before.
     [Fact]
-    public async Task the_splat_bounding_radius_reads_on_metal_as_on_the_cpu_and_is_refused_by_name_on_webgpu()
+    public async Task the_splat_bounding_radius_reads_on_the_gpu_backends_as_on_the_cpu()
     {
         //Arrange
         RenderSettings settings = new(48, 32, 4);
@@ -1636,13 +1619,6 @@ public class GpuRenderTests(ITestOutputHelper output)
         Func<float[]> bounds = () => clouds[1].GetAttribute("radius", AttributeFlags.SplatBoundingRadius);
 
         //Act / Assert
-        if (gpu.Backend == Backend.WebGpu)
-        {
-            NativeFailure refused = bounds.Should().Throw<NativeFailure>().Which;
-            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
-            refused.Message.Should().Contain("WebGPU Gaussian splats not implemented");
-            return;
-        }
         bounds.Should().Throw<NativeFailure>().Which.NativeStatus.Should().Be(NativeStatus.NotReady);
         (await gpu.RenderAsync(settings, null, Token)).Span.ToArray().All(float.IsFinite).Should().BeTrue();
         for (int c = 0; c < 2; c++)
@@ -1688,6 +1664,41 @@ public class GpuRenderTests(ITestOutputHelper output)
         texture.BindTiles(tiles);
         foreach (UdimTile tile in tiles[1..]) tile.Image.Dispose();
         return (texture, tiles[0].Image);
+    }
+
+    // Dispersion (a Principled BSDF with TransmissionDispersionScale and TransmissionWeight set) renders on the GPU
+    // backend, judged against its authority (the recorded reference on Cycles' Metal device, the CPU film on the WebGPU
+    // device); the CPU film differs from the same material without dispersion, so the scene does disperse.
+    private static PrincipledBsdfNode BuildDispersive(CyclesScene scene)
+    {
+        (ShaderNode material, _, _) = TestScenes.BuildTyped(scene);
+        PrincipledBsdfNode principled = material.Add<PrincipledBsdfNode>();
+        material.Connect(principled.BsdfOutput, material.Output.SurfaceInput);
+        principled.TransmissionDispersionScale = .5f;
+        principled.TransmissionWeight = 1f;
+        return principled;
+    }
+
+    [Fact]
+    public async Task dispersion_renders_on_the_gpu_backend()
+    {
+        //Arrange
+        RenderSettings settings = new(32, 24, 8);
+        using CyclesScene gpu = CreateGpuScene();
+        BuildDispersive(gpu);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        PrincipledBsdfNode principled = BuildDispersive(cpu);
+        FilmBuffer reference = cpu.Render(settings);
+        principled.TransmissionDispersionScale = 0f;
+        FilmBuffer withoutDispersion = cpu.Render(settings);
+
+        //Act
+        FilmBuffer film = await gpu.RenderAsync(settings, null, Token);
+
+        //Assert
+        reference.Span.SequenceEqual(withoutDispersion.Span).Should().BeFalse();
+        film.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        Judge(gpu, "dispersion", film, reference).PracticalFailures.Should().Be(0);
     }
 
     // UDIM tiles (provisional cbc_host_image_bind_tiles) render on the GPU backend, judged against its authority (the
@@ -1991,29 +2002,25 @@ public class GpuRenderTests(ITestOutputHelper output)
         cpuReader.Reads.Select(r => r.Level).Distinct().Should().Equal(0);
         cpuReader.Reads.Count.Should().BeGreaterThan(1);
         cpuFilm.Span.SequenceEqual(cpuPlainFilm.Span).Should().BeTrue();
-        if (gpu.Backend == Backend.WebGpu)
-        {
-            NativeFailure refused = (await ((Func<Task<FilmBuffer>>)(() => gpu.RenderAsync(settings, null, Token))).Should().ThrowAsync<NativeFailure>()).Which;
-            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
-            return;
-        }
         FilmBuffer film = await gpu.RenderAsync(settings, null, Token), plainFilm = await gpuPlain.RenderAsync(settings, null, Token);
-        FilmComparison comparison = FilmComparison.Compare(film.Span, plainFilm.Span);
-        output.WriteLine($"{variant}, Metal: tiled image vs plain image {comparison}; vs the CPU's tiled image {FilmComparison.Compare(film.Span, cpuFilm.Span)}; " +
+        FilmComparison comparison = FilmComparison.Compare(film.Span, plainFilm.Span), versusCpu = FilmComparison.Compare(film.Span, cpuFilm.Span);
+        output.WriteLine($"{variant}, {gpu.Backend}: tiled image vs plain image {comparison}; vs the CPU's tiled image {versusCpu}; " +
             $"{reader.Reads.Count} reads, levels {string.Join(",", reader.Reads.Select(r => r.Level).Distinct().Order())}");
         reader.Reads.Select(r => r.Level).Distinct().Should().Equal(0);
         reader.Reads.Count.Should().BeGreaterThan(1);
         comparison.BitwiseEqual.Should().BeTrue();
+        // The WebGPU backend's judge is the CPU film (the reference policy); Metal's comparison with it is reported.
+        if (gpu.Backend == Backend.WebGpu) versusCpu.PracticalFailures.Should().Be(0);
         gpu.IsFaulted.Should().BeFalse();
     }
 
-    // Tiled images (provisional CyclesScene.CreateTiledImage, Cycles' texture cache) on Cycles' Metal device, whose cache
-    // misses restart the path and load the requested tiles between kernel steps: judged against the recorded Metal
-    // reference, CPU comparison reported; a reader that throws fails the Metal render by name and the next render reads
-    // the tile again. The host refuses a tiled image on the WebGPU backend by name (its capability entry "sparse or tiled
-    // images", RENDER-TIME REJECTIONS).
+    // Tiled images (provisional CyclesScene.CreateTiledImage, Cycles' texture cache) on the GPU backend, where a lookup of a
+    // tile that is not loaded has the tile loaded between kernel steps (Cycles' Metal device restarts the path, the WebGPU
+    // device runs the kernel again): judged by the reference policy (on Metal against its recorded reference, the CPU
+    // comparison reported; on WebGPU against the CPU film); a reader that throws fails the render by name and the next
+    // render reads the tile again.
     [Fact]
-    public async Task tiled_images_render_on_metal_and_are_refused_by_name_on_webgpu()
+    public async Task tiled_images_render_on_the_gpu_backend()
     {
         //Arrange
         RenderSettings settings = new(48, 32, 8);
@@ -2027,16 +2034,8 @@ public class GpuRenderTests(ITestOutputHelper output)
         //Act / Assert
         reference.Span.ToArray().Where((value, index) => index % 4 == 0).Distinct().Count().Should().BeGreaterThan(10);
         cpuReader.Reads.Select(r => r.Level).Distinct().Count().Should().BeGreaterThan(1);
-        if (gpu.Backend == Backend.WebGpu)
-        {
-            NativeFailure refused = (await render.Should().ThrowAsync<NativeFailure>()).Which;
-            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
-            refused.Message.Should().Contain("WebGPU tiled images not implemented");
-            reader.Reads.Should().BeEmpty();
-            return;
-        }
         FilmBuffer film = await render();
-        output.WriteLine($"Metal tiled image: {reader.Reads.Count} reads, levels {string.Join(",", reader.Reads.Select(r => r.Level).Distinct().Order())}; CPU {cpuReader.Reads.Count} reads");
+        output.WriteLine($"{gpu.Backend} tiled image: {reader.Reads.Count} reads, levels {string.Join(",", reader.Reads.Select(r => r.Level).Distinct().Order())}; CPU {cpuReader.Reads.Count} reads");
         Judge(gpu, "tiled-image", film, reference).PracticalFailures.Should().Be(0);
         reader.Overlapped.Should().BeFalse();
         reader.Reads.Select(r => r.Level).Distinct().Count().Should().BeGreaterThan(1);
@@ -2051,14 +2050,15 @@ public class GpuRenderTests(ITestOutputHelper output)
         failure.Message.Should().Contain("the tile reader failed");
         failingReader.Fail = null;
         FilmComparison retried = FilmComparison.Compare((await failing.RenderAsync(settings, null, Token)).Span, film.Span);
-        output.WriteLine($"Metal, the render after a failed read vs the first Metal film: {retried}");
+        output.WriteLine($"{gpu.Backend}, the render after a failed read vs the first film: {retried}");
         retried.PracticalFailures.Should().Be(0);
     }
 
-    // Provisional tile sizes on Cycles' Metal device, at each size it takes (64 and 128: its tile pool of 64 tiles of
-    // size + 4 pixels is at most 16384 wide): the mip levels selected by the footprint equal plain images of the level
-    // colours, and a magnified pattern across a tile edge equals the same pixels bound plainly, each bit for bit on Metal
-    // (the CPU comparison reported); 256 is refused by name. On WebGPU the image is created and its render refused.
+    // Provisional tile sizes on the GPU backend, at each size Cycles' Metal device takes (64 and 128: its tile pool of 64
+    // tiles of size + 4 pixels is at most 16384 wide): the mip levels selected by the footprint equal plain images of the
+    // level colours, and a magnified pattern across a tile edge equals the same pixels bound plainly, each bit for bit on
+    // Metal and within the practical criterion on WebGPU (whose films are not bit for bit repeatable; the CPU comparison
+    // reported); on Metal 256 is refused by name.
     [Theory]
     [InlineData(64)]
     [InlineData(128)]
@@ -2070,20 +2070,14 @@ public class GpuRenderTests(ITestOutputHelper output)
         Func<Task<FilmBuffer>> renderStrip = () => strip.RenderAsync(TiledImageTests.StripSettings, null, Token);
 
         //Act / Assert
-        if (strip.Backend == Backend.WebGpu)
-        {
-            NativeFailure refused = (await renderStrip.Should().ThrowAsync<NativeFailure>()).Which;
-            refused.NativeStatus.Should().Be(NativeStatus.Unsupported);
-            refused.Message.Should().Contain("WebGPU tiled images not implemented");
-            stripReader.Reads.Should().BeEmpty();
-            return;
-        }
+        bool exact = strip.Backend != Backend.WebGpu;
         FilmBuffer film = await renderStrip();
         using CyclesScene colors = CreateGpuScene();
         FilmBuffer plainColors = TiledImageTests.StripOfColors(colors, 0, 1, 2, 3);
-        output.WriteLine($"Metal tile size {tileSize}: strip vs plain level colours {FilmComparison.Compare(film.Span, plainColors.Span)}; " +
+        output.WriteLine($"{strip.Backend} tile size {tileSize}: strip vs plain level colours {FilmComparison.Compare(film.Span, plainColors.Span)}; " +
             $"{stripReader.Reads.Count} reads, levels {string.Join(",", stripReader.Reads.Select(r => r.Level).Distinct().Order())}, widest {stripReader.Reads.Max(r => r.Width)}");
-        film.Span.SequenceEqual(plainColors.Span).Should().BeTrue();
+        if (exact) film.Span.SequenceEqual(plainColors.Span).Should().BeTrue();
+        else FilmComparison.Compare(film.Span, plainColors.Span).PracticalFailures.Should().Be(0);
         stripReader.Reads.Select(r => r.Level).Distinct().Order().Should().Equal(0, 1, 2, 3);
         stripReader.Reads.Max(r => r.Width).Should().BeInRange(tileSize + 1, tileSize + 4);
 
@@ -2093,17 +2087,21 @@ public class GpuRenderTests(ITestOutputHelper output)
         (FilmBuffer tiled, TiledImageTests.LevelReader reader) = TiledImageTests.TileSizePattern(tiledScene, tileSize, true);
         using CyclesScene cpuScene = TestScenes.CreateCpuScene();
         (FilmBuffer cpu, _) = TiledImageTests.TileSizePattern(cpuScene, tileSize, true);
-        output.WriteLine($"Metal tile size {tileSize}: tiled vs plain {FilmComparison.Compare(tiled.Span, plain.Span)}; tiled vs CPU tiled {FilmComparison.Compare(tiled.Span, cpu.Span)}");
-        tiled.Span.SequenceEqual(plain.Span).Should().BeTrue();
+        output.WriteLine($"{strip.Backend} tile size {tileSize}: tiled vs plain {FilmComparison.Compare(tiled.Span, plain.Span)}; tiled vs CPU tiled {FilmComparison.Compare(tiled.Span, cpu.Span)}");
+        if (exact) tiled.Span.SequenceEqual(plain.Span).Should().BeTrue();
+        else FilmComparison.Compare(tiled.Span, plain.Span).PracticalFailures.Should().Be(0);
         reader.Reads.All(r => r.Level == 0).Should().BeTrue();
         // Tiles 0 and 1 of level 0, each read from 2 pixels before it (its border).
         reader.Reads.Select(r => (r.X + 2) / tileSize).Distinct().Count().Should().BeGreaterThanOrEqualTo(2);
 
-        using CyclesScene larger = CreateGpuScene();
-        Action tooLarge = () => larger.CreateTiledImage(512, 512, ImageFormat.Byte4, new TiledImageTests.LevelReader(512, 512, 4, TiledImageTests.SolidLevels(512, 512)), 256);
-        NativeFailure error = tooLarge.Should().Throw<NativeFailure>().Which;
-        error.NativeStatus.Should().Be(NativeStatus.Invalid);
-        error.Message.Should().Contain("Invalid tiled image tile size 256: 0 (the default, 64) or a power of two from 64 to 128 on the Metal backend");
+        if (strip.Backend == Backend.Metal)
+        {
+            using CyclesScene larger = CreateGpuScene();
+            Action tooLarge = () => larger.CreateTiledImage(512, 512, ImageFormat.Byte4, new TiledImageTests.LevelReader(512, 512, 4, TiledImageTests.SolidLevels(512, 512)), 256);
+            NativeFailure error = tooLarge.Should().Throw<NativeFailure>().Which;
+            error.NativeStatus.Should().Be(NativeStatus.Invalid);
+            error.Message.Should().Contain("Invalid tiled image tile size 256: 0 (the default, 64) or a power of two from 64 to 128 on the Metal backend");
+        }
         strip.IsFaulted.Should().BeFalse();
         tiledScene.IsFaulted.Should().BeFalse();
     }

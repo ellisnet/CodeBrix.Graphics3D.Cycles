@@ -84,7 +84,14 @@ void WebGPUDevice::validate_light_tree() const{
   }
   for(int set=0;set<LIGHT_LINK_SET_MAX;set++)require(data.light_link_sets[set].light_tree_root<nodes,"Invalid native light link tree root");
   for(const KernelLightTreeEmitter &emitter:light_tree_emitters){
-    for(float value:{emitter.theta_o,emitter.theta_e,emitter.energy})require(std::isfinite(value),"Invalid native light tree emitter");
+    for(float value:{emitter.theta_o,emitter.theta_e})require(std::isfinite(value),"Invalid native light tree emitter");
+    // An infinite energy: an area light with an overflowed axis that is not normalized (LightTreeEmitter: the strength times
+    // `lamp->area()`, an infinite area; native/DEVICE.md, item 233). Refused by name: the tree's importance arithmetic with
+    // an infinite energy (infinities, and NaNs where one meets a zero cosine) was not followed.
+    if(!std::isfinite(emitter.energy)){
+      const size_t lamp=emitter.light.id<0?size_t(~emitter.light.id):light_axis_overflow.size();
+      require(!(lamp<light_axis_overflow.size()&&light_axis_overflow[lamp]!=0&&std::isinf(emitter.energy)),"WebGPU degenerate area light with an overflowed axis, not normalized, under a light tree not implemented");
+      require(false,"Invalid native light tree emitter");}
     if(emitter.light.id<0){
       require(size_t(~emitter.light.id)<lamp_records().size()&&emitter.object_id>=0&&size_t(emitter.object_id)<object_records.size(),"Invalid native light tree lamp");
       // A guard: a lamp's type is its Light node's light_type socket, which the host accepts only as point, sun,
@@ -110,17 +117,32 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
   // Background light portals (LightManager::device_update_lights, device_update_background): the records after the
   // lamps, portal_offset = num_lights, the portal strategy's weight 1 exactly when there is one. The kernel reads
   // their position, area axes and lengths, the sign and size of the inverse area and the direction
-  // (light/background.h); a portal of zero or non-finite extent is refused below.
+  // (light/background.h); a portal axis of zero length renders, the other degenerate portals are refused below.
   require((data.integrator.num_portals==0||data.integrator.portal_offset==data.integrator.num_lights)&&
     data.background.portal_weight==(data.integrator.num_portals>0?1.0f:0.0f),"Invalid native background light portals");
   // With volume direct light the background light's sample runs in its own entry, shade_volume_light_background
   // (volume.cpp; native/DEVICE.md, item 106).
   for(size_t i=size_t(data.integrator.num_lights);i<light_records.size();i++){const KernelLight &portal=light_records[i];
-    // A portal of zero or underflowing extent: the pinned portal sampler then returns NaN directions, which the CPU's world
-    // shader and closures evaluate (native/DEVICE.md, item 148).
-    require(std::isfinite(portal.area.len_u)&&portal.area.len_u>0&&std::isfinite(portal.area.len_v)&&portal.area.len_v>0,"WebGPU degenerate background light portal not implemented");
+    // A portal axis of zero length (a size of zero, or one whose squared length underflows): AreaLight::copy_to_kernel stores
+    // normalize_len of that vector, an axis with a NaN in it, which the device never reads (BACKGROUND_PORTAL_DEGENERATE gives
+    // the pinned results: native/DEVICE.md, item 148). Refused: an axis of infinities without a NaN (the pinned comparisons
+    // then depend on the signs of each ray's components), an axis whose length overflowed, and a rectangular portal with such
+    // an axis when the portal strategy is not combined with the importance map (its next-event sample is then valid with a
+    // NaN direction, which the world shader and the closures evaluate) unless the conditions below hold.
+    bool portal_nan_direction=false;
+    for(const auto &[axis,len]:{std::pair{portal.area.axis_u,portal.area.len_u},std::pair{portal.area.axis_v,portal.area.len_v}}){
+      require(std::isfinite(len)&&len>=0,"WebGPU degenerate background light portal not implemented");
+      if(len==0){require(std::isnan(axis.x)||std::isnan(axis.y)||std::isnan(axis.z),"WebGPU degenerate background light portal not implemented");
+        portal_nan_direction|=portal.area.invarea>0;}
+      else require(std::isfinite(axis.x)&&std::isfinite(axis.y)&&std::isfinite(axis.z),"Invalid native background light portals");
+    }
+    // Without the importance map: the NaN direction through the closures (LIGHT_NAN_DIRECTION), with a world of constant
+    // emission, no volumes and no manifold next-event estimation.
+    const auto world_shader=uint(data.background.surface_shader)&SHADER_MASK;
+    require(!portal_nan_direction||data.background.map_weight!=0||(world_shader<shader_records.size()&&(shader_records[world_shader].flags&SD_HAS_CONSTANT_EMISSION)&&
+      !(data.kernel_features&KERNEL_FEATURE_VOLUME)&&!data.integrator.use_caustics),"WebGPU degenerate background light portal not implemented");
     require(std::isfinite(portal.area.invarea)&&portal.area.invarea!=0,"Invalid native background light portals");
-    for(const float3 value:{portal.co,portal.area.axis_u,portal.area.axis_v,portal.area.dir})
+    for(const float3 value:{portal.co,portal.area.dir})
       require(std::isfinite(value.x)&&std::isfinite(value.y)&&std::isfinite(value.z),"Invalid native background light portals");
   }
   // Several background lights (more than one backgroundlight object, each enabled by LightManager::test_enabled_lights):
@@ -147,25 +169,35 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
     else if(light.type==LIGHT_AREA){
       // An axis of zero length (device.cpp holds it as a zero axis; native/DEVICE.md, item 148). Its samples are rejected and a
       // camera ray sees a strip or a plane (LIGHT_AREA_DEGENERATE). Refused: an axis of infinities without a NaN (its CPU
-      // comparisons depend on the signs of each ray's components) and a spread of zero (the CPU's next-event direction is NaN
-      // and its closures evaluate it).
+      // comparisons depend on the signs of each ray's components).
       if(light.area.len_u==0||light.area.len_v==0){
         for(const auto &[axis,len]:{std::pair{light.area.axis_u,light.area.len_u},std::pair{light.area.axis_v,light.area.len_v}})if(len==0){
           require(std::isfinite(axis.x)&&std::isfinite(axis.y)&&std::isfinite(axis.z),"WebGPU degenerate area light with an infinite axis not implemented");
           require(axis.x==0&&axis.y==0&&axis.z==0,"Invalid native area basis");}
-        require(light.area.tan_half_spread!=0,"WebGPU degenerate area light with a spread of zero not implemented");
-        // A spread above zero but below 1e-5: volume_valid_direct_ray_segment then maps the ray into the light's frame with the
-        // NaN axis (area_light_valid_ray_segment's angle_almost_zero branch), whose segment depends on how each min and max
-        // drops a NaN lane: vl_area_segment (wavefront_volume_light.wgsl) gives that segment. That branch is the pinned
-        // kernel's only use of the 1e-5 threshold and is reached only from integrate_volume_sample_direct_light
-        // (kernel/integrator/shade_volume.h), which a scene without volumes never runs and which returns before it without
-        // direct light: at surfaces such a light is the degenerate light above. Still refused there: an axis whose length
-        // overflowed (a zero axis of infinite length on the CPU, whose slab is the whole line; the device's copy does not
-        // tell it from the NaN axis).
-        const size_t record=size_t(&light-light_records.data());
-        require(!(light.area.tan_half_spread<1e-5f)||!(data.kernel_features&KERNEL_FEATURE_VOLUME)||!data.integrator.use_direct_light||
-          !(record<light_axis_overflow.size()&&light_axis_overflow[record]),
-          "WebGPU degenerate area light with a spread below 1e-5 not implemented");
+        // An axis whose length overflowed (device.cpp marks it with a length of -0): the pinned arithmetic with the zero
+        // axis of infinite length (LIGHT_AREA_OVERFLOW; native/DEVICE.md, item 233). Refused: beside an underflowed axis on
+        // the same light, and as a caustic light with manifold next-event estimation (the MNEE sampler was not followed).
+        const size_t overflow_record=size_t(&light-light_records.data());
+        const unsigned overflow_axes=overflow_record<light_axis_overflow.size()?light_axis_overflow[overflow_record]:0u;
+        const bool overflow_u=(overflow_axes&1u)!=0,overflow_v=(overflow_axes&2u)!=0;
+        const bool overflowed=overflow_u||overflow_v;
+        require(!overflowed||((overflow_u||light.area.len_u!=0)&&(overflow_v||light.area.len_v!=0)),"WebGPU degenerate area light with an overflowed and an underflowed axis not implemented");
+        require(!overflowed||!(data.integrator.use_caustics&&light.use_caustics),"WebGPU degenerate area light with an overflowed axis and shadow caustics not implemented");
+        // A spread of zero on an underflowed axis: the next-event sample is valid with a NaN direction, which the closures
+        // evaluate as the pinned kernel does (LIGHT_NAN_DIRECTION). Still refused: with a heterogeneous volume or volume ray
+        // marching (the shadow ray's NaN segment through such a volume; a homogeneous one gives NaN, which is ported), with an
+        // emission shader that is not constant (evaluated at the NaN point), and as a caustic light with manifold next-event
+        // estimation.
+        if(light.area.tan_half_spread==0&&!overflowed){
+          bool heterogeneous=data.integrator.volume_ray_marching!=0;
+          for(const KernelShader &shader:shader_records)heterogeneous|=(shader.flags&SD_HAS_VOLUME)&&(shader.flags&SD_HETEROGENEOUS_VOLUME);
+          require(!((data.kernel_features&KERNEL_FEATURE_VOLUME)&&heterogeneous)&&(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION)&&
+            !(data.integrator.use_caustics&&light.use_caustics),
+            "WebGPU degenerate area light with a spread of zero not implemented");}
+        // A spread above zero but below 1e-5 with volume direct light: volume_valid_direct_ray_segment maps the ray into the
+        // light's frame (area_light_valid_ray_segment's angle_almost_zero branch), where the NaN axis gives a segment that
+        // depends on how each min and max drops a NaN lane and the overflowed axis a slab that is the whole line:
+        // vl_area_segment (wavefront_volume_light.wgsl) gives both.
       }
       require(std::isfinite(light.area.len_u)&&light.area.len_u>=0&&std::isfinite(light.area.len_v)&&light.area.len_v>=0,"Invalid native area light");
       require(std::isfinite(light.area.invarea)&&std::isfinite(light.area.tan_half_spread)&&light.area.tan_half_spread>=0&&

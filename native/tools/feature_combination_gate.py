@@ -53,7 +53,7 @@ def main():
         save(out/'results.json', results)
         status['phase'] = 'replay'
         save(out/'status.json', status)
-        for case in range(8):
+        for case in range(report['cases']):
             name = 'replay-'+str(case)
             with (out/(name+'.log')).open('w') as log, contextlib.redirect_stdout(log):
                 render_replay.run('linux-x64', out/'run'/('case-'+str(case)), out/name)

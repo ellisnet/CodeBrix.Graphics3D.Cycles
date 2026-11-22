@@ -217,27 +217,54 @@ fn bk_split_mark(index:u32,base:u32,object:u32,shader:u32,next:u32){
     // product). Its normal pass gets that value where N is Ng (flat, or a zero interpolated normal): the same quiet NaN
     // is stored in each component (film_write_pass_float3 adds NaN, so every sample leaves NaN), and the host fails the
     // bake ("Nonfinite bake output") as it does on the CPU. A smooth normal pass is unaffected. Other passes read the
-    // shading of that NaN normal by the closures: refused by name (error bit 65536; native/DEVICE.md, item 149).
+    // shading at that NaN normal: the stages follow it inside BAKE_ZERO_AREA (native/DEVICE.md, item 149).
     let zero_area=rounded_dot(cross_normal,cross_normal)==0.0;
     if(data_word(BK_D_pass_normal)!=PASS_NONE&&(shader_flags&BK_SD_HAS_BUMP)==0u){
         if(zero_area&&n_is_ng){let at=film+data_word(BK_D_pass_normal)*4u;for(var k=0u;k<3u;k++){atomicStore(&heap[(at+k*4u)/4u],0x7fc00000u);}return;}
         bk_film_add3(film+data_word(BK_D_pass_normal)*4u,N);return;
     }
-    if(zero_area){atomicOr(&heap[p(17u)/4u],65536u);return;}
+//#if BAKE_ZERO_AREA else     if(zero_area){atomicOr(&heap[p(17u)/4u],65536u);return;}
+    // The path starts on such a texel as on any other, and the shading stage follows the normal. Here: the lanes of Ng
+    // (zero_area_normal; a NaN in every lane after the object's normal transform, whose row sums hold a NaN or an
+    // infinity and whose normalize divides them by an infinity or a NaN), and N where it is Ng (flat shading, or a zero
+    // interpolated normal).
+    if(zero_area){Ng=zero_area_normal(cross_normal);if(!applied){Ng=vec3<f32>(zero_area_nan());}if(n_is_ng){N=Ng;}}
+//#endif
     var origin=rounded_add3(P,N);var direction=-N;
+//#if BAKE_ZERO_AREA
+    // ray.P = P + N and ray.D = -N with lanes of infinities and NaNs: the lanes themselves, the direction's signs changed.
+    if(zero_area&&n_is_ng){origin=N;direction=zero_area_negate3(N);}
+//#endif
     if(data_word(BK_D_bake_use_camera)!=0u){
         // camera_direction_from_point.
         let world=p(6u)+D_cam_cameratoworld;let row0=heap_vec4(world);let row1=heap_vec4(world+16u);let row2=heap_vec4(world+32u);
         var D=-vec3<f32>(row0.z,row1.z,row2.z);
         if(data_word(BK_D_cam_type)!=BK_CAMERA_ORTHOGRAPHIC){D=surface_native_normalize(rounded_add3(vec3<f32>(row0.w,row1.w,row2.w),-P));}
+//#if BAKE_ZERO_AREA
+        let D_camera=D;
+//#endif
         let DN=rounded_dot(D,N);
         // Keep the direction at least 0.2 above the smooth normal; on the backside lerp towards the normal.
         if(DN<=0.2){D=surface_native_normalize(rounded_add3(D,-(N*rounded_add(DN,-0.2))));}
         if(DN<=0.0){D=surface_native_normalize(rounded_add3(D,(-DN)*rounded_add3(N,-D)));}
         // Never behind the geometric normal.
         let DNg=rounded_dot(D,Ng);
-        if(DNg<=0.00001){D=surface_native_normalize(rounded_add3(D,-(Ng*rounded_add(DNg,-0.00001))));}
+//#if BAKE_ZERO_AREA else         if(DNg<=0.00001){D=surface_native_normalize(rounded_add3(D,-(Ng*rounded_add(DNg,-0.00001))));}
+        // init_from_bake.h with the normal of a zero-area texel. `DN <= surface_normal_offset`, `DN <= 0.0f` (N is that
+        // normal on a flat-shaded texel) and `dot(D, Ng) <= true_normal_epsilon` are true only for a dot product of
+        // -infinity (false for +infinity and for a NaN); D then takes lanes of infinities and NaNs, and normalize makes
+        // each of them a NaN (an infinity or a NaN over an infinite or NaN length), which ray.P = P + D and ray.D = -D keep.
+        if(!zero_area){
+            if(DNg<=0.00001){D=surface_native_normalize(rounded_add3(D,-(Ng*rounded_add(DNg,-0.00001))));}
+        }else{
+            if(n_is_ng){D=D_camera;}
+            if(bitcast<u32>(zero_area_dot(Ng,D))==0xff800000u){D=vec3<f32>(zero_area_nan());}
+        }
+//#endif
         origin=rounded_add3(P,D);direction=-D;
+//#if BAKE_ZERO_AREA
+        if(zero_area&&zero_area_is_nan(D.x)){origin=D;direction=D;}
+//#endif
     }
     state_vec3(S_ray_P,path,origin);state_vec3(S_ray_D,path,direction);
     state_f32(S_ray_tmin,path,0.0);state_u32(S_ray_tmax,path,0x7f7fffffu);state_f32(S_ray_time,path,0.5);

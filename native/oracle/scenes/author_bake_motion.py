@@ -8,7 +8,9 @@ position steps; the kernel places every texel on the static positions, while the
 motion triangles at the ray's time), and the sphere with its zero-area pole triangles kept in the UV layout, baked
 with the smooth Normal type (the interpolated normal is defined there) and with the shading bake types that are finite
 there (bake/zero-area-<type>; the flat Normal type and the direct-light types fail with "Nonfinite bake output" on every
-backend, so they have no scene).
+backend, so they have no scene), and the same sphere flat-shaded (bake/zero-area-flat-<type>: the shading normal of a
+pole texel is then the geometric one, not a number, so the closures and the light sampling read it too; and
+bake/zero-area-flat-raycast: the Raycast node's default direction there is that normal, a ray that hits nothing).
 Usage: python3 native/oracle/scenes/author_bake_motion.py [--check]."""
 import argparse
 import json
@@ -38,7 +40,7 @@ def deforming():
     return document
 
 
-def pole_sphere(handle, material, center, radius, stacks=8, slices=12):
+def pole_sphere(handle, material, center, radius, stacks=8, slices=12, smooth=True):
     """bake.uv_sphere with the pole triangles kept: each has no area in 3D (two corners at the pole) but area in UV."""
     positions, indices, uv = [], [], []
     for i in range(stacks+1):
@@ -57,7 +59,7 @@ def pole_sphere(handle, material, center, radius, stacks=8, slices=12):
     return {'handle': handle, 'create': 'mesh',
             'mesh': {'positions': positions, 'indices': indices,
                      'attributes': [{'name': 'uv', 'value': 'point2', 'domain': 'corner', 'flags': ['standard'], 'data': uv}]},
-            'set': {'used_shaders': [material], 'smooth': [True]*faces}}
+            'set': {'used_shaders': [material], 'smooth': [smooth]*faces}}
 
 
 def zero_area_normal():
@@ -84,10 +86,40 @@ def zero_area(kind, aov):
     return document
 
 
+# The flat-shaded sphere: the five light-dependent types, and one colour and one data type (the others read no normal).
+ZERO_AREA_FLAT_TYPES = ['combined', 'ao', 'diffuse_indirect', 'glossy_indirect', 'transmission_indirect', 'diffuse_color', 'roughness']
+
+
+def zero_area_flat(kind):
+    """The kind bake of the flat-shaded pole sphere: at a pole texel the shading normal is the not-a-number geometric normal."""
+    document = bake.bake_scene('bake/zero-area-flat-'+kind.replace('_', '-'), 'The '+kind+' bake of a flat-shaded sphere whose zero-area pole triangles are in the UV layout', {'type': kind})
+    document['sourceFixture'] = 'native/oracle/scenes/author_bake_motion.py (bakes in the sampling family room)'
+    document['nodes'] = [pole_sphere('ball', 'textured', (0.0, -0.9, 0.4), 1.0, smooth=False) if n['handle'] == 'ball' else n for n in document['nodes']]
+    return document
+
+
+def zero_area_flat_raycast():
+    """The colour AOV of the flat-shaded pole sphere carrying the Raycast node's Hit Distance (position sd->P, direction sd->N):
+    at a pole texel the direction is the not-a-number geometric normal, the ray is not valid and the distance is the length."""
+    document = bake.bake_scene('bake/zero-area-flat-raycast', 'The Raycast node read out through the colour AOV on a flat-shaded sphere whose zero-area pole triangles are in the UV layout',
+                               {'type': 'aov_color', 'aov': 'Tint'})
+    document['sourceFixture'] = 'native/oracle/scenes/author_bake_motion.py (bakes in the sampling family room)'
+    material = room.shader('textured', [{'handle': 'r', 'type': 'raycast', 'set': {'length': 2.5}}, {'handle': 'a', 'type': 'aov_output', 'set': {'name': 'Tint'}},
+                                        {'handle': 'd', 'type': 'diffuse_bsdf', 'set': {'color': [0.8, 0.5, 0.3], 'roughness': 0.0}}],
+                           [['r', 'Hit Distance', 'a', 'Color'], ['d', 'BSDF', 'output', 'Surface']])
+    material['set']['pass_id'] = 9
+    document['nodes'] = [pole_sphere('ball', 'textured', (0.0, -0.9, 0.4), 1.0, smooth=False) if n['handle'] == 'ball' else material if n['handle'] == 'textured' else n
+                         for n in document['nodes']]
+    return document
+
+
 def scenes():
     out = {'deformation-motion.json': deforming(), 'zero-area-smooth-normal.json': zero_area_normal()}
     for kind, aov in ZERO_AREA_TYPES:
         out['zero-area-'+kind.replace('_', '-')+'.json'] = zero_area(kind, aov)
+    for kind in ZERO_AREA_FLAT_TYPES:
+        out['zero-area-flat-'+kind.replace('_', '-')+'.json'] = zero_area_flat(kind)
+    out['zero-area-flat-raycast.json'] = zero_area_flat_raycast()
     return out
 
 

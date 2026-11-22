@@ -6,9 +6,7 @@
 // svm/util.h and util/math_dual.h. Native payload layouts, checked attribute
 // loads and explicit dual vectors replace C++ pointers and templates.
 struct NormalDual {value:vec3<f32>, dx:vec3<f32>, dy:vec3<f32>,}
-fn normal_transpose(address:u32,v:vec3<f32>)->vec3<f32>{
-    return v.x*heap_vec3(address)+v.y*heap_vec3(address+16u)+v.z*heap_vec3(address+32u);
-}
+fn normal_transpose(address:u32,v:vec3<f32>)->vec3<f32>{return surface_transform_transposed(address,v);}
 fn normal_object_transpose(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{
     if((sd.object_flag&SD_OBJECT_MOTION)!=0u){if(inverse){return motion_transpose(sd.motion_itfm,v);}return motion_transpose(sd.motion_tfm,v);}
     let object=table_at(G_objects,sd.object_id,SIZE_objects);return normal_transpose(object+select(O_tfm,O_itfm,inverse),v);
@@ -75,13 +73,13 @@ fn svm_normal_map(s:ptr<function,SvmState>,node:u32){
         let B=sign*cross(normal,tangent);
         N=surface_normalize(color.x*tangent+color.y*B+color.z*normal);
         invalid_normal=all(N==vec3<f32>(0));
-        N=surface_normalize(normal_object_transpose(sd,N,true));
+        N=surface_native_normalize(normal_object_transpose(sd,N,true));
     }else{
         linear=true;
         if(space==NODE_NORMAL_MAP_BLENDER_OBJECT||space==NODE_NORMAL_MAP_BLENDER_WORLD){color.y=-color.y;color.z=-color.z;}
         N=color;
         if(space==NODE_NORMAL_MAP_OBJECT||space==NODE_NORMAL_MAP_BLENDER_OBJECT){
-            if(sd.object_id!=NONE){invalid_normal=all(N==vec3<f32>(0));N=surface_normalize(normal_object_transpose(sd,N,true));}
+            if(sd.object_id!=NONE){invalid_normal=all(N==vec3<f32>(0));N=surface_native_normalize(normal_object_transpose(sd,N,true));}
         }else{N=surface_normalize(N);}
     }
     if(backface){N=-N;}

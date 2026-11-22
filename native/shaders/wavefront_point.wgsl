@@ -67,6 +67,10 @@ fn point_record(object:u32,prim:u32,kind:u32,time:f32)->vec4<f32>{
 struct PointHit {hit:bool,t:f32}
 // point_intersect_test: always back-face culled, as pinned.
 fn point_intersect(ray_P:vec3<f32>,ray_D:vec3<f32>,ray_tmin:f32,ray_tmax:f32,object:u32,prim:u32,kind:u32,time:f32)->PointHit{
+//#if GSPLATS
+    // point_or_gsplat_intersect (kernel/geom/gsplat_intersect.h): a splat takes its own test (wavefront_gsplat.wgsl).
+    if((kind&GS_PRIMITIVE_GSPLAT)!=0u){return gsplat_intersect(ray_P,ray_D,ray_tmin,ray_tmax,object,prim,kind,time);}
+//#endif
     let point=point_record(object,prim,kind,time);let o=pt_order();
     let rd2=rounded_divide(1.0,pt_dot(ray_D,ray_D,o));
     let c0=ptb3(point.xyz-ray_P,o);

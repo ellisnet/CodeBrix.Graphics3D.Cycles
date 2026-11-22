@@ -4,10 +4,10 @@
 """Write the BSDF family oracle scenes (scenes/bsdf/) byte for byte.
 
 Smooth spheres with the Metallic, Beckmann (glossy, anisotropic, refraction,
-glass, metallic), Ashikhmin-Shirley, Ashikhmin velvet and Toon BSDFs, the
-anisotropic Glass BSDF, the Glass BSDF with the multiscatter GGX distribution, and the Principled BSDF's anisotropic
+glass, metallic), Ashikhmin-Shirley, Ashikhmin velvet, microfiber Sheen and Toon BSDFs, the
+anisotropic Glass BSDF, the Glass BSDF with the multiscatter GGX distribution and with a thin film, and the Principled BSDF's anisotropic
 transmission, its
-dispersion and its coat, sheen, emission and thin-wall layers, on a diffuse floor and wall, lit by a sphere lamp with MIS (BSDF evaluation through
+dispersion (smooth, rough, with linked inputs and with a linked scale that is 0 at run time) and its coat, sheen, emission and thin-wall layers, on a diffuse floor and wall, lit by a sphere lamp with MIS (BSDF evaluation through
 next-event estimation) and a constant world, through the public C API.
 Usage: python3 native/oracle/scenes/author_bsdf.py [--check]."""
 import argparse
@@ -42,6 +42,13 @@ def tangent_shader(handle, node_type, values):
     """An anisotropic node with a constant tangent (as the native fixture)."""
     return shader(handle, [{'handle': 'n', 'type': node_type, 'set': values}, {'handle': 't', 'type': 'color', 'set': {'value': [0.8, 0.3, 0.2]}}],
                   [['t', 'Color', 'n', 'Tangent'], ['n', 'BSDF', 'output', 'Surface']])
+
+
+def zero_scale(handle, texture, texture_set, comparison, bound, values):
+    """A Principled BSDF whose Transmission Dispersion Scale is a comparison of a texture's Fac that is 0 everywhere."""
+    return shader(handle, [{'handle': 'n', 'type': 'principled_bsdf', 'set': values}, {'handle': 'g', 'type': 'geometry', 'set': {}},
+                           {'handle': 't', 'type': texture, 'set': texture_set}, {'handle': 'z', 'type': 'math', 'set': {'math_type': comparison, 'value2': bound}}],
+                  [['g', 'Position', 't', 'Vector'], ['t', 'Fac', 'z', 'Value1'], ['z', 'Value', 'n', 'Transmission Dispersion Scale'], ['n', 'BSDF', 'output', 'Surface']])
 
 
 def sphere(handle, material, center, radius, stacks=10, slices=14):
@@ -183,6 +190,72 @@ def scenes():
                                               'transmission_dispersion_scale': 0.5, 'transmission_dispersion_abbe_number': 30.0}),
         single('d-partial', 'principled_bsdf', {'distribution': 'ggx', 'base_color': [0.8, 0.7, 0.5], 'roughness': 0.1, 'ior': 1.45, 'transmission_weight': 0.6,
                                                 'transmission_dispersion_scale': 0.8, 'transmission_dispersion_abbe_number': 45.0})])
+    # The Glass BSDF node's thin film (svm/closure.h; closure/bsdf_microfacet.h generalized_schlick_fresnel's iridescence
+    # branch): the three distributions; paths inside a sphere meet the film from behind (film IOR / IOR).
+    out['glass-thin-film.json'] = scene('bsdf/glass-thin-film', 'Glass BSDF with a thin film: GGX (320 nm, film IOR 1.33), multiscatter GGX (600 nm, film IOR 1.8), '
+                                        'and anisotropic Beckmann with a tangent (900 nm, film IOR 2.0)', [
+        single('gf-ggx', 'glass_bsdf', {'distribution': 'ggx', 'roughness': 0.25, 'IOR': 1.5, 'color': [0.9, 0.95, 1.0], 'thin_film_thickness': 320.0, 'thin_film_ior': 1.33}),
+        single('gf-multi', 'glass_bsdf', {'distribution': 'multi_ggx', 'roughness': 0.4, 'IOR': 1.45, 'color': [0.95, 0.85, 0.7], 'thin_film_thickness': 600.0, 'thin_film_ior': 1.8}),
+        tangent_shader('gf-beckmann', 'glass_bsdf', {'distribution': 'beckmann', 'roughness': 0.35, 'anisotropy': 0.5, 'IOR': 1.33, 'color': [0.85, 0.95, 0.9],
+                                                     'thin_film_thickness': 900.0, 'thin_film_ior': 2.0})])
+    # A linked Thin Film Thickness: a checker gives 0 (no film: below the cutoff of 0.1) or its scale in nanometres, so one
+    # shader takes both branches; a film thinner than a nanometre (0.6: the blend toward no film); a sharp glass (roughness 0).
+    out['glass-thin-film-linked.json'] = scene('bsdf/glass-thin-film-linked', 'Glass BSDF with a thin film: a linked thickness (a checker of 0 and 450 nm, film IOR 2.0, multiscatter GGX), '
+                                               'a film of 0.6 nm (GGX), and a sharp glass (roughness 0, 500 nm, film IOR 2.2)', [
+        shader('gl-checker', [{'handle': 'n', 'type': 'glass_bsdf', 'set': {'distribution': 'multi_ggx', 'roughness': 0.3, 'IOR': 1.5, 'color': [0.9, 0.95, 1.0], 'thin_film_ior': 2.0}},
+                              {'handle': 'c', 'type': 'checker_texture', 'set': {'scale': 3.0, 'color1': [1.0, 1.0, 1.0], 'color2': [0.0, 0.0, 0.0]}},
+                              {'handle': 'm', 'type': 'math', 'set': {'math_type': 'multiply', 'value2': 450.0}}],
+               [['c', 'Fac', 'm', 'Value1'], ['m', 'Value', 'n', 'Thin Film Thickness'], ['n', 'BSDF', 'output', 'Surface']]),
+        single('gl-thin', 'glass_bsdf', {'distribution': 'ggx', 'roughness': 0.3, 'IOR': 1.45, 'color': [0.95, 0.9, 0.8], 'thin_film_thickness': 0.6, 'thin_film_ior': 1.6}),
+        single('gl-sharp', 'glass_bsdf', {'distribution': 'ggx', 'roughness': 0.0, 'IOR': 1.5, 'color': [0.9, 0.95, 1.0], 'thin_film_thickness': 500.0, 'thin_film_ior': 2.2})])
+    # Dispersion on the rough transmission lobes: both GGX distributions over the roughness range, a high IOR.
+    out['principled-dispersion-rough.json'] = scene('bsdf/principled-dispersion-rough', 'Principled BSDF dispersion on rough glass: multiscatter GGX at roughness 0.5 with a low Abbe number, '
+                                                    'GGX at roughness 0.7 (IOR 1.33), and a tinted multiscatter GGX glass at roughness 1 with a high IOR (2.4)', [
+        single('dr-multi', 'principled_bsdf', {'distribution': 'multi_ggx', 'base_color': [0.95, 0.97, 1.0], 'roughness': 0.5, 'ior': 1.5, 'transmission_weight': 1.0,
+                                               'transmission_dispersion_scale': 1.0, 'transmission_dispersion_abbe_number': 15.0}),
+        single('dr-ggx', 'principled_bsdf', {'distribution': 'ggx', 'base_color': [0.9, 0.9, 0.9], 'roughness': 0.7, 'ior': 1.33, 'transmission_weight': 1.0,
+                                             'transmission_dispersion_scale': 1.0, 'transmission_dispersion_abbe_number': 10.0}),
+        single('dr-high', 'principled_bsdf', {'distribution': 'multi_ggx', 'base_color': [0.85, 0.75, 0.6], 'roughness': 1.0, 'ior': 2.4, 'transmission_weight': 1.0,
+                                              'specular_tint': [0.9, 0.8, 0.7], 'transmission_dispersion_scale': 0.7, 'transmission_dispersion_abbe_number': 25.0})])
+    # A linked Transmission Dispersion Scale and Abbe Number: the scale from a Checker Texture's Fac (0 on half of the
+    # surface at run time), the scale and the Abbe number from a Noise Texture, and a dispersive glass mixed with diffuse.
+    out['principled-dispersion-linked.json'] = scene('bsdf/principled-dispersion-linked', 'Principled BSDF dispersion with linked inputs: the scale from a Checker Texture (0 on half of the surface), '
+                                                     'the scale and the Abbe number from a Noise Texture, and a dispersive glass mixed with a diffuse BSDF', [
+        shader('dl-checker', [{'handle': 'n', 'type': 'principled_bsdf', 'set': {'distribution': 'ggx', 'base_color': [0.95, 0.97, 1.0], 'roughness': 0.05, 'ior': 1.5,
+                                                                                'transmission_weight': 1.0, 'transmission_dispersion_abbe_number': 12.0}},
+                              {'handle': 'g', 'type': 'geometry', 'set': {}}, {'handle': 'c', 'type': 'checker_texture', 'set': {'scale': 2.5}}],
+               [['g', 'Position', 'c', 'Vector'], ['c', 'Fac', 'n', 'Transmission Dispersion Scale'], ['n', 'BSDF', 'output', 'Surface']]),
+        shader('dl-noise', [{'handle': 'n', 'type': 'principled_bsdf', 'set': {'distribution': 'multi_ggx', 'base_color': [0.9, 0.9, 0.9], 'roughness': 0.15, 'ior': 1.6,
+                                                                              'transmission_weight': 1.0}},
+                            {'handle': 'g', 'type': 'geometry', 'set': {}}, {'handle': 't', 'type': 'noise_texture', 'set': {'scale': 1.8, 'detail': 2.0}},
+                            {'handle': 'a', 'type': 'math', 'set': {'math_type': 'multiply', 'value2': 40.0}}],
+               [['g', 'Position', 't', 'Vector'], ['t', 'Fac', 'n', 'Transmission Dispersion Scale'], ['t', 'Fac', 'a', 'Value1'],
+                ['a', 'Value', 'n', 'Transmission Dispersion Abbe Number'], ['n', 'BSDF', 'output', 'Surface']]),
+        mixed('dl-mix', ('principled_bsdf', {'distribution': 'ggx', 'base_color': [0.8, 0.9, 0.85], 'roughness': 0.1, 'ior': 1.45, 'transmission_weight': 1.0,
+                                             'transmission_dispersion_scale': 1.0, 'transmission_dispersion_abbe_number': 18.0}),
+              ('diffuse_bsdf', {'color': [0.7, 0.4, 0.2], 'roughness': 0.43}), 0.35)])
+    # A Transmission Dispersion Scale that is linked and 0 on every path at run time: the shaders need a wavelength (the
+    # link is not folded), and no closure disperses. Fac < -1 and Fac > 2 are 0 for every Fac in [0, 1].
+    out['principled-dispersion-zero-link.json'] = scene('bsdf/principled-dispersion-zero-link', 'Principled BSDF with a linked Transmission Dispersion Scale that is 0 at run time on every path '
+                                                        '(a comparison of a texture value that is never true): the materials of bsdf/principled-dispersion, none of which disperses', [
+        zero_scale('dz-smooth', 'checker_texture', {'scale': 2.5}, 'less_than', -1.0,
+                   {'distribution': 'ggx', 'base_color': [0.95, 0.97, 1.0], 'roughness': 0.0, 'ior': 1.5, 'transmission_weight': 1.0, 'transmission_dispersion_abbe_number': 20.0}),
+        zero_scale('dz-rough', 'noise_texture', {'scale': 1.8, 'detail': 2.0}, 'greater_than', 2.0,
+                   {'distribution': 'multi_ggx', 'base_color': [0.9, 0.9, 0.9], 'roughness': 0.2, 'ior': 1.6, 'transmission_weight': 1.0, 'transmission_dispersion_abbe_number': 30.0}),
+        zero_scale('dz-partial', 'checker_texture', {'scale': 4.0}, 'greater_than', 2.0,
+                   {'distribution': 'ggx', 'base_color': [0.8, 0.7, 0.5], 'roughness': 0.1, 'ior': 1.45, 'transmission_weight': 0.6, 'transmission_dispersion_abbe_number': 45.0})])
+    # The Sheen BSDF with the microfiber distribution: a constant roughness, a roughness from a checker (0.15 or 0.85 at run
+    # time) with a noise-perturbed normal, and a mix with a GGX glossy BSDF.
+    out['sheen-microfiber.json'] = scene('bsdf/sheen-microfiber', 'Sheen BSDF with the microfiber distribution: roughness 0.3, a linked roughness '
+                                         '(a checker of 0.15 and 0.85) with a bumped normal, and a mix with a GGX glossy BSDF', [
+        single('sh-const', 'sheen_bsdf', {'distribution': 'microfiber', 'roughness': 0.3, 'color': [0.8, 0.3, 0.5]}),
+        shader('sh-linked', [{'handle': 'n', 'type': 'sheen_bsdf', 'set': {'distribution': 'microfiber', 'color': [0.4, 0.7, 0.3]}},
+                             {'handle': 'c', 'type': 'checker_texture', 'set': {'scale': 3.0, 'color1': [0.85, 0.85, 0.85], 'color2': [0.15, 0.15, 0.15]}},
+                             {'handle': 't', 'type': 'noise_texture', 'set': {'scale': 4.0, 'detail': 1.0}},
+                             {'handle': 'b', 'type': 'bump', 'set': {'strength': 0.4, 'distance': 0.1}}],
+               [['c', 'Fac', 'n', 'Roughness'], ['t', 'Fac', 'b', 'Height'], ['b', 'Normal', 'n', 'Normal'], ['n', 'BSDF', 'output', 'Surface']]),
+        mixed('sh-mix', ('sheen_bsdf', {'distribution': 'microfiber', 'roughness': 0.6, 'color': [0.6, 0.5, 0.9]}),
+              ('glossy_bsdf', {'distribution': 'ggx', 'roughness': 0.3, 'color': [0.85, 0.85, 0.9]}), 0.5)])
     return out
 
 

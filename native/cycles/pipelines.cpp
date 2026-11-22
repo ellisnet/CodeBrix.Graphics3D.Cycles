@@ -28,7 +28,7 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"SVM_TEX_ENVIRONMENT",SF_TEX_ENVIRONMENT},{"SVM_TEX_IMAGE_BOX",SF_TEX_IMAGE_BOX},{"SAMPLING_SOBOL_BURLEY",SF_SAMPLING_PATTERN|SF_VOLUME_HETEROGENEOUS},{"VOLUME_HETEROGENEOUS",SF_VOLUME_HETEROGENEOUS},{"VOLUME_RAY_MARCHING",SF_VOLUME_RAY_MARCHING},{"VOLUME_LIGHT_SHAPES",SF_VOLUME_LIGHT_SHAPES},{"VOLUME_LIGHT_TREE",SF_VOLUME_LIGHT_TREE},{"VOLUME_LIGHT_PASSES",SF_VOLUME_LIGHT_PASSES},{"VOLUME_SHADOW_CATCHER",SF_VOLUME_SHADOW_CATCHER},{"CAMERA_PROJECTIONS",SF_CAMERA_PROJECTIONS},{"SVM_NODE_LIGHT_FALLOFF",SF_LIGHT_FALLOFF},{"LIGHT_LAMP_SHADER",SF_LIGHT_LAMP_SHADER},{"SVM_NODE_IES",SF_NODE_IES},{"SVM_BSDF_THIN_FILM_CONDUCTOR",SF_BSDF_THIN_FILM_CONDUCTOR},{"SVM_TEX_SKY_ANALYTIC",SF_TEX_SKY},{"SVM_TEX_SKY_SCATTERING",SF_TEX_SKY_SCATTERING},{"SVM_TEX_SKY",SF_TEX_SKY|SF_TEX_SKY_SCATTERING},{"BACKGROUND_SUN",SF_BACKGROUND_SUN},{"SVM_MATH_ARC",SF_MATH_ARC},
     // The guarded arctangent (wavefront_trig.wgsl): the equirectangular lookups of environment textures and the
     // background light, the lamp and IES coordinates.
-    {"TRIG_ATAN2_GUARD",SF_TEX_ENVIRONMENT|SF_LIGHT_BACKGROUND|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_TEX_SKY|SF_TEX_SKY_SCATTERING|SF_BSDF_HAIR_CHIANG|SF_BSDF_HAIR_HUANG|SF_CAMERA_PANORAMA_INVERSE},
+    {"TRIG_ATAN2_GUARD",SF_TEX_ENVIRONMENT|SF_LIGHT_BACKGROUND|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_TEX_SKY|SF_TEX_SKY_SCATTERING|SF_BSDF_HAIR_CHIANG|SF_BSDF_HAIR_HUANG|SF_CAMERA_PANORAMA_INVERSE|SF_IMAGE_TILED_PROJECTION},
     {"SVM_NODE_ATTR",SF_ATTR},{"SVM_NODE_NORMAL_MAP",SF_NORMAL_MAP},{"SVM_NODE_TANGENT",SF_TANGENT},
     {"SVM_NODE_MATH",SF_MATH},{"SVM_NODE_VECTOR_MATH",SF_VECTOR_MATH},
     {"SVM_NODE_CLAMP",SF_CLAMP},{"SVM_NODE_CONVERT",SF_CONVERT},{"SVM_NODE_SEPARATE_VECTOR",SF_SEPARATE_VECTOR},
@@ -69,11 +69,11 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     // closure classification, FRESNEL_MODELS the microfacet Fresnel models beyond the Glass node's.
     {"SVM_BSDF_METALLIC",SF_BSDF_METALLIC},{"SVM_BSDF_BECKMANN",SF_BSDF_BECKMANN},{"SVM_BSDF_ASHIKHMIN_SHIRLEY",SF_BSDF_ASHIKHMIN_SHIRLEY},
     {"SVM_BSDF_VELVET",SF_BSDF_VELVET},{"SVM_BSDF_TOON",SF_BSDF_TOON},{"SVM_BSDF_FAMILIES",SF_BSDF_FAMILIES},
-    {"SVM_BSDF_FRESNEL_MODELS",SF_BSDF_PRINCIPLED|SF_BSDF_METALLIC},
+    {"SVM_BSDF_FRESNEL_MODELS",SF_BSDF_PRINCIPLED|SF_BSDF_METALLIC|SF_BSDF_GLASS_THIN_FILM},
     // The precise rotate_around_axis (Principled, Metallic) and its use for the Glossy BSDF node's tangent
     // in modules with Beckmann or Ashikhmin-Shirley closures.
-    {"SVM_BSDF_ROTATE",SF_BSDF_PRINCIPLED|SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY},
-    {"SVM_BSDF_ROTATION",SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY},
+    {"SVM_BSDF_ROTATE",SF_BSDF_PRINCIPLED|SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_TANGENT_ROTATION},
+    {"SVM_BSDF_ROTATION",SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_TANGENT_ROTATION},
     // Bevel and Raycast nodes; RAYTRACE_NODES their shared traversal (local and scene).
     {"SVM_NODE_BEVEL",SF_NODE_BEVEL},{"SVM_NODE_RAYCAST",SF_NODE_RAYCAST},{"SVM_RAYTRACE_NODES",SF_NODE_BEVEL|SF_NODE_RAYCAST},
     // The SHADE_SURFACE_RAYTRACE queue (surf_queue): shaders with an AO, Bevel or Raycast node.
@@ -87,6 +87,8 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     // shade_light_nee on a dedicated shadow path (wavefront_curve_shader_data.wgsl, wavefront_light_nee.wgsl).
     {"CURVE_SETUP_HIT",SF_CURVE_RAYCAST|SF_SHADOW_LINKING},
     {"POINTS",SF_POINTS},{"POINTS_MOTION",SF_POINTS_MOTION},{"SVM_NODE_POINT_INFO",SF_NODE_POINT_INFO},{"SVM_NODE_PARTICLE_INFO",SF_NODE_PARTICLE_INFO},{"CURVES_OR_POINTS",SF_CURVES|SF_POINTS},
+    {"ATTRIBUTE_QUATERNION",SF_ATTR_QUATERNION},{"ATTRIBUTE_SPHERICAL_HARMONICS",SF_ATTR_SPHERICAL_HARMONICS},
+    {"GSPLATS",SF_GSPLATS},{"GSPLATS_MOTION",SF_GSPLATS_MOTION},
     // SVM_BSDF_HAIR_PRINCIPLED: what the Principled Hair BSDF node's models share in svm/closure.h (its record, colour parametrizations).
     {"SVM_BSDF_HAIR",SF_BSDF_HAIR},{"SVM_BSDF_HAIR_CHIANG",SF_BSDF_HAIR_CHIANG},{"SVM_BSDF_HAIR_PRINCIPLED",SF_BSDF_HAIR_CHIANG},
     // The Principled Hair BSDF node's Huang model, with its own copy of what the node's models share.
@@ -131,8 +133,19 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     // The bake of a deforming mesh (BAKE_DEFORM); a deforming mesh's plain triangles at the static positions, for the motion
     // pass without motion blur and for that bake (wavefront_motion_triangle.wgsl native_triangle_vertices).
     {"BAKE_DEFORM",SF_BAKE_DEFORM},{"DEFORMING_PLAIN_TRIANGLES",SF_FILM_MOTION_DEFORM|SF_BAKE_DEFORM},
+    // A bake texel on a zero-area triangle: the NaN geometric normal followed through shade_surface (native/DEVICE.md, item 149).
+    {"BAKE_ZERO_AREA",SF_BAKE_ZERO_AREA},
+    // Tests that a NaN closure normal or pdf takes as the pinned C++ does (on the bits): a NaN Tangent output used as a
+    // normal (items 150 and 210) and the NaN normal ensure_valid_specular_reflection gives at a zero-area bake texel.
+    {"NAN_CLOSURE",SF_TANGENT|SF_BAKE_ZERO_AREA},
     // A spot light: its attenuation in the oracle's float3 order (wavefront_emitters.wgsl spot_attenuation).
     {"LIGHT_SPOT",SF_LIGHT_SPOT},
+    // A background light portal with an axis of zero length (wavefront_background_light.wgsl bgl_portal_pdf, bgl_portal_sample).
+    {"BACKGROUND_PORTAL_DEGENERATE",SF_BACKGROUND_PORTAL_DEGENERATE},
+    // A next-event sample with a NaN direction (wavefront_emitters.wgsl area_evaluate, wavefront_lighting.wgsl surface_direct_light).
+    {"LIGHT_NAN_DIRECTION",SF_LIGHT_NAN_DIRECTION},
+    // An area light with an axis whose length overflowed.
+    {"LIGHT_AREA_OVERFLOW",SF_LIGHT_AREA_OVERFLOW},
     // Lamp samples in the oracle's float3 order: with volume direct light or a point, spot or angled sun light (native/DEVICE.md,
     // item 152).
     {"LAMP_SAMPLE_EXACT",SF_VOLUME_LIGHT|SF_LIGHT_LAMP_SAMPLE},
@@ -141,6 +154,8 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     // The surface stage's shader evaluation in three entries (wavefront_svm.wgsl): the variants without the heavy node
     // handlers, without the other node handlers, and (both) with the closure handler alone.
     {"SVM_STAGES",SF_SVM_STAGE_NO_HEAVY|SF_SVM_STAGE_NO_NODES},{"SVM_STAGE_NO_HEAVY",SF_SVM_STAGE_NO_HEAVY},{"SVM_STAGE_NO_NODES",SF_SVM_STAGE_NO_NODES},
+    // Dispersion: the wavelength sample, the dispersive index of refraction and the throughput weight (wavefront_dispersion.wgsl).
+    {"DISPERSION",SF_DISPERSION},
     // True displacement of a deforming mesh (wavefront_surface.wgsl shader_eval_displace).
     {"DISPLACE_VERTEX_MOTION",SF_DISPLACE_VERTEX_MOTION},
     // The Light Path node's path-state outputs in shadow and volume evaluations (wavefront_svm_nodes.wgsl svm_light_path).
@@ -150,14 +165,24 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     // The Glass BSDF node with the multiscatter GGX distribution (wavefront_svm_microfacet.wgsl svm_glass), and the helpers
     // it shares with the families that had them: the average of three channels, fresnel_dielectric_Fss, and
     // microfacet_ggx_preserve_energy with the glass energy tables' constants.
-    {"SVM_BSDF_GLASS_MULTISCATTER",SF_BSDF_GLASS_MULTISCATTER},
+    {"SVM_BSDF_GLASS_MULTISCATTER",SF_BSDF_GLASS_MULTISCATTER},{"SVM_BSDF_GLASS_THIN_FILM",SF_BSDF_GLASS_THIN_FILM},{"SVM_BSDF_TANGENT_ROTATION",SF_BSDF_TANGENT_ROTATION},
+    // The Sheen BSDF node (microfiber) and the sheen closure it shares with the Principled BSDF.
+    {"SVM_BSDF_SHEEN",SF_BSDF_SHEEN},{"SVM_BSDF_SHEEN_CLOSURE",SF_BSDF_PRINCIPLED|SF_BSDF_SHEEN},{"SVM_BSDF_FAMILY_HELPERS",SF_BSDF_FAMILIES|SF_BSDF_SHEEN},
     // A surface point inside a sphere light (wavefront_lighting.wgsl light_sample_lamp).
     {"LIGHT_SPHERE_INSIDE",SF_LIGHT_SPHERE_INSIDE},
     // The nodes the BUMP node feature gates, in an evaluation without it (wavefront_svm.wgsl svm_node_mask_bump).
     {"SVM_NODE_MASK_BUMP",SF_NODE_MASK_BUMP},
+    // Tiled images (wavefront_images.wgsl image_tile_map and the lcg state of every shader evaluation).
+    {"TILED_IMAGES",SF_IMAGE_TILED},
+    // The dual-number sphere, tube and environment projections of a tiled image (wavefront_images.wgsl image_tile_projection).
+    {"TILED_IMAGE_PROJECTIONS",SF_IMAGE_TILED_PROJECTION},
+    // The lcg state of volume evaluations and of transparent surfaces in shadows with volumes, with tiled images.
+    {"TILED_VOLUMES",SF_IMAGE_TILED_VOLUME},
     {"SVM_BSDF_AVERAGE",SF_BSDF_PRINCIPLED|SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_GLASS_MULTISCATTER},
     {"SVM_BSDF_DIELECTRIC_FSS",SF_BSDF_PRINCIPLED|SF_BSDF_GLASS_MULTISCATTER},
-    {"SVM_BSDF_PRESERVE_ENERGY",SF_BSDF_PRINCIPLED|SF_BSDF_METALLIC|SF_BSDF_GLASS_MULTISCATTER}};
+    {"SVM_BSDF_PRESERVE_ENERGY",SF_BSDF_PRINCIPLED|SF_BSDF_METALLIC|SF_BSDF_GLASS_MULTISCATTER},
+    // A transparent shadow hit limit above 4095: the whole 16-bit shadow hit count (wavefront_shadow.wgsl).
+    {"SHADOW_WIDE_LIMIT",SF_SHADOW_WIDE_LIMIT}};
   return names;
 }
 std::string shader_feature_list(ShaderFeatures features){
@@ -174,8 +199,13 @@ static_assert(SF_RAY_PORTAL.test(227)&&(SF_SUPERSET_SCENE_ONLY&SF_RAY_PORTAL)==S
 static_assert(SF_CURVE_RIBBON.test(186)&&SF_CURVE_THICK.test(187)&&SF_CURVE_THICK_LINEAR.test(188)&&SF_NODE_HAIR_INFO.test(189)&&(SF_SUPERSET_SCENE_ONLY&(SF_CURVES|SF_NODE_HAIR_INFO))==(SF_CURVES|SF_NODE_HAIR_INFO));
 static_assert(SF_CURVE_MOTION.test(194)&&SF_CURVE_SHADOW.test(195)&&SF_CURVE_RAYTRACE.test(196)&&SF_CURVE_SHADOW_CATCHER.test(197)&&SF_CURVE_RAYCAST.test(198)&&(SF_SUPERSET_SCENE_ONLY&(SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST))==(SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST));
 static_assert(SF_POINTS.test(206)&&SF_POINTS_MOTION.test(207)&&SF_NODE_POINT_INFO.test(208)&&SF_NODE_PARTICLE_INFO.test(209)&&(SF_SUPERSET_SCENE_ONLY&SF_POINTS_ALL)==SF_POINTS_ALL);
+static_assert(SF_ATTR_QUATERNION.test(103)&&SF_ATTR_SPHERICAL_HARMONICS.test(104)&&(SF_SUPERSET_SCENE_ONLY&(SF_ATTR_QUATERNION|SF_ATTR_SPHERICAL_HARMONICS))==(SF_ATTR_QUATERNION|SF_ATTR_SPHERICAL_HARMONICS));
+static_assert(SF_GSPLATS.test(105)&&SF_GSPLATS_MOTION.test(121)&&(SF_SUPERSET_SCENE_ONLY&(SF_GSPLATS|SF_GSPLATS_MOTION))==(SF_GSPLATS|SF_GSPLATS_MOTION));
 static_assert(SF_BSDF_HAIR.test(200)&&SF_BSDF_HAIR_CHIANG.test(201)&&(SF_SUPERSET_SCENE_ONLY&(SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG))==(SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG));
-static_assert(SF_ALL.count()==175&&SF_MNEE_ANISOTROPIC.test(79)&&SF_BSDF_GLASS_MULTISCATTER.test(73)&&SF_LIGHT_SPHERE_INSIDE.test(74)&&SF_NODE_MASK_BUMP.test(85)&&!(SF_ALL&~(SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|ShaderFeatures::range(0,66)|SF_NODES_INTEGER|ShaderFeatures::range(94,97)|SF_SHADOW_LINKING|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_ANISOTROPIC|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE|SF_LIGHT_AREA_DEGENERATE|SF_BAKE_DEFORM|SF_LIGHT_SPOT|SF_LIGHT_LAMP_SAMPLE|SF_DISPLACE_VERTEX_MOTION|SF_LIGHT_PATH_STATE|SF_PRINCIPLED_VOLUME_ATTRIBUTE|SF_BSDF_GLASS_MULTISCATTER|SF_LIGHT_SPHERE_INSIDE|SF_NODE_MASK_BUMP)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
+static_assert(SF_IMAGE_TILED.test(90)&&(SF_SUPERSET_SCENE_ONLY&SF_IMAGE_TILED).any());
+static_assert(SF_IMAGE_TILED_PROJECTION.test(91)&&(SF_SUPERSET_SCENE_ONLY&SF_IMAGE_TILED_PROJECTION).any());
+static_assert(SF_IMAGE_TILED_VOLUME.test(92)&&(SF_SUPERSET_SCENE_ONLY&SF_IMAGE_TILED_VOLUME).any());
+static_assert(SF_ALL.count()==189&&SF_BSDF_SHEEN.test(114)&&SF_BSDF_TANGENT_ROTATION.test(113)&&SF_MNEE_ANISOTROPIC.test(79)&&SF_BSDF_GLASS_MULTISCATTER.test(73)&&SF_BSDF_GLASS_THIN_FILM.test(112)&&SF_LIGHT_SPHERE_INSIDE.test(74)&&SF_NODE_MASK_BUMP.test(85)&&!(SF_ALL&~(SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|SF_ATTR_QUATERNION|SF_ATTR_SPHERICAL_HARMONICS|SF_GSPLATS|SF_GSPLATS_MOTION|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|ShaderFeatures::range(0,66)|SF_NODES_INTEGER|ShaderFeatures::range(94,97)|SF_SHADOW_LINKING|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_ANISOTROPIC|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE|SF_LIGHT_AREA_DEGENERATE|SF_BAKE_DEFORM|SF_LIGHT_SPOT|SF_LIGHT_LAMP_SAMPLE|SF_DISPLACE_VERTEX_MOTION|SF_LIGHT_PATH_STATE|SF_PRINCIPLED_VOLUME_ATTRIBUTE|SF_BSDF_GLASS_MULTISCATTER|SF_LIGHT_SPHERE_INSIDE|SF_NODE_MASK_BUMP|SF_BSDF_GLASS_THIN_FILM|SF_BSDF_TANGENT_ROTATION|SF_IMAGE_TILED|SF_IMAGE_TILED_PROJECTION|SF_IMAGE_TILED_VOLUME|SF_NAN_LIGHT_ALL|SF_BAKE_ZERO_AREA|SF_BSDF_SHEEN)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
   SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96)&&SF_SHADOW_CATCHER.test(102)&&SF_MNEE.test(110));
 static_assert(SF_NODE_AO.test(106)&&SF_NODE_RAYTRACE.test(107)&&SF_AO_SHADOW.test(108)&&!(SF_ALL&SF_NODE_RAYTRACE).any());
 static_assert(SF_MNEE_ENTRIES.test(111)&&!(SF_ALL&SF_MNEE_ENTRIES).any());
@@ -194,12 +224,15 @@ static_assert(SF_GEOMETRY_TANGENT.test(251)&&(SF_SUPERSET_SCENE_ONLY&SF_GEOMETRY
 static_assert(SF_MOTION_NORMAL_DERIVATIVE.test(252)&&(SF_SUPERSET_SCENE_ONLY&SF_MOTION_NORMAL_DERIVATIVE).any());
 static_assert(SF_LIGHT_AREA_DEGENERATE.test(244)&&(SF_SUPERSET_SCENE_ONLY&SF_LIGHT_AREA_DEGENERATE).any());
 static_assert(SF_BAKE_DEFORM.test(245)&&(SF_SUPERSET_SCENE_ONLY&SF_BAKE_DEFORM).any());
+static_assert(SF_BAKE_ZERO_AREA.test(86)&&(SF_SUPERSET_SCENE_ONLY&SF_BAKE_ZERO_AREA).any());
 static_assert(SF_LIGHT_SPOT.test(246)&&(SF_SUPERSET_SCENE_ONLY&SF_LIGHT_SPOT).any());
+static_assert(SF_BACKGROUND_PORTAL_DEGENERATE.test(80)&&SF_LIGHT_NAN_DIRECTION.test(81)&&SF_LIGHT_AREA_OVERFLOW.test(82)&&(SF_SUPERSET_SCENE_ONLY&SF_NAN_LIGHT_ALL)==SF_NAN_LIGHT_ALL);
 static_assert(SF_LIGHT_LAMP_SAMPLE.test(253)&&(SF_SUPERSET_SCENE_ONLY&SF_LIGHT_LAMP_SAMPLE).any());
 static_assert(SF_PHASE_FOURNIER_FORAND.test(171)&&SF_PHASE_RAYLEIGH.test(172)&&SF_PHASE_DRAINE.test(173)&&SF_PHASE_MIE.test(174)&&SF_VOLUME_HETEROGENEOUS.test(175)&&SF_VOLUME_RAY_MARCHING.test(176)&&SF_VOLUME_LIGHT_SHAPES.test(177)&&SF_VOLUME_LIGHT_TREE.test(178)&&SF_VOLUME_LIGHT_PASSES.test(179)&&SF_VOLUME_SHADOW_CATCHER.test(180));
 static_assert(ShaderFeatures::bit(64).words[1]==1&&ShaderFeatures::bit(shader_feature_bits-1).test(shader_feature_bits-1));
 static_assert(SF_DEBUG_OUTPUT.test(116)&&!(SF_ALL&SF_DEBUG_OUTPUT).any());
 static_assert(SF_DRIVER_CACHE_SALT.test(117)&&!(SF_ALL&SF_DRIVER_CACHE_SALT).any());
+static_assert(SF_SHADOW_WIDE_LIMIT.test(115)&&!(SF_ALL&SF_SHADOW_WIDE_LIMIT).any());
 static_assert(SF_FILM_DATA_PASSES.test(143)&&SF_NODE_AOV.test(144)&&SF_FILM_CRYPTOMATTE.test(145)&&SF_FILM_DENOISING.test(146)&&SF_FILM_MOTION.test(147)&&SF_FILM_MOTION_EXACT.test(148)&&(SF_SUPERSET_SCENE_ONLY&SF_FILM_MOTION_EXACT).any()&&(SF_SUPERSET_SCENE_ONLY&(SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION))==(SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION));
 static_assert(SF_TEX_ENVIRONMENT.test(149)&&SF_TEX_IMAGE_BOX.test(150)&&SF_SAMPLING_PATTERN.test(151)&&SF_CAMERA_PROJECTIONS.test(152)&&SF_LIGHT_FALLOFF.test(153)&&SF_LIGHT_LAMP_SHADER.test(154)&&SF_NODE_IES.test(155)&&SF_BSDF_THIN_FILM_CONDUCTOR.test(156)&&SF_TEX_SKY.test(157)&&SF_BACKGROUND_SUN.test(158)&&SF_TEX_SKY_SCATTERING.test(159)&&SF_MATH_ARC.test(160)&&(SF_SUPERSET_SCENE_ONLY&SF_MATH_ARC).any()&&
   (SF_SUPERSET_SCENE_ONLY&(SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING))==(SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING));
@@ -275,6 +308,7 @@ OpInfo bsdf_info(uint32_t kind){
     case CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID:return {uint32_t(sizeof(SVMNodeGlassBsdfData)),SF_BSDF_BECKMANN};
     case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:return {uint32_t(sizeof(SVMNodeGlossyBsdfData)),SF_BSDF_ASHIKHMIN_SHIRLEY};
     case CLOSURE_BSDF_ASHIKHMIN_VELVET_ID:return {uint32_t(sizeof(SVMNodeSimpleBsdfData)),SF_BSDF_VELVET};
+    case CLOSURE_BSDF_SHEEN_ID:return {uint32_t(sizeof(SVMNodeSimpleBsdfData)),SF_BSDF_SHEEN};
     case CLOSURE_BSDF_DIFFUSE_TOON_ID:case CLOSURE_BSDF_GLOSSY_TOON_ID:return {uint32_t(sizeof(SVMNodeToonBsdfData)),SF_BSDF_TOON};
     case CLOSURE_BSDF_HAIR_REFLECTION_ID:case CLOSURE_BSDF_HAIR_TRANSMISSION_ID:return {uint32_t(sizeof(SVMNodeHairBsdfData)),SF_BSDF_HAIR};
     case CLOSURE_BSDF_HAIR_CHIANG_ID:return {uint32_t(sizeof(SVMNodePrincipledHairBsdfData)),SF_BSDF_HAIR_CHIANG};
@@ -324,6 +358,21 @@ PrincipledCensus principled_census(const std::vector<uint32_t> &w,size_t data){
 // Glass BSDF record (svm/closure.h CLOSURE_BSDF_MICROFACET_*_GLASS_ID): anisotropic when the Tangent input is on the stack
 // and |Anisotropy| is not at most 1e-4 (the clamp to +-0.99 does not change that test); a linked Anisotropy counts as
 // anisotropic.
+// Glass BSDF record: an active thin film (svm/closure.h: `fresnel->thin_film.thickness = thinfilm_thickness`, used when
+// above THINFILM_THICKNESS_CUTOFF; no clamp before the test), or a linked Thin Film Thickness, which may enable it at run time.
+bool glass_thin_film(const std::vector<uint32_t> &w,size_t data){
+  const uint32_t bits=w[data+offsetof(SVMNodeGlassBsdfData,thin_film_thickness)/4];float thickness;std::memcpy(&thickness,&bits,4);
+  const bool linked=(bits>>8)==(SVM_INPUT_STACK_OFFSET_MASK>>8);
+  return linked||thickness>THINFILM_THICKNESS_CUTOFF;
+}
+// A Glossy or Glass BSDF record that rotates its tangent (svm/closure.h: a valid tangent offset, `fabsf(anisotropy) > 1e-4f`
+// after the clamp to +-0.99, `rotation != 0.0f`): a linked Anisotropy or Rotation counts, since either may rotate at run time.
+bool tangent_rotation(const std::vector<uint32_t> &w,size_t data,size_t tangent,size_t anisotropy,size_t rotation){
+  if(byte_at(w,data,tangent)==SVM_STACK_INVALID)return false;
+  auto linked=[](uint32_t bits){return (bits>>8)==(SVM_INPUT_STACK_OFFSET_MASK>>8);};
+  const uint32_t a=w[data+anisotropy/4],r=w[data+rotation/4];float av,rv;std::memcpy(&av,&a,4);std::memcpy(&rv,&r,4);
+  return (linked(a)||!(std::fabs(av)<=1e-4f))&&(linked(r)||rv!=0.0f);
+}
 bool glass_anisotropic(const std::vector<uint32_t> &w,size_t data){
   if(byte_at(w,data,offsetof(SVMNodeGlassBsdfData,tangent_offset))==SVM_STACK_INVALID)return false;
   const uint32_t bits=w[data+offsetof(SVMNodeGlassBsdfData,anisotropy)/4];float anisotropy;std::memcpy(&anisotropy,&bits,4);
@@ -408,6 +457,11 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
           out.anisotropic_transmission|=principled.anisotropic_transmission;
           if(principled.unsupported&&out.unsupported.empty())out.unsupported=principled.unsupported;}
         if(kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID||kind==CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID||kind==CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID)out.anisotropic_transmission|=glass_anisotropic(w,data_at);
+        if((kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID||kind==CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID||kind==CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID)&&glass_thin_film(w,data_at))out.features|=SF_BSDF_THIN_FILM|SF_BSDF_GLASS_THIN_FILM;
+        if((kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID||kind==CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID)&&
+           tangent_rotation(w,data_at,offsetof(SVMNodeGlassBsdfData,tangent_offset),offsetof(SVMNodeGlassBsdfData,anisotropy),offsetof(SVMNodeGlassBsdfData,rotation)))out.features|=SF_BSDF_TANGENT_ROTATION;
+        if((kind==CLOSURE_BSDF_MICROFACET_GGX_ID||kind==CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID)&&
+           tangent_rotation(w,data_at,offsetof(SVMNodeGlossyBsdfData,tangent_offset),offsetof(SVMNodeGlossyBsdfData,anisotropy),offsetof(SVMNodeGlossyBsdfData,rotation)))out.features|=SF_BSDF_TANGENT_ROTATION;
         if(kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR||kind==CLOSURE_BSDF_F82_CONDUCTOR){const auto metallic=metallic_census(w,data_at,kind);out.features|=metallic.features;
           if(metallic.unsupported&&out.unsupported.empty())out.unsupported=metallic.unsupported;}
       }
@@ -423,6 +477,14 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
           out.unsupported="Unsupported feature: Radial Tiling node with two sides (r_gon_sides at most 2) and a roundness strictly between 0 and 1 is not implemented by the WebGPU device "
                           "(the Cycles CPU outputs there are binary32 rounding residue); the scene is rejected, not approximated";
       }
+      // A Set Normal node with an unlinked Direction: SetNormalNode::compile takes compiler.input_link("Direction"), which is
+      // SVM_STACK_INVALID for an input with no link, and svm_node_set_normal reads stack_load_float3(stack, node.direction_offset)
+      // without a default: stack[255] to stack[257] of the 255-entry stack (pinned svm/closure.h), so Cycles has no defined result.
+      if(op==NODE_CLOSURE_SET_NORMAL&&out.unsupported.empty()&&byte_at(w,node,offsetof(SVMNodeClosureSetNormal,direction_offset))==SVM_STACK_INVALID)
+        out.unsupported="WebGPU Set Normal node with an unlinked Direction not implemented (Cycles reads its shader stack out of bounds there, so the scene "
+                        "has no defined result; link the Direction input)";
+      if(op==NODE_TEX_ENVIRONMENT_DERIVATIVE||(op==NODE_TEX_IMAGE_DERIVATIVE&&w[node+offsetof(SVMNodeTexImage,projection)/4]!=uint32_t(NODE_IMAGE_PROJ_FLAT)))
+        out.derivative_image_projection=true;
       // A Light Path output that reads path state or the shading point (Backfacing, Ray Length, the depths): LIGHT_PATH_STATE,
       // kept by shader_features only in scenes with transparent shadows or volumes.
       if(op==NODE_LIGHT_PATH&&w[node+offsetof(SVMNodeLightPath,path_type)/4]>=uint32_t(NODE_LP_backfacing))out.features|=SF_LIGHT_PATH_STATE;
@@ -683,6 +745,34 @@ bool WebGPUDevice::sphere_light_reaches_geometry(const KernelLight &light) const
   }
   return false;
 }
+// Whether the bake target has a triangle whose cross product has a squared length of zero, by the arithmetic of the bake
+// entry (wavefront_bake.wgsl: each product rounded before its difference or sum; triangle_point_normal's cross and
+// normalize in the oracle's order): two corners at one point, or a cross product so small that its square underflows.
+// Its geometric normal is normalize of that vector on the CPU, NaNs and infinities. The static positions: the kernel
+// bakes a deforming mesh at them too.
+bool WebGPUDevice::bake_zero_area() const{
+  if(!data.bake.use||!(data.kernel_features&KERNEL_FEATURE_BAKING)||data.bake.object_index<0||size_t(data.bake.object_index)>=object_records.size())return false;
+  if(!tri_vindex_memory||!tri_verts_memory||!tri_vindex_memory->host_pointer||!tri_verts_memory->host_pointer)return false;
+  const KernelObject &object=object_records[size_t(data.bake.object_index)];
+  const size_t triangles=tri_vindex_memory->memory_size()/sizeof(packed_uint3),vertices=tri_verts_memory->memory_size()/sizeof(packed_float3);
+  const auto *index=static_cast<const packed_uint3*>(tri_vindex_memory->host_pointer);const auto *position=static_cast<const packed_float3*>(tri_verts_memory->host_pointer);
+  if(data.bake.tri_offset<0||object.mesh_volume.num_prims<0)return false;
+  const size_t first=size_t(data.bake.tri_offset),last=std::min(triangles,first+size_t(object.mesh_volume.num_prims));
+  for(size_t prim=first;prim<last;prim++){
+    const int64_t at[3]={int64_t(object.position_offset)+index[prim].x,int64_t(object.position_offset)+index[prim].y,int64_t(object.position_offset)+index[prim].z};
+    if(at[0]<0||at[1]<0||at[2]<0||size_t(at[0])>=vertices||size_t(at[1])>=vertices||size_t(at[2])>=vertices)continue;
+    const packed_float3 &a=position[at[0]],&b=position[at[1]],&c=position[at[2]];
+    const float e1[3]={b.x-a.x,b.y-a.y,b.z-a.z},e2[3]={c.x-a.x,c.y-a.y,c.z-a.z};volatile float square[3];
+    for(int k=0;k<3;k++){const volatile float left=e1[(k+1)%3]*e2[(k+2)%3],right=e1[(k+2)%3]*e2[(k+1)%3];const volatile float difference=left-right;square[k]=difference*difference;}
+    const volatile float first=square[0]+square[1];const volatile float length_squared=first+square[2];
+    if(length_squared==0.0f)return true;
+  }
+  return false;
+}
+// The features of the curve and point tables (shader_features), exact in every pipeline (pipeline_current): they go
+// with the tables.
+static constexpr ShaderFeatures SF_SCENE_TABLE_EXACT=SF_CURVES|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_RAYCAST|
+  SF_CURVE_SHADOW_CATCHER|SF_POINTS|SF_POINTS_MOTION|SF_MNEE_WALK_STAGES|SF_LIGHT_SPHERE_INSIDE;
 ShaderFeatures WebGPUDevice::shader_features(){
   // Unimplemented Principled features are refused for every module, with or
   // without specialization, before any pipeline or dispatch uses the scene.
@@ -698,12 +788,11 @@ ShaderFeatures WebGPUDevice::shader_features(){
     std::sort(roots.begin(),roots.end());roots.erase(std::unique(roots.begin(),roots.end()),roots.end());
     const SvmCensus referenced=svm_census(svm_node_words,shader_records.size(),&roots);
     unsupported_feature=referenced.unsupported;principled_features=referenced.features&SF_PRINCIPLED_ALL;unsupported_generation=svm_generation;
-    // Dispersion (a referenced shader that needs a wavelength) is not implemented by this device. The host refuses a
-    // dispersive Principled BSDF on this backend with the same words; this is the device's own refusal.
-    if(unsupported_feature.empty())for(uint32_t s:roots)if(s<shader_records.size()&&(shader_records[s].flags&SD_REQUIRES_WAVELENGTH)){unsupported_feature="WebGPU dispersion not implemented";break;}
+    // Dispersion (pipelines.h SF_DISPERSION): a referenced shader that needs a wavelength.
+    for(uint32_t s:roots)if(s<shader_records.size()&&(shader_records[s].flags&SD_REQUIRES_WAVELENGTH)){principled_features|=SF_DISPERSION;break;}
     // Anisotropic transmission (wavefront_microfacet.wgsl): as a caustic caster it takes the anisotropic branch of
     // mnee_sample_bsdf_dh (integrator/mnee.h; pipelines.h SF_MNEE_ANISOTROPIC, set below with caustics).
-    anisotropic_transmission=referenced.anisotropic_transmission;
+    anisotropic_transmission=referenced.anisotropic_transmission;derivative_image_projection=referenced.derivative_image_projection;
     // The Attribute node counts only from referenced shaders too: Cycles' default Gaussian splat shader (an Attribute
     // node into an Emission closure, compiled into every scene) would otherwise compile the attribute handler into
     // every scene. An evaluation of a shader outside these roots would report the node as unsupported, never skip it.
@@ -713,7 +802,12 @@ ShaderFeatures WebGPUDevice::shader_features(){
     // Nodes whose pinned handlers need a path or the scene's BVH there are refused, never approximated.
     displacement_features=SF_NONE;displacement_program_features=SF_NONE;
     {std::vector<uint32_t> displaced;for(uint32_t s:roots)if(s<shader_records.size()&&(shader_records[s].flags&SD_HAS_DISPLACEMENT))displaced.push_back(s);
-     if(!displaced.empty()){const SvmCensus program=svm_census(svm_node_words,shader_records.size(),&displaced,true);
+     // A True or Both method with nothing linked to the Displacement output: SD_HAS_DISPLACEMENT follows the method alone (pinned
+     // scene/shader.cpp "if (shader->get_displacement_method() != DISPLACE_BUMP) { flag |= SD_HAS_DISPLACEMENT; }"), but the
+     // program sets no displacement (OutputNode::compile adds NODE_SET_DISPLACEMENT only "if (displacement_in->link)") and
+     // mesh_displace.cpp evaluates no such shader ("if (!shader->has_displacement || ...) { continue; }"): no shader_eval_displace.
+     const SvmCensus program=displaced.empty()?SvmCensus{}:svm_census(svm_node_words,shader_records.size(),&displaced,true);
+     if((program.features&SF_NODE_DISPLACEMENT).any()){
        displacement_features=program.features|SF_EVAL_DISPLACE;displacement_program_features=program.features;
        for(uint32_t s:displaced)if(shader_records[s].flags&SD_HAS_BUMP_FROM_DISPLACEMENT)displacement_features|=SF_BUMP_UNDISPLACED;
        for(const uint flags:object_flag_records)if(flags&SD_OBJECT_HAS_VERTEX_MOTION)displacement_features|=SF_DISPLACE_VERTEX_MOTION;
@@ -754,7 +848,9 @@ ShaderFeatures WebGPUDevice::shader_features(){
         " GPUs: caustic scenes render incorrectly on this GPU class; render the scene on another GPU or on the CPU device";
     }
   if(!unsupported_feature.empty())throw std::runtime_error(unsupported_feature);
-  if(specialization_mode==SpecializationMode::Off)return SF_ALL;
+  // A transparent shadow hit limit above 4095 (pipelines.h SF_SHADOW_WIDE_LIMIT): this call's KernelData, in every mode.
+  const ShaderFeatures wide_limit=data.integrator.transparent_shadows&&data.integrator.transparent_max_bounce>4095?SF_SHADOW_WIDE_LIMIT:ShaderFeatures{};
+  if(specialization_mode==SpecializationMode::Off)return SF_ALL|(principled_features&SF_DISPERSION)|wide_limit;
   if(census_generation!=svm_generation){
     census=svm_census(svm_node_words,shader_records.size());census_generation=svm_generation;
     enabled_features|=(census.features&~(SF_PRINCIPLED_ALL|SF_ATTR))|principled_features|attribute_features|displacement_features;
@@ -802,16 +898,29 @@ ShaderFeatures WebGPUDevice::shader_features(){
     for(const KernelLight &light:lamp_records())if(light.type==LIGHT_BACKGROUND){enabled_features|=SF_LIGHT_BACKGROUND;
       const auto id=uint(light.shader_id)&SHADER_MASK;if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE;}
     if(data.background.use_mis)enabled_features|=SF_LIGHT_BACKGROUND;
+    // Sun guiding is a strategy of the background light's sample (scene/light.cpp: the sun weight is set only where a
+    // background light is being prepared). A Sky Texture with a sun disc in a world that no background light samples is
+    // only looked at: without this the surface module was built with the background sample entry
+    // (surface_background_stage) while its sampler, a LIGHT_BACKGROUND region, was compiled out, and did not compile.
+    if(!(enabled_features&SF_LIGHT_BACKGROUND).any())enabled_features&=~SF_BACKGROUND_SUN;
     // Background light portals (the portal records follow the lamps in the light table).
     if(data.integrator.num_portals>0)enabled_features|=SF_BACKGROUND_PORTAL;
+    for(size_t i=lamp_records().size();i<light_records.size();i++)if(light_records[i].area.len_u==0||light_records[i].area.len_v==0){enabled_features|=SF_BACKGROUND_PORTAL_DEGENERATE;
+      if(light_records[i].area.invarea>0&&data.background.map_weight==0)enabled_features|=SF_LIGHT_NAN_DIRECTION;}
     // Area lights with a zero axis length (native/DEVICE.md, item 148).
     for(const KernelLight &light:lamp_records())if(light.type==LIGHT_AREA&&(light.area.len_u==0||light.area.len_v==0))enabled_features|=SF_LIGHT_AREA_DEGENERATE;
+    for(const KernelLight &light:lamp_records())if(light.type==LIGHT_AREA&&(light.area.len_u==0||light.area.len_v==0)){
+      // An overflowed axis (light_axis_overflow; item 233); a spread of zero on an underflowed one.
+      const size_t record=size_t(&light-light_records.data());const bool overflowed=record<light_axis_overflow.size()&&light_axis_overflow[record]!=0;
+      if(overflowed)enabled_features|=SF_LIGHT_AREA_OVERFLOW;else if(light.area.tan_half_spread==0)enabled_features|=SF_LIGHT_NAN_DIRECTION;}
     // Spot lights (spot_attenuation in the oracle's float3 order; native/DEVICE.md, item 151).
     for(const KernelLight &light:lamp_records())if(light.type==LIGHT_SPOT)enabled_features|=SF_LIGHT_SPOT;
     // Point and spot lights, and sun lights with an angle (light_cone): lamp samples in the oracle's order (native/DEVICE.md,
     // item 152).
     for(const KernelLight &light:lamp_records())if(light.type==LIGHT_POINT||light.type==LIGHT_SPOT||(light.type==LIGHT_SUN&&light.sun.one_minus_cosangle!=0.0f))enabled_features|=SF_LIGHT_LAMP_SAMPLE;
-    // A sphere light whose ball reaches the geometry: a surface point can lie inside it (native/DEVICE.md, item 152).
+    // A sphere light whose ball reaches the geometry: a surface point can lie inside it (native/DEVICE.md, item 152). Taken
+    // again from the BVH once the scene has no curves (their unaligned nodes reach every light; SF_SCENE_TABLE_EXACT).
+    if(curve_records.empty())enabled_features&=~SF_LIGHT_SPHERE_INSIDE;
     for(const KernelLight &light:lamp_records())if((light.type==LIGHT_POINT||light.type==LIGHT_SPOT)&&light.spot.is_sphere&&sphere_light_reaches_geometry(light))enabled_features|=SF_LIGHT_SPHERE_INSIDE;
     // Point, spot, area and sun lights whose emission shader is not constant (shade_light_nee and the hit evaluations).
     for(const KernelLight &light:lamp_records())if(light.type!=LIGHT_BACKGROUND){const auto id=uint(light.shader_id)&SHADER_MASK;
@@ -819,6 +928,10 @@ ShaderFeatures WebGPUDevice::shader_features(){
     for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0&&size_t(light_distribution_records[i].prim)<tri_shader_words.size()){
       const auto id=tri_shader_words[light_distribution_records[i].prim]&SHADER_MASK;if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE;}
     for(const uint flags:object_flag_records)if(flags&SD_OBJECT_MOTION)enabled_features|=SF_MOTION_OBJECT;
+    // A tiled image in the scene (device.cpp mem_copy_to: the tile descriptor table).
+    if(tiled_images)enabled_features|=SF_IMAGE_TILED;
+    if(tiled_images&&derivative_image_projection)enabled_features|=SF_IMAGE_TILED_PROJECTION;
+    if(tiled_images&&(data.kernel_features&KERNEL_FEATURE_VOLUME))enabled_features|=SF_IMAGE_TILED_VOLUME;
     for(size_t i=0;i<object_records.size()&&i<object_flag_records.size();i++)if((object_flag_records[i]&SD_OBJECT_MOTION)&&object_records[i].primitive_type==PRIMITIVE_LAMP)enabled_features|=SF_LIGHT_MOTION|SF_MOTION_OBJECT;
     // Light tree and light linking (lighting.cpp validate_light_tree; m2-lighttree).
     if(data.integrator.use_light_tree){enabled_features|=SF_LIGHT_TREE|SF_LIGHT_SELECT;
@@ -835,14 +948,20 @@ ShaderFeatures WebGPUDevice::shader_features(){
     // The Ray Portal BSDF: the portal bounces of the path and shadow states exist with KERNEL_FEATURE_NODE_PORTAL.
     if(data.kernel_features&KERNEL_FEATURE_NODE_PORTAL)enabled_features|=SF_RAY_PORTAL;
     if(data.cam.num_motion_steps!=0)enabled_features|=SF_MOTION_CAMERA;
-    // Curves: the shapes of the uploaded curve records.
+    // Curves: the shapes of the uploaded curve records. The curve features below go when the device has no curve table,
+    // the point features when it has no point table, and the MNEE walk stages that follow them when it has neither
+    // (pipeline_current then rebuilds a pipeline that has them): a scene without curves or points after one with them
+    // builds the modules of a new device (native/DEVICE.md, item 266).
+    if(curve_records.empty())enabled_features&=~(SF_CURVES|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_RAYCAST|SF_CURVE_SHADOW_CATCHER);
+    if(point_shader_words.empty())enabled_features&=~(SF_POINTS|SF_POINTS_MOTION);
+    if(curve_records.empty()&&point_shader_words.empty())enabled_features&=~SF_MNEE_WALK_STAGES;
     for(const KernelCurve &curve:curve_records){const int shape=curve.type&PRIMITIVE_CURVE;
       enabled_features|=shape==PRIMITIVE_CURVE_RIBBON?SF_CURVE_RIBBON:shape==PRIMITIVE_CURVE_THICK?SF_CURVE_THICK:SF_CURVE_THICK_LINEAR;
       if(curve.type&PRIMITIVE_MOTION)enabled_features|=SF_CURVE_MOTION;
       if(data.integrator.transparent_shadows)enabled_features|=SF_CURVE_SHADOW;}
     // Points: any uploaded point; their motion when an object's primitive type carries it.
     if(!point_shader_words.empty())enabled_features|=SF_POINTS;
-    for(const KernelObject &object:object_records)if(object.primitive_type==PRIMITIVE_MOTION_POINT)enabled_features|=SF_POINTS_MOTION;
+    for(const KernelObject &object:object_records)if(object.primitive_type==PRIMITIVE_MOTION_POINT||object.primitive_type==PRIMITIVE_MOTION_GSPLAT)enabled_features|=SF_POINTS_MOTION;
     // Smooth-normal derivatives of motion triangles (pipelines.h SF_MOTION_NORMAL_DERIVATIVE).
     if((enabled_features&SF_TEX_COORD_DERIVATIVE).any())for(const KernelObject &object:object_records)if(object.primitive_type==PRIMITIVE_MOTION_TRIANGLE)enabled_features|=SF_MOTION_NORMAL_DERIVATIVE;
     if(data.integrator.has_shadow_catcher)enabled_features|=SF_SHADOW_CATCHER;
@@ -863,11 +982,14 @@ ShaderFeatures WebGPUDevice::shader_features(){
     // A bake of a deforming mesh: its plain triangles at the static positions (init_from_bake.h; native/DEVICE.md, item 115).
     if(data.bake.use&&(data.kernel_features&KERNEL_FEATURE_BAKING)&&data.bake.object_index>=0&&size_t(data.bake.object_index)<object_flag_records.size()&&
        (object_flag_records[size_t(data.bake.object_index)]&SD_OBJECT_HAS_VERTEX_MOTION))enabled_features|=SF_BAKE_DEFORM;
-    if(data.bvh.have_motion||data.cam.num_motion_steps!=0)enabled_features|=SF_FILM_MOTION_EXACT;
-    if(data.integrator.transparent_shadows&&data.bvh.have_motion)enabled_features|=SF_SHADOW_MOTION;
-    if(data.integrator.use_caustics&&data.bvh.have_motion)enabled_features|=SF_MNEE_MOTION;
+    // A bake target with a zero-area triangle: the kernel's NaN geometric normal (native/DEVICE.md, item 149).
+    if(bake_zero_area())enabled_features|=SF_BAKE_ZERO_AREA;
+    if(bvh_motion()||data.cam.num_motion_steps!=0)enabled_features|=SF_FILM_MOTION_EXACT;
+    if(data.integrator.transparent_shadows&&bvh_motion())enabled_features|=SF_SHADOW_MOTION;
+    if(data.integrator.use_caustics&&bvh_motion())enabled_features|=SF_MNEE_MOTION;
     // The MNEE walk's traversal with motion and curve or point leaves (pipelines.h SF_MNEE_WALK_STAGES), from the module's own
-    // features: a device that renders several scenes keeps the features of the earlier ones (the MNEE image gate).
+    // features: a device that renders several scenes keeps the node features of the earlier ones (the MNEE image gate), and
+    // the curve and point features while it has those tables.
     if((enabled_features&SF_MNEE_MOTION).any()&&((enabled_features&(SF_CURVES|SF_POINTS_ALL)).any()||!curve_records.empty()||!point_shader_words.empty()))enabled_features|=SF_MNEE_WALK_STAGES;
     for(const KernelObject &object:object_records){
       if(object.shadow_terminator_shading_offset>1.0f)enabled_features|=SF_TERMINATOR_SHADING;
@@ -882,6 +1004,14 @@ ShaderFeatures WebGPUDevice::shader_features(){
     if(!curve_records.empty()&&(enabled_features&SF_NODE_RAYCAST).any())enabled_features|=SF_CURVE_RAYCAST;
     for(size_t i=0;i<object_records.size()&&i<object_flag_records.size();i++)if((object_records[i].primitive_type&PRIMITIVE_CURVE)&&(object_flag_records[i]&SD_OBJECT_SHADOW_CATCHER))enabled_features|=SF_CURVE_SHADOW_CATCHER;
   }
+  // Quaternion and spherical-harmonics attributes (pipelines.h): this call's tables only.
+  enabled_features&=~(SF_ATTR_QUATERNION|SF_ATTR_SPHERICAL_HARMONICS);
+  for(const auto &[name,feature]:{std::pair{"attributes_quaternion",SF_ATTR_QUATERNION},std::pair{"attributes_spherical_harmonics_rest",SF_ATTR_SPHERICAL_HARMONICS}}){
+    const auto it=globals.find(name);if(it!=globals.end()&&it->second&&remaining(it->second))enabled_features|=feature;}
+  // Gaussian splats (pipelines.h): this call's KernelData and objects only.
+  enabled_features&=~(SF_GSPLATS|SF_GSPLATS_MOTION);
+  if(data.kernel_features&KERNEL_FEATURE_GSPLATS){enabled_features|=SF_GSPLATS|SF_POINTS;
+    for(const KernelObject &object:object_records)if(object.primitive_type==PRIMITIVE_MOTION_GSPLAT)enabled_features|=SF_GSPLATS_MOTION|SF_POINTS_MOTION;}
   // The sampling pattern comes from KernelData, not from the census (kernel/sample/pattern.h).
   if(data.integrator.sampling_pattern!=SAMPLING_PATTERN_TABULATED_SOBOL)enabled_features|=SF_SAMPLING_PATTERN;
   // The volume integrators' pattern (pipelines.h SF_VOLUME_SAMPLING_PATTERN): this call's KernelData only, and only once the
@@ -892,7 +1022,7 @@ ShaderFeatures WebGPUDevice::shader_features(){
      (data.integrator.sampling_pattern!=SAMPLING_PATTERN_SOBOL_BURLEY||data.integrator.blue_noise_sequence_length!=0))enabled_features|=SF_VOLUME_SAMPLING_PATTERN;
   // Volumes with motion blur (pipelines.h SF_VOLUME_MOTION): this call's KernelData only, as the pattern above.
   enabled_features&=~SF_VOLUME_MOTION;
-  if((data.kernel_features&KERNEL_FEATURE_VOLUME)&&data.bvh.have_motion)enabled_features|=SF_VOLUME_MOTION;
+  if((data.kernel_features&KERNEL_FEATURE_VOLUME)&&bvh_motion())enabled_features|=SF_VOLUME_MOTION;
   // A local traversal from a transform-applied object (it starts at the scene root) in a scene with instance leaves
   // (pipelines.h SF_LOCAL_INSTANCE_SKIP): the shaders of the applied objects' top-level primitives, from this call's tables,
   // kept per upload.
@@ -926,6 +1056,7 @@ ShaderFeatures WebGPUDevice::shader_features(){
   if(data.cam.type!=CAMERA_PERSPECTIVE||data.cam.aperturesize>0)enabled_features|=SF_CAMERA_PROJECTIONS;
   if(data.cam.interocular_offset!=0.0f)enabled_features|=SF_CAMERA_STEREO|SF_CAMERA_PROJECTIONS;
   if(data.cam.type==CAMERA_PANORAMA&&((enabled_features&SF_TEX_COORD).any()||film_motion_vectors()))enabled_features|=SF_CAMERA_PANORAMA_INVERSE;
+  enabled_features=(enabled_features&~SF_SHADOW_WIDE_LIMIT)|wide_limit;
   if(specialization_mode==SpecializationMode::Superset){
     if(superset_scene!=enabled_features){
       size_t budget=superset_default_budget_bytes;
@@ -1005,7 +1136,10 @@ static void salt_driver_cache(std::string &code){
 bool WebGPUDevice::pipeline_current(const cbc::Pipeline &pipeline,const char *entry,ShaderFeatures removed){
   if(!pipeline.value)return false;
   auto it=pipeline_features.find(entry);
-  return it!=pipeline_features.end()&&!((shader_features()&~removed)&~it->second).any();
+  if(it==pipeline_features.end())return false;
+  const ShaderFeatures scene=shader_features()&~removed;
+  // A pipeline whose features cover the scene's stays, except that the curve and point table features must match.
+  return !(scene&~it->second).any()&&!(it->second&SF_SCENE_TABLE_EXACT&~scene).any();
 }
 // The raytrace surface queue holds only paths whose shader is flagged
 // SD_HAS_RAYTRACE (the Ambient Occlusion node), and prepare_surface_raytrace
@@ -1022,7 +1156,7 @@ ShaderFeatures WebGPUDevice::displacement_unused_svm_features(){
   const ShaderFeatures scene=shader_features();
   if(specialization_mode!=SpecializationMode::Scene)return SF_NONE;
   constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME;
-  const ShaderFeatures handlers=svm|SF_NODES_INTEGER|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_BUMP_UNDISPLACED;
+  const ShaderFeatures handlers=svm|SF_NODES_INTEGER|SF_BSDF_FAMILIES|SF_BSDF_SHEEN|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_BUMP_UNDISPLACED;
   return scene&handlers&~displacement_program_features;
 }
 ShaderFeatures WebGPUDevice::raytrace_unused_svm_features(){
@@ -1107,7 +1241,7 @@ ShaderFeatures WebGPUDevice::mnee_unused_svm_features(){
   // Census-only bits: the SVM node and closure handlers (lamp, motion, terminator, light-sampling, displacement and
   // film bits are set from the scene tables and stay).
   constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC|
-    SF_NODES_INTEGER|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_NODE_IES|SF_LIGHT_FALLOFF|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_TEX_SKY_SCATTERING|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME;
+    SF_NODES_INTEGER|SF_BSDF_FAMILIES|SF_BSDF_SHEEN|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_NODE_IES|SF_LIGHT_FALLOFF|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_TEX_SKY_SCATTERING|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME;
   mnee_unused=svm&~used.features;
   return scene&mnee_unused;
 }

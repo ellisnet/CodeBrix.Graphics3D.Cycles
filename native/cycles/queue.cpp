@@ -43,6 +43,22 @@ void WebGPUDevice::update_state(const IntegratorStateGPU &value){
   field_count=uint32_t(descriptors.size()/4);state=value;
   if(!descriptors.empty()){fields=allocate(descriptors.size()*4);upload(fields,descriptors.data(),descriptors.size()*4);}
 }
+// The kernels that cannot evaluate a shader: path setup, the closest traversal, the film kernels and the scheduler's own.
+static bool tile_kernel(DeviceKernel kernel){
+  switch(kernel){
+    case DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA:case DEVICE_KERNEL_INTEGRATOR_INIT_FROM_BAKE:case DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST:
+    case DEVICE_KERNEL_INTEGRATOR_SHADOW_CATCHER_COUNT_POSSIBLE_SPLITS:case DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK:
+    case DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_X:case DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_Y:
+    case DEVICE_KERNEL_VOLUME_GUIDING_FILTER_X:case DEVICE_KERNEL_VOLUME_GUIDING_FILTER_Y:case DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS:
+    case DEVICE_KERNEL_PREFIX_SUM:case DEVICE_KERNEL_INTEGRATOR_RESET:case DEVICE_KERNEL_INTEGRATOR_COMPACT_STATES:
+    case DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_STATES:case DEVICE_KERNEL_INTEGRATOR_QUEUED_PATHS_ARRAY:
+    case DEVICE_KERNEL_INTEGRATOR_QUEUED_SHADOW_PATHS_ARRAY:case DEVICE_KERNEL_INTEGRATOR_ACTIVE_PATHS_ARRAY:
+    case DEVICE_KERNEL_INTEGRATOR_TERMINATED_PATHS_ARRAY:case DEVICE_KERNEL_INTEGRATOR_TERMINATED_SHADOW_PATHS_ARRAY:
+    case DEVICE_KERNEL_INTEGRATOR_COMPACT_PATHS_ARRAY:case DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_PATHS_ARRAY:
+    case DEVICE_KERNEL_INTEGRATOR_SORTED_PATHS_ARRAY:return false;
+    default:return true;
+  }
+}
 class WebGPUQueue final:public DeviceQueue {
   WebGPUDevice &d;
  public:
@@ -68,7 +84,10 @@ class WebGPUQueue final:public DeviceQueue {
       FingerprintScope(WebGPUDevice &device,DeviceKernel k):d(device),kernel(k){if(d.fingerprint)d.fingerprint_kernel_begin(kernel);}
       ~FingerprintScope(){if(d.fingerprint)d.fingerprint_kernel_end(kernel);}} fingerprint_scope(d,kernel);
     if(scene_capture)d.guard([&]{scene_capture->enqueue(kernel,work,args);});
-    d.guard([&]{
+    // A scene with tiled images: every kernel that can evaluate a shader runs as a transaction (image.cpp tile_transaction).
+    // Fingerprint mode dispatches nothing, so nothing can miss.
+    const bool transaction=d.tiled_images&&!d.fingerprint&&tile_kernel(kernel);
+    const auto run=[&]{d.guard([&]{
       require(work>=0&&work<=int(d.gpu.limits.maxComputeWorkgroupsPerDimension*64),"Invalid WebGPU work size");
       if(kernel==DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA){
         debug_enqueue_begin(kernel,work);d.enqueue_camera(work,args);debug_enqueue_end();return;
@@ -188,7 +207,9 @@ class WebGPUQueue final:public DeviceQueue {
       p[21]=d.data.integrator.transparent_shadows!=0||(d.data.kernel_features&KERNEL_FEATURE_AO)!=0||d.data.integrator.use_caustics!=0||
             d.data.integrator.use_direct_light!=0;
       if(work){debug_enqueue_begin(kernel,work);d.dispatch(p,uint32_t(work));debug_enqueue_end();}
-    });return !d.have_error();
+    });};
+    if(transaction)d.tile_transaction(*this,run,device_kernel_as_string(kernel));else run();
+    return !d.have_error();
   }
 };
 unique_ptr<DeviceQueue> WebGPUDevice::gpu_queue_create(){return make_unique<WebGPUQueue>(this);}

@@ -8,8 +8,9 @@ point attributes a splat needs: radiance:base (float4, the band-0 colour coeffic
 and rotation (quaternion), and in some scenes radiance:sh (spherical_harmonics_rest, bands 1 to 3). Cycles' default splat
 shader (an emission of the radiance evaluated from the coefficients) and caller shaders that read the radiance; band 0
 alone and with bands 1 to 3; object motion and deformation motion of the positions; single-user and instanced clouds;
-splats beside meshes, inside a volume, behind a transparent sheet and as transparent shadow casters, and beside a plain
-point cloud. Every value comes from a fixed formula rounded through binary32, so every platform gets the same bytes; the
+splats beside meshes, inside a volume, behind a transparent sheet and as transparent shadow casters, beside a plain
+point cloud, and beside the features with kernels of their own (the light tree, light and shadow linking, the shadow
+catcher, bakes, passes, denoising, the Ambient Occlusion and Raycast nodes, caustics). Every value comes from a fixed formula rounded through binary32, so every platform gets the same bytes; the
 rotations come from an axis and an angle (w = cos of half the angle, x, y, z = the axis times its sine), some of them
 longer or shorter than 1 (Cycles normalizes them). The radius given with the points is the authored one; Cycles bounds
 each splat with a radius of its own. Through the public C API.
@@ -154,6 +155,52 @@ def scenes():
         'primitives side by side in the BVH'), splat_cloud('splats', seed=0.5, count=40, center=(-1.3, -0.8, 0.4), spread=1.0, harmonics=True),
         points.place('splats-object', 'splats'), points.cloud('points', 'glossy', seed=2.0, count=30, center=(1.6, -1.0, 0.2), spread=0.8, radius=0.22),
         points.place('points-object', 'points'))
+    vector = [{'handle': 'pass-Vector', 'create': 'pass', 'set': {'type': 'motion', 'name': 'Vector'}}, {'handle': 'pass-Vector Weight', 'create': 'pass', 'set': {'type': 'motion_weight', 'name': 'Vector Weight'}}]
+    out['motion-pass.json'] = points.with_nodes(base('gsplat/motion-pass', 'The motion pass on deforming splats and on a moving instance, without motion blur: the splat '
+        'centers and their steps'), radiance_material(), splat_cloud('splats', 'radiance-lit', seed=0.2, steps=3), points.place('splats-object', 'splats'),
+        splat_cloud('more', seed=2.0, count=30, center=(-2.0, -1.2, -0.5), spread=0.8, harmonics=True),
+        points.place('more-a', 'more', [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.1, 0.0, 0.0, 1.0, 0.0], motion=moving), points.place('more-b', 'more', [1.0, 0.0, 0.0, 4.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]), *vector)
+    # Beside the features with their own kernels (the splats take part as hit geometry, as blockers and, with Cycles' default
+    # splat shader, as emissive hits).
+    out['beside-light-tree.json'] = beside('light-tree/lamps-and-mesh-lights', 'gsplat/beside-light-tree', 'The light tree with splats in the scene: a cloud with '
+        'Cycles\' default splat shader (emissive hits, which are not in the tree) and a cloud lit through the tree', radiance_material(),
+        splat_cloud('splats', seed=0.7, count=30, center=(0.9, 0.3, 0.2), spread=0.7, harmonics=True), points.place('splats-object', 'splats'),
+        splat_cloud('lit', 'radiance-lit', seed=1.9, count=30, center=(-1.5, 0.0, 0.0), spread=0.7), points.place('lit-object', 'lit'))
+    out['beside-light-linking.json'] = beside('light-tree/light-linking', 'gsplat/beside-light-linking', 'Light linking through the light tree with splats as '
+        'receivers of one light set and as blockers', radiance_material(),
+        splat_cloud('splats', 'radiance-lit', seed=0.7, count=30, center=(0.9, 0.3, 0.2), spread=0.7, harmonics=True), points.place('splats-object', 'splats', receiver_light_set=1),
+        splat_cloud('more', 'radiance-lit', seed=1.9, count=30, center=(-1.5, 0.0, 0.0), spread=0.7), points.place('more-object', 'more', receiver_light_set=2))
+    out['beside-shadow-linking.json'] = beside('shadow-linking/blockers', 'gsplat/beside-shadow-linking', 'Shadow linking with splats as blockers in a shadow set '
+        'and as receivers', radiance_material(),
+        splat_cloud('splats', 'radiance-lit', seed=0.3, count=30, center=(0.3, 0.6, 0.6), spread=0.6), points.place('splats-object', 'splats', blocker_shadow_set=1),
+        splat_cloud('more', 'radiance-lit', seed=1.2, count=20, center=(-1.0, 0.0, 1.2), spread=0.5, harmonics=True), points.place('more-object', 'more'))
+    out['shadow-linking-emissive.json'] = beside('shadow-linking/blockers', 'gsplat/shadow-linking-emissive', 'Shadow-linked splats with Cycles\' default splat '
+        'shader: the dedicated light kernels pick the emissive splat hits and evaluate the radiance at the picked hit',
+        splat_cloud('splats', seed=0.5, count=20, center=(0.3, 1.6, 0.4), spread=0.4, harmonics=True), points.place('splats-object', 'splats', shadow_set_membership=5))
+    out['beside-shadow-catcher.json'] = beside('shadow-catcher/catcher-point-light', 'gsplat/beside-shadow-catcher', 'A shadow catcher floor with splats above it: '
+        'the catcher records the shadows the splats cast where their stochastic test accepts', radiance_material(),
+        splat_cloud('splats', 'radiance-lit', seed=0.6, count=30, center=(0.1, 0.2, 0.0), spread=0.8, harmonics=True), points.place('splats-object', 'splats'))
+    catcher = beside('shadow-catcher/catcher-point-light', 'gsplat/shadow-catcher-splats', 'A splat cloud that is itself a shadow catcher, beside the catcher floor',
+        radiance_material(), splat_cloud('splats', 'radiance-lit', seed=0.6, count=30, center=(0.1, 0.2, 0.0), spread=0.8), points.place('splats-object', 'splats', is_shadow_catcher=True))
+    out['shadow-catcher-splats.json'] = catcher
+    for kind in ('combined', 'diffuse'):
+        out['bake-'+kind+'.json'] = beside('bake/'+kind, 'gsplat/bake-'+kind, 'A bake of the ball (' + kind + ') with splats around it: the bake\'s rays meet splats as '
+            'blockers and as emissive hits', splat_cloud('splats', seed=0.8, count=40, center=(0.9, 0.9, -0.9), spread=0.9, harmonics=True), points.place('splats-object', 'splats'))
+    out['denoising-features.json'] = beside('passes/denoising-features', 'gsplat/denoising-features', 'The denoising feature passes (albedo, normal, depth) with splats: '
+        'an emissive cloud (Cycles\' default splat shader) and a lit one', radiance_material(),
+        splat_cloud('splats', seed=0.4, count=30, center=(-0.2, 0.2, -1.2), spread=0.9, harmonics=True), points.place('splats-object', 'splats'),
+        splat_cloud('lit', 'radiance-lit', seed=1.6, count=30, center=(1.5, -0.6, -1.4), spread=0.7), points.place('lit-object', 'lit'))
+    out['data-passes.json'] = beside('passes/data-passes', 'gsplat/data-passes', 'The data passes (depth, position, normal, object and material index) with splats',
+        radiance_material(), splat_cloud('splats', 'radiance-lit', seed=0.4, count=40, center=(-0.2, 0.2, -1.2), spread=0.9, harmonics=True),
+        points.place('splats-object', 'splats', pass_id=5))
+    out['denoise-on.json'] = beside('denoise/beckmann-on', 'gsplat/denoise-on', 'A denoised render with splats in the scene: the guiding passes of splat hits feed the denoiser',
+        splat_cloud('splats', seed=1.3, count=30, center=(0.0, 1.0, -1.0), spread=0.9, harmonics=True), points.place('splats-object', 'splats'))
+    out['beside-ao-node.json'] = beside('ao/ao-node', 'gsplat/beside-ao-node', 'The Ambient Occlusion node with splats in the scene: the global traversal tests them, '
+        'the local one ignores them', splat_cloud('splats', seed=0.9, count=40, center=(0.0, 0.0, -0.8), spread=1.0), points.place('splats-object', 'splats'))
+    out['beside-raycast.json'] = beside('surface-nodes/raycast', 'gsplat/beside-raycast', 'The Raycast node hitting splats: the hit distance and the splat normal of the hit',
+        radiance_material(), splat_cloud('splats', 'radiance-lit', seed=0.9, count=40, center=(0.0, 0.0, -0.8), spread=1.0, harmonics=True), points.place('splats-object', 'splats'))
+    out['beside-caustics.json'] = beside('mnee/glass-sphere-caustic', 'gsplat/beside-caustics', 'Caustics with splats in the scene: a splat between the receiver and the '
+        'light ends the walk where its stochastic test accepts', splat_cloud('splats', seed=1.7, count=40, center=(0.0, 0.3, -0.5), spread=1.0), points.place('splats-object', 'splats'))
     return out
 
 

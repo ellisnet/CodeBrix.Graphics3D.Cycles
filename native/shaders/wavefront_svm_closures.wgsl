@@ -161,6 +161,9 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
 //#if SVM_BSDF_VELVET
         case CLOSURE_BSDF_ASHIKHMIN_VELVET_ID:{bytes=SZ_SimpleBsdfData;}
 //#endif
+//#if SVM_BSDF_SHEEN
+        case CLOSURE_BSDF_SHEEN_ID:{bytes=SZ_SimpleBsdfData;}
+//#endif
 //#if SVM_BSDF_TOON
         case CLOSURE_BSDF_DIFFUSE_TOON_ID,CLOSURE_BSDF_GLOSSY_TOON_ID:{bytes=SZ_ToonBsdfData;}
 //#endif
@@ -210,6 +213,9 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
 //#if SVM_BSDF_VELVET
     if(kind==CLOSURE_BSDF_ASHIKHMIN_VELVET_ID){svm_velvet(s,data,mix_weight);return;}
 //#endif
+//#if SVM_BSDF_SHEEN
+    if(kind==CLOSURE_BSDF_SHEEN_ID){svm_sheen(s,data,mix_weight);return;}
+//#endif
 //#if SVM_BSDF_TOON
     if(kind==CLOSURE_BSDF_DIFFUSE_TOON_ID||kind==CLOSURE_BSDF_GLOSSY_TOON_ID){svm_toon(s,data,kind,mix_weight,visibility);return;}
 //#endif
@@ -240,10 +246,13 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
     var n=(*s).geometry.N;if(normal_index!=SVM_STACK_INVALID){n=svm_load3(s,normal_index);}
     // safe_normalize_fallback(N, sd->N): len() = sqrt(dot) rounded once each, then
     // N * (1 / len) with a correctly rounded reciprocal (WGSL length and '/' are not).
-//#if SVM_NODE_TANGENT else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+//#if NAN_CLOSURE else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
     // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
     // test is on the bits, since the driver's float != is false for NaN.
     let magnitude=rounded_sqrt(rounded_dot(n,n));if((bitcast<u32>(magnitude)&0x7fffffffu)!=0u){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+//#endif
+//#if BAKE_ZERO_AREA
+    let zero_area_n=n;
 //#endif
     var roughness=0.0;var color=vec3<f32>(0);
     if(kind==CLOSURE_BSDF_DIFFUSE_ID){roughness=svm_input(s,data+N_DiffuseBsdfData_roughness);
@@ -253,6 +262,12 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
 //#endif
         n=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);
     }
+//#if BAKE_ZERO_AREA
+    // The geometric normal of a zero-area bake texel (lanes of NaNs and infinities): maybe_ensure_valid_specular_reflection
+    // keeps N or gives a NaN in every lane (zero_area_keeps_normal).
+    if(kind!=CLOSURE_BSDF_DIFFUSE_ID&&zero_area_not_finite((*s).geometry.Ng.x)&&((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u){
+        n=select(vec3<f32>(zero_area_nan()),zero_area_n,zero_area_keeps_normal((*s).geometry.Ng,(*s).geometry.wi,zero_area_n));}
+//#endif
     let weight=max(raw_weight,vec3<f32>(0));let sample_weight=abs((weight.x+weight.y+weight.z)*(1.0/3.0));
     if(!(sample_weight>=1e-5)){return;}
     let i=svm_allocate(s,kind,weight);if(i==NONE){return;}
@@ -320,7 +335,7 @@ fn ss_setup(s:ptr<function,SvmState>,i:u32,record:SvmClosure,kind:u32,flag:u32){
 // The Subsurface Scattering node (svm_node_closure_bsdf, CLOSURE_BSSRDF_*_ID): albedo is the closure weight.
 fn svm_bssrdf(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,flag:u32){
     let normal_index=svm_byte(data+N_BssrdfData_normal_offset);var n=(*s).geometry.N;if(normal_index!=SVM_STACK_INVALID){n=svm_load3(s,normal_index);}
-//#if SVM_NODE_TANGENT else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+//#if NAN_CLOSURE else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
     // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
     // test is on the bits, since the driver's float != is false for NaN.
     let magnitude=rounded_sqrt(rounded_dot(n,n));if((bitcast<u32>(magnitude)&0x7fffffffu)!=0u){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
@@ -329,8 +344,16 @@ fn svm_bssrdf(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,flag:u32
     var c=svm_closure_read((*s).output,i);
     c.multiscatter=max(svm_input3(s,data+N_BssrdfData_radius)*svm_input(s,data+N_BssrdfData_scale),vec3<f32>(0));c.T=(*s).weight;
     // maybe_ensure_valid_specular_reflection
+//#if BAKE_ZERO_AREA
+    let zero_area_n=n;
+//#endif
 //#if CURVES else     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){n=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)&&((*s).geometry.primitive_type&PRIMITIVE_CURVE)==0u){n=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+//#endif
+//#if BAKE_ZERO_AREA
+    // The geometric normal of a zero-area bake texel: N kept, or a NaN in every lane (zero_area_keeps_normal).
+    if(zero_area_not_finite((*s).geometry.Ng.x)&&((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u){
+        n=select(vec3<f32>(zero_area_nan()),zero_area_n,zero_area_keeps_normal((*s).geometry.Ng,(*s).geometry.wi,zero_area_n));}
 //#endif
     c.N=n;c.ior=svm_input(s,data+N_BssrdfData_ior);c.roughness=clamp(svm_input(s,data+N_BssrdfData_roughness),0.0,1.0);
     c.a=svm_input(s,data+N_BssrdfData_anisotropy);
@@ -376,11 +399,11 @@ fn svm_volume(s:ptr<function,SvmState>,node:u32){
     (*s).output.transparency=rounded_add3((*s).output.transparency,weight);(*s).output.runtime_flag|=SR_EXTINCTION;
 //#endif
 }
-//#if SVM_BSDF_FAMILIES
+//#if SVM_BSDF_FAMILY_HELPERS
 // safe_normalize_fallback(N, sd->N) of an optional SVM normal input, as in svm_bsdf.
 fn svm_family_normal(s:ptr<function,SvmState>,index:u32)->vec3<f32>{
     var n=(*s).geometry.N;if(index!=SVM_STACK_INVALID){n=svm_load3(s,index);}
-//#if SVM_NODE_TANGENT else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){return n*rounded_divide(1.0,magnitude);}return (*s).geometry.N;
+//#if NAN_CLOSURE else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){return n*rounded_divide(1.0,magnitude);}return (*s).geometry.N;
     // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
     // test is on the bits, since the driver's float != is false for NaN.
     let magnitude=rounded_sqrt(rounded_dot(n,n));if((bitcast<u32>(magnitude)&0x7fffffffu)!=0u){return n*rounded_divide(1.0,magnitude);}return (*s).geometry.N;
@@ -753,7 +776,14 @@ fn svm_volume_coefficients(s:ptr<function,SvmState>,node:u32,flag:u32,visibility
 // elements give 0; voxel grids come only with OpenVDB data (error 16).
 fn vp_attribute(s:ptr<function,SvmState>,desc:AttributeDesc)->vec4<f32>{
     if((desc.element&(ATTR_ELEMENT_OBJECT|ATTR_ELEMENT_MESH))==0u){if((desc.element&ATTR_ELEMENT_VOXEL)!=0u){svm_error(s,16u);}return vec4<f32>(0);}
-    if(desc.kind!=NODE_ATTR_FLOAT&&desc.kind!=NODE_ATTR_FLOAT2&&desc.kind!=NODE_ATTR_FLOAT3&&desc.kind!=NODE_ATTR_FLOAT4&&desc.kind!=NODE_ATTR_RGBA){return vec4<f32>(0);}
+//#if ATTRIBUTE_SPHERICAL_HARMONICS
+    // volume_attribute_float4: a spherical-harmonics attribute is (0, 0, 0, 1); its array is not fetched.
+    if(desc.kind==SH_KIND_SPHERICAL_HARMONICS_REST){return vec4<f32>(0.0,0.0,0.0,1.0);}
+//#endif
+//#if ATTRIBUTE_QUATERNION else     if(desc.kind!=NODE_ATTR_FLOAT&&desc.kind!=NODE_ATTR_FLOAT2&&desc.kind!=NODE_ATTR_FLOAT3&&desc.kind!=NODE_ATTR_FLOAT4&&desc.kind!=NODE_ATTR_RGBA){return vec4<f32>(0);}
+    // volume_attribute_float4: a quaternion is make_float4 of it, the four floats w, x, y, z as stored.
+    if(desc.kind!=NODE_ATTR_FLOAT&&desc.kind!=NODE_ATTR_FLOAT2&&desc.kind!=NODE_ATTR_FLOAT3&&desc.kind!=NODE_ATTR_FLOAT4&&desc.kind!=NODE_ATTR_RGBA&&desc.kind!=QA_KIND_QUATERNION){return vec4<f32>(0);}
+//#endif
     let v=attribute_fetch(s,desc,0u);
     if(desc.kind==NODE_ATTR_FLOAT){return vec4<f32>(v.x,v.x,v.x,1.0);}
     if(desc.kind==NODE_ATTR_FLOAT2){return vec4<f32>(v.x,v.y,0.0,1.0);}

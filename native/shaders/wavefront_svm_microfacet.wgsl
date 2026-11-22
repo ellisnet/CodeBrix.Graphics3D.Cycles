@@ -34,7 +34,7 @@ fn svm_glossy(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibili
     if(data_word(D_caustics_reflective)==0u&&(visibility&PATH_RAY_VISIBILITY_DIFFUSE)!=0u){return;}
     let ni=svm_byte(data+N_GlossyBsdfData_normal_offset);var n=(*s).geometry.N;
     if(ni!=SVM_STACK_INVALID){n=svm_load3(s,ni);}
-//#if SVM_NODE_TANGENT else     if(any(n!=vec3<f32>(0))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
+//#if NAN_CLOSURE else     if(any(n!=vec3<f32>(0))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
     // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
     // test is on the bits, since the driver's float != is false for NaN.
     if(any((bitcast<vec3<u32>>(n)&vec3<u32>(0x7fffffffu))!=vec3<u32>(0u))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
@@ -45,6 +45,11 @@ fn svm_glossy(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibili
     var c=svm_closure_read((*s).output,i);c.sample_weight=sample_weight;c.N=n;c.ior=1.0;c.energy_scale=1.0;
 //#if CURVES else     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){c.N=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)&&((*s).geometry.primitive_type&PRIMITIVE_CURVE)==0u){c.N=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+//#endif
+//#if BAKE_ZERO_AREA
+    // The geometric normal of a zero-area bake texel: N kept, or a NaN in every lane (zero_area_keeps_normal).
+    if(zero_area_not_finite((*s).geometry.Ng.x)&&((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u){
+        c.N=select(vec3<f32>(zero_area_nan()),n,zero_area_keeps_normal((*s).geometry.Ng,(*s).geometry.wi,n));}
 //#endif
     let r=clamp(svm_input(s,data+N_GlossyBsdfData_roughness),0.0,1.0);let rough=r*r;
     let anisotropy=clamp(svm_input(s,data+N_GlossyBsdfData_anisotropy),-0.99,0.99);
@@ -126,13 +131,22 @@ fn svm_glass(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibilit
     let normal_offset=select(N_RefractionBsdfData_normal_offset,N_GlassBsdfData_normal_offset,glass);
     let ni=svm_byte(data+normal_offset);var n=(*s).geometry.N;
     if(ni!=SVM_STACK_INVALID){n=svm_load3(s,ni);}
-//#if SVM_NODE_TANGENT else     if(any(n!=vec3<f32>(0))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
+//#if NAN_CLOSURE else     if(any(n!=vec3<f32>(0))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
     // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
     // test is on the bits, since the driver's float != is false for NaN.
     if(any((bitcast<vec3<u32>>(n)&vec3<u32>(0x7fffffffu))!=vec3<u32>(0u))){n=surface_normalize(n);}else{n=(*s).geometry.N;}
 //#endif
-    if(glass){let thickness=svm_input(s,data+N_GlassBsdfData_thin_film_thickness);svm_input(s,data+N_GlassBsdfData_thin_film_ior);
-        if(!(thickness<=0.1)){svm_error(s,16u);return;}}
+//#if SVM_BSDF_GLASS_THIN_FILM else     if(glass){let thickness=svm_input(s,data+N_GlassBsdfData_thin_film_thickness);svm_input(s,data+N_GlassBsdfData_thin_film_ior);
+    // The Glass BSDF node's thin film (svm/closure.h): `thinfilm_thickness = stack_load(...)`, `thinfilm_ior =
+    // fmaxf(stack_load(...), 1e-5f)`; the film is active when the thickness is above THINFILM_THICKNESS_CUTOFF (0.1).
+    var film_thickness=0.0;var film_ior=0.0;
+    if(glass){film_thickness=svm_input(s,data+N_GlassBsdfData_thin_film_thickness);film_ior=max(svm_input(s,data+N_GlassBsdfData_thin_film_ior),1e-5);
+        // The film's table is checked before anything is written, as the Principled BSDF's is.
+        if(film_thickness>0.1){let table=data_word(D_thin_film_table);let count=table_count(G_lookup_table);if(table>count||6u*THIN_FILM_TABLE_SIZE>count-table){svm_error(s,512u);return;}}
+//#endif
+//#if SVM_BSDF_GLASS_THIN_FILM else         if(!(thickness<=0.1)){svm_error(s,16u);return;}}
+    }
+//#endif
     let weight=max(select((*s).weight*mix_weight,vec3<f32>(mix_weight),glass),vec3<f32>(0));
     let sample_weight=abs((weight.x+weight.y+weight.z)*(1.0/3.0));if(!(sample_weight>=1e-5)){return;}
 //#if SVM_BSDF_GLASS_MULTISCATTER else     let i=svm_allocate(s,kind,weight);if(i==NONE){return;}
@@ -144,6 +158,11 @@ fn svm_glass(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibilit
     var c=svm_closure_read((*s).output,i);c.sample_weight=sample_weight;c.N=n;c.energy_scale=1.0;
 //#if CURVES else     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){c.N=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)&&((*s).geometry.primitive_type&PRIMITIVE_CURVE)==0u){c.N=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+//#endif
+//#if BAKE_ZERO_AREA
+    // The geometric normal of a zero-area bake texel: N kept, or a NaN in every lane (zero_area_keeps_normal).
+    if(zero_area_not_finite((*s).geometry.Ng.x)&&((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u){
+        c.N=select(vec3<f32>(zero_area_nan()),n,zero_area_keeps_normal((*s).geometry.Ng,(*s).geometry.wi,n));}
 //#endif
     let ior=max(svm_input(s,data+select(N_RefractionBsdfData_ior,N_GlassBsdfData_ior,glass)),1e-5);
     c.ior=select(ior,rounded_divide(1.0,ior),((*s).geometry.runtime_flag&SR_BACKFACING)!=0u);
@@ -178,6 +197,21 @@ fn svm_glass(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibilit
         let z=sqrt(abs((c.ior-1.0)/(c.ior+1.0)));let v=microfacet_lut3(s,roughness,microfacet_mu_index(mu),z,data_word(D_ggx_gen_schlick_ior_s));
         let f=(1.0-v)*c.fresnel_f0+v;let albedo=f*c.reflection_tint+(1.0-f)*c.transmission_tint;
         c.sample_weight*=(albedo.x+albedo.y+albedo.z)*(1.0/3.0);
+//#if SVM_BSDF_GLASS_THIN_FILM
+        // `fresnel->thin_film.thickness = thinfilm_thickness; fresnel->thin_film.ior = (sd->runtime_flag & SR_BACKFACING) ?
+        // thinfilm_ior / ior : thinfilm_ior` (svm/closure.h, with the node's own IOR, not the flipped one). The record
+        // takes the generalized Schlick model with its film in a and b, as the Principled BSDF's transmission lobe does
+        // (principled_fresnel: generalized_schlick_fresnel's iridescence branch). With an active film
+        // bsdf_microfacet_estimate_albedo reads no table: the sample weight is the closure weight times the average of
+        // the Fresnel of the incoming direction (microfacet_fresnel, reflection and transmission).
+        if(film_thickness>0.1){
+            c.roughness=4.0;c.multiscatter=vec3<f32>(c.fresnel_f0);c.a=film_thickness;
+            c.b=select(film_ior,rounded_divide(film_ior,ior),((*s).geometry.runtime_flag&SR_BACKFACING)!=0u);
+            // `average(coeff.sum())` at `dot(wi, bsdf->N)`: each channel's two products are rounded before their sum.
+            let incoming=principled_fresnel(c,rounded_dot((*s).geometry.wi,c.N));let estimate=rounded_add3(incoming.reflection,incoming.transmission);
+            c.sample_weight=sample_weight*((estimate.x+estimate.y+estimate.z)*(1.0/3.0));
+        }
+//#endif
 //#if SVM_BSDF_GLASS_MULTISCATTER
         // bsdf_microfacet_setup_fresnel_generalized_schlick with preserve_energy (closure/bsdf_microfacet.h): the
         // average Fresnel is the transmission tint, or, when that is zero (refractive caustics off on a diffuse path, or
@@ -258,7 +292,7 @@ fn principled_slot(s:ptr<function,SvmState>,c:SvmClosure,local:bool,extra:bool)-
 fn principled_store(s:ptr<function,SvmState>,i:u32,c:SvmClosure){if(i!=PRINCIPLED_LOCAL){svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);}}
 fn principled_normal(s:ptr<function,SvmState>,index:u32,fallback:vec3<f32>)->vec3<f32>{
     var n=fallback;if(index!=SVM_STACK_INVALID){n=svm_load3(s,index);}
-//#if SVM_NODE_TANGENT else     if(any(n!=vec3<f32>(0))){return surface_normalize(n);}return (*s).geometry.N;
+//#if NAN_CLOSURE else     if(any(n!=vec3<f32>(0))){return surface_normalize(n);}return (*s).geometry.N;
     // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
     // test is on the bits, since the driver's float != is false for NaN.
     if(any((bitcast<vec3<u32>>(n)&vec3<u32>(0x7fffffffu))!=vec3<u32>(0u))){return surface_normalize(n);}return (*s).geometry.N;
@@ -267,6 +301,11 @@ fn principled_normal(s:ptr<function,SvmState>,index:u32,fallback:vec3<f32>)->vec
 //#endif
 //#if SVM_BSDF_FRESNEL_MODELS
 fn principled_valid(s:ptr<function,SvmState>,n:vec3<f32>)->vec3<f32>{
+//#if BAKE_ZERO_AREA
+    // The geometric normal of a zero-area bake texel: N kept, or a NaN in every lane (zero_area_keeps_normal).
+    if(zero_area_not_finite((*s).geometry.Ng.x)&&((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u){
+        return select(vec3<f32>(zero_area_nan()),n,zero_area_keeps_normal((*s).geometry.Ng,(*s).geometry.wi,n));}
+//#endif
 //#if CURVES else     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){return svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)&&((*s).geometry.primitive_type&PRIMITIVE_CURVE)==0u){return svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
 //#endif
@@ -355,13 +394,35 @@ fn principled_preserve(s:ptr<function,SvmState>,c:ptr<function,SvmClosure>,wi:ve
         (*c).weight*=darkening;(*c).sample_weight*=principled_average(darkening);}
 }
 //#endif
-//#if SVM_BSDF_PRINCIPLED
+//#if SVM_BSDF_SHEEN_CLOSURE
 fn principled_orthonormals(n:vec3<f32>,wi:vec3<f32>)->array<vec3<f32>,2>{
     let b=surface_normalize(rounded_cross(n,wi));
     if(rounded_dot(b,b)>=0.99){return array<vec3<f32>,2>(rounded_cross(b,n),b);}
     var a=vec3<f32>(n.z-n.y,n.x-n.z,n.y-n.x);if(n.x==n.y&&n.x==n.z){a=vec3<f32>(n.z-n.y,n.x+n.z,-n.y-n.x);}
     a=surface_native_normalize(a);return array<vec3<f32>,2>(a,rounded_cross(n,a));
 }
+//#endif
+//#if SVM_BSDF_SHEEN
+// The Sheen BSDF node, microfiber distribution (pinned svm/closure.h CLOSURE_BSDF_SHEEN_ID and bsdf_sheen_setup): N is
+// safe_normalize_fallback of the Normal input, the roughness clamp(saturatef(param1), 1e-3, 1); T and B from
+// make_orthonormals_safe_tangent(N, wi), the LTC transform (a, b) and the albedo from the sheen table at dot(N, wi) as the
+// Principled sheen lobe reads them; an invalid LTC leaves a closure of type CLOSURE_NONE_ID with sample weight 0, else the
+// weight and sample weight take the albedo. bsdf_alloc_maybe_emission's local closure (no slot left in an emissive
+// shader) only computes the albedo the node discards, so that case allocates nothing, as bsdf_alloc.
+fn svm_sheen(s:ptr<function,SvmState>,data:u32,mix_weight:f32){
+    let n=svm_family_normal(s,svm_byte(data+N_SimpleBsdfData_normal_offset));
+    let i=svm_family_allocate(s,CLOSURE_BSDF_SHEEN_ID,mix_weight);if(i==NONE){return;}
+    var c=svm_closure_read((*s).output,i);c.N=n;c.roughness=clamp(clamp(svm_input(s,data+N_SimpleBsdfData_param1),0.0,1.0),1e-3,1.0);
+    let wi=(*s).geometry.wi;let frame=principled_orthonormals(c.N,wi);c.T=frame[0];c.multiscatter=frame[1];
+    let cos_ni=dot(c.N,wi);let table=data_word(D_sheen_ltc);var ltc=vec3<f32>(0);
+    for(var k=0u;k<3u;k++){ltc[k]=microfacet_lut2(s,cos_ni,c.roughness,table+k*1024u);}
+    c.a=ltc.x;c.b=ltc.y;
+    if(abs(c.a)<1e-5||ltc.z<1e-5){var none:SvmClosure;none.kind=PRINCIPLED_CLOSURE_NONE;none.weight=c.weight;none.N=c.N;c=none;}
+    else{c.weight*=ltc.z;c.sample_weight*=ltc.z;(*s).output.runtime_flag|=SR_BSDF|SR_BSDF_HAS_EVAL;}
+    svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);
+}
+//#endif
+//#if SVM_BSDF_PRINCIPLED
 // svm_node_closure_bsdf, CLOSURE_BSDF_PRINCIPLED_ID, including
 // principled_bsdf_emission. Drivers inline every WGSL call, so the lobes run in
 // native order through one loop with a single call site per shared helper
@@ -489,6 +550,13 @@ fn svm_principled(s:ptr<function,SvmState>,data:u32,mix_weight:f32,flag:u32,visi
                         albedo=true;preserve=multi;fss=clamped_base+(1.0/21.0)*(vec3<f32>(1)-clamped_base)-c.reflection_tint*(1.0/126.0);}
                     case 3u:{if(thin_wall){c.N=valid;c.alpha_x=roughness*roughness;c.alpha_y=c.alpha_x;c.ior=1.0;principled_ggx(s,&c,false);preserve=true;fss=specular_tint;}
                         else{c.N=valid;c.T=tangent;c.alpha_x=alpha_x;c.alpha_y=alpha_y;c.ior=select(ior,rounded_divide(1.0,ior),backfacing);
+//#if DISPERSION
+                            // bsdf_glass_ior (svm/closure.h): saturatef, fmaxf and safe_divide of the two inputs; b != 0.0f is true for a NaN, on the bits.
+                            {let dispersion_scale=clamp(svm_input(s,data+N_PrincipledBsdfData_transmission_dispersion_scale),0.0,1.0);
+                                let abbe_number=max(svm_input(s,data+N_PrincipledBsdfData_transmission_dispersion_abbe_number),0.0);
+                                var inv_abbe=0.0;if((bitcast<u32>(abbe_number)&0x7fffffffu)!=0u){inv_abbe=rounded_divide(dispersion_scale,abbe_number);}
+                                c.ior=disp_glass_ior(s,c.ior,inv_abbe);}
+//#endif
                             c.a=film_thickness;c.b=select(film,film*c.ior,backfacing);
                             c.reflection_tint=select(vec3<f32>(0),vec3<f32>(1),reflective);c.transmission_tint=select(vec3<f32>(0),sqrt(clamped_base),refractive);
                             c.multiscatter=ggx_f0(ior)*specular_tint;principled_ggx(s,&c,true);albedo=true;albedo_transmission=true;preserve=multi;}}
@@ -647,7 +715,7 @@ fn svm_metallic(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibi
     var c=svm_closure_read((*s).output,i);c.sample_weight=sample_weight;
     // safe_normalize_fallback(N, sd->N) as in svm_bsdf.
     var n=(*s).geometry.N;let ni=svm_byte(data+N_MetallicBsdfData_normal_offset);if(ni!=SVM_STACK_INVALID){n=svm_load3(s,ni);}
-//#if SVM_NODE_TANGENT else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+//#if NAN_CLOSURE else     let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
     // safe_normalize_fallback's t != 0 is true for a NaN length (a NaN Tangent output, native/DEVICE.md, item 150): the
     // test is on the bits, since the driver's float != is false for NaN.
     let magnitude=rounded_sqrt(rounded_dot(n,n));if((bitcast<u32>(magnitude)&0x7fffffffu)!=0u){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
@@ -712,6 +780,7 @@ fn svm_beckmann(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibi
     svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);
 }
 //#endif
+//#if SVM_BSDF_PRINCIPLED
 //#if SVM_BSDF_THIN_SUBSURFACE
 // bsdf_thin_subsurface_setup (closure/bsdf_oren_nayar.h): a thin wall's subsurface lobe as a diffuse reflection and a
 // diffuse transmission, weighted by the subsurface anisotropy (saturate(0.5 (1 -+ anisotropy))); with a diffuse
@@ -732,4 +801,5 @@ fn principled_thin_subsurface(s:ptr<function,SvmState>,data:u32,subsurface:f32,b
         principled_store(s,i,c);
     }
 }
+//#endif
 //#endif

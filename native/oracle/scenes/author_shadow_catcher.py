@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Write the shadow catcher cbcOracleScene files. Rerunning reproduces them exactly.
 
-Both scenes put a diffuse floor marked as a shadow catcher (object socket
-is_shadow_catcher) under a box and a glossy sphere and add the three shadow catcher
+The scenes put a diffuse floor marked as a shadow catcher (object socket
+is_shadow_catcher) under a box and a glossy sphere (in shadow-catcher/catcher-dispersion a dispersive glass sphere) and add the three shadow catcher
 passes as named pass nodes. The oracle output contract records the Combined film;
 the passes are read through cbc_host_pass_floats by the gates and the managed tests.
 """
@@ -15,7 +15,7 @@ HERE=Path(__file__).resolve().parent
 PASSES=[('shadow_catcher','Shadow Catcher'),('shadow_catcher_matte','Shadow Catcher Matte'),('shadow_catcher_sample_count','Shadow Catcher Sample Count')]
 
 
-def catcher_scene(identifier,description,approximate):
+def catcher_scene(identifier,description,approximate,ball_material=('glossy_bsdf',dict(distribution='ggx',roughness=0.3,color=[0.7,0.75,0.8]))):
  floor=[-4,-1,-2, 4,-1,-2, 4,-1,6, -4,-1,6];cube,cube_indices=s.box(0.9,0.9,0.9);ball,ball_indices=s.sphere(0.5,24,12)
  nodes=s.common(64,48,0.9,[1,0,0,0, 0,0.9950042,-0.0998334,0.6, 0,0.0998334,0.9950042,-4])
  nodes+=[dict(handle='world',create='shader',graph=dict(nodes=[dict(handle='b',type='background_shader',set=dict(color=[0.3,0.35,0.45],strength=1.0))],
@@ -24,7 +24,7 @@ def catcher_scene(identifier,description,approximate):
  nodes[2]['set']['use_approximate_shadow_catcher']=approximate
  nodes+=[s.material('floor-material','diffuse_bsdf',dict(color=[0.6,0.55,0.5],roughness=0.0)),
   s.material('cube-material','diffuse_bsdf',dict(color=[0.8,0.3,0.1],roughness=0.0)),
-  s.material('ball-material','glossy_bsdf',dict(distribution='ggx',roughness=0.3,color=[0.7,0.75,0.8]))]
+  s.material('ball-material',*ball_material)]
  nodes+=s.mesh('floor',floor,[0,2,1, 0,3,2],'floor-material')
  nodes[-1]['set']['is_shadow_catcher']=True
  nodes+=s.mesh('cube',cube,cube_indices,'cube-material',s.translate(-0.7,-0.55,0.8))
@@ -41,7 +41,11 @@ def catcher_scene(identifier,description,approximate):
 
 def main():
  for data in [catcher_scene('shadow-catcher/catcher-point-light','Shadow catcher floor under a box and a GGX sphere, transparent film, a point light that is itself marked as a shadow catcher; the three shadow catcher passes',False),
-              catcher_scene('shadow-catcher/catcher-approximate','Shadow catcher floor under a box and a GGX sphere, opaque film with the approximate shadow catcher (background pass), one sun light',True)]:
+              catcher_scene('shadow-catcher/catcher-approximate','Shadow catcher floor under a box and a GGX sphere, opaque film with the approximate shadow catcher (background pass), one sun light',True),
+              catcher_scene('shadow-catcher/catcher-dispersion','Shadow catcher floor under a box and a dispersive Principled glass sphere (Transmission Dispersion Scale 1, Abbe number 15), '
+               'transparent film, a point light that is itself marked as a shadow catcher; the three shadow catcher passes',False,
+               ('principled_bsdf',dict(distribution='multi_ggx',base_color=[0.95,0.97,1.0],roughness=0.05,ior=1.5,transmission_weight=1.0,
+                transmission_dispersion_scale=1.0,transmission_dispersion_abbe_number=15.0)))]:
   path=HERE/(data['id']+'.json');path.parent.mkdir(parents=True,exist_ok=True)
   path.write_text(json.dumps(data,indent=1)+'\n');print(path.relative_to(HERE))
 

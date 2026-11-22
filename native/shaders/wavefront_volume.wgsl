@@ -351,6 +351,11 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     var sd:SurfaceData;sd.P=origin+direction*tmin;sd.N=-direction;sd.Ng=-direction;sd.wi=-direction;sd.prim=NONE;sd.primitive_type=V_PRIMITIVE_VOLUME;
     sd.time=heap_float(state_address(S_ray_time,index,4u));sd.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
     var r:SvmResult;r.runtime_flag=sd.runtime_flag;r.remaining=data_word(D_max_closures);r.closure_base=p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES;
+//#if TILED_VOLUMES
+    // volume_integrate: sd.lcg_state = lcg_state_init(rng_pixel, rng_offset, sample, 0x15b4f88d) (the homogeneous volume's one
+    // volume_shader_sample).
+    r.lcg_state=image_tile_lcg_init(state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index),state_word(S_path_sample,index),0x15b4f88du);
+//#endif
     for(var slot=0u;slot<entries;slot++){
         sd.object_id=load_word(volume_stack_address(index,slot,VS_object));sd.shader=load_word(volume_stack_address(index,slot,VS_shader));
         sd.shader_flag=load_word(table_at(G_shaders,sd.shader&SHADER_MASK,SIZE_shaders)+SH_flags);sd.object_flag=0u;
@@ -390,7 +395,9 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     if(any(sigma<vec3<f32>(0))||any(scatter<vec3<f32>(0))){fail();return;}
     state_u32(S_path_flag,index,flag);
     if(prim==NONE){store_word(volume_stack_address(index,entries,VS_shader),NONE);}
-    if(bounce==0u){state_f32(S_path_optical_depth,index,heap_float(state_address(S_path_optical_depth,index,4u))+max(sigma.x,max(sigma.y,sigma.z))*distance);}
+    // shade_volume.h: `vstate.optical_depth = reduce_max(coeff.sigma_t) * ray_length`, then, at bounce 0,
+    // `INTEGRATOR_STATE_WRITE(state, path, optical_depth) += vstate.optical_depth`: the product rounded before the sum.
+    if(bounce==0u){state_f32(S_path_optical_depth,index,rounded_add(heap_float(state_address(S_path_optical_depth,index,4u)),max(sigma.x,max(sigma.y,sigma.z))*distance));}
 //#if VOLUME_EMISSION
     // volume_emission_integrate and film_write_volume_emission (homogeneous: the whole segment).
     if((r.runtime_flag&SR_EMISSION)!=0u){vl_volume_emission(index,base,r,distance);}
@@ -676,10 +683,16 @@ fn vd_sample_3d(index:u32,dimension:u32)->vec3<f32>{
     let size=vec3<f32>(bitcast<f32>(load_word(input+VD_INPUT_SIZE+VD_INPUT_PRIM)),heap_float(input+VD_INPUT_SIZE+VD_INPUT_U),heap_float(input+VD_INPUT_SIZE+VD_INPUT_V));
     let applied=(sd.object_flag&VD_TRANSFORM_APPLIED)!=0u;let tfm=table_at(G_objects,object,SIZE_objects)+O_tfm;
     var lo=bitcast<f32>(0x7f7fffffu);var hi=-lo;
+//#if TILED_VOLUMES
+    // kernel_volume_density_evaluate: sd.lcg_state = lcg_state_init(offset, 0, 0, 0x15b4f88d), the samples continuing it.
+    var seed:SvmResult;seed.lcg_state=image_tile_lcg_init(offset,0u,0u,0x15b4f88du);
+//#endif
     for(var sample=0u;sample<samples;sample++){
         var P=rounded_add3(corner,vd_sample_3d(sample+offset*samples,VD_PRNG_DENSITY)*size);if(!applied){P=surface_transform_point(tfm,P);}
         sd.P=P;sd.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
-        let result=svm_evaluate_mode(NONE,sd,0u,0u,true);if(result.error!=0u){return;}
+//#if TILED_VOLUMES else         let result=svm_evaluate_mode(NONE,sd,0u,0u,true);if(result.error!=0u){return;}
+        let result=svm_evaluate_seeded(NONE,sd,0u,0u,true,seed);if(result.error!=0u){return;}seed.lcg_state=result.lcg_state;
+//#endif
         var emission=0.0;if((result.runtime_flag&SR_EMISSION)!=0u){emission=max(result.emission.x,max(result.emission.y,result.emission.z));}
         var sigma=0.0;if((result.runtime_flag&SR_EXTINCTION)!=0u){sigma=max(result.transparency.x,max(result.transparency.y,result.transparency.z));}
         let value=max(sigma,emission);lo=min(lo,value);hi=max(hi,value);
@@ -689,7 +702,10 @@ fn vd_sample_3d(index:u32,dimension:u32)->vec3<f32>{
     store_word(p(4u)+offset*8u,bitcast<u32>(rounded_divide(lo,scale)));store_word(p(4u)+offset*8u+4u,bitcast<u32>(rounded_divide(hi,scale)));
 //#endif
 //#if !VOLUME_HETEROGENEOUS
-    let result=svm_evaluate_mode(NONE,sd,0u,0u,true);if(result.error!=0u){return;}
+//#if TILED_VOLUMES else     let result=svm_evaluate_mode(NONE,sd,0u,0u,true);if(result.error!=0u){return;}
+    var seed:SvmResult;seed.lcg_state=image_tile_lcg_init(offset,0u,0u,0x15b4f88du);
+    let result=svm_evaluate_seeded(NONE,sd,0u,0u,true,seed);if(result.error!=0u){return;}
+//#endif
 //#if VOLUME_EMISSION else     if((result.runtime_flag&SR_EMISSION)!=0u){fail();return;}
 //#endif
     let scale=object_volume_density(object);

@@ -54,6 +54,35 @@ def tangent_glossy_glass(handle):
                    ['mix', 'Closure', 'output', 'Surface']])
 
 
+def tangent_rotation(handle):
+    """A linked Rotation of an anisotropic Glossy BSDF, NaN at the degenerate frames (svm/closure.h: rotation != 0.0f is true for
+    a NaN, so the tangent is rotated by NaN) and a varying finite angle elsewhere: the tangent about Z gives the lobe its frame,
+    the tangent about X the rotation."""
+    nodes = [{'handle': 'frame', 'type': 'tangent', 'set': {'direction_type': 'radial', 'axis': 'z'}},
+             {'handle': 'g', 'type': 'glossy_bsdf', 'set': {'distribution': 'ggx', 'roughness': 0.35, 'anisotropy': 0.6, 'color': [0.8, 0.6, 0.3]}},
+             {'handle': 'd', 'type': 'diffuse_bsdf', 'set': {'color': [0.3, 0.4, 0.6], 'roughness': 0.0}},
+             {'handle': 'mix', 'type': 'mix_closure', 'set': {'fac': 0.5}}]
+    connect = [['frame', 'Tangent', 'g', 'Tangent'], ['g', 'BSDF', 'mix', 'Closure1'], ['d', 'BSDF', 'mix', 'Closure2'], ['mix', 'Closure', 'output', 'Surface']]
+    nan_value(nodes, connect)
+    connect.append(['sum', 'Value', 'g', 'Rotation'])
+    return shader(handle, nodes, connect)
+
+
+def tangent_rotation_finite(handle):
+    """The tangent rotation of the GGX Glossy and Glass BSDF nodes with no Beckmann, Ashikhmin-Shirley, Metallic or Principled
+    closure in the scene: a Rotation linked to the position (a finite angle of many turns across each object), where an error
+    of the rotation's sine and cosine turns a sharp lobe. The Tangent node about Z gives both lobes their frame."""
+    nodes = [{'handle': 'frame', 'type': 'tangent', 'set': {'direction_type': 'radial', 'axis': 'z'}},
+             {'handle': 'g', 'type': 'glossy_bsdf', 'set': {'distribution': 'ggx', 'roughness': 0.3, 'anisotropy': 0.7, 'color': [0.8, 0.6, 0.3]}},
+             {'handle': 'gl', 'type': 'glass_bsdf', 'set': {'distribution': 'ggx', 'roughness': 0.3, 'anisotropy': -0.6, 'IOR': 1.45, 'color': [0.9, 0.95, 1.0]}},
+             {'handle': 'mix', 'type': 'mix_closure', 'set': {'fac': 0.35}},
+             {'handle': 'p', 'type': 'geometry'}, {'handle': 'sep', 'type': 'separate_xyz', 'set': {}}, {'handle': 'sum', 'type': 'math', 'set': {'math_type': 'add'}}]
+    connect = [['frame', 'Tangent', 'g', 'Tangent'], ['frame', 'Tangent', 'gl', 'Tangent'], ['p', 'Position', 'sep', 'Vector'], ['sep', 'Y', 'sum', 'Value1'],
+               ['sep', 'Z', 'sum', 'Value2'], ['sum', 'Value', 'g', 'Rotation'], ['sum', 'Value', 'gl', 'Rotation'],
+               ['g', 'BSDF', 'mix', 'Closure1'], ['gl', 'BSDF', 'mix', 'Closure2'], ['mix', 'Closure', 'output', 'Surface']]
+    return shader(handle, nodes, connect)
+
+
 def tangent_emission(handle):
     """A NaN Emission Strength of a Principled BSDF (svm/closure.h principled_bsdf_emission: !is_zero(emission) is true
     for it, so the NaN emission is recorded)."""
@@ -77,7 +106,11 @@ def scenes():
             'tangent-node-glossy-glass-normal.json': doc('surface-nodes/tangent-node-glossy-glass-normal', 'Tangent node, radial about X, as the Normal of a Glossy BSDF and of a '
                                                          'Glass BSDF node on the same objects: a NaN normal at the degenerate frames, kept as on the CPU', tangent_glossy_glass),
             'tangent-node-emission.json': doc('surface-nodes/tangent-node-emission', 'A value that is NaN at the degenerate frames of a Tangent node as the Emission Strength '
-                                              'of a Principled BSDF on the same objects', tangent_emission)}
+                                              'of a Principled BSDF on the same objects', tangent_emission),
+            'tangent-node-rotation.json': doc('surface-nodes/tangent-node-rotation', 'A value of a Tangent node (NaN at the degenerate frames, a varying angle elsewhere) as the '
+                                              'Rotation of an anisotropic Glossy BSDF mixed with a Diffuse BSDF on the same objects', tangent_rotation),
+            'tangent-rotation-linked.json': doc('surface-nodes/tangent-rotation-linked', 'The tangent rotation of an anisotropic GGX Glossy BSDF and Glass BSDF, linked to the '
+                                                'position (a finite angle of many turns), with the Tangent node as their frame, on the same objects', tangent_rotation_finite)}
 
 
 def main():

@@ -209,6 +209,14 @@ fn bgl_portal_region(light:u32)->AreaRegion{
 fn bgl_portal_count(P:vec3<f32>)->u32{
     var count=0u;for(var p=0u;p<data_word(D_integrator_num_portals);p++){if(bgl_portal_side(bgl_portal(p),P)){count++;}}return count;
 }
+//#if BACKGROUND_PORTAL_DEGENERATE
+// area_light_rect_sample's pdf with a NaN axis: 1.0f / S, S the float sum of four asinf(-1) negated (0x40c90fdb).
+fn bgl_portal_nan_rect_pdf()->f32{return rounded_divide(1.0,bitcast<f32>(0x40c90fdbu));}
+// What background_portal_sample gave for a portal with an axis of zero length: 1 an ellipse (ellipse_sample of a NaN
+// extent: a NaN point, and light_pdf_area_to_solid_angle's `cos_pi <= 0.0f` is false for the NaN cosine, so the pdf is
+// NaN), 2 a rectangle (a NaN point and direction with the pdf above).
+var<private> bgl_portal_degenerate:u32;
+//#endif
 // background_portal_pdf: (pdf, whether a portal is possible from P); `ignore` NONE ignores no portal.
 fn bgl_portal_pdf(P:vec3<f32>,direction:vec3<f32>,ignore:u32)->vec2<f32>{
     var pdf=0.0;var possible=0u;var reachable=false;
@@ -221,11 +229,29 @@ fn bgl_portal_pdf(P:vec3<f32>,direction:vec3<f32>,ignore:u32)->vec2<f32>{
         let t=rounded_divide(-rounded_add(rounded_dot(P,N),-rounded_dot(r.P,N)),rounded_dot(direction,N));
         if(!(t>1e-4&&t<bitcast<f32>(0x7f7fffffu))){continue;}
         let plane=rounded_add3(P,t*direction)-r.P;
+//#if !BACKGROUND_PORTAL_DEGENERATE
         let u=rounded_dot(plane,bgl_div3(r.U,r.len_u));if(u< -0.5||u>0.5){continue;}
         let v=rounded_dot(plane,bgl_div3(r.V,r.len_v));if(v< -0.5||v>0.5){continue;}
         if(round&&rounded_add(u*u,v*v)>0.25){continue;}
         if(round){let to=bgl_normalize_len(r.P-P);pdf=rounded_add(pdf,abs(invarea)*bgl_area_to_solid_angle(N,-to.xyz,to.w));}
         else{pdf=rounded_add(pdf,area_rectangle(P,r,vec2<f32>(0),false).pdf);}
+//#endif
+//#if BACKGROUND_PORTAL_DEGENERATE
+        // An axis of zero length (native/DEVICE.md, item 148): the pinned record holds normalize_len of a vector whose length
+        // is zero, an axis with a NaN in it, and the device never reads it. ray_quad_intersect's coordinate along that axis is
+        // NaN: `u < -0.5f || u > 0.5f` and `u * u + v * v > 0.25f` are false, so the portal is a strip (one axis) or its whole
+        // plane (both). The ellipse's pdf comes from its centre, as always. The rectangle's: area_light_rect_sample has
+        // z0 = dot(dir, cross(x, y)) NaN, so nz is NaN in every lane, safe_asinf(NaN) is asinf(clamp(NaN, -1, 1)) =
+        // asinf(-1) (max and min are `(a > b) ? a : b` and `(a < b) ? a : b`), S = -(g0 + g1 + g2 + g3) is the float 2 pi, both
+        // tests of `S < 1e-5f || reduce_min(sqr(nz)) > 0.99999f` are false and the pdf is 1.0f / S.
+        let zero_u=r.len_u==0.0;let zero_v=r.len_v==0.0;var u=0.0;var v=0.0;
+        if(!zero_u){u=rounded_dot(plane,bgl_div3(r.U,r.len_u));if(u< -0.5||u>0.5){continue;}}
+        if(!zero_v){v=rounded_dot(plane,bgl_div3(r.V,r.len_v));if(v< -0.5||v>0.5){continue;}}
+        if(round&&!zero_u&&!zero_v&&rounded_add(u*u,v*v)>0.25){continue;}
+        if(round){let to=bgl_normalize_len(r.P-P);pdf=rounded_add(pdf,abs(invarea)*bgl_area_to_solid_angle(N,-to.xyz,to.w));}
+        else if(zero_u||zero_v){pdf=rounded_add(pdf,bgl_portal_nan_rect_pdf());}
+        else{pdf=rounded_add(pdf,area_rectangle(P,r,vec2<f32>(0),false).pdf);}
+//#endif
     }
     if(ignore!=NONE){possible++;}
     return vec2<f32>(select(0.0,rounded_divide(pdf,f32(possible)),possible>0u),select(0.0,1.0,reachable));
@@ -234,11 +260,20 @@ fn bgl_portal_pdf(P:vec3<f32>,direction:vec3<f32>,ignore:u32)->vec2<f32>{
 struct BglPortalSample {s:vec4<f32>,portal:u32}
 fn bgl_portal_sample(P:vec3<f32>,random:vec2<f32>,count:u32)->BglPortalSample{
     var out=BglPortalSample(vec4<f32>(0),NONE);
+//#if BACKGROUND_PORTAL_DEGENERATE
+    bgl_portal_degenerate=0u;
+//#endif
     var r=random;r.y=r.y*f32(count);var portal=i32(r.y);r.y=rounded_add(r.y,-f32(portal));
     for(var p=0u;p<data_word(D_integrator_num_portals);p++){
         let light=bgl_portal(p);if(!bgl_portal_side(light,P)){continue;}
         if(portal==0){
             let region=bgl_portal_region(light);let N=heap_vec3(light+L_area_dir);let invarea=heap_float(light+L_area_invarea);var pdf:f32;var D:vec3<f32>;
+//#if BACKGROUND_PORTAL_DEGENERATE
+            if(region.len_u==0.0||region.len_v==0.0){
+                bgl_portal_degenerate=select(2u,1u,invarea<0.0);out.portal=p;
+                out.s=vec4<f32>(0.0,0.0,0.0,select(rounded_divide(bgl_portal_nan_rect_pdf(),f32(count)),0.0,invarea<0.0));return out;
+            }
+//#endif
             if(invarea<0.0){
                 // ellipse_sample(axis_u * len_u * 0.5, axis_v * len_v * 0.5, rand): sample_uniform_disk.
                 let disk=emitter_disk(r);let position=rounded_add3(region.P,rounded_add3(((region.U*region.len_u)*0.5)*disk.x,((region.V*region.len_v)*0.5)*disk.y));
@@ -270,6 +305,22 @@ fn bgl_portal_light_sample(P:vec3<f32>,random:vec2<f32>)->vec4<f32>{
     if(x<portal_method){
         method=0u;if(portal_method!=1.0){x=rounded_divide(x,portal_method);}
         let ps=bgl_portal_sample(P,vec2<f32>(x,random.y),count);s=ps.s;sampled=ps.portal;
+//#if BACKGROUND_PORTAL_DEGENERATE
+        // A sample on a portal with an axis of zero length (background_light_sample with the NaN direction D). The ellipse's
+        // pdf is NaN. The rectangle's is finite: the other portals add nothing (ray_quad_intersect's t is NaN and
+        // `!(t > ray_tmin && t < ray_tmax)` returns false), and with the importance map `*pdf += map_method_pdf *
+        // background_map_pdf(kg, D)` is NaN (sinf of a NaN v; `sin_theta == 0.0f` and `denom == 0.0f` are false). light_sample
+        // then returns `ls->pdf > 0.0f`, false for a NaN: no sample. Without the map the sample is valid with a NaN direction
+        // (LIGHT_NAN_DIRECTION): its pdf is the portal's times the portal strategy's share (the sun strategy adds
+        // pdf_uniform_cone of the NaN angle, 0).
+        if(bgl_portal_degenerate!=0u){
+            if(bgl_portal_degenerate==1u||map_method!=0.0){return vec4<f32>(0);}
+//#if LIGHT_NAN_DIRECTION else             fail();return vec4<f32>(0);
+            var w=s.w;if(portal_method!=1.0){w*=portal_method;}
+            return vec4<f32>(vec3<f32>(bitcast<f32>(rounded_steps(0x7fc00000u))),w);
+//#endif
+        }
+//#endif
     }else if(x<sun_cdf){
         method=1u;if(sun_method!=1.0){x=rounded_divide(rounded_add(x,-portal_method),sun_method);}
 //#if BACKGROUND_SUN else         fail();return vec4<f32>(0);

@@ -722,6 +722,14 @@ Two gates have no fingerprint and always run: bake_gate.py (hosts it builds thro
 CPU and WebGPU, no fixed scene to fingerprint) and pipeline_cache_gate.py (a sequence of processes over a cache directory,
 which fingerprint mode does not use). Replay of an oracle scene:
 native/tools/oracle_replay.py (capture on Linux, replay on any platform).
+Tiled images (Cycles' texture cache) on the WGSL device:
+native/tools/image_tile_gate.py (Linux; tile and mip level selection, the tiles
+requested and used, the restart after a request, the dual-number sphere, tube
+and environment projections and the lcg states of volume evaluations, against
+the pinned CPU kernel). CODEBRIX_CYCLES_TILE_LOG=1 prints one line to stderr for every kernel
+the device ran again after loading tiles. Under a command capture the device
+puts a kernel's writes back through uploads, so the captured stream replays the
+run that missed, its undoing, the tile uploads and the run that counts.
 After a WGSL change, dump the modules a gate compiles
 (CODEBRIX_CYCLES_WGSL_DUMP=DIR) and run native/tools/intel_compile_envelope.py
 on them: every entry point must stay below 60,000 backend instructions and
@@ -1078,6 +1086,10 @@ list through build/nuget-pack-shim/ at that version, and runs
 tools/licensing/package_check.py, which fails the run unless each package holds
 exactly the reviewed contents and dependencies and passes the
 tools/licensing/audit.py package audit. Output: nugets/Release/<version>/.
+A run in the minute 00:00 UTC has a version whose fourth part is 0; NuGet packs
+it in its normalized three-part form (1.0.321 for 1.0.321.0: the package names,
+their versions and the exact Core dependency), in the folder named by the
+four-part version, and the check compares normalized versions.
 
     dotnet build build/CodeBrix.Graphics3D.Cycles.Build.csproj -c Release
 
@@ -1276,9 +1288,8 @@ What the importer does to the upstream tree (tools/licensing/import_cycles.py):
     src/kernel/tables.h                   the comment of the colour matching
                                           table records that table's
                                           public-domain origin
-- Dispersion renders on the CPU device and on Cycles' Metal device;
-  the WebGPU device does not implement it and refuses it by name
-  (native/DEVICE.md, open item 187).
+- Dispersion renders on the CPU device, on Cycles' Metal device and on
+  the WebGPU device (native/DEVICE.md, item 187).
 - The Ceres notice. src/util/math_float3x3.h marks two quaternion functions
   "Adopted from Ceres-solver" (BSD-3-Clause) and carries only its Apache-2.0
   header. The importer records both licenses for that file (PORTED_NOTICES)
@@ -1287,8 +1298,8 @@ What the importer does to the upstream tree (tools/licensing/import_cycles.py):
   third_party/dependencies.json and third_party/additional-license-origins.json.
 - The Gaussian-splat files (src/kernel/geom/gsplat*.h and the scene code) are
   imported as they are (the maintainer's ruling, after a review of what they
-  cite). The CPU and Metal backends render splats; the WebGPU device does not
-  implement them and the host refuses them there (native/DEVICE.md, item 186).
+  cite). Every backend renders splats; the WGSL device's port is
+  native/shaders/wavefront_gsplat.wgsl (native/DEVICE.md, item 186).
 
 Beside the import:
 - The WITH_EMBREE guard. The Cycles build files test WITH_EMBREE, which the

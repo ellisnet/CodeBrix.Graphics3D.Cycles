@@ -69,7 +69,7 @@ def main():
                 assert report['invalidCasesRejected'] == 21
             reports[kind] = report
             save(out/'results.json', reports)
-        for case in range(6):
+        for case in range(reports['triangle_lighting']['cases']):
             name = 'replay-'+str(case)
             state['phase'] = name
             save(out/'status.json', state)

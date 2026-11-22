@@ -8,17 +8,23 @@
 // Position, Hit Normal and a "generated" attribute output at the hit; 3 Bevel with a
 // linked normal plus an only_local Raycast into the object (the instanced box);
 // 4 Bevel with linked radius and the Raycast's hit normal.
-static Shader *raytrace_node_shader(Scene &scene,unsigned variant){
+// parts: which of a variant's two nodes the graph keeps (bit 0 the Bevel node, bit 1 the Raycast node; 3, the default, is
+// the variant as described). The curve-mixed motion runs of the state gate build each node kind in a scene of its own
+// (ao_state_gate.cpp): a variant whose only node is left out takes the graph of a variant that has the other kind
+// (0 becomes 1 without a Bevel node; 1 and 2 become 0 without a Raycast node), so every surface keeps a raytrace node.
+static Shader *raytrace_node_shader(Scene &scene,unsigned variant,unsigned parts=3u){
+  if(!(parts&1u)&&variant==0)variant=1;
+  if(!(parts&2u)&&(variant==1||variant==2))variant=0;
   auto g=make_unique<ShaderGraph>();
   auto d=g->create_node<DiffuseBsdfNode>();d->set_roughness(.2f);d->set_color(make_float3(.6f,.5f,.35f));
   auto glossy=g->create_node<GlossyBsdfNode>();glossy->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);glossy->set_color(make_float3(.3,.4,.8));glossy->set_roughness(.3f);
   auto mix=g->create_node<MixClosureNode>();mix->set_fac(.4f);g->connect(glossy->output("BSDF"),mix->input("Closure1"));g->connect(d->output("BSDF"),mix->input("Closure2"));
-  if(variant==0||variant==3||variant==4){auto bevel=g->create_node<BevelNode>();bevel->set_radius(variant==3?.15f:.35f);bevel->set_samples(variant==0?8:5);
+  if((parts&1u)&&(variant==0||variant==3||variant==4)){auto bevel=g->create_node<BevelNode>();bevel->set_radius(variant==3?.15f:.35f);bevel->set_samples(variant==0?8:5);
     if(variant==3){auto geometry=g->create_node<GeometryNode>();auto tilt=g->create_node<VectorMathNode>();tilt->set_math_type(NODE_VECTOR_MATH_ADD);tilt->set_vector2(make_float3(.2f,0,.1f));
       g->connect(geometry->output("Normal"),tilt->input("Vector1"));g->connect(tilt->output("Vector"),bevel->input("Normal"));}
     if(variant==4){auto radius=g->create_node<ValueNode>();radius->set_value(.25f);g->connect(radius->output("Value"),bevel->input("Radius"));}
     g->connect(bevel->output("Normal"),d->input("Normal"));g->connect(bevel->output("Normal"),glossy->input("Normal"));}
-  if(variant>=1){auto ray=g->create_node<RaycastNode>();ray->set_length(variant==3?1.6f:2.5f);ray->set_only_local(variant==3);
+  if((parts&2u)&&variant>=1){auto ray=g->create_node<RaycastNode>();ray->set_length(variant==3?1.6f:2.5f);ray->set_only_local(variant==3);
     if(variant==3){auto direction=g->create_node<ColorNode>();direction->set_value(make_float3(.15f,-1,.35f));g->connect(direction->output("Color"),ray->input("Direction"));}
     g->connect(ray->output("Is Hit"),mix->input("Fac"));
     if(variant==1){auto tint=g->create_node<MathNode>();tint->set_math_type(NODE_MATH_MULTIPLY);tint->set_value2(.3f);g->connect(ray->output("Hit Distance"),tint->input("Value1"));

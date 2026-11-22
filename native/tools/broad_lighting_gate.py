@@ -62,13 +62,13 @@ def main():
             library = directory/'run/library.txt' if is_image else directory/'run.library.txt'
             assert Path(library.read_text().strip()).resolve() == runtime.resolve()
             if is_image:
-                assert report['cases'] == (12 if kind == 'broad_lighting' else 8) and report['nativeSceneAndScheduler'] and report['independentOriginalCpuImage']
+                assert report['cases'] == (13 if kind == 'broad_lighting' else 8) and report['nativeSceneAndScheduler'] and report['independentOriginalCpuImage']
             reports[kind] = report
             save(out/'results.json', reports)
         for kind in ('broad_lighting', 'feature_combination'):
             status['phase'] = kind+'-replay'
             save(out/'status.json', status)
-            for case in range(12 if kind == 'broad_lighting' else 8):
+            for case in range(13 if kind == 'broad_lighting' else 8):
                 name = kind+'-replay-'+str(case)
                 with (out/(name+'.log')).open('w') as log, contextlib.redirect_stdout(log):
                     render_replay.run('linux-x64', out/kind/'run'/('case-'+str(case)), out/name)

@@ -318,7 +318,16 @@ fn sc_split_mark(index:u32,object:u32,shader:u32,next:u32){
     if((flag&PATH_RAY_SHADOW_CATCHER_PASS)!=0u){visibility<<=16u;}
     var hit=NativeHit(0.0,0.0,0.0,NONE,NONE,PRIM_TYPE_NONE);
     // Match Cycles' early validity test, including zero-length conditional rays.
-    if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)){
+//#if BAKE_ZERO_AREA else     if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)){
+    // A ray leaving a zero-area bake texel (ray_offset with its normal) can have a NaN or an infinity in the origin's y
+    // or z with a finite x, which intersection_ray_valid lets through. No primitive is hit. A NaN z:
+    // bvh_aligned_node_intersect's max4(tmin, x, y, z) = max(max(tmin, x), max(y, NaN)) is NaN and `c0max >= c0min` is
+    // false at the root. A NaN y: that lane is dropped from the box test (max(NaN, z) is z), ray_triangle_intersect's U,
+    // V and W are NaN, so `!(minUVW >= -eps || maxUVW <= eps)` is true, and an instance's transformed origin is NaN in
+    // every lane. An infinite y or z: both slab distances of the lane are the same infinity, so c0min is +infinity or
+    // c0max is -infinity, and `c0max >= c0min` is false at the root.
+    if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)&&!zero_area_not_finite(origin.y)&&!zero_area_not_finite(origin.z)){
+//#endif
         hit=trace_native(origin,direction,tmin,tmax,heap_float(state_address(S_ray_time,index,4u)),visibility,self_object,self_prim);
     }
 //#if MNEE

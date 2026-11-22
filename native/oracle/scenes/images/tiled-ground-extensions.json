@@ -1,0 +1,656 @@
+{
+ "cbcOracleScene": 1,
+ "id": "images/tiled-ground-extensions",
+ "description": "A tiled image whose sides are not multiples of its tile (200x136 byte4, tiles of 64, three mip levels) on a ground plane seen in perspective with Periodic extension (the level follows the distance) and on three cards whose UVs run from -0.5 to 1.5: Extend with Linear, Clip with Cubic and Mirror with Closest interpolation",
+ "sourceFixture": "native/oracle/scenes/author_images.py (tiled images)",
+ "render": {
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "threads": 1
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "sampling_pattern": "tabulated_sobol",
+    "seed": 0,
+    "use_adaptive_sampling": false,
+    "use_light_tree": false,
+    "use_guiding": false,
+    "use_denoise": false,
+    "min_bounce": 3,
+    "max_bounce": 8,
+    "max_diffuse_bounce": 4,
+    "max_glossy_bounce": 4,
+    "max_transmission_bounce": 8,
+    "max_volume_bounce": 0,
+    "transparent_min_bounce": 0,
+    "transparent_max_bounce": 8,
+    "sample_clamp_direct": 0.0,
+    "sample_clamp_indirect": 0.0,
+    "caustics_reflective": false,
+    "caustics_refractive": false,
+    "filter_glossy": 0.0,
+    "light_sampling_threshold": 0.01,
+    "use_sample_subset": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "camera_type": "perspective",
+    "fov": 0.9,
+    "nearclip": 0.1,
+    "farclip": 100.0,
+    "matrix": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     -3
+    ]
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "exposure": 1.0,
+    "filter_type": "box",
+    "filter_width": 1.0
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.2,
+        0.2,
+        0.2
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "transparent": false,
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "repeat",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.0
+      }
+     },
+     {
+      "handle": "t",
+      "type": "image_texture",
+      "set": {
+       "image": "image",
+       "colorspace": "scene_linear",
+       "alpha_type": "unassociated",
+       "interpolation": "linear",
+       "extension": "periodic"
+      }
+     },
+     {
+      "handle": "uv",
+      "type": "uvmap"
+     }
+    ],
+    "connect": [
+     [
+      "uv",
+      "UV",
+      "t",
+      "Vector"
+     ],
+     [
+      "t",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "extend",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.0
+      }
+     },
+     {
+      "handle": "t",
+      "type": "image_texture",
+      "set": {
+       "image": "image",
+       "colorspace": "scene_linear",
+       "alpha_type": "unassociated",
+       "interpolation": "linear",
+       "extension": "clamp"
+      }
+     },
+     {
+      "handle": "uv",
+      "type": "uvmap"
+     }
+    ],
+    "connect": [
+     [
+      "uv",
+      "UV",
+      "t",
+      "Vector"
+     ],
+     [
+      "t",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "clip",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.0
+      }
+     },
+     {
+      "handle": "t",
+      "type": "image_texture",
+      "set": {
+       "image": "image",
+       "colorspace": "scene_linear",
+       "alpha_type": "unassociated",
+       "interpolation": "cubic",
+       "extension": "black"
+      }
+     },
+     {
+      "handle": "uv",
+      "type": "uvmap"
+     }
+    ],
+    "connect": [
+     [
+      "uv",
+      "UV",
+      "t",
+      "Vector"
+     ],
+     [
+      "t",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "mirror",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.0
+      }
+     },
+     {
+      "handle": "t",
+      "type": "image_texture",
+      "set": {
+       "image": "image",
+       "colorspace": "scene_linear",
+       "alpha_type": "unassociated",
+       "interpolation": "closest",
+       "extension": "mirror"
+      }
+     },
+     {
+      "handle": "uv",
+      "type": "uvmap"
+     }
+    ],
+    "connect": [
+     [
+      "uv",
+      "UV",
+      "t",
+      "Vector"
+     ],
+     [
+      "t",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "ground",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -3.0,
+     -1.0,
+     -2.0,
+     3.0,
+     -1.0,
+     -2.0,
+     3.0,
+     -1.0,
+     14.0,
+     -3.0,
+     -1.0,
+     14.0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       0,
+       0,
+       3,
+       8,
+       3,
+       0,
+       0,
+       0,
+       0,
+       8,
+       3,
+       8
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "handle": "ground-object",
+   "create": "object",
+   "set": {
+    "geometry": "ground",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "card-extend",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -1.55,
+     0.1,
+     0.0,
+     -0.65,
+     0.1,
+     0.0,
+     -0.65,
+     1.0,
+     0.0,
+     -1.55,
+     1.0,
+     0.0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       -0.5,
+       -0.5,
+       1.5,
+       1.5,
+       1.5,
+       -0.5,
+       -0.5,
+       -0.5,
+       -0.5,
+       1.5,
+       1.5,
+       1.5
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "extend"
+    ]
+   }
+  },
+  {
+   "handle": "card-extend-object",
+   "create": "object",
+   "set": {
+    "geometry": "card-extend",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "card-clip",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.45,
+     0.1,
+     0.0,
+     0.45,
+     0.1,
+     0.0,
+     0.45,
+     1.0,
+     0.0,
+     -0.45,
+     1.0,
+     0.0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       -0.5,
+       -0.5,
+       1.5,
+       1.5,
+       1.5,
+       -0.5,
+       -0.5,
+       -0.5,
+       -0.5,
+       1.5,
+       1.5,
+       1.5
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "clip"
+    ]
+   }
+  },
+  {
+   "handle": "card-clip-object",
+   "create": "object",
+   "set": {
+    "geometry": "card-clip",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "card-mirror",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     0.65,
+     0.1,
+     0.0,
+     1.55,
+     0.1,
+     0.0,
+     1.55,
+     1.0,
+     0.0,
+     0.65,
+     1.0,
+     0.0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       -0.5,
+       -0.5,
+       1.5,
+       1.5,
+       1.5,
+       -0.5,
+       -0.5,
+       -0.5,
+       -0.5,
+       1.5,
+       1.5,
+       1.5
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "mirror"
+    ]
+   }
+  },
+  {
+   "handle": "card-mirror-object",
+   "create": "object",
+   "set": {
+    "geometry": "card-mirror",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  }
+ ],
+ "images": [
+  {
+   "handle": "image",
+   "width": 200,
+   "height": 136,
+   "format": "byte4",
+   "file": "tiled-ground-extensions.image.level-0.byte4",
+   "tiled": {
+    "tileSize": 64,
+    "levels": [
+     "tiled-ground-extensions.image.level-1.byte4",
+     "tiled-ground-extensions.image.level-2.byte4"
+    ]
+   },
+   "provenance": "native/oracle/scenes/author_images.py (formula); rows bottom-up; levels: 2 x 2 box reductions"
+  }
+ ]
+}

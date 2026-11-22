@@ -70,9 +70,16 @@ fn surface_transform_vector(address:u32,v:vec3<f32>,point:bool)->vec3<f32>{
 }
 fn surface_transform_direction(address:u32,v:vec3<f32>)->vec3<f32>{return surface_transform_vector(address,v,false);}
 fn surface_transform_point(address:u32,v:vec3<f32>)->vec3<f32>{return surface_transform_vector(address,v,true);}
-fn surface_transform_normal(address:u32,v:vec3<f32>)->vec3<f32>{
+fn surface_transform_transposed(address:u32,v:vec3<f32>)->vec3<f32>{
     let x=heap_vec3(address);let y=heap_vec3(address+16u);let z=heap_vec3(address+32u);
-    return surface_native_normalize(rounded_add3(rounded_add3(v.x*x,v.y*y),v.z*z));
+    return rounded_add3(rounded_add3(v.x*x,v.y*y),v.z*z);
+}
+fn surface_transform_normal(address:u32,v:vec3<f32>)->vec3<f32>{return surface_native_normalize(surface_transform_transposed(address,v));}
+// geom/object.h: object_normal_transform ends in normalize, object_inverse_normal_transform in safe_normalize,
+// `(t != 0.0f) ? a * (1.0f / t) : a` (util/math_float3.h), in the static and in the motion branch.
+fn surface_object_normal_finish(a:vec3<f32>,inverse:bool)->vec3<f32>{
+    if(inverse){return rounded_safe_normalize(a);}
+    return surface_native_normalize(a);
 }
 //#if !MNEE_MOTION
 fn surface_object_direction(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{
@@ -84,8 +91,10 @@ fn surface_object_point(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{
     let object=table_at(G_objects,sd.object_id,SIZE_objects);return surface_transform_point(object+select(O_tfm,O_itfm,inverse),v);
 }
 fn surface_object_normal(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{
-    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){if(inverse){return surface_native_normalize(motion_transpose(sd.motion_tfm,v));}return surface_native_normalize(motion_transpose(sd.motion_itfm,v));}
-    let object=table_at(G_objects,sd.object_id,SIZE_objects);return surface_transform_normal(object+select(O_itfm,O_tfm,inverse),v);
+    var a:vec3<f32>;
+    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){if(inverse){a=motion_transpose(sd.motion_tfm,v);}else{a=motion_transpose(sd.motion_itfm,v);}}
+    else{a=surface_transform_transposed(table_at(G_objects,sd.object_id,SIZE_objects)+select(O_itfm,O_tfm,inverse),v);}
+    return surface_object_normal_finish(a,inverse);
 }
 //#endif
 //#if MNEE_MOTION
@@ -99,7 +108,7 @@ fn surface_object_transform(sd:SurfaceData,inverse:bool)->NativeTransform{
 }
 fn surface_object_direction(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{return motion_exact_vector(surface_object_transform(sd,inverse),v,false);}
 fn surface_object_point(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{return motion_exact_vector(surface_object_transform(sd,inverse),v,true);}
-fn surface_object_normal(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{return surface_native_normalize(motion_transpose(surface_object_transform(sd,!inverse),v));}
+fn surface_object_normal(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{return surface_object_normal_finish(motion_transpose(surface_object_transform(sd,!inverse),v),inverse);}
 //#endif
 fn surface_decode_normal(value:u32)->vec3<f32>{
     let raw=vec2<f32>(f32(value&65535u),f32(value>>16u))*(2.0/65535.0);
@@ -165,8 +174,16 @@ fn surface_setup_hit(primitive_type:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32
     // black, inverted glass IOR; docs/TESTING-WINDOWS-ARM64.md, F1). Same normal.
     let swap_winding=applied&&(sd.object_flag&SD_OBJECT_NEGATIVE_SCALE)!=0u;
     let cross_normal=rounded_cross(select(sd.dPdu,sd.dPdv,swap_winding),select(sd.dPdv,sd.dPdu,swap_winding));
-    if(dot(cross_normal,cross_normal)==0.0){surface_failure(&sd);return sd;}
+//#if BAKE_ZERO_AREA else     if(dot(cross_normal,cross_normal)==0.0){surface_failure(&sd);return sd;}
+    // A triangle whose cross product has a squared length of zero (a bake texel on a zero-area triangle: the bake entry
+    // starts paths there): triangle_normal's normalize gives a NaN or an infinity in every lane (zero_area_normal;
+    // native/DEVICE.md, item 149).
+    let zero_area=rounded_dot(cross_normal,cross_normal)==0.0;
+//#endif
     sd.Ng=surface_native_normalize(cross_normal);sd.N=sd.Ng;
+//#if BAKE_ZERO_AREA
+    if(zero_area){sd.Ng=zero_area_normal(cross_normal);sd.N=sd.Ng;}
+//#endif
     sd.shader=load_word(table_at(G_tri_shader,sd.prim,4u));let shader_id=sd.shader&SHADER_MASK;
     if(shader_id>=table_count(G_shaders)){surface_failure(&sd);return sd;}
     if((sd.shader&SHADER_SMOOTH_NORMAL)!=0u){
@@ -193,15 +210,36 @@ fn surface_setup_hit(primitive_type:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32
         let interpolated=surface_normalize(rounded_add3(rounded_add3(weight*normals[0],sd.u*normals[1]),sd.v*normals[2]));
         if(any(interpolated!=vec3<f32>(0))){sd.N=interpolated;}
     }
+//#if BAKE_ZERO_AREA
+    // The shading normal is that normal where it is the geometric one: flat shading, or a zero interpolated normal.
+    let flat_normal=zero_area&&zero_area_not_finite(sd.N.x);
+//#endif
     if(!applied){
         sd.N=surface_object_normal(sd,sd.N,false);sd.Ng=surface_object_normal(sd,sd.Ng,false);
         sd.dPdu=surface_object_direction(sd,sd.dPdu,false);sd.dPdv=surface_object_direction(sd,sd.dPdv,false);
     }
     sd.shader_flag=load_word(table_at(G_shaders,shader_id,SIZE_shaders)+SH_flags);
-    if(dot(sd.Ng,sd.wi)<0.0){sd.runtime_flag|=SR_BACKFACING;sd.N=-sd.N;sd.Ng=-sd.Ng;sd.dPdu=-sd.dPdu;sd.dPdv=-sd.dPdv;}
+//#if BAKE_ZERO_AREA else     if(dot(sd.Ng,sd.wi)<0.0){sd.runtime_flag|=SR_BACKFACING;sd.N=-sd.N;sd.Ng=-sd.Ng;sd.dPdu=-sd.dPdu;sd.dPdv=-sd.dPdv;}
+    // That normal after the object's normal transform is a NaN in every lane (row sums of infinities and NaNs, then
+    // normalize by an infinite or NaN length). shader_setup_from_ray: `backfacing = (dot(sd->Ng, sd->wi) < 0.0f)` is true
+    // only for a dot product of -infinity.
+    if(zero_area){
+        if(!applied){sd.Ng=vec3<f32>(zero_area_nan());}
+        if(flat_normal){sd.N=sd.Ng;}
+        if(bitcast<u32>(zero_area_dot(sd.Ng,sd.wi))==0xff800000u){
+            sd.runtime_flag|=SR_BACKFACING;sd.Ng=zero_area_flip(sd.Ng);sd.dPdu=-sd.dPdu;sd.dPdv=-sd.dPdv;
+            if(flat_normal){sd.N=sd.Ng;}else{sd.N=-sd.N;}
+        }
+    }else if(dot(sd.Ng,sd.wi)<0.0){sd.runtime_flag|=SR_BACKFACING;sd.N=-sd.N;sd.Ng=-sd.Ng;sd.dPdu=-sd.dPdu;sd.dPdv=-sd.dPdv;}
+//#endif
     sd.dI=ray_dD;
     // differential_transfer_compact: the product rounded before the sum (no contraction).
     sd.dP=rounded_add(ray_dP,sd.ray_length*sd.dI);surface_differentials(&sd);
+//#if BAKE_ZERO_AREA
+    // differential_dudv_compact: make_orthonormals of that normal normalizes lanes of infinities and NaNs, NaN axes, so
+    // the four results are products with a NaN (a zero determinant included: NaN * 0).
+    if(zero_area){sd.du=vec2<f32>(zero_area_nan());sd.dv=sd.du;}
+//#endif
     return sd;
 }
 

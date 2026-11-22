@@ -1,0 +1,474 @@
+{
+ "cbcOracleScene": 1,
+ "id": "images/tiled-alpha-shadow",
+ "description": "A quad whose transparency is the alpha of a tiled image (128x128 byte4 with transparent blocks, tiles of 64, two mip levels: a Mix of a Transparent and a Diffuse BSDF) beside the view, between a point light and a diffuse wall: the camera never sees the quad, so the image is read only by the transparent shadow evaluations (the shadow path), and its tiles are first asked for there",
+ "sourceFixture": "native/oracle/scenes/author_images.py (tiled images)",
+ "render": {
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "threads": 1
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "sampling_pattern": "tabulated_sobol",
+    "seed": 0,
+    "use_adaptive_sampling": false,
+    "use_light_tree": false,
+    "use_guiding": false,
+    "use_denoise": false,
+    "min_bounce": 3,
+    "max_bounce": 8,
+    "max_diffuse_bounce": 4,
+    "max_glossy_bounce": 4,
+    "max_transmission_bounce": 8,
+    "max_volume_bounce": 0,
+    "transparent_min_bounce": 0,
+    "transparent_max_bounce": 8,
+    "sample_clamp_direct": 0.0,
+    "sample_clamp_indirect": 0.0,
+    "caustics_reflective": false,
+    "caustics_refractive": false,
+    "filter_glossy": 0.0,
+    "light_sampling_threshold": 0.01,
+    "use_sample_subset": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "camera_type": "perspective",
+    "fov": 0.9,
+    "nearclip": 0.1,
+    "farclip": 100.0,
+    "matrix": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     -3
+    ]
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "exposure": 1.0,
+    "filter_type": "box",
+    "filter_width": 1.0
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.2,
+        0.2,
+        0.2
+       ],
+       "strength": 0.1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "transparent": false,
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "white",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "m",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.8,
+        0.8,
+        0.8
+       ],
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "m",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "cutout",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.0
+      }
+     },
+     {
+      "handle": "tr",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ]
+      }
+     },
+     {
+      "handle": "mix",
+      "type": "mix_closure"
+     },
+     {
+      "handle": "t",
+      "type": "image_texture",
+      "set": {
+       "image": "image",
+       "colorspace": "scene_linear",
+       "alpha_type": "unassociated",
+       "interpolation": "linear",
+       "extension": "periodic"
+      }
+     },
+     {
+      "handle": "uv",
+      "type": "uvmap"
+     }
+    ],
+    "connect": [
+     [
+      "uv",
+      "UV",
+      "t",
+      "Vector"
+     ],
+     [
+      "t",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "t",
+      "Alpha",
+      "mix",
+      "Fac"
+     ],
+     [
+      "tr",
+      "BSDF",
+      "mix",
+      "Closure1"
+     ],
+     [
+      "d",
+      "BSDF",
+      "mix",
+      "Closure2"
+     ],
+     [
+      "mix",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "wall",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -1.6,
+     -1.1,
+     0,
+     1.6,
+     -1.1,
+     0,
+     1.6,
+     1.1,
+     0,
+     -1.6,
+     1.1,
+     0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       0,
+       0,
+       1,
+       1,
+       1,
+       0,
+       0,
+       0,
+       0,
+       1,
+       1,
+       1
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "white"
+    ]
+   }
+  },
+  {
+   "handle": "wall-object",
+   "create": "object",
+   "set": {
+    "geometry": "wall",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "screen",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     1.9,
+     -0.6,
+     -0.8,
+     2.9,
+     -0.6,
+     -0.8,
+     2.9,
+     0.6,
+     -0.8,
+     1.9,
+     0.6,
+     -0.8
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       0.1,
+       0.1,
+       0.9,
+       0.9,
+       0.9,
+       0.1,
+       0.1,
+       0.1,
+       0.1,
+       0.9,
+       0.9,
+       0.9
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "cutout"
+    ]
+   }
+  },
+  {
+   "handle": "screen-object",
+   "create": "object",
+   "set": {
+    "geometry": "screen",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "lamp-shader",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "lamp",
+   "create": "pointlight",
+   "set": {
+    "strength": [
+     60,
+     60,
+     60
+    ],
+    "use_mis": true,
+    "cast_shadow": true,
+    "max_bounces": 1024,
+    "is_enabled": true,
+    "normalize": true,
+    "used_shaders": [
+     "lamp-shader"
+    ],
+    "radius": 0.05,
+    "is_sphere": true
+   }
+  },
+  {
+   "handle": "lamp-object",
+   "create": "object",
+   "set": {
+    "geometry": "lamp",
+    "tfm": [
+     1,
+     0,
+     0,
+     4.0,
+     0,
+     1,
+     0,
+     0.3,
+     0,
+     0,
+     1,
+     -1.6
+    ]
+   }
+  }
+ ],
+ "images": [
+  {
+   "handle": "image",
+   "width": 128,
+   "height": 128,
+   "format": "byte4",
+   "file": "tiled-alpha-shadow.image.level-0.byte4",
+   "tiled": {
+    "tileSize": 64,
+    "levels": [
+     "tiled-alpha-shadow.image.level-1.byte4"
+    ]
+   },
+   "provenance": "native/oracle/scenes/author_images.py (formula); rows bottom-up; levels: 2 x 2 box reductions"
+  }
+ ]
+}

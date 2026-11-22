@@ -39,7 +39,9 @@ constexpr unsigned width=32,height=24,samples=8;
 // lamp through the volume light entries' sampler (vl_background_light_sample), against light_sample_from_position with the same inputs.
 // The probe entry inlines one copy of the background sampler, as the built entries do: a probe that also inlined
 // light_sample_lamp's background branch measured wrong samples on Mesa 25.0.7 (Intel), varying with the module (DEVICE.md 106).
-struct Case {const char *name;EnvironmentWorld world;unsigned image;int light;int resolution;int emitter;bool point;int portals=0;int background_lights=1;bool volume_probe=false;};
+// portal_zero: the rectangle portal's extent (1 a u size of zero, 2 both sizes zero, 3 a u size of 1e-23, whose square
+// underflows): AreaLight::copy_to_kernel then stores normalize_len of a zero-length vector, an axis with a NaN in it.
+struct Case {const char *name;EnvironmentWorld world;unsigned image;int light;int resolution;int emitter;bool point;int portals=0;int background_lights=1;bool volume_probe=false;int portal_zero=0;};
 // light: -1 none, 1 background light with MIS, 0 without MIS. Cycles enables the background
 // light only for a spatially varying world with MIS or in a scene with portals
 // (LightManager::test_enabled_lights), so otherwise constant worlds and MIS-off background
@@ -72,9 +74,23 @@ static const Case cases[]={
   // The Light Path node's depths in the world (LIGHT_PATH_STATE): the importance map (depths 0, Ray Depth 1), the background
   // hits (the main path's counters) and light sampling (the shadow path's).
   {"procedural-light-path-mis",EnvironmentWorld::LightPath,0,1,64,-1,false},
+  // A rectangle portal with an axis of zero length (kernel/light/background.h with the NaN axis; native/DEVICE.md, item 148).
+  // With the importance map the portal's own samples are rejected (background_map_pdf of the NaN direction is NaN and
+  // light_sample returns `ls->pdf > 0.0f`), and the portal's pdf for the map's samples is 1.0f / S over a strip (one axis)
+  // or the portal's plane (both): ray_quad_intersect's `u < -0.5f || u > 0.5f` is false for a NaN u, and
+  // area_light_rect_sample's four safe_asinf(NaN) are asinf(-1).
+  {"hdri-mis-portal-zero-u",EnvironmentWorld::Hdri,0,1,64,-1,false,1,1,false,1},
+  {"hdri-mis-portals-zero",EnvironmentWorld::Hdri,0,1,64,-1,false,2,1,false,2},
+  {"hdri-mis-portal-underflow",EnvironmentWorld::Hdri,0,1,64,-1,false,1,1,false,3},
+  // Without the importance map the portal's sample is valid with a NaN direction (`if (portal_method_pdf == 1.0f) return D;`),
+  // which the closures evaluate; a constant world, so the light's emission needs no shader evaluation at that direction.
+  {"constant-portal-zero-u-no-mis",EnvironmentWorld::Constant,0,0,64,-1,false,1,1,false,1},
+  // A sky with a sun disc and NO background light: the world is only reached by paths, a point light is the sampled light.
+  // The light manager prepares sun guiding only for a background light (scene/light.cpp), so nothing samples the sun.
+  {"sky-sun-forward-point",EnvironmentWorld::Sky,0,-1,0,-1,true},
 };
 constexpr unsigned case_count=sizeof(cases)/sizeof(cases[0]);
-struct Metrics {uint64_t floats=0,strict=0,repeat_differences=0,nee=0,shadows=0,visible=0,background_hits=0,stages=0,map_checks=0,map_strict=0,sample_checks=0,sample_strict=0,valid_samples=0;
+struct Metrics {uint64_t floats=0,strict=0,repeat_differences=0,nee=0,shadows=0,visible=0,background_hits=0,stages=0,map_checks=0,map_strict=0,sample_checks=0,sample_strict=0,valid_samples=0,nan_fields=0;
   double maximum=0,repeat_maximum=0,map_maximum=0,sample_maximum=0;};
 static Shader *surface_material(Scene &scene,int variant){
   auto graph=make_unique<ShaderGraph>();auto diffuse=graph->create_node<DiffuseBsdfNode>();diffuse->set_color(make_float3(.55,.42,.3));diffuse->set_roughness(.2f);
@@ -115,6 +131,7 @@ static void fixture(Scene &scene,const Case &c){
   // Portals: area lights with is_portal (only their geometry reaches the kernels).
   for(int portal=0;portal<c.portals;portal++){auto light=scene.create_node<AreaLight>();light->set_is_portal(true);
     light->set_sizeu(portal?2.5f:3.f);light->set_sizev(2.f);light->set_ellipse(portal==1);auto object=scene.create_node<Object>();object->set_geometry(light);
+    if(portal==0&&c.portal_zero){light->set_sizeu(c.portal_zero==3?1e-23f:0.f);if(c.portal_zero==2)light->set_sizev(0.f);}
     object->set_tfm(portal?transform_translate(make_float3(.5f,0,2.5f)):make_transform(1,0,0,0,0,0,1,2.5f,0,-1,0,.5f));}
   if(c.point){auto emission_graph=make_unique<ShaderGraph>();auto emission=emission_graph->create_node<EmissionNode>();emission->set_color(one_float3());emission->set_strength(1);
     emission_graph->connect(emission->output("Emission"),emission_graph->output()->input("Surface"));auto emitter=scene.create_node<Shader>();emitter->set_graph(std::move(emission_graph));
@@ -287,7 +304,12 @@ static void sample_check(WebGPUDevice &d,Scene &scene,const std::filesystem::pat
   RenderCapture::file((folder/"samples.gpu.bin").string(),output.data()+8,size_t(count)*16*4);
   for(unsigned i=0;i<count;i++){const float *g=output.data()+8+i*16;const float *c=expected.data()+i*16;
     require(g[0]==c[0]&&c[0]==c[15],"Environment sample validity differs index="+std::to_string(i));if(!c[0])continue;m.valid_samples++;
-    for(unsigned j=1;j<15;j++)compare(g[j],c[j],m.sample_checks,m.sample_strict,m.sample_maximum,"Environment sample="+std::to_string(i)+" field="+std::to_string(j));}
+    for(unsigned j=1;j<15;j++){
+      // A sample with a NaN point and direction (a portal with an axis of zero length without the importance map): the pinned
+      // kernel returns `D = normalize(lightpos - P)` of area_light_rect_sample's NaN point (kernel/light/background.h
+      // background_portal_sample), so those fields are compared by class, a NaN for a NaN, and counted.
+      if(std::isnan(c[j])){require(std::isnan(g[j]),"Environment sample="+std::to_string(i)+" field="+std::to_string(j)+" is not the pinned NaN");m.nan_fields++;continue;}
+      compare(g[j],c[j],m.sample_checks,m.sample_strict,m.sample_maximum,"Environment sample="+std::to_string(i)+" field="+std::to_string(j));}}
   for(unsigned i=0;i<8;i++)require(output[i]==-1234.f&&output[output.size()-1-i]==-1234.f,"Environment probe guard overwritten");
   require(m.valid_samples>100,"Insufficient valid environment samples");
 }
@@ -397,7 +419,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"case\":"<<image<<",\"name\":\""<<c.name<<"\",\"backgroundMis\":"<<data.background.use_mis
       <<",\"portals\":"<<data.integrator.num_portals<<",\"lights\":"<<data.integrator.num_lights
       <<",\"mapResolution\":["<<data.background.map_res_x<<','<<data.background.map_res_y<<"],\"mapChecks\":"<<metrics.map_checks<<",\"mapStrictDifferences\":"<<metrics.map_strict<<",\"mapMaximumAbsoluteError\":"<<metrics.map_maximum
-      <<",\"validSamples\":"<<metrics.valid_samples<<",\"sampleChecks\":"<<metrics.sample_checks<<",\"sampleStrictDifferences\":"<<metrics.sample_strict<<",\"sampleMaximumAbsoluteError\":"<<metrics.sample_maximum
+      <<",\"validSamples\":"<<metrics.valid_samples<<",\"nanSampleFields\":"<<metrics.nan_fields<<",\"sampleChecks\":"<<metrics.sample_checks<<",\"sampleStrictDifferences\":"<<metrics.sample_strict<<",\"sampleMaximumAbsoluteError\":"<<metrics.sample_maximum
       <<",\"lightNeePaths\":"<<metrics.nee<<",\"shadows\":"<<metrics.shadows<<",\"visible\":"<<metrics.visible<<",\"backgroundHits\":"<<metrics.background_hits<<",\"stages\":"<<metrics.stages
       <<",\"filmChecks\":"<<metrics.floats<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"repeatBitwiseDifferences\":"<<metrics.repeat_differences<<",\"repeatMaximumError\":"<<metrics.repeat_maximum<<"}";};
     std::ofstream details(folder/"result.json");report(details);details<<'\n';report(std::cerr);std::cerr<<'\n';if(case_reports.tellp()>0)case_reports<<',';report(case_reports);

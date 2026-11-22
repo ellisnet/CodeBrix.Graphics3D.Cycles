@@ -157,13 +157,16 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     // The probe compiles the surface module specialized to this scene, exactly as
     // the device does (pipelines.h): the unspecialized module with emissive-triangle
     // sampling crashed the Intel Mesa 25.0.7 compiler on every cold compile.
+    ShaderFeatures probe_regions=SF_NONE;
 #ifdef CODEBRIX_BROAD_LIGHT_GATE
     // The fixture has no geometry: the probe's states are placed by hand, some of them inside the sphere light, so the
     // region the device selects from the BVH (SF_LIGHT_SPHERE_INSIDE, pipelines.h) is selected here. Negative control:
     // CODEBRIX_EMITTER_GATE_SPHERE_INSIDE=0 leaves it out, and the highlight check of the inside samples must then fail.
-    if(const char *inside=std::getenv("CODEBRIX_EMITTER_GATE_SPHERE_INSIDE");!inside||std::string(inside)!="0")d.enabled_features|=SF_LIGHT_SPHERE_INSIDE;
+    // It is added to this module's features, not to the device's: shader_features takes that bit again from the BVH.
+    if(const char *inside=std::getenv("CODEBRIX_EMITTER_GATE_SPHERE_INSIDE");!inside||std::string(inside)!="0")probe_regions|=SF_LIGHT_SPHERE_INSIDE;
 #endif
-    const std::string source=d.module_wgsl(surface_source())+"const EMITTER_PROBE_GROUP_SIZE:u32="+std::to_string(probe_group_size)+"u;\n"+R"WGSL(
+    const std::string source=specialize_wgsl(surface_source(),d.shader_features()|probe_regions|(debug_output_mode()?SF_DEBUG_OUTPUT:SF_NONE))+
+      "const EMITTER_PROBE_GROUP_SIZE:u32="+std::to_string(probe_group_size)+"u;\n"+R"WGSL(
 @compute @workgroup_size(EMITTER_PROBE_GROUP_SIZE) fn emitter_sample_probe(@builtin(global_invocation_id) invocation:vec3<u32>){
  svm_invocation(invocation.x);let id=vec3<u32>(invocation.x+p(30u),invocation.y,invocation.z);if(id.x>=p(1u)){return;}var sd:SurfaceData;sd.time=heap_float(state_address(S_ray_time,id.x,4u));sd.P=heap_vec3(state_address(S_ray_P,id.x,12u));sd.N=heap_vec3(state_address(S_ray_D,id.x,12u));var r:SvmResult;
  if((state_word(S_path_flag,id.x)&PATH_RAY_MIS_HAD_TRANSMISSION)!=0u){r.runtime_flag=SR_BSDF_HAS_TRANSMISSION;}
@@ -237,21 +240,27 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #else
     const auto saved=d.light_records;const auto saved_data=d.data;
     const auto saved_overflow=d.light_axis_overflow;
-    for(unsigned bad=0;bad<10;bad++){d.light_records=saved;d.data=saved_data;d.light_axis_overflow=saved_overflow;std::string reason;
-      // An area light axis of zero length (native/DEVICE.md, item 148): the device holds it as a zero axis and renders it; an
-      // axis of infinities (no NaN) and a spread of zero are refused by name.
+    for(unsigned bad=0;bad<11;bad++){d.light_records=saved;d.data=saved_data;d.light_axis_overflow=saved_overflow;std::string reason;
+      // An area light axis of zero length (native/DEVICE.md, item 148): the device holds it as a zero axis and renders it, a
+      // spread of zero included (the pinned next-event sample is valid with a NaN direction: area_light_spread_attenuation's
+      // `(tan_a > 1e-5f) ? 0.0f : M_PI_F`, kernel/light/area.h); an axis of infinities (no NaN) is refused by name, and so is
+      // the spread of zero in a scene with volume ray marching (or a heterogeneous volume).
       if(bad==0){d.light_records[2].area.len_u=0;d.light_records[2].area.axis_u=zero_float3();
         bool accepted=true;try{d.validate_lighting(true);}catch(const std::exception &){accepted=false;}
         require(accepted,"Renderer rejected a degenerate area light");metrics.guards++;
         d.light_records[2].area.axis_u=make_float3(std::numeric_limits<float>::infinity(),-std::numeric_limits<float>::infinity(),std::numeric_limits<float>::infinity());
         reason="degenerate area light with an infinite axis";}
-      if(bad==1){d.light_records[2].area.len_v=0;d.light_records[2].area.axis_v=zero_float3();d.light_records[2].area.tan_half_spread=0;reason="degenerate area light with a spread of zero";}
+      if(bad==1){d.light_records[2].area.len_v=0;d.light_records[2].area.axis_v=zero_float3();d.light_records[2].area.tan_half_spread=0;
+        bool accepted=true;try{d.validate_lighting(true);}catch(const std::exception &){accepted=false;}
+        require(accepted,"Renderer rejected a degenerate area light with a spread of zero");metrics.guards++;
+        d.data.kernel_features|=KERNEL_FEATURE_VOLUME;d.data.integrator.volume_ray_marching=1;reason="degenerate area light with a spread of zero";}
       if(bad==2){d.light_records[2].area.tan_half_spread=-1;reason="Invalid native area";}
       if(bad==3){d.light_records[2].area.invarea=std::numeric_limits<float>::quiet_NaN();reason="Invalid native area";}
       if(bad==4){d.light_records[0].spot.cos_half_larger_spread=2;reason="Invalid native spot";}
       // LIGHT_BACKGROUND is a supported lamp type (environment gate); LIGHT_TRIANGLE never is one (a guard).
       if(bad==5){d.light_records[0].type=LIGHT_TRIANGLE;reason="Invalid native light type";}
-      // A background light portal (a record after the lamps, num_portals) of zero extent (item 148).
+      // A background light portal (a record after the lamps, num_portals) with an axis of zero length (item 148): refused when
+      // the axis holds no NaN (the pinned record of a zero length is normalize_len's NaN axis; case 10 accepts that one).
       if(bad==6){KernelLight portal=saved[2];portal.area.len_u=0;d.light_records.push_back(portal);d.data.integrator.num_portals=1;
         d.data.integrator.portal_offset=d.data.integrator.num_lights;d.data.background.portal_weight=1;reason="degenerate background light portal";}
       // A valid portal with volume direct light is accepted (native/DEVICE.md, item 106).
@@ -260,13 +269,26 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
         bool accepted=true;try{d.validate_lighting(true);}catch(const std::exception &){accepted=false;}
         require(accepted,"Renderer rejected a valid portal with volume direct light");metrics.guards++;continue;}
       // An axis of zero length with a spread below 1e-5 (tan_half_spread) and volume direct light: accepted when the axis
-      // length underflowed (the NaN axis: area_light_valid_ray_segment's angle_almost_zero branch, vl_area_segment), refused
-      // by name when it overflowed (the device's record of that, light_axis_overflow).
-      if(bad==8||bad==9){d.light_records[2].area.len_u=0;d.light_records[2].area.axis_u=zero_float3();d.light_records[2].area.tan_half_spread=1e-6f;
+      // length underflowed (the NaN axis: area_light_valid_ray_segment's angle_almost_zero branch, vl_area_segment) and when it
+      // overflowed (the device's copy marks that axis with a length of -0: the whole-line slab, kernel/light/area.h with
+      // util/math_intersect.h ray_aabb_intersect). Refused by name: an overflowed axis beside an underflowed one.
+      if(bad==8||bad==9){d.light_records[2].area.len_u=0;if(bad==9){d.light_axis_overflow.assign(d.light_records.size(),0);d.light_axis_overflow[2]=1;}d.light_records[2].area.axis_u=zero_float3();d.light_records[2].area.tan_half_spread=1e-6f;
         d.data.kernel_features|=KERNEL_FEATURE_VOLUME;d.data.integrator.use_direct_light=1;
-        if(bad==8){bool accepted=true;try{d.validate_lighting(true);}catch(const std::exception &){accepted=false;}
-          require(accepted,"Renderer rejected a degenerate area light with a narrow spread and volume direct light");metrics.guards++;continue;}
-        d.light_axis_overflow.assign(d.light_records.size(),0);d.light_axis_overflow[2]=1;reason="degenerate area light with a spread below 1e-5";}
+        bool accepted=true;try{d.validate_lighting(true);}catch(const std::exception &){accepted=false;}
+        require(accepted,"Renderer rejected a degenerate area light with a narrow spread and volume direct light");metrics.guards++;
+        if(bad==8)continue;
+        d.light_records[2].area.len_v=0;d.light_records[2].area.axis_v=zero_float3();reason="degenerate area light with an overflowed and an underflowed axis";}
+      // The pinned record of a portal of zero extent (AreaLight::copy_to_kernel: normalize_len of a zero vector, a NaN axis of
+      // zero length), a rectangle: accepted with the importance map (background_map_pdf of the NaN direction is NaN, so
+      // light_sample's `ls->pdf > 0.0f` rejects the portal's samples: kernel/light/background.h, light.h) and without it (the
+      // sample is then valid with a NaN direction, which the closures evaluate); refused by name without the map in a scene
+      // with volumes.
+      if(bad==10){KernelLight portal=saved[2];portal.area.len_u=0;portal.area.invarea=1.0f;portal.area.axis_u=make_float3(std::numeric_limits<float>::quiet_NaN());d.light_records.push_back(portal);
+        d.data.integrator.num_portals=1;d.data.integrator.portal_offset=d.data.integrator.num_lights;d.data.background.portal_weight=1;
+        for(float map:{1.0f,0.0f}){d.data.background.map_weight=map;
+          bool accepted=true;try{d.validate_lighting(true);}catch(const std::exception &){accepted=false;}
+          require(accepted,"Renderer rejected a background light portal with a NaN axis of zero length");metrics.guards++;}
+        d.data.kernel_features|=KERNEL_FEATURE_VOLUME;reason="degenerate background light portal";}
       bool rejected=false;try{d.validate_lighting(true);}catch(const std::exception &error){rejected=std::string(error.what()).find(reason)!=std::string::npos;}
       require(rejected,"Emitter guard did not reject case="+std::to_string(bad));metrics.guards++;
     }d.light_records=saved;d.data=saved_data;d.light_axis_overflow=saved_overflow;

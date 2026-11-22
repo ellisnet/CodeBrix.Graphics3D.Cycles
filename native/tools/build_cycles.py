@@ -72,7 +72,7 @@ def overlay(out=None,translate=True,located=None):
     # camera accessors below read original KernelData and scene arrays directly.
     sampling=(REPO/'parity/shaders/sampling.wgsl').read_text()
     sampling=sampling[sampling.index('fn wang_hash'):sampling.index('fn sobol_index')]
-    common=shader+sampling+(ROOT/'shaders/wavefront_common.wgsl').read_text()+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_trig.wgsl').read_text()+(ROOT/'shaders/wavefront_motion.wgsl').read_text()+(ROOT/'shaders/wavefront_motion_triangle.wgsl').read_text()+(ROOT/'shaders/wavefront_curve_math.wgsl').read_text()+(ROOT/'shaders/wavefront_point.wgsl').read_text()
+    common=shader+sampling+(ROOT/'shaders/wavefront_common.wgsl').read_text()+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_trig.wgsl').read_text()+(ROOT/'shaders/wavefront_motion.wgsl').read_text()+(ROOT/'shaders/wavefront_motion_triangle.wgsl').read_text()+(ROOT/'shaders/wavefront_curve_math.wgsl').read_text()+(ROOT/'shaders/wavefront_point.wgsl').read_text()+(ROOT/'shaders/wavefront_gsplat.wgsl').read_text()
     # Orthographic and panoramic cameras and depth of field (CAMERA_PROJECTIONS) use the disk-angle sine and cosine.
     camera=common+'//#if CAMERA_PROJECTIONS\n'+(ROOT/'shaders/wavefront_native_trig.wgsl').read_text()+'//#endif\n'+(ROOT/'shaders/wavefront_camera.wgsl').read_text()
     _write(out/'camera_shader.inc','R"CBWGSL('+camera+')CBWGSL"\n')
@@ -122,7 +122,7 @@ def overlay(out=None,translate=True,located=None):
     translated=translated.replace(math_cases,'case 7u, 8u: {\n//#if SVM_MATH_ARC else atomicOr(&heap[p(17u)/4u],2u);return 0.0;\n'
                                   'return trig_arc(clamp(v_a, (-1.0f), 1.0f), v_type == 8u);\n//#endif\n}')
     svm=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm.wgsl','wavefront_attributes.wgsl','wavefront_images.wgsl','wavefront_normals.wgsl','wavefront_svm_nodes.wgsl','wavefront_svm_derivatives.wgsl'))
-    closures=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm_closures.wgsl','wavefront_svm_microfacet.wgsl','wavefront_svm_hair.wgsl','wavefront_svm_hair_huang.wgsl'))
+    closures=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm_closures.wgsl','wavefront_svm_microfacet.wgsl','wavefront_svm_hair.wgsl','wavefront_svm_hair_huang.wgsl','wavefront_dispersion.wgsl'))
     enum_pattern=r'\b(?:NODE_[A-Za-z0-9_]+|ATTR_[A-Za-z0-9_]+|IMAGE_[A-Za-z0-9_]+|INTERPOLATION_[A-Za-z0-9_]+|EXTENSION_[A-Za-z0-9_]+|KERNEL_(?:IMAGE_NONE|TILE_LOAD_NONE)|SVM_(?:STACK_SIZE|STACK_INVALID|INPUT_STACK_OFFSET_MASK)|CAMERA_(?:PERSPECTIVE|ORTHOGRAPHIC))\b'
     # Enum constants used only by the texture/colour/utility node regions are
     # emitted inside their SVM_NODES_ANY layout region (svm_nodes_enums.inc).
@@ -322,7 +322,7 @@ def main():
     options.update({'WITH_CYCLES_'+name:'OFF' for name in ['ALEMBIC','OPENSUBDIV','OPENVDB','NANOVDB',
                    'OSL','USD','HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
     commands=[['cmake','-S',str(UPSTREAM),'-B',str(build),*['-D'+k+'='+str(v) for k,v in options.items()]],
-              ['cmake','--build',str(build),'--target','codebrix_cycles_device_gate','codebrix_cycles_camera_gate','codebrix_cycles_closest_gate','codebrix_cycles_curve_gate','codebrix_cycles_curve_shadow_gate','codebrix_cycles_curve_render_gate','codebrix_cycles_point_gate','codebrix_cycles_point_render_gate','codebrix_cycles_hair_huang_gate','codebrix_cycles_hair_huang_render_gate','codebrix_cycles_background_gate','codebrix_cycles_svm_world_gate','codebrix_cycles_shader_data_gate','codebrix_cycles_svm_surface_gate','codebrix_cycles_attribute_gate','codebrix_cycles_normal_gate','codebrix_cycles_image_gate','codebrix_cycles_image_file_gate','codebrix_cycles_surface_gate','codebrix_cycles_microfacet_svm_gate','codebrix_cycles_microfacet_bounce_gate','codebrix_cycles_microfacet_render_gate','codebrix_cycles_render_gate','codebrix_cycles_atomic_film_gate','--parallel',args.jobs]]
+              ['cmake','--build',str(build),'--target','codebrix_cycles_device_gate','codebrix_cycles_camera_gate','codebrix_cycles_closest_gate','codebrix_cycles_curve_gate','codebrix_cycles_curve_shadow_gate','codebrix_cycles_curve_render_gate','codebrix_cycles_point_gate','codebrix_cycles_point_render_gate','codebrix_cycles_hair_huang_gate','codebrix_cycles_hair_huang_render_gate','codebrix_cycles_background_gate','codebrix_cycles_svm_world_gate','codebrix_cycles_shader_data_gate','codebrix_cycles_svm_surface_gate','codebrix_cycles_attribute_gate','codebrix_cycles_normal_gate','codebrix_cycles_image_gate','codebrix_cycles_image_file_gate','codebrix_cycles_image_tile_gate','codebrix_cycles_surface_gate','codebrix_cycles_microfacet_svm_gate','codebrix_cycles_microfacet_bounce_gate','codebrix_cycles_microfacet_render_gate','codebrix_cycles_render_gate','codebrix_cycles_atomic_film_gate','--parallel',args.jobs]]
     if args.target:
         commands[1]=['cmake','--build',str(build),'--target',*args.target,'--parallel',args.jobs]
     else:

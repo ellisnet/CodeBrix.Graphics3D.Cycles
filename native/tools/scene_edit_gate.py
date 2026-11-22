@@ -21,7 +21,7 @@ import subprocess
 import sys
 from pathlib import Path
 from build import REPO, ROOT, WORK, PACKAGE
-from device_gate import sha, save
+from device_gate import sha, save, require_built
 from render_gate import inputs
 
 
@@ -69,6 +69,7 @@ def main():
                 subprocess.run([sys.executable, str(ROOT/'tools/build_cycles.py'), '--jobs', args.jobs,
                                 '--target', 'codebrix_cycles_host', '--target', 'codebrix_host_scene_edit_test'],
                                stdout=log, stderr=subprocess.STDOUT, check=True)
+        else: require_built([], targets={library: 'codebrix_cycles_host', binary: 'codebrix_host_scene_edit_test'})
         pins = {str(p): sha(p) for p in [library, binary, runtime]}
         save(out/'invocation.json', dict(productionSourceSha256=sources, fileSha256=pins))
         for mode in ['cpu', 'gpu']:

@@ -33,20 +33,31 @@ void WebGPUDevice::validate_geometry_motion() const{
       // The motion pass without motion blur keeps a deforming mesh as plain triangles with its motion steps in the
       // position table (FILM_MOTION_DEFORM); with motion blur it is a motion-triangle mesh. The flags and type first
       // (the base order of these rejections), then the steps.
-      if(object.primitive_type==PRIMITIVE_TRIANGLE||object.primitive_type==PRIMITIVE_POINT)require(film_motion_vectors(),"Invalid deforming triangle flags/type");
-      else{moving=true;require(object.primitive_type==PRIMITIVE_MOTION_TRIANGLE||object.primitive_type==PRIMITIVE_MOTION_POINT,"Invalid deforming triangle flags/type");}
-      require(object.num_geom_steps>=2&&object.numverts>0&&((object.primitive_type&PRIMITIVE_POINT)||object.mesh_volume.num_prims>0),"Invalid deforming triangle steps/size");
-    }else require(object.primitive_type!=PRIMITIVE_MOTION_TRIANGLE&&object.primitive_type!=PRIMITIVE_MOTION_POINT,"Invalid deforming triangle flags/type");
+      if(object.primitive_type==PRIMITIVE_TRIANGLE||object.primitive_type==PRIMITIVE_POINT||object.primitive_type==PRIMITIVE_GSPLAT)require(film_motion_vectors(),"Invalid deforming triangle flags/type");
+      else{moving=true;require(object.primitive_type==PRIMITIVE_MOTION_TRIANGLE||object.primitive_type==PRIMITIVE_MOTION_POINT||object.primitive_type==PRIMITIVE_MOTION_GSPLAT,"Invalid deforming triangle flags/type");}
+      require(object.num_geom_steps>=2&&object.numverts>0&&((object.primitive_type&PRIMITIVE_ANY_POINT)||object.mesh_volume.num_prims>0),"Invalid deforming triangle steps/size");
+    }else require(object.primitive_type!=PRIMITIVE_MOTION_TRIANGLE&&object.primitive_type!=PRIMITIVE_MOTION_POINT&&object.primitive_type!=PRIMITIVE_MOTION_GSPLAT,"Invalid deforming triangle flags/type");
     if(flags&SD_OBJECT_MOTION){
       // A light object with motion (PRIMITIVE_LAMP): ObjectManager decomposes its motion and sets SD_OBJECT_MOTION, but no pinned
       // kernel reads a lamp object's motion (KernelLight holds one transform; lamps are not in the BVH), so it renders static.
-      moving=true;require(curve||object.primitive_type==PRIMITIVE_TRIANGLE||object.primitive_type==PRIMITIVE_MOTION_TRIANGLE||object.primitive_type==PRIMITIVE_POINT||object.primitive_type==PRIMITIVE_MOTION_POINT||object.primitive_type==PRIMITIVE_LAMP,"Invalid moving object type");
+      moving=true;require(curve||object.primitive_type==PRIMITIVE_TRIANGLE||object.primitive_type==PRIMITIVE_MOTION_TRIANGLE||object.primitive_type==PRIMITIVE_POINT||object.primitive_type==PRIMITIVE_MOTION_POINT||object.primitive_type==PRIMITIVE_GSPLAT||object.primitive_type==PRIMITIVE_MOTION_GSPLAT||object.primitive_type==PRIMITIVE_LAMP,"Invalid moving object type");
       require(!(flags&SD_OBJECT_TRANSFORM_APPLIED),"Invalid applied object motion transform");
       require(object.num_tfm_steps>=2&&object.motion_offset<=count&&object.num_tfm_steps<=count-object.motion_offset,
               "Invalid native object motion range");
     }
   }
-  require(bool(data.bvh.have_motion)==moving,"Native object motion flag/table mismatch");
+  require(bvh_motion()==moving,"Native object motion flag/table mismatch");
+}
+// Pinned scene/object.cpp sets bvh.have_motion for any geometry with motion blur switched on ("if
+// (geom->get_use_motion_blur()) { state->have_motion = true; }"), also one with no motion steps, in a scene where nothing
+// moves. The kernel's motion traversal of such a scene is the static one: bvh_instance_motion_push takes
+// object_fetch_transform_motion_test, which without SD_OBJECT_MOTION is object_fetch_transform's inverse transform, as
+// bvh_instance_push, and no motion primitive is reached. So the device traverses it as a static scene.
+bool WebGPUDevice::bvh_motion() const{
+  if(!data.bvh.have_motion)return false;
+  for(const uint flags:object_flag_records)if(flags&SD_OBJECT_MOTION)return true;
+  for(const KernelObject &object:object_records)if(object.primitive_type&PRIMITIVE_MOTION)return true;
+  return false;
 }
 // Curves through the closest and opaque shadow traversals, with object and deformation motion. What this device does not do with curves yet is
 // refused by name, before any dispatch.
@@ -86,12 +97,10 @@ void WebGPUDevice::validate_points(){
   }
 }
 uint32_t WebGPUDevice::scene_tables(){
-  // Not implemented by the device, refused by name: Gaussian splats (a 64-bit feature flag the WGSL cannot read) and the
-  // attribute types that come with them, whose arrays have no table here.
-  require(!(data.kernel_features&KERNEL_FEATURE_GSPLATS),"WebGPU Gaussian splats not implemented");
-  for(const auto &[name,message]:{std::pair{"attributes_quaternion","WebGPU quaternion attributes not implemented"},
-      std::pair{"attributes_spherical_harmonics_rest","WebGPU spherical harmonics attributes not implemented"}}){
-    const auto it=globals.find(name);require(it==globals.end()||!it->second||!remaining(it->second),message);}
+  // Gaussian splats (pipelines.h SF_GSPLATS): the splat attributes Cycles requires are in the uploaded tables.
+  if(data.kernel_features&KERNEL_FEATURE_GSPLATS){
+    require(globals.count("attributes_quaternion")&&globals.count("attributes_float3")&&globals.count("attributes_float4"),"Missing native Gaussian splat attribute tables");
+  }
   load_image_info();
   std::vector<uint32_t> descriptors;
 #define TABLE(name,type) {auto it=globals.find(#name);uint32_t address=it==globals.end()?0:it->second;size_t bytes=address?remaining(address):0; \
@@ -101,10 +110,18 @@ uint32_t WebGPUDevice::scene_tables(){
   TABLE(volume_tree_nodes,KernelOctreeNode) TABLE(volume_tree_roots,KernelOctreeRoot) TABLE(volume_tree_root_ids,int) TABLE(volume_step_size,float)
   // Curve records come before the BVH: the curve transparency evaluation runs before have_curves can be relied on.
   // Curves, then points, then particles: each index is fixed, so the earlier groups come along (empty where absent).
-  const bool particles=(shader_features()&SF_NODE_PARTICLE_INFO).any(),points=data.bvh.have_points||particles;
+  const bool attribute_kinds=(shader_features()&(SF_ATTR_QUATERNION|SF_ATTR_SPHERICAL_HARMONICS)).any();
+  const bool particles=(shader_features()&SF_NODE_PARTICLE_INFO).any(),points=data.bvh.have_points||particles||attribute_kinds||tiled_images;
   if(data.bvh.have_curves||!curve_records.empty()||points){CBC_CURVE_TABLES(TABLE)}
   if(points){CBC_POINT_TABLES(TABLE)}
-  if(particles){CBC_PARTICLE_TABLES(TABLE)}
+  if(particles||attribute_kinds||tiled_images){CBC_PARTICLE_TABLES(TABLE)}
+  // Quaternion and spherical-harmonics attributes, after the particle table: the descriptors of a scene without them are unchanged.
+  if(attribute_kinds){CBC_ATTRIBUTE_KIND_TABLES(TABLE)}
+  // Tiled images (TILED_IMAGES): the pinned tile descriptors and tile access state, then the device's miss word; after the
+  // quaternion and spherical-harmonics tables when the scene has those (camera.cpp wavefront_layout gives both indices).
+  if(tiled_images){TABLE(image_texture_tile_descriptors,KernelTileDescriptor) TABLE(image_texture_tile_access_state,uint8_t)
+    if(!tile_miss_word){tile_miss_word=allocate(16);zero(tile_miss_word,16);}
+    descriptors.insert(descriptors.end(),{tile_miss_word,1u});}
 #undef TABLE
   // The descriptor list grows with curves and points (a scene edit can add or remove them).
   if(intersection_tables&&descriptors.size()!=intersection_table_cache.size()){flush();release(intersection_tables);intersection_tables=0;intersection_table_cache.clear();}

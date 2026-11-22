@@ -66,7 +66,7 @@ AttributeStandard standard_attribute(Geometry &geometry,const char *name,Attribu
   if(key=="curve_length" && hair)return ATTR_STD_CURVE_LENGTH;
   if(key=="curve_random" && hair)return ATTR_STD_CURVE_RANDOM;
   if(key=="point_random" && points)return ATTR_STD_POINT_RANDOM;
-  // Gaussian splats (PROVISIONAL, ABI.md): Cycles finds a splat's data by these standards alone (PointCloud::primitive_type,
+  // Gaussian splats (ABI.md): Cycles finds a splat's data by these standards alone (PointCloud::primitive_type,
   // the device upload, KernelObject.gsplat). radiance:base is float4 (band-0 colour and opacity), scale a vector, rotation
   // a quaternion and radiance:sh the spherical-harmonics rest; stage_attribute requires the matching value kind.
   if(key=="radiance:base" && points)return ATTR_STD_GSPLAT_RADIANCE_BASE;
@@ -100,7 +100,7 @@ AttributeTarget attribute_target(Host &host,CBCNode id,const char *name,const CB
   auto element=attribute_element(geom,config->domain);auto type=attribute_type(config->value_type);
   require(!(element&ATTR_ELEMENT_IS_NORMAL)||config->value_type==CBC_VALUE_NORMAL,"Normal storage requires a normal value");
   require(bool(element&ATTR_ELEMENT_IS_BYTE)==(config->value_type==CBC_VALUE_BYTE4),"Byte storage requires a byte corner domain");
-  // Quaternion and spherical-harmonics attributes (PROVISIONAL, ABI.md): quaternions on meshes, point clouds and curves,
+  // Quaternion and spherical-harmonics attributes (ABI.md): quaternions on meshes, point clouds and curves,
   // spherical harmonics on meshes and point clouds. On curves the pinned kernels fetch a quaternion wherever they fetch
   // any attribute: per curve key, interpolated along the segment, and per curve (curve_attribute, kernel/geom/curve.h),
   // and on the mesh domain (primitive_surface_attribute, kernel/geom/primitive.h), and the device upload packs it for any
@@ -170,29 +170,12 @@ void images_within_cpu_limit(Host &host){
 // Requests the pinned Cycles accepts but this library cannot honour: refused by name, never ignored (on every backend
 // unless the test names one).
 void validate_unavailable(Host &host) {
-  // Dispersion renders on the CPU device and on Cycles' Metal device. The WebGPU device does not implement it and is
-  // refused here by the device's own words (pipelines.cpp refuses a referenced shader flagged SD_REQUIRES_WAVELENGTH with
-  // the same text). The test is the pinned node's own (PrincipledBsdfNode::has_dispersion): the dispersion scale and
-  // the transmission weight are each linked or not zero; with a constant zero transmission weight nothing disperses
-  // and the scene renders, as in Cycles.
-  if(host.backend==CBC_HOST_WEBGPU)
-    for(auto &[shader,stored]:host.graphs)for(auto node:stored->authoring->nodes)if(auto principled=dynamic_cast<PrincipledBsdfNode *>(node))
-      require(!principled->has_dispersion(),"WebGPU dispersion not implemented",CBC_UNSUPPORTED);
-  // Gaussian splats render on the CPU device and on Cycles' Metal device (validate_gsplats below). The WebGPU device does
-  // not implement them and is refused here by the device's own words (scene_tables in native/cycles/closest.cpp refuses
-  // KERNEL_FEATURE_GSPLATS with the same text), whatever attributes the cloud has.
-  if(host.backend==CBC_HOST_WEBGPU)
-    for(auto geom:host.session->scene->geometry)if(auto points=dynamic_cast<PointCloud *>(geom))
-      require(points->get_render_as()!=PointCloud::RENDER_AS_GSPLATS,"WebGPU Gaussian splats not implemented",CBC_UNSUPPORTED);
+  // Gaussian splats render on every backend (validate_gsplats below; on the WGSL device native/shaders/wavefront_gsplat.wgsl).
   // UDIM tiles (cbc_host_image_bind_tiles, PROVISIONAL) render on every backend: the WGSL device reads Cycles' UDIM table
   // (image_sample in native/shaders/wavefront_images.wgsl; oracle scenes images/udim-*).
-  // Tiled images (cbc_host_image_create_tiled, PROVISIONAL) render through Cycles' texture cache on the CPU device and on
-  // Cycles' Metal device. The WGSL device has no tile cache (it reports a tiled image as its kernel error 256, "tiled image
-  // cache not implemented", native/cycles/device.cpp), so a binding of a tiled image in any authoring graph is refused on
-  // the WebGPU backend before the scene reaches the device (its capability entry: "sparse or tiled images").
-  if(host.backend==CBC_HOST_WEBGPU)
-    for(auto &[shader,stored]:host.graphs)for(auto &[node,binding]:stored->images)for(auto &[tile,data]:binding)
-      require(!data->tiled,"WebGPU tiled images not implemented",CBC_UNSUPPORTED);
+  // Tiled images (cbc_host_image_create_tiled, PROVISIONAL) render through Cycles' texture cache on every backend; the
+  // WGSL device maps a lookup to its mip level and tile (with the dual-number projections Cycles uses for it) and runs a
+  // kernel again once the tiles it requested are loaded (native/cycles/image.cpp tile_transaction).
   // BVH spatial splits (cbc_host_bvh_spatial_split, PROVISIONAL) apply to Cycles' BVH2 builder on every backend that
   // traverses it and to Embree. A split BVH2 references one primitive from several leaves; the WGSL traversal reads
   // Cycles' packed tables as they are and drops a primitive met twice where the pinned kernel does (a recorded
@@ -255,7 +238,7 @@ void validate_unavailable(Host &host) {
   require(!integrator->get_use_denoise()||!(integrator->get_denoiser_passes()&~denoiser_guides),
           "Invalid denoiser_passes: a bit that is not a denoiser guide pass (albedo 1, specular albedo 2, normal 4, roughness 8, depth 16, backward motion 32, specular motion 64)");
 }
-// A point cloud rendered as Gaussian splats (CPU and Metal backends). The pinned Cycles renders the cloud as splats only
+// A point cloud rendered as Gaussian splats (every backend). The pinned Cycles renders the cloud as splats only
 // when it finds the standard attributes radiance:base, scale and rotation (PointCloud::primitive_type) and draws plain
 // points otherwise, with no message; create_missing_gsplat_attributes, which would supply defaults, has no caller in the
 // pinned source. So a splat cloud without them is refused, naming what is missing. quaternion_to_rotation
@@ -419,7 +402,7 @@ Attribute &authored_attribute(Host &host,CBCNode id,const char *name,uint32_t fl
   if((flags&CBC_ATTR_SUBDIVISION)||!geom.transform_applied||record==host.bakes.end())return attr;
   auto authored=record->second.attributes->find(ustring(name));require(authored,"Unknown attribute");return *authored;
 }
-// The bounding radius of each splat (CBC_ATTR_SPLAT_BOUNDING_RADIUS, PROVISIONAL): what Cycles' device update computed
+// The bounding radius of each splat (CBC_ATTR_SPLAT_BOUNDING_RADIUS): what Cycles' device update computed
 // for a modified splat cloud from each splat's opacity (radiance:base) and scale (PointCloud::update_gsplat_radii,
 // scene/pointcloud.cpp, called by GeometryManager::device_update_preprocess) and bounds the splats with in the BVH. It
 // is the cloud's radius attribute from then on (the centre step, as a read without the flag returns the authored one),
@@ -434,7 +417,6 @@ std::vector<float> splat_bounding_radius(Host &host,CBCNode id,const char *name,
   auto &geom=geometry(host,id);auto points=dynamic_cast<PointCloud *>(&geom);
   require(points&&points->get_render_as()==PointCloud::RENDER_AS_GSPLATS,
           "CBC_ATTR_SPLAT_BOUNDING_RADIUS reads the bounding radius of a Gaussian splat cloud only (a point cloud with render_as gaussian_splats)");
-  require(host.backend!=CBC_HOST_WEBGPU,"WebGPU Gaussian splats not implemented",CBC_UNSUPPORTED);
   require(host.splat_radii.count(&geom)&&!geom.is_modified(),
           "The bounding radius of a Gaussian splat cloud is Cycles' and is read after a render or bake has computed it for the cloud as it is "
           "(not before the first render, nor after an edit of the cloud)",CBC_NOT_READY);
@@ -579,7 +561,7 @@ extern "C" int cbc_host_image_bind_tiles(CBCHost handle,CBCNode id,const uint32_
 // allocates each pool whole at its first tile load and reads and stages every tile whole, so the pool of 64 tiles of 1024
 // takes 271 MB for byte4 and 1.1 GB for float4, that of 2048 four times as much, and that of 65536 1.1 TB of address space
 // for byte4 (which Linux and Windows would refuse, ending the process through Cycles' unhandled std::bad_alloc from
-// device_memory::host_alloc). So 1024 there (and on the WebGPU backend, which refuses tiled images at render), the
+// device_memory::host_alloc). So 1024 there (and on the WebGPU backend, whose pool lives in the device arena), the
 // library's cap: Cycles' CPU kernel would address tiles up to 65536 (it finds a texel of the pool by a float pixel
 // coordinate, kernel_image_tile_map, which ImageInterpolator floors, kernel/util/image.h, and binary32 holds every texel
 // centre only up to 2^23, a pool of 64 * 65540 pixels), and its int arithmetic up to 2^24 (ImageCache::alloc_tile). The

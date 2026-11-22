@@ -217,6 +217,136 @@ fn light_sample_lamp(index:u32,sd:SurfaceData,r:SvmResult,selection:LightSelecti
     ls.pdf*=select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);return ls;
 //#endif
 }
+//#if LIGHT_NAN_DIRECTION
+// A next-event sample whose direction is NaN (an area light with an axis of zero length and a spread of zero: native/DEVICE.md,
+// item 148). WGSL defines neither arithmetic nor comparisons with a NaN, so the direction is never an operand here: each
+// function below gives what the pinned closure computes for a NaN `wo`, where a comparison with a NaN is false, `min` and
+// `max` (util/math_base.h: `(a < b) ? a : b`, `(a > b) ? a : b`) return their second operand and fmaxf returns the other one.
+fn light_nan(x:f32)->bool{return (bitcast<u32>(x)&0x7fffffffu)>0x7f800000u;}
+// kind 0: bsdf_eval leaves the pdf zero (the closure is skipped); 1: a finite value and pdf; 2: the value and the pdf are NaN.
+struct NanEval {kind:u32,value:vec4<f32>}
+struct NanFresnel {nan:bool,f:MicrofacetFresnel}
+// microfacet_fresnel with cos_theta_i NaN (closure/bsdf_microfacet.h, closure/bsdf_util.h).
+fn ggx_fresnel_nan(c:SvmClosure)->NanFresnel{
+    var out:NanFresnel;
+//#if SVM_BSDF_FRESNEL_MODELS
+    if(c.roughness!=0.0){let model=u32(c.roughness);
+//#if SVM_BSDF_THIN_FILM
+        // fresnel_iridescence_channel: the top interface's fresnel_dielectric_polarized gives NaN reflectances and
+        // cos_theta_2 = -safe_sqrtf(NaN) / eta = -0. Over a dielectric the bottom interface at a cosine of zero has
+        // r_s = r_p = -1 (or is past the critical angle), so R23 equals one and the function returns 1.0f; over a conductor the
+        // Airy sum has R12 NaN and `saturatef(0.5f * (R_s + R_p))` is 0.
+        if(c.a>0.1){if(model!=5u&&model!=3u){out.f.reflection=c.reflection_tint;}return out;}
+//#endif
+        // fresnel_conductor: NaN (no comparison drops it). fresnel_dielectric: NaN. fresnel_f82: `saturatef(1.0f - cosi)` is
+        // 0 and `saturate(F_schlick - B * cosi * s5 * s)` is saturate(NaN) = 0 in each channel.
+        if(model==3u||model==1u){out.nan=true;return out;}
+        if(model==5u){return out;}
+        // generalized_schlick_fresnel with a negative exponent: `saturatef(inverse_lerp(F0_real, 1.0f, F_real))` is 0 for the
+        // NaN F_real, so F = mix(f0, f90, 0) = f0.
+        let fresnel=c.multiscatter;out.f.reflection=fresnel*c.reflection_tint;
+        if(c.kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID){out.f.transmission=vec3<f32>(rounded_add(1.0,-fresnel.x),rounded_add(1.0,-fresnel.y),rounded_add(1.0,-fresnel.z))*c.transmission_tint;}
+        return out;}
+//#endif
+    if(c.kind==CLOSURE_BSDF_MICROFACET_GGX_ID){out.f.reflection=vec3<f32>(1);return out;}
+    // The Glass BSDF node's generalized Schlick model, as above: F = f0.
+    let fresnel=c.fresnel_f0;out.f.reflection=fresnel*c.reflection_tint;out.f.transmission=rounded_add(1.0,-fresnel)*c.transmission_tint;return out;
+}
+// bsdf_microfacet_eval with wo NaN: cos_NO is NaN, so is_transmission is false: a refraction closure returns zero, the
+// others take the reflection branch with H NaN. iszero(coeff) is tested first (false for a NaN coefficient). Isotropic:
+// bsdf_D has `min(sqr(cos_NH), 1.0f)` = 1 and bsdf_lambda has `fmaxf(1.0f / sqr(cos_N) - 1.0f, 0.0f)` = 0, the values at a
+// cosine of one. Anisotropic: bsdf_aniso_D and bsdf_aniso_lambda are NaN.
+fn microfacet_nan(c:SvmClosure,wi:vec3<f32>)->NanEval{
+    var out:NanEval;var g=c;var beckmann=false;
+//#if SVM_BSDF_BECKMANN
+    beckmann=surf_beckmann(c.kind);g=beckmann_lobes(c);
+//#endif
+    let ci=rounded_dot(c.N,wi);let alpha2=c.alpha_x*c.alpha_y;
+    if(ci<=0.0||alpha2<=2e-10||g.kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID){return out;}
+    let fresnel=ggx_fresnel_nan(g);if(fresnel.nan){out.kind=2u;return out;}let f=fresnel.f;
+    if(all(f.reflection==vec3<f32>(0))&&all(f.transmission==vec3<f32>(0))){return out;}
+    if(c.alpha_x!=c.alpha_y){out.kind=2u;return out;}
+    var d:f32;var li:f32;
+//#if SVM_BSDF_BECKMANN else     d=ggx_d(alpha2,1.0);li=ggx_lambda(alpha2,ci);
+    if(beckmann){d=beckmann_distribution(c,alpha2,vec3<f32>(0,0,1),true);li=beckmann_smith(c,alpha2,vec3<f32>(0,0,ci),true);}
+    else{d=ggx_d(alpha2,1.0);li=ggx_lambda(alpha2,ci);}
+//#endif
+    let factor=d/ci*0.25;let reflection_pdf=ggx_reflection_pdf(f);
+    out.value=vec4<f32>(f.reflection*(factor/(1.0+0.0+li)*g.energy_scale),factor*reflection_pdf/(1.0+li));out.kind=1u;return out;
+}
+//#if SVM_BSDF_ASHIKHMIN_SHIRLEY
+// bsdf_ashikhmin_shirley_eval with wo NaN: `NdotO < 0.0f` is false, and fmaxf gives NdotO = HdotI = HdotN = 1e-6. Equal
+// exponents: the lobe powf(1e-6, n). Different ones: the exponent is NaN (HdotN < 1), so the value and the pdf are NaN.
+fn as_evaluate_nan(c:SvmClosure,wi:vec3<f32>)->NanEval{
+    var out:NanEval;var ni=rounded_dot(c.N,wi);
+    if(max(c.alpha_x,c.alpha_y)<=1e-4||ni<0.0){return out;}
+    ni=max(ni,1e-6);let no=1e-6;let hi=1e-6;let hn=1e-6;
+    let pump=rounded_divide(1.0,max(1e-6,hi*max(ni,no)));let nx=as_exponent(c.alpha_x);let ny=as_exponent(c.alpha_y);
+    if(nx!=ny){out.kind=2u;return out;}
+    let lobe=family_pow(hn,nx);let norm=rounded_divide(rounded_add(nx,1.0),8.0*PI);
+    out.value=vec4<f32>(vec3<f32>(((no*norm)*lobe)*pump),rounded_divide(norm*lobe,hi));out.kind=1u;return out;
+}
+//#endif
+// bsdf_eval with wo NaN (closure/bsdf.h): bump_shadowing_term is 1 (`cosNsI * cosNsN * cosNI < 0.0f` is false; a diffuse
+// closure, the only kind it softens, has a zero pdf here) and the shadow terminator's `cosNO >= 0.0f` is false.
+fn surf_evaluate_nan(sd:SurfaceData,c:SvmClosure)->NanEval{
+    var out:NanEval;
+//#if SVM_BSDF_HAIR_HUANG
+    // bsdf_hair_huang_eval: the pdf is 1 and the value NaN (the pinned CPU film: a mix with it gives no light). It has
+    // advanced sd->lcg_state all the same: the position shade_surface_huang_eval stored is taken (wavefront_hair_huang.wgsl).
+    if(c.kind==HH_CLOSURE_BSDF_HAIR_HUANG_ID){let stored=huang_read_eval(c);out.kind=2u;return out;}
+//#endif
+//#if SVM_BSDF_HAIR_CHIANG
+    // bsdf_hair_chiang_eval: local_I is NaN and no comparison drops it.
+    if(c.kind==CLOSURE_BSDF_HAIR_CHIANG_ID){out.kind=2u;return out;}
+//#endif
+//#if SVM_BSDF_ASHIKHMIN_SHIRLEY
+    if(c.kind==CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID){return as_evaluate_nan(c,sd.wi);}
+//#endif
+    if(surf_microfacet(c.kind)){
+        var g=c;var wi=sd.wi;
+//#if SVM_BSDF_THIN_WALL
+        // bsdf_thin_glass_transmission_eval: GGX reflection of the mirrored incoming direction.
+        if(c.kind==CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID){g.kind=CLOSURE_BSDF_MICROFACET_GGX_ID;wi=rounded_add3(sd.wi,-((2.0*c.N)*rounded_dot(sd.wi,c.N)));}
+//#endif
+        return microfacet_nan(g,wi);
+    }
+//#if SVM_BSDF_SHEEN_CLOSURE
+    // bsdf_sheen_eval: M_1_PI_F * fmaxf(localO.z, 0.0f) * sqr(a / lenSqr) is 0 * NaN.
+    if(c.kind==CLOSURE_BSDF_SHEEN_ID){out.kind=2u;return out;}
+//#endif
+    // Every other closure has a zero pdf: diffuse and translucent (fmaxf(NaN, 0) = 0), Oren-Nayar and its rough translucent
+    // form (`cosNO > 0.0f`), toon (`cosNO >= 0.0f`, `cosNI > 0 && cosNO > 0`), velvet (`!(cosNI > 0 && cosNO > 0)`), the hair
+    // reflection and transmission closures (fast_acosf(NaN) is 0, so theta_i is pi/2 and `M_PI_2_F - fabsf(theta_i) < 0.001f`),
+    // transparent and ray portal (no evaluation).
+    return out;
+}
+// _surface_shader_bsdf_eval_mis with wo NaN, as light_bsdf below. `bsdf_pdf != 0.0f` is true for a NaN pdf, so a NaN closure
+// makes the sum NaN in every channel (and the pdf sum NaN): poison. film_clamp_light's ensure_finite then drops the whole
+// contribution, so the caller makes no shadow path. bsdf_eval_accum's glass test `dot(sc->N, wo) > 0.0f` is false: a glass
+// closure counts as transmission.
+struct NanBsdf {poison:bool,sample:SurfaceSample}
+fn light_bsdf_nan(sd:SurfaceData,r:SvmResult,shader:u32)->NanBsdf{
+    var out:NanBsdf;var result:SurfaceSample;var weight_sum=0.0;var pdf_sum=0.0;var rough_sum=0.0;var pdf_nan=false;
+//#if SUBSURFACE else     for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(!surf_bsdf(c.kind)){continue;}
+    for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(!surf_bsdf(c.kind)){if(ss_bssrdf_kind(c.kind)){weight_sum+=c.sample_weight;}continue;}
+//#endif
+        let eval=surf_evaluate_nan(sd,c);
+        let excluded=(surf_diffuse(c.kind)&&(shader&SHADER_EXCLUDE_DIFFUSE)!=0u)||
+            (surf_glossy(c.kind)&&(shader&SHADER_EXCLUDE_GLOSSY)!=0u)||
+            (surf_refraction(c.kind)&&(shader&SHADER_EXCLUDE_TRANSMIT)!=0u)||
+            (surf_glass(c.kind)&&(shader&(SHADER_EXCLUDE_GLOSSY|SHADER_EXCLUDE_TRANSMIT))==(SHADER_EXCLUDE_GLOSSY|SHADER_EXCLUDE_TRANSMIT));
+        if(eval.kind==2u){pdf_nan=true;if(!excluded){out.poison=true;}}
+        else if(eval.kind==1u&&(bitcast<u32>(eval.value.w)&0x7fffffffu)!=0u){
+            if(!excluded){let value=eval.value.xyz*c.weight;result.eval=rounded_add3(result.eval,value);if(surf_diffuse(c.kind)){result.diffuse=rounded_add3(result.diffuse,value);}if(surf_glossy(c.kind)){result.glossy=rounded_add3(result.glossy,value);}}
+            let weight=eval.value.w*c.sample_weight;pdf_sum=rounded_add(pdf_sum,weight);rough_sum=rounded_add(rough_sum,weight*surf_roughness(c));
+        }weight_sum+=c.sample_weight;
+    }
+    result.roughness=select(0.0,rounded_divide(rough_sum,pdf_sum),pdf_sum>0.0);
+    if((shader&SHADER_USE_MIS)!=0u&&weight_sum>0.0){result.pdf=rounded_divide(pdf_sum,weight_sum);if(pdf_nan){out.poison=true;}}
+    out.sample=result;return out;
+}
+//#endif
 fn light_bsdf(sd:SurfaceData,r:SvmResult,direction:vec3<f32>,shader:u32)->SurfaceSample{
     var result:SurfaceSample;var weight_sum=0.0;var pdf_sum=0.0;var rough_sum=0.0;
 //#if SUBSURFACE else     for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(!surf_bsdf(c.kind)){continue;}
@@ -224,7 +354,7 @@ fn light_bsdf(sd:SurfaceData,r:SvmResult,direction:vec3<f32>,shader:u32)->Surfac
     for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(!surf_bsdf(c.kind)){if(ss_bssrdf_kind(c.kind)){weight_sum+=c.sample_weight;}continue;}
 //#endif
         let eval=surf_evaluate(sd,c,direction);
-//#if SVM_NODE_TANGENT else         if(eval.w!=0.0){
+//#if NAN_CLOSURE else         if(eval.w!=0.0){
         // bsdf_pdf != 0.0f is true for a NaN pdf (integrator/surface_shader.h _surface_shader_bsdf_eval_mis; a closure with a NaN tangent or normal, native/DEVICE.md, items 150 and 210): on the bits.
         if((bitcast<u32>(eval.w)&0x7fffffffu)!=0u){
 //#endif
@@ -255,7 +385,12 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
     // (integrate_surface_direct_light): reachable once an emitter also has a BSDF.
 //#if LIGHT_TRIANGLE
     if(!ls.is_light&&ls.prim==sd.prim&&ls.object_id==sd.object_id){
-        let transmission=dot(ls.D,sd.N)<0.0;if(dot(ls.D,select(sd.Ng,-sd.Ng,transmission))>0.0){return;}}
+//#if BAKE_ZERO_AREA else         let transmission=dot(ls.D,sd.N)<0.0;if(dot(ls.D,select(sd.Ng,-sd.Ng,transmission))>0.0){return;}}
+        // integrate_surface_direct_light: `dot(ls.D, sd->N) < 0.0f` and `dot(ls.D, is_transmission ? -sd->Ng : sd->Ng) > 0.0f`
+        // at the normals of a zero-area bake texel (false for a NaN).
+        let transmission=zero_area_less(zero_area_plain_dot(sd.N,ls.D),0.0);
+        if(zero_area_less(0.0,zero_area_plain_dot(select(sd.Ng,zero_area_negate3(sd.Ng),transmission),ls.D))){return;}}
+//#endif
 //#endif
 //#if MNEE
     // On a caustic caster a caustic light's transmitted contribution reaches the
@@ -271,7 +406,31 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
     var emission=select(vec3<f32>(1),heap_vec3(shader+SH_constant_emission),constant);
 //#endif
     if(ls.is_light){emission*=heap_vec3(table_at(G_lights,ls.prim,SIZE_lights)+L_strength);}
-    var bsdf=light_bsdf(sd,r,ls.D,ls.shader);let mis=(ls.pdf*ls.pdf)/(ls.pdf*ls.pdf+bsdf.pdf*bsdf.pdf);
+//#if LIGHT_NAN_DIRECTION else     var bsdf=light_bsdf(sd,r,ls.D,ls.shader);let mis=(ls.pdf*ls.pdf)/(ls.pdf*ls.pdf+bsdf.pdf*bsdf.pdf);
+    // A sample with a NaN direction (light_bsdf_nan). Its shadow ray keeps the NaN direction and distance: shadow_ray_offset's
+    // offset_amount is clamp(NaN, 0, 1) = 0, so the origin is sd->P, and intersection_ray_valid (bvh/util.h) is false for a
+    // direction that is not finite, so the ray is never traced (intersect_shadow tests the same bits) and nothing shadows it.
+    let nan_direction=light_nan(ls.D.x);var bsdf:SurfaceSample;
+    if(nan_direction){let evaluated=light_bsdf_nan(sd,r,ls.shader);
+        if(evaluated.poison){
+            // A NaN closure sum. The pinned shadow path carries a NaN throughput, which film_clamp_light drops (the Combined
+            // and light group passes get nothing), but with light passes its fresh pass weights (bsdf_eval_pass_diffuse_weight
+            // and _glossy_weight: NaN / NaN) are multiplied with that zero in film_write_direct_light, so the pinned film
+            // itself holds a NaN in the diffuse, glossy or transmission pass it writes: no film to mirror. Refused by name
+            // at render time exactly there (the light's refusal text, device.cpp); elsewhere the sample gives nothing.
+            let path_flag=state_word(S_path_flag,index);var passes=data_word(D_film_light_pass_flag)!=0u&&p(20u)!=0u&&(path_flag&PATH_RAY_ANY_PASS)==0u;
+//#if SHADOW_CATCHER
+            passes=passes&&sc_light_passes(path_flag);
+//#endif
+            let first=state_half(S_path_bounce,index)==0u;
+            if(passes&&(select(data_word(D_film_pass_glossy_indirect),data_word(D_film_pass_glossy_direct),first)!=PASS_NONE||
+                select(data_word(D_film_pass_transmission_indirect),data_word(D_film_pass_transmission_direct),first)!=PASS_NONE||
+                select(data_word(D_film_pass_diffuse_indirect),data_word(D_film_pass_diffuse_direct),first)!=PASS_NONE)){
+                atomicOr(&heap[p(17u)/4u],select(131072u,262144u,ls.is_light&&load_word(table_at(G_lights,ls.prim,SIZE_lights)+L_type)==LIGHT_BACKGROUND));}
+            return;}
+        bsdf=evaluated.sample;}else{bsdf=light_bsdf(sd,r,ls.D,ls.shader);}
+    let mis=(ls.pdf*ls.pdf)/(ls.pdf*ls.pdf+bsdf.pdf*bsdf.pdf);
+//#endif
     let factor=emission*ls.eval_fac/ls.pdf*mis;bsdf.eval*=factor;bsdf.diffuse*=factor;bsdf.glossy*=factor;
     if(all(bsdf.eval==vec3<f32>(0))){return;}
     // Path termination for constant light shaders only (non-constant: shade_light_nee),
@@ -298,13 +457,19 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
     // smooth-shaded triangles first; w=0 means the ray no longer skips its own
     // primitive and takes no self-intersection offset (light/sample.h).
     var start=vec4<f32>(sd.P,1.0);
-    if(terminator_geometry_active(sd)){
+//#if LIGHT_NAN_DIRECTION else     if(terminator_geometry_active(sd)){
+    if(terminator_geometry_active(sd)&&!nan_direction){
+//#endif
 //#if SHADOW_TERMINATOR_GEOMETRY else atomicOr(&heap[p(17u)/4u],2u);return;
         start=terminator_shadow_origin(sd,ls.D);
 //#endif
     }
-    var direction=ls.D;var tmax=ls.t;if(ls.t!=bitcast<f32>(0x7f7fffffu)){let ray=light_normalize_len(ls.P-start.xyz);direction=ray.xyz;tmax=ray.w;}
-    var origin=start.xyz;if(start.w!=0.0){origin=surf_ray_offset_at(sd,start.xyz,direction);}let allocator=load_word(p(7u)+S_next_shadow_path_index)/4u;var shadow:u32;
+//#if LIGHT_NAN_DIRECTION else     var direction=ls.D;var tmax=ls.t;if(ls.t!=bitcast<f32>(0x7f7fffffu)){let ray=light_normalize_len(ls.P-start.xyz);direction=ray.xyz;tmax=ray.w;}
+    var direction=ls.D;var tmax=ls.t;if(!nan_direction&&ls.t!=bitcast<f32>(0x7f7fffffu)){let ray=light_normalize_len(ls.P-start.xyz);direction=ray.xyz;tmax=ray.w;}
+//#endif
+//#if LIGHT_NAN_DIRECTION else     var origin=start.xyz;if(start.w!=0.0){origin=surf_ray_offset_at(sd,start.xyz,direction);}let allocator=load_word(p(7u)+S_next_shadow_path_index)/4u;var shadow:u32;
+    var origin=start.xyz;if(start.w!=0.0&&!nan_direction){origin=surf_ray_offset_at(sd,start.xyz,direction);}let allocator=load_word(p(7u)+S_next_shadow_path_index)/4u;var shadow:u32;
+//#endif
     if(p(28u)!=0u){shadow=load_word(p(28u))+slot;if(shadow>=p(25u)){fail();return;}}
     else{loop{shadow=atomicLoad(&heap[allocator]);if(shadow>=p(25u)){fail();return;}
         if(atomicCompareExchangeWeak(&heap[allocator],shadow,shadow+1u).exchanged){break;}}}

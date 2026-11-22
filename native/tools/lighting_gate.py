@@ -48,7 +48,7 @@ def main():
             if kind=='lighting':assert report['cases']==8 and report['nativeSceneAndScheduler'] and report['independentOriginalCpuImage'] and report['shadowPaths']>1000
             reports[kind]=report;save(out/'results.json',reports)
         status['phase']='lighting-replay';save(out/'status.json',status)
-        for case in range(8):
+        for case in range(reports['lighting']['cases']):
             destination=out/('replay-'+str(case));capture=out/'lighting/run'/('case-'+str(case))
             with (out/('replay-'+str(case)+'.log')).open('w') as log,contextlib.redirect_stdout(log):render_replay.run('linux-x64',capture,destination)
             reports['replay-'+str(case)]=json.loads((destination/'validation.json').read_text())

@@ -6,6 +6,9 @@
 // zero radius and repeated points, two materials per cloud, optional object or deformation motion (with moving radii).
 // Rays aim at points (centre, inside, on and just outside the radius), start inside a point, use short tmin/tmax
 // windows, scaled directions and random directions, then are perturbed by 0-2 ULP per component.
+// With splats the clouds render as Gaussian splats (never baked): anisotropic scales, rotations of lengths 0.5 to 1.5,
+// opacities up to 1 with some below the 0.01 that Cycles bounds, a zero scale axis on some splats, and with deformation
+// motion steps of the scale, rotation and radiance:base attributes too. The rays aim with the splat's largest scale.
 #include "scene/mesh.h"
 #include "scene/object.h"
 #include "scene/pointcloud.h"
@@ -13,6 +16,7 @@
 #include "scene/shader_graph.h"
 #include "scene/shader_nodes.h"
 #include "object_motion_fixture.h"
+#include "util/math_quaternion.h"
 #include "util/transform.h"
 #include <cmath>
 #include <cstring>
@@ -24,7 +28,7 @@ struct PointFixtureObject {unsigned geometry;Transform tfm;};
 struct PointFixture {std::vector<PointFixtureGeometry> geometry;std::vector<PointFixtureObject> objects;};
 struct PointRay {float3 P,D;float tmin,tmax,time;unsigned kind;};
 enum PointMotion {POINT_STATIC,POINT_OBJECT_MOTION,POINT_DEFORM_3,POINT_DEFORM_5};
-inline PointCloud *point_fixture_cloud(Scene &scene,PointFixtureGeometry &g,Shader *a,Shader *b,unsigned seed,unsigned count,PointMotion motion){
+inline PointCloud *point_fixture_cloud(Scene &scene,PointFixtureGeometry &g,Shader *a,Shader *b,unsigned seed,unsigned count,PointMotion motion,bool splats=false){
   std::mt19937 rng(seed);std::uniform_real_distribution<float> unit(-1.f,1.f);
   for(unsigned i=0;i<count;i++){
     float3 at=make_float3(unit(rng)*1.8f,unit(rng)*1.8f,unit(rng)*1.2f);float radius=.015f+.12f*std::abs(unit(rng));
@@ -46,12 +50,43 @@ inline PointCloud *point_fixture_cloud(Scene &scene,PointFixtureGeometry &g,Shad
       for(size_t i=0;i<count;i++){const float3 p=g.points[i];out[i]=p+make_float3(.08f*u*p.y,.05f*u*p.x,.13f*u*p.x*p.y+.035f*u*u*p.x);out_radius[i]=g.radius[i]*(1.f+.3f*u*(i%2?1.f:-1.f));}
     }
   }
+  if(splats){
+    cloud->set_render_as(PointCloud::RENDER_AS_GSPLATS);
+    auto base=cloud->attributes.add(ATTR_STD_GSPLAT_RADIANCE_BASE);auto scale=cloud->attributes.add(ATTR_STD_GSPLAT_SCALE);auto rotation=cloud->attributes.add(ATTR_STD_GSPLAT_ROTATION);
+    const bool deform=motion==POINT_DEFORM_3||motion==POINT_DEFORM_5;const unsigned steps=motion==POINT_DEFORM_5?5:motion==POINT_DEFORM_3?3:1;
+    if(deform){base->add_motion(cloud);scale->add_motion(cloud);rotation->add_motion(cloud);}
+    std::mt19937 values(seed^0x5eedu);
+    std::vector<float4> base_center(count);std::vector<float3> scale_center(count);std::vector<Quaternion> rotation_center(count);
+    for(size_t i=0;i<count;i++){
+      base_center[i]=make_float4(unit(values),unit(values),unit(values),i%11==5?.005f:i%7==3?1.f:.15f+.8f*std::abs(unit(values)));
+      scale_center[i]=make_float3(.05f+.3f*std::abs(unit(values)),.03f+.2f*std::abs(unit(values)),.01f+.08f*std::abs(unit(values)));
+      if(i%5==1){std::swap(scale_center[i].x,scale_center[i].z);}
+      if(i%5==2){std::swap(scale_center[i].y,scale_center[i].z);}
+      if(i%19==4){scale_center[i].y=scale_center[i].x;}
+      if(i%23==6){scale_center[i].z=0;}
+      const float3 axis=normalize(make_float3(unit(values),unit(values),unit(values)+1.5f));const float angle=3.f*unit(values),length=.5f+std::abs(unit(values));
+      rotation_center[i]=make_quaternion(std::cos(.5f*angle)*length,axis.x*std::sin(.5f*angle)*length,axis.y*std::sin(.5f*angle)*length,axis.z*std::sin(.5f*angle)*length);
+      g.radius[i]=std::max({scale_center[i].x,scale_center[i].y,scale_center[i].z})*2.f;
+    }
+    for(unsigned step=0;step<steps;step++){
+      const float u=steps==1?0.f:2.f*step/(steps-1)-1;const int attr_step=deform?base->time_step_to_attr_step(step,steps):0;
+      auto out_base=base->data_for_write<float4>(attr_step);auto out_scale=scale->data_for_write<packed_float3>(attr_step);auto out_rotation=rotation->data_for_write<Quaternion>(attr_step);
+      for(size_t i=0;i<count;i++){
+        float4 b=base_center[i];b.w=std::min(1.f,b.w*(1.f+.4f*u*(i%2?1.f:-1.f)));out_base[i]=b;
+        out_scale[i]=scale_center[i]*(1.f+.35f*u*(i%3?1.f:-1.f));
+        // The rotation's steps: turned further, some flipped in sign (the shortest-angle test of the interpolation).
+        Quaternion q=rotation_center[i];const float c=std::cos(.4f*u),s=std::sin(.4f*u);q=make_quaternion(q.w*c-q.x*s,q.x*c+q.w*s,q.y*c-q.z*s,q.z*c+q.y*s);
+        if(i%4==1&&step+1==steps){q=-q;}
+        out_rotation[i]=q;
+      }
+    }
+  }
   cloud->tag_position_modified();cloud->tag_radius_modified();cloud->tag_shader_modified();
   g.cloud=cloud;return cloud;
 }
-inline PointFixture point_fixture(Scene &scene,Shader *a,Shader *b,Shader *floor_shader,unsigned count,PointMotion motion){
+inline PointFixture point_fixture(Scene &scene,Shader *a,Shader *b,Shader *floor_shader,unsigned count,PointMotion motion,bool splats=false,bool mixed=false){
   PointFixture f;f.geometry.resize(2);
-  point_fixture_cloud(scene,f.geometry[0],a,b,2026110,count,motion);point_fixture_cloud(scene,f.geometry[1],a,b,2026311,count,motion);
+  point_fixture_cloud(scene,f.geometry[0],a,b,2026110,count,motion,splats&&!mixed);point_fixture_cloud(scene,f.geometry[1],a,b,2026311,count,motion,splats);
   // Single user with a uniform scale: baked by the static BVH update. Two users: instanced, one non-uniformly scaled, one mirrored.
   f.objects.push_back({0,transform_translate(make_float3(-5.f,0.f,1.f))*transform_rotate(.4f,normalize(make_float3(.3f,.5f,.8f)))*transform_scale(make_float3(1.2f))});
   f.objects.push_back({1,transform_translate(make_float3(0.f,0.f,1.f))*transform_rotate(.7f,normalize(make_float3(.9f,.2f,.4f)))*transform_scale(make_float3(1.3f,.8f,1.1f))});

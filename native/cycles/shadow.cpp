@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "device.h"
 #include "wavefront.h"
+#include <climits>
 #include <cmath>
 #include <cstring>
 #include <sstream>
@@ -77,7 +78,12 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   // paths through volumes carry the volume stack (VOLUME_SHADOW: homogeneous media, heterogeneous media through
   // the majorant octree, ray-marched media; the other volume limits are refused in validate_volume); linking, AO
   // and shadow catchers remain guarded below.
-  if(data.integrator.transparent_shadows)require(data.integrator.transparent_max_bounce>=0&&data.integrator.transparent_max_bounce<=4095,"WebGPU transparent shadow hit limit exceeds packed state");
+  // The transparent shadow hit limit (native/DEVICE.md, items 288 and 289): the kernel counts the hits of a shadow ray in
+  // 16 bits (bvh/intersect_filter.h BVHShadowAllPayload, uint16_t except on HIP RT), so from 65535 on its count wraps before
+  // it passes the limit, and below INT_MIN + 65535 intersect_shadow.h's limit minus the 16-bit transparent_bounce overflows
+  // an int: neither has a defined result.
+  if(data.integrator.transparent_shadows)require(data.integrator.transparent_max_bounce<=65534&&data.integrator.transparent_max_bounce>=INT_MIN+65535,
+    "WebGPU transparent shadows with a transparent max bounce above 65534 or below -2147418113: Cycles' transparent shadow hit counters overflow");
   require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU shadow optional integration features not implemented");
   validate_shadow_linking();
   if(data.kernel_features&KERNEL_FEATURE_VOLUME)validate_volume();

@@ -561,8 +561,19 @@ const HH_X_eval:u32=4u;const HH_X_lcg:u32=16u;const HH_X_wo:u32=20u;const HH_X_p
 fn huang_extra(c:SvmClosure)->u32{return huang_base+u32(c.fresnel_f0)*SVM_CLOSURE_BYTES;}
 fn huang_store3(at:u32,v:vec3<f32>){store_word(at,bitcast<u32>(v.x));store_word(at+4u,bitcast<u32>(v.y));store_word(at+8u,bitcast<u32>(v.z));}
 // surf_evaluate_closure's bump test, then bsdf_hair_huang_eval and the random number position after it.
+//#if LIGHT_NAN_DIRECTION
+// A light sample that is valid with a NaN direction (native/DEVICE.md, items 238 and 239). bsdf_hair_huang_eval still runs
+// on the CPU: `tan_tilt * tan_theta(local_O) < -1.0f` is false for a NaN, and every step of sd->lcg_state in
+// bsdf_hair_huang_eval_residual comes before a test of wo, so the state advances as for any direction that passes that
+// first test, and the bounce's sample starts from there. The value is NaN (wavefront_lighting.wgsl, surf_evaluate_nan). The
+// entry below evaluates with the closure's own N in its place (local_O = (1, 0, 0), a tangent of zero) and keeps only the
+// position the state reached; no shadowing term is asked of that stand-in.
+var<private> huang_nan_direction:bool;
+//#endif
 fn huang_eval_store(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>){
-    if(surf_bump(sd,c,wo,true)==0.0){return;}
+//#if LIGHT_NAN_DIRECTION else     if(surf_bump(sd,c,wo,true)==0.0){return;}
+    if(!huang_nan_direction&&surf_bump(sd,c,wo,true)==0.0){return;}
+//#endif
     let e=huang_evaluate(sd,c,wo);let x=huang_extra(c);huang_store3(x+HH_X_eval,e.xyz);store_word(x+HH_X_lcg,huang_lcg);
 }
 // What surf_family_evaluate returns for the closure: the stored evaluation, the position it reached.
@@ -599,7 +610,11 @@ fn huang_read_sample(c:SvmClosure)->SurfaceSample{
         wo=sampled.wo;skipped=surf_sampled_closure;
     }
     huang_base=r.closure_base;huang_lcg=r.lcg_state;
-    for(var i=0u;i<r.count;i++){if(i==skipped){continue;}let c=svm_closure_read(r,i);if(c.kind!=HH_CLOSURE_BSDF_HAIR_HUANG_ID){continue;}huang_eval_store(stage.sd,c,wo);}
+//#if LIGHT_NAN_DIRECTION else     for(var i=0u;i<r.count;i++){if(i==skipped){continue;}let c=svm_closure_read(r,i);if(c.kind!=HH_CLOSURE_BSDF_HAIR_HUANG_ID){continue;}huang_eval_store(stage.sd,c,wo);}
+    huang_nan_direction=state==3u&&((bitcast<u32>(wo.x)&0x7fffffffu)>0x7f800000u||(bitcast<u32>(wo.y)&0x7fffffffu)>0x7f800000u||(bitcast<u32>(wo.z)&0x7fffffffu)>0x7f800000u);
+    for(var i=0u;i<r.count;i++){if(i==skipped){continue;}let c=svm_closure_read(r,i);if(c.kind!=HH_CLOSURE_BSDF_HAIR_HUANG_ID){continue;}
+        var direction=wo;if(huang_nan_direction){direction=c.N;}huang_eval_store(stage.sd,c,direction);}
+//#endif
 }
 @compute @workgroup_size(1) fn shade_surface_huang_sample(@builtin(global_invocation_id) id:vec3<u32>){
     svm_invocation(id.x);

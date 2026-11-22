@@ -58,7 +58,12 @@ static std::vector<int> initialize_paths(Scene &scene,std::vector<IntegratorStat
   auto ids=states_for(scene,states);
   for(int i:ids){auto &s=states[i];s.path.render_pixel_index=i%193;s.path.throughput=make_float3(.6,.8,.4);s.path.continuation_probability=1;
     s.path.flag=PATH_RAY_MIS_SKIP|PATH_RAY_TRANSPARENT_BACKGROUND;s.path.min_ray_pdf=FLT_MAX;s.ray.tmax=FLT_MAX;
-    s.path.pass_diffuse_weight=make_float3(.2,.3,.4);s.path.pass_glossy_weight=make_float3(.4,.3,.2);}
+    s.path.pass_diffuse_weight=make_float3(.2,.3,.4);s.path.pass_glossy_weight=make_float3(.4,.3,.2);
+#if defined(CBC_PRINCIPLED_FIXTURE) && CBC_PRINCIPLED_FIXTURE>=2
+    // The dispersion fixtures: every fourth path is monochromatic already (update_path_throughput_for_dispersion leaves it).
+    if((i/3)%4==3)s.path.flag|=PATH_RAY_SPECTRAL;
+#endif
+    }
   return ids;
 }
 static void evaluate(WebGPUDevice &d,Scene &scene,const std::vector<Field>&layout,
@@ -194,7 +199,10 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto ids=initialize_paths(scene,initial);
     std::ofstream(std::string(argv[1])+".wgsl")<<surface_source();
     evaluate(d,scene,layout,initial,ids,"Compiled materials",m);
-#if defined(CBC_BSDF_FIXTURE)
+#if defined(CBC_PRINCIPLED_FIXTURE) && CBC_PRINCIPLED_FIXTURE>=2
+    // The dispersion fixtures: case 27 (glossy filtering) and the cases 28 to 32 below.
+    constexpr unsigned test_count=33;
+#elif defined(CBC_BSDF_FIXTURE)
     // Case 27: glossy filtering (integrator filter_glossy) over spread min_ray_pdf values.
     constexpr unsigned test_count=28;
 #elif defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
@@ -235,6 +243,16 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       if(test==26)data.background.transparent_roughness_squared_threshold=.01f;
       if(test==27){data.integrator.filter_glossy=1.0f/.8f;
         for(int i:ids){const float pdfs[]={FLT_MAX,1e-4f,.05f,.2f,.5f,.79f,.8f,1.5f,4.f,30.f};states[i].path.min_ray_pdf=pdfs[i%10];}}
+#endif
+#if defined(CBC_PRINCIPLED_FIXTURE) && CBC_PRINCIPLED_FIXTURE>=2
+      // Dispersion. 28 to 30: shader_setup_wavelength's draw (path_rng_1D) with the other sampling patterns of the kernel
+      // data: Sobol-Burley, pure blue noise, and blue noise with its own first sample (the fixture has paths at sample 0).
+      // 31: every path is monochromatic already (no weight is applied); 32: none is (every dispersive path gets it).
+      if(test==28)data.integrator.sampling_pattern=SAMPLING_PATTERN_SOBOL_BURLEY;
+      if(test==29)data.integrator.sampling_pattern=SAMPLING_PATTERN_BLUE_NOISE_PURE;
+      if(test==30){data.integrator.sampling_pattern=SAMPLING_PATTERN_BLUE_NOISE_FIRST;data.integrator.blue_noise_sequence_length-=1;}
+      if(test==31){for(int i:ids){states[i].path.flag|=PATH_RAY_SPECTRAL;}}
+      if(test==32){for(int i:ids){states[i].path.flag&=~uint32_t(PATH_RAY_SPECTRAL);}}
 #endif
       d.const_copy_to("data",&data,sizeof(data));evaluate(d,scene,layout,states,ids,"Surface case "+std::to_string(test),m);
     }

@@ -6,6 +6,10 @@
 #include "kernel/constants.h"
 #include "util/types_image.h"
 #include "kernel/svm/node_types.h"
+#include "kernel/tables.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <sstream>
 #include <stdexcept>
 namespace ccl {
@@ -352,9 +356,13 @@ std::string svm_layout(bool surface){
   source<<"//#endif\n//#if SVM_BSDF_PRESERVE_ENERGY\n";
   constant("D_ggx_glass_E",offsetof(KernelData,tables.ggx_glass_E));constant("D_ggx_glass_Eavg",offsetof(KernelData,tables.ggx_glass_Eavg));
   constant("D_ggx_glass_inv_E",offsetof(KernelData,tables.ggx_glass_inv_E));constant("D_ggx_glass_inv_Eavg",offsetof(KernelData,tables.ggx_glass_inv_Eavg));
-  source<<"//#endif\n//#if SVM_BSDF_PRINCIPLED\n";
+  // The sheen LTC table: the Principled BSDF's sheen lobe and the Sheen BSDF node's closure; the node without a Principled
+  // BSDF also takes the two enums the sheen closure code names.
+  source<<"//#endif\n//#if SVM_BSDF_SHEEN_CLOSURE\n";
   constant("D_sheen_ltc",offsetof(KernelData,tables.sheen_ltc));
-  source<<"//#endif\n";
+  source<<"//#endif\n//#if SVM_BSDF_SHEEN\n//#if !SVM_BSDF_PRINCIPLED\n";
+  constant("CLOSURE_BSDF_SHEEN_ID",uint32_t(CLOSURE_BSDF_SHEEN_ID));constant("PRINCIPLED_CLOSURE_NONE",uint32_t(CLOSURE_NONE_ID));
+  source<<"//#endif\n//#endif\n";
   // The Glass BSDF node's multiscatter GGX distribution under its own name (the Principled region emits the enum's).
   source<<"//#if SVM_BSDF_GLASS_MULTISCATTER\n";
   constant("GLASS_MULTI_GGX_ID",uint32_t(CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID));
@@ -447,6 +455,41 @@ std::string svm_layout(bool surface){
   // A thin-walled Principled BSDF with subsurface: the rough translucent closure (bsdf_thin_subsurface_setup).
   source<<"//#if SVM_BSDF_THIN_SUBSURFACE\n";constant("TS_CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID",uint32_t(CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID));
   constant("TS_PrincipledBsdfData_subsurface_anisotropy",offsetof(SVMNodePrincipledBsdfData,subsurface_anisotropy));source<<"//#endif\n";
+  // Dispersion (DISPERSION, wavefront_dispersion.wgsl): its constants, each written from a compiled symbol or from the
+  // pinned expression evaluated here in binary32, and the rows of cie_color_match and cie_d65_spd with
+  // CIE_D65_NORMALIZATION (kernel/tables.h, kernel/tables_d65_codebrix.h).
+  source<<"//#if DISPERSION\n";
+  constant("DISP_SD_REQUIRES_WAVELENGTH",SD_REQUIRES_WAVELENGTH);constant("DISP_SR_BSDF_HAS_DISPERSION",SR_BSDF_HAS_DISPERSION);
+  constant("DISP_PATH_RAY_SPECTRAL",PATH_RAY_SPECTRAL);constant("DISP_PRNG_WAVELENGTH",PRNG_BOUNCE_NUM+PRNG_WAVELENGTH);
+  constant("DISP_D_film_xyz_to_r",offsetof(KernelData,film.xyz_to_r));constant("DISP_D_film_xyz_to_g",offsetof(KernelData,film.xyz_to_g));
+  constant("DISP_D_film_xyz_to_b",offsetof(KernelData,film.xyz_to_b));constant("DISP_RESOLUTION",WAVELENGTH_RESOLUTION);
+  {
+    // A binary32 value as a WGSL literal that reads back to the same bits (nine significant digits; checked here).
+    auto literal=[](float value){char text[40];std::snprintf(text,sizeof(text),"%.9g",double(value));
+      const float back=std::strtof(text,nullptr);if(std::memcmp(&back,&value,4)!=0)throw std::runtime_error("Dispersion layout: a literal does not read back");
+      std::string out=text;if(out.find_first_of(".en")==std::string::npos)out+=".0";return out;};
+    auto real=[&](const char *name,float value){source<<"const "<<name<<":f32="<<literal(value)<<";\n";};
+    // kernel/util/colorspace.h sample_wavelength: the four constants of the fit, as the pinned source writes them.
+    constexpr float a=21.71348444564851f;constexpr float x0=0.5554867905834258f;constexpr float y0=0.021659159132699574f;
+    constexpr float N=0.9707633294863183f;
+    real("DISP_A",a);real("DISP_X0",x0);real("DISP_Y0",y0);real("DISP_N",N);
+    real("DISP_PROB_SCALE",(WAVELENGTH_CIE_MAX-WAVELENGTH_CIE_MIN)/N);
+    real("DISP_CIE_MIN",WAVELENGTH_CIE_MIN);real("DISP_CIE_MAX",WAVELENGTH_CIE_MAX);real("DISP_DLAMBDA",WAVELENGTH_DLAMBDA);
+    real("DISP_D65_NORMALIZATION",CIE_D65_NORMALIZATION);
+    // kernel/closure/bsdf_microfacet.h bsdf_glass_ior: the Fraunhofer lines in um and the two constants made from them.
+    constexpr float lambda_d=0.5876f;constexpr float lambda_C=0.6563f;constexpr float lambda_F=0.4861f;
+    constexpr float fac=1.0f/(1.0f/(lambda_F*lambda_F)-1.0f/(lambda_C*lambda_C));constexpr float inv_lambda_d_sq=1.0f/(lambda_d*lambda_d);
+    real("DISP_FAC",fac);real("DISP_INV_LAMBDA_D_SQ",inv_lambda_d_sq);
+    // Row i of both tables: cie_color_match[i] in xyz and cie_d65_spd[i] in w (a switch, not a private array).
+    static_assert(sizeof(cie_color_match)/sizeof(cie_color_match[0])==WAVELENGTH_RESOLUTION+1&&sizeof(cie_d65_spd)/sizeof(cie_d65_spd[0])==WAVELENGTH_RESOLUTION+1,
+                  "Dispersion layout: the tables hold one row per wavelength step");
+    source<<"fn disp_table(i:u32)->vec4<f32>{\n    switch(i){\n";
+    for(int i=0;i<=WAVELENGTH_RESOLUTION;i++){
+      source<<"        "<<(i==WAVELENGTH_RESOLUTION?"default":"case "+std::to_string(i)+"u")<<":{return vec4<f32>("<<literal(cie_color_match[i][0])<<","
+            <<literal(cie_color_match[i][1])<<","<<literal(cie_color_match[i][2])<<","<<literal(cie_d65_spd[i])<<");}\n";}
+    source<<"    }\n}\n";
+  }
+  source<<"//#endif\n";
   return source.str();
 }
 static constexpr char svm_surface_fragment[]=

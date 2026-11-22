@@ -150,14 +150,16 @@ static unsigned rejections(const DeviceInfo &info){
   for(unsigned test=0;test<21;test++){
     Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto *backend=dynamic_cast<WebGPUDevice*>(owner.get());require(backend,"Negative closest device creation failed");auto &d=*backend;
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
-    Scene scene(params,&d);prepare(scene);if(test>=16)object_motion_fixture(scene,*scene.objects[0],0);Progress progress;scene.device_update(&d,progress);healthy(d);
+    Scene scene(params,&d);prepare(scene);if(test>=16||test==0)object_motion_fixture(scene,*scene.objects[0],0);Progress progress;scene.device_update(&d,progress);healthy(d);
     auto &data=scene.dscene.data;data.integrator.use_light_mis=0;data.integrator.use_caustics=0;
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Negative closest setup failed");
     const auto layout=fields(d);std::vector<IntegratorStateCPU> states(scheduler.capacity());auto &s=states[0];
     s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;s.path.throughput=one_float3();s.path.continuation_probability=1;
     s.ray.P=make_float3(0,0,-8);s.ray.D=make_float3(0,0,1);s.ray.tmax=100;s.ray.time=.5;s.isect.prim=PRIM_NONE;s.isect.object=OBJECT_NONE;
     std::string reason="reported invalid data";
-    if(test==0){data.bvh.have_motion=1;reason="motion flag/table mismatch";}
+    // A moving object without bvh.have_motion. The other direction is not invalid: pinned scene/object.cpp sets have_motion
+    // for a geometry with motion blur switched on in a scene where nothing moves (the --motion-flag run).
+    if(test==0){data.bvh.have_motion=0;reason="motion flag/table mismatch";}
     if(test==1){data.bvh.have_curves=1;reason="native curve tables";}
     if(test==2){data.bvh.have_points=1;data.bvh.use_bvh_steps=1;reason="BVH time steps";}
     // Biased ray marching is implemented; a volume stack size below two stays a volume rejection.
@@ -195,11 +197,16 @@ static unsigned rejections(const DeviceInfo &info){
   return rejected;
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
-  require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: closest_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+  require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion"||std::string(argv[2])=="--motion-flag")),"Usage: closest_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion|--motion-flag]");
+  // --motion-flag: the static scene with motion blur switched on for every mesh and no motion steps (bvh.have_motion, nothing moves).
+  const bool motion_flag=argc==3&&std::string(argv[2])=="--motion-flag";const bool deform=argc==3&&!motion_flag&&std::string(argv[2])!="--motion";const bool motion=argc==3&&!motion_flag&&std::string(argv[2])!="--deform";auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto *device=dynamic_cast<WebGPUDevice*>(owner.get());require(device,"Missing registered backend");auto &d=*device;Metrics m;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
-    Scene scene(params,&d);prepare(scene);if(motion){for(size_t i=0;i<scene.objects.size();i++)if(i<3)object_motion_fixture(scene,*scene.objects[i],unsigned(i));}if(deform)for(size_t i=0;i<3;i++)deforming_motion_fixture(scene,*scene.objects[i],unsigned(i));Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Scene update failed");
+    Scene scene(params,&d);prepare(scene);if(motion){for(size_t i=0;i<scene.objects.size();i++)if(i<3)object_motion_fixture(scene,*scene.objects[i],unsigned(i));}if(deform)for(size_t i=0;i<3;i++)deforming_motion_fixture(scene,*scene.objects[i],unsigned(i));
+    if(motion_flag)for(Geometry *geometry:scene.geometry)geometry->set_use_motion_blur(true);
+    Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Scene update failed");
+    require(!motion_flag||scene.dscene.data.bvh.have_motion,"Motion blur on a static mesh did not set bvh.have_motion");
     scene.dscene.data.integrator.use_light_mis=0; // Isolate surface/BVH stage; forward light intersection remains pending.
     scene.dscene.data.integrator.use_caustics=0;d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));
     for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)if(scene.dscene.bvh_leaf_nodes[i].x<0)m.instances++;
@@ -262,7 +269,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(m.object_hits.size()==5,"Not every instance/material object was hit");
   }
   require(stats.mem_used==0,"Closest test leaked Cycles allocations");const unsigned rejected=rejections(infos[0]);
-  const Precision exact=motion||deform?Precision{}:precision(infos[0]);
+  const Precision exact=motion||deform||motion_flag?Precision{}:precision(infos[0]);
   std::string output=argv[1];std::ofstream(output+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(output+".library.txt")<<d.gpu.library_path;
   std::cout<<"{\"passed\":true,\"originalCameraToIntersectionScheduler\":true,\"nativeSceneTables\":true,\"nativeInstanceLeaves\":"<<m.instances<<",\"cases\":"<<m.cases
     <<",\"paths\":"<<m.paths<<",\"hits\":"<<m.hits<<",\"misses\":"<<m.misses<<",\"terminated\":"<<m.terminated<<",\"rouletteStates\":"<<m.rr<<",\"emissionTerminationStates\":"<<m.emission_termination

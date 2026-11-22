@@ -1,0 +1,335 @@
+{
+ "cbcOracleScene": 1,
+ "id": "images/tiled-lamp-shader",
+ "description": "A rectangular area light whose emission colour is a tiled image (192x128 byte4, tiles of 64, three mip levels) on its UV (the lamp's parametric coordinates), above a diffuse floor: the lamp's shader is evaluated for light samples (the shadow path) and where a path hits the lamp (the main path)",
+ "sourceFixture": "native/oracle/scenes/author_images.py (tiled images)",
+ "render": {
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "threads": 1
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "sampling_pattern": "tabulated_sobol",
+    "seed": 0,
+    "use_adaptive_sampling": false,
+    "use_light_tree": false,
+    "use_guiding": false,
+    "use_denoise": false,
+    "min_bounce": 3,
+    "max_bounce": 8,
+    "max_diffuse_bounce": 4,
+    "max_glossy_bounce": 4,
+    "max_transmission_bounce": 8,
+    "max_volume_bounce": 0,
+    "transparent_min_bounce": 0,
+    "transparent_max_bounce": 8,
+    "sample_clamp_direct": 0.0,
+    "sample_clamp_indirect": 0.0,
+    "caustics_reflective": false,
+    "caustics_refractive": false,
+    "filter_glossy": 0.0,
+    "light_sampling_threshold": 0.01,
+    "use_sample_subset": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "camera_type": "perspective",
+    "fov": 0.9,
+    "nearclip": 0.1,
+    "farclip": 100.0,
+    "matrix": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     -3
+    ]
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "exposure": 1.0,
+    "filter_type": "box",
+    "filter_width": 1.0
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.2,
+        0.2,
+        0.2
+       ],
+       "strength": 0.05
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "transparent": false,
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "white",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "m",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.8,
+        0.8,
+        0.8
+       ],
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "m",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "lamp-shader",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "tc",
+      "type": "texture_coordinate"
+     },
+     {
+      "handle": "t",
+      "type": "image_texture",
+      "set": {
+       "image": "image",
+       "colorspace": "scene_linear",
+       "alpha_type": "unassociated",
+       "interpolation": "linear",
+       "extension": "periodic"
+      }
+     },
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "tc",
+      "UV",
+      "t",
+      "Vector"
+     ],
+     [
+      "t",
+      "Color",
+      "e",
+      "Color"
+     ],
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -2.2,
+     -1.0,
+     1.6,
+     2.2,
+     -1.0,
+     1.6,
+     2.2,
+     -1.0,
+     -2.0,
+     -2.2,
+     -1.0,
+     -2.0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2
+    ],
+    "attributes": [
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       0,
+       0,
+       1,
+       1,
+       1,
+       0,
+       0,
+       0,
+       0,
+       1,
+       1,
+       1
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "white"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "lamp",
+   "create": "arealight",
+   "set": {
+    "strength": [
+     12,
+     12,
+     12
+    ],
+    "use_mis": true,
+    "cast_shadow": true,
+    "max_bounces": 1024,
+    "is_enabled": true,
+    "normalize": true,
+    "used_shaders": [
+     "lamp-shader"
+    ],
+    "sizeu": 2.0,
+    "sizev": 1.4,
+    "ellipse": false,
+    "spread": 3.14159265
+   }
+  },
+  {
+   "handle": "lamp-object",
+   "create": "object",
+   "set": {
+    "geometry": "lamp",
+    "tfm": [
+     1,
+     0,
+     0,
+     0.0,
+     0,
+     0,
+     1,
+     1.0,
+     0,
+     -1,
+     0,
+     0.2
+    ]
+   }
+  }
+ ],
+ "images": [
+  {
+   "handle": "image",
+   "width": 192,
+   "height": 128,
+   "format": "byte4",
+   "file": "tiled-lamp-shader.image.level-0.byte4",
+   "tiled": {
+    "tileSize": 64,
+    "levels": [
+     "tiled-lamp-shader.image.level-1.byte4",
+     "tiled-lamp-shader.image.level-2.byte4"
+    ]
+   },
+   "provenance": "native/oracle/scenes/author_images.py (formula); rows bottom-up; levels: 2 x 2 box reductions"
+  }
+ ]
+}

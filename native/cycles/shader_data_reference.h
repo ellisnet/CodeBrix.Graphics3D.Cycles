@@ -18,6 +18,12 @@ struct ShaderDataRecord {
   CBC_SHADER_INT_FIELDS(FIELD)
 #undef FIELD
 };
+// The object normal transforms of geom/object.h on the CPU kernels' ShaderData: a path's own N and P and a zero vector
+// through object_inverse_normal_transform (safe_normalize) and N and P through object_normal_transform (normalize).
+struct ObjectNormalRecord {packed_float3 N,P,inverse_N,forward_N,inverse_P,forward_P,inverse_zero;};
 }
 std::vector<ccl::ShaderDataRecord> original_shader_data(ccl::DeviceScene&,
     const std::vector<int>&,const std::vector<ccl::IntegratorStateCPU>&);
+// division_differences: components of the inverse results that normalize() (a division) would round differently.
+std::vector<ccl::ObjectNormalRecord> original_object_normals(ccl::DeviceScene&,
+    const std::vector<int>&,const std::vector<ccl::IntegratorStateCPU>&,unsigned &division_differences);

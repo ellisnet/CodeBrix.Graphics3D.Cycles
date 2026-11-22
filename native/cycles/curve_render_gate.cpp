@@ -132,10 +132,67 @@ static void cpu_render(DeviceScene &scene,std::vector<float> &film,Metrics &m){
     }
   }
 }
+#ifndef CBC_HAIR_RENDER
+// One scene rendered by the original GPU scheduler on a device; its film against the CPU reference (practical criterion).
+// Returns the scene's features and the device's pipeline features as the render leaves them.
+struct DeviceSnapshot {bool rendered=false;ShaderFeatures features;std::map<std::string,ShaderFeatures> pipelines;std::vector<float> film;};
+static DeviceSnapshot render_once(WebGPUDevice &device,const Case &c,const std::string &key,const std::filesystem::path &folder,Metrics &metrics){
+  std::filesystem::create_directories(folder);const auto prefix=(folder/"run").string();DeviceSnapshot snapshot;
+  SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=true;params.use_texture_cache=false;
+  Scene scene(params,&device);fixture(scene,c);Progress progress;scene.device_update(&device,progress);healthy(device);require(!progress.get_error(),"Curve scene preparation failed");
+  const unsigned stride=unsigned(scene.dscene.data.film.pass_stride);require(scene.dscene.data.bvh.have_curves==!c.shapes.empty(),"Unexpected curve scene configuration");
+  std::vector<float> local(width*height*stride);
+  if(reference_policy::exchange_scene(scene.dscene,key,{})){cpu_render(scene.dscene,local,metrics);reference_policy::record_local(key+".film",local);
+    reference_policy::resolve(key+".film",local,(folder/"reference-diagnostic.jsonl").string());return snapshot;}
+  bool cancelled=false;Scheduler scheduler(&device,scene.film,&scene.dscene,&cancelled);
+  scheduler.alloc_work_memory();scheduler.init_execution();healthy(device);auto buffers=scheduler.get_render_buffers();BufferParams bp;bp.width=width;bp.height=height;bp.pass_stride=stride;buffers->reset(bp);
+  cpu_render(scene.dscene,local,metrics);reference_policy::record_local(key+".film",local);
+  const auto reference=reference_policy::resolve(key+".film",local,(folder/"reference-diagnostic.jsonl").string());
+  buffers->zero();
+  for(unsigned sample=0;sample<samples;sample++){
+    scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Curve reset failed");KernelWorkTile tile{};tile.w=width;tile.h=height;tile.stride=width;tile.num_samples=1;tile.start_sample=sample;
+    scheduler.enqueue_work_tiles(DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA,&tile,1,0,0);require(scheduler.update_queue_counter_and_cache(),"Curve camera failed");
+    for(unsigned step=0;step<300;step++){const auto kernel=scheduler.get_most_queued_kernel();if(kernel==DEVICE_KERNEL_NUM)break;require(step<299,"GPU curve paths did not terminate");
+      require(scheduler.enqueue_path_iteration(),"Native curve scheduler stopped with pending paths");require(scheduler.update_queue_counter_and_cache(),"Curve stage failed: "+device.error_message());metrics.stages++;}
+  }
+  buffers->buffer.copy_from_device();healthy(device);snapshot.film.assign(buffers->buffer.data(),buffers->buffer.data()+buffers->buffer.size());
+  RenderCapture::file(prefix+".gpu.film.bin",snapshot.film.data(),snapshot.film.size()*4);
+  for(size_t i=0;i<snapshot.film.size();i++){const double error=std::abs(double(snapshot.film[i])-reference[i]);metrics.maximum=std::max(metrics.maximum,error);metrics.floats++;
+    metrics.strict+=error>1e-7+1e-7*std::abs(double(reference[i]));
+    require(std::isfinite(snapshot.film[i])&&std::isfinite(reference[i])&&error<=5e-5+2e-4*std::abs(double(reference[i])),"Curve film mismatch "+key+" component="+std::to_string(i));}
+  snapshot.rendered=true;snapshot.features=device.shader_features();snapshot.pipelines=device.pipeline_features;return snapshot;
+}
+// A scene without curves after a scene with curves, on one device (native/DEVICE.md, item 266): the device builds the
+// curve-free scene's pipelines with the features a new device gives that scene, and both films meet the criterion.
+static void curve_free_after_curves(const DeviceInfo &info,Stats &stats,Profiler &profiler,const std::filesystem::path &out){
+  // The thick curves case and the same scene without them (its floor, lamp and world).
+  const Case &curves=cases[1];Case curve_free=curves;curve_free.name="thick-without-curves";curve_free.shapes.clear();
+  Metrics metrics;DeviceSnapshot after,fresh;
+  {auto owner=Device::create(info,stats,profiler,true);auto &device=require_webgpu_device(owner.get(),"curve_render_gate curve-free device");
+    const DeviceSnapshot first=render_once(device,curves,"curve-free-0",out/"curves",metrics);after=render_once(device,curve_free,"curve-free-1",out/"after-curves",metrics);
+    require(!first.rendered||(first.features&SF_CURVES).any(),"Curve-free check: the scene with curves has no curve features");}
+  {auto owner=Device::create(info,stats,profiler,true);fresh=render_once(require_webgpu_device(owner.get(),"curve_render_gate fresh device"),curve_free,"curve-free-2",out/"fresh",metrics);}
+  unsigned entries=0;bool bitwise=true;
+  if(after.rendered){
+    require(!(after.features&SF_CURVES).any()&&shader_feature_list(after.features)==shader_feature_list(fresh.features),
+            "Curve-free check: features after a scene with curves "+shader_feature_list(after.features)+", on a new device "+shader_feature_list(fresh.features));
+    for(const auto &[entry,features]:fresh.pipelines){auto it=after.pipelines.find(entry);
+      require(it!=after.pipelines.end()&&shader_feature_list(it->second)==shader_feature_list(features),"Curve-free check: pipeline "+entry+" differs from a new device's");entries++;}
+    bitwise=after.film.size()==fresh.film.size()&&!std::memcmp(after.film.data(),fresh.film.data(),after.film.size()*4);}
+  std::cout<<std::setprecision(17)<<"{\"passed\":true,\"curveFreeAfterCurves\":true,\"rendered\":"<<(after.rendered?"true":"false")<<",\"pipelinesCompared\":"<<entries
+    <<",\"filmBitwiseEqualToNewDevice\":"<<(bitwise?"true":"false")<<",\"filmChecks\":"<<metrics.floats<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum
+    <<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+  require(stats.mem_used==0,"Curve render gate leaked native allocations");
+}
+#endif
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   reference_policy::use_reference_oracle_arithmetic();
-  require(argc>=2,"Usage: curve_render_gate OUTPUT_DIRECTORY [CASE...]");
+  require(argc>=2,"Usage: curve_render_gate OUTPUT_DIRECTORY [CASE...|curve-free]");
   const std::filesystem::path out=argv[1];std::filesystem::create_directories(out);
+#ifndef CBC_HAIR_RENDER
+  if(argc==3&&std::string(argv[2])=="curve-free"){auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+    Stats stats;Profiler profiler;curve_free_after_curves(infos[0],stats,profiler,out);TaskScheduler::exit();return 0;}
+#endif
   std::vector<unsigned> selected;for(int a=2;a<argc;a++)selected.push_back(unsigned(std::stoul(argv[a])));
   if(selected.empty())for(unsigned i=0;i<cases.size();i++)selected.push_back(i);
 #ifdef CBC_HAIR_RENDER

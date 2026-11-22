@@ -13,7 +13,7 @@ using Xunit;
 
 namespace CodeBrix.Graphics3D.Cycles.Tests;
 
-// The quaternion and spherical-harmonics attribute kinds (AttributeValue.Quaternion and .SphericalHarmonicsRest, provisional)
+// The quaternion and spherical-harmonics attribute kinds (AttributeValue.Quaternion and .SphericalHarmonicsRest)
 // through GeometryBaseNode.SetAttribute and GetAttribute and an Attribute node, on the CPU reference backend.
 public class GeometryAttributeTests
 {
@@ -91,7 +91,7 @@ public class GeometryAttributeTests
     }
 
     // The geometry of BuildOutputScene, placed by an object: the quad with the attribute on its Mesh domain, one point
-    // covering the view with it on its Vertex domain, or (provisional, quaternions) one thick curve of two keys along y
+    // covering the view with it on its Vertex domain, or (quaternions) one thick curve of two keys along y
     // covering the view with it on its CurveKey, Curve or Mesh domain, as many values as the domain has elements, repeated
     // from values (none when values is null).
     internal static Action<CyclesScene, ShaderNode> Place(string geometry, string name, AttributeValue value, float[] values) =>
@@ -254,7 +254,7 @@ public class GeometryAttributeTests
             invalid.Should().Throw<NativeFailure>().Which.NativeStatus.Should().Be(NativeStatus.Invalid);
     }
 
-    // Provisional (decision 23): quaternions on the curve domains the pinned kernels read attributes from, CurveKey,
+    // Quaternions on the curve domains the pinned kernels read attributes from, CurveKey,
     // Curve and Mesh, read back exactly; their values need not be of unit length.
     [Fact]
     public void Quaternion_attributes_on_the_curve_key_curve_and_mesh_domains_of_hair_read_back_exactly()
@@ -276,7 +276,7 @@ public class GeometryAttributeTests
         scene.Render(Pixel).Span.ToArray().All(float.IsFinite).Should().BeTrue();
     }
 
-    // Provisional (decision 23): a quaternion on the keys of a curve is mixed along the segment one component at a time,
+    // A quaternion on the keys of a curve is mixed along the segment one component at a time,
     // unnormalized (curve_attribute, kernel/geom/curve.h): the centre of a vertical two-key curve, halfway along it, reads
     // the average of its two keys.
     [Fact]

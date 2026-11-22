@@ -1,5 +1,5 @@
 {
-  "policy": "Cycles\u0027 Metal device (osx-arm64) is judged against these reviewed Metal films with the practical criterion; the CPU comparison recorded with each film is reported only. Re-record (CODEBRIX_CYCLES_RECORD_METAL_REFERENCES=1) only when the Cycles revision, the toolchain or a scene changes, and review the new films and CPU comparisons before committing.",
+  "policy": "Cycles\u0027 Metal device (osx-arm64) is judged against these reviewed Metal films with the practical criterion; the CPU comparison recorded with each film is reported only. Re-record (CODEBRIX_CYCLES_RECORD_METAL_REFERENCES=all) only when the Cycles revision, the toolchain or a scene changes, and review the new films and CPU comparisons before committing.",
   "references": {
     "diffuse-sun": {
       "file": "diffuse-sun.rgba.f32",
@@ -391,6 +391,57 @@
       "backend": "metal",
       "cyclesMetalRt": "unset (Blender\u0027s rule: MetalRT on M3 and later)",
       "libraryVersion": "1.0.20261114.0"
+    },
+    "integer-and-component-nodes-boolean-math": {
+      "file": "integer-and-component-nodes-boolean-math.rgba.f32",
+      "sha256": "5671f9a0e5f43116a5dce5b03b14f994a947e4506eeec88e72c84d408bef1cff",
+      "components": 3072,
+      "layout": "float32 little-endian RGBA, lower-left origin",
+      "recordedUtc": "2026-11-17T20:45:42Z",
+      "os": "macOS 27.2.1",
+      "cpuComparison": {
+        "maximumAbsoluteError": 1.1622905731201172E-06,
+        "practicalFailures": 0,
+        "strictDifferences": 259
+      },
+      "device": "Apple M2 Pro (GPU - 16 cores)",
+      "backend": "metal",
+      "cyclesMetalRt": "unset (Blender\u0027s rule: MetalRT on M3 and later)",
+      "libraryVersion": "1.0.20261117.0"
+    },
+    "integer-and-component-nodes-integer-math": {
+      "file": "integer-and-component-nodes-integer-math.rgba.f32",
+      "sha256": "1d50de1ef91e5a815506ed27bb43ec40fc1f80d3053f0352d162f2502635e7b1",
+      "components": 3072,
+      "layout": "float32 little-endian RGBA, lower-left origin",
+      "recordedUtc": "2026-11-17T20:45:42Z",
+      "os": "macOS 27.2.1",
+      "cpuComparison": {
+        "maximumAbsoluteError": 1.1920928955078125E-06,
+        "practicalFailures": 0,
+        "strictDifferences": 198
+      },
+      "device": "Apple M2 Pro (GPU - 16 cores)",
+      "backend": "metal",
+      "cyclesMetalRt": "unset (Blender\u0027s rule: MetalRT on M3 and later)",
+      "libraryVersion": "1.0.20261117.0"
+    },
+    "integer-and-component-nodes-get-vector-component": {
+      "file": "integer-and-component-nodes-get-vector-component.rgba.f32",
+      "sha256": "dea1002bb0fa89d8827b27c412acf87959985b97ec6af1746092c3a6445e2a2d",
+      "components": 3072,
+      "layout": "float32 little-endian RGBA, lower-left origin",
+      "recordedUtc": "2026-11-17T20:45:43Z",
+      "os": "macOS 27.2.1",
+      "cpuComparison": {
+        "maximumAbsoluteError": 1.1920928955078125E-06,
+        "practicalFailures": 0,
+        "strictDifferences": 199
+      },
+      "device": "Apple M2 Pro (GPU - 16 cores)",
+      "backend": "metal",
+      "cyclesMetalRt": "unset (Blender\u0027s rule: MetalRT on M3 and later)",
+      "libraryVersion": "1.0.20261117.0"
     }
   }
 }

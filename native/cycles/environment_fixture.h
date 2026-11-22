@@ -49,10 +49,12 @@ class EnvironmentImageLoader final:public ccl::ImageLoader {
 };
 // LightPath: the procedural world with its strength 0.6 + 0.2 * Ray Depth + 0.1 * Diffuse + 0.05 * Glossy + 0.03 * Transparent
 // + 0.04 * Transmission Depth (the Light Path node in world evaluations: the importance map, the background hits, light sampling).
-enum class EnvironmentWorld {Constant,Procedural,Hdri,LightPath};
+// Sky: a Sky Texture with every input at its default (multiple scattering with a sun disc) as the world's colour.
+enum class EnvironmentWorld {Constant,Procedural,Hdri,LightPath,Sky};
 inline ccl::Shader *environment_world(ccl::Scene &scene,EnvironmentWorld kind,unsigned variant=0){
   using namespace ccl;auto g=make_unique<ShaderGraph>();auto bg=g->create_node<BackgroundNode>();
   if(kind==EnvironmentWorld::Constant){bg->set_color(make_float3(.35f,.45f,.6f));bg->set_strength(1.2f);}
+  else if(kind==EnvironmentWorld::Sky){auto sky=g->create_node<SkyTextureNode>();g->connect(sky->output("Color"),bg->input("Color"));bg->set_strength(.2f);}
   else if(kind==EnvironmentWorld::Procedural||kind==EnvironmentWorld::LightPath){
     auto coords=g->create_node<TextureCoordinateNode>();auto noise=g->create_node<NoiseTextureNode>();noise->set_scale(2.5f);noise->set_detail(2.f);
     g->connect(coords->output("Generated"),noise->input("Vector"));g->connect(noise->output("Color"),bg->input("Color"));bg->set_strength(1.6f);

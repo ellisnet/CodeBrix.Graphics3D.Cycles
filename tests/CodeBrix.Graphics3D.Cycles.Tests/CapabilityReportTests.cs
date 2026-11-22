@@ -192,48 +192,6 @@ public class CapabilityReportTests
             report.BackendScopes[backend].RenderTimeRejections.Should().Equal(RejectionsOf(backend), backend);
     }
 
-    // The quaternion and spherical-harmonics attribute kinds render on the CPU and Metal backends; only the WebGPU device
-    // refuses a scene that reads one, so the entry is in the WebGPU group and in no other backend's scope.
-    [Fact]
-    public void quaternion_and_spherical_harmonics_attributes_are_a_rejection_of_the_webgpu_backend_only()
-    {
-        //Arrange
-        TestScenes.RequireNativeHost();
-        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
-        const string entry = "quaternion and spherical-harmonics attributes read by a shader";
-
-        //Act
-        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
-        Dictionary<string, List<string>> groups = ReadmeRejections();
-
-        //Assert
-        groups[RejectionGroups[1]].Should().Contain(entry);
-        groups[RejectionGroups[0]].Should().NotContain(entry);
-        foreach (string backend in report.CompiledBackends)
-            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
-    }
-
-    // Gaussian splats render on the CPU and Metal backends; the host refuses them on the WebGPU backend only, by that
-    // device's words, so the entry is in the WebGPU group and in no other backend's scope.
-    [Fact]
-    public void point_clouds_rendered_as_gaussian_splats_are_a_rejection_of_the_webgpu_backend_only()
-    {
-        //Arrange
-        TestScenes.RequireNativeHost();
-        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
-        const string entry = "point clouds rendered as Gaussian splats";
-
-        //Act
-        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
-        Dictionary<string, List<string>> groups = ReadmeRejections();
-
-        //Assert
-        groups[RejectionGroups[1]].Should().Contain(entry);
-        groups[RejectionGroups[0]].Should().NotContain(entry);
-        foreach (string backend in report.CompiledBackends)
-            report.BackendScopes[backend].RenderTimeRejections.Contains(entry).Should().Be(backend == "webgpu", backend);
-    }
-
     // Area lights with an axis of infinities (provisional): the host refuses them on every backend, so the entry is in the
     // every-backend group and in every backend's scope, and the WebGPU device's own entry for degenerate area lights no
     // longer names that case.
@@ -341,6 +299,29 @@ public class CapabilityReportTests
             report.BackendScopes[backend].RenderTimeRejections.Should().NotContain(entry, backend);
     }
 
+    // Tiled images (provisional CyclesScene.CreateTiledImage) render through Cycles' texture cache on every backend, through
+    // every projection and in volume shaders: no group and no backend's scope has an entry the WebGPU backend had.
+    [Theory]
+    [InlineData("sparse or tiled images")]
+    [InlineData("tiled images with a sphere, tube or environment projection, or in a volume shader")]
+    [InlineData("tiled images in a volume shader")]
+    public void tiled_images_are_a_rejection_of_no_backend(string entry)
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+        Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+        Dictionary<string, List<string>> groups = ReadmeRejections();
+
+        //Assert
+        groups[RejectionGroups[1]].Should().NotContain(entry);
+        groups[RejectionGroups[0]].Should().NotContain(entry);
+        foreach (string backend in report.CompiledBackends)
+            report.BackendScopes[backend].RenderTimeRejections.Should().NotContain(entry, backend);
+    }
+
     // Progressive results (provisional HostFlags.ProgressiveResults) are delivered on every backend: no group and no
     // backend's scope has the entry the WebGPU backend had.
     [Fact]
@@ -363,16 +344,14 @@ public class CapabilityReportTests
         report.Events.Should().Contain("film");
     }
 
-    // Tiled images (provisional CyclesScene.CreateTiledImage) render through Cycles' texture cache on the CPU and Metal
-    // backends; the host refuses one on the WebGPU backend only ("WebGPU tiled images not implemented"), whose existing
-    // entry "sparse or tiled images" names it, in the WebGPU group and in no other backend's scope.
-    [Fact]
-    public void sparse_or_tiled_images_are_a_rejection_of_the_webgpu_backend_only()
+    // Sparse images are a rejection of the WebGPU backend: in the WebGPU group and in no other backend's scope.
+    [Theory]
+    [InlineData("sparse images")]
+    public void sparse_images_are_a_rejection_of_the_webgpu_backend_only(string entry)
     {
         //Arrange
         TestScenes.RequireNativeHost();
         Assert.SkipWhen(RepositoryPaths.Root == null, "The tests are not running from inside the repository working tree.");
-        const string entry = "sparse or tiled images";
 
         //Act
         ICapabilityReport report = CyclesScene.GetBinaryCapabilities();

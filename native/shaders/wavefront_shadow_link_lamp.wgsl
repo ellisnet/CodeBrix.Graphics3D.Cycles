@@ -24,6 +24,11 @@
 //#if LIGHT_AREA else atomicOr(&heap[p(17u)/4u],2u);fail();return;
         let area=area_evaluate(light,origin,direction,heap_float(state_address(S_isect_t,index,4u)),vec2<f32>(0),false);factor=select(0.0,area.eval_fac,area.valid);pdf=area.pdf;
 //#endif
+//#if LIGHT_AREA_OVERFLOW
+        // A NaN pdf (an area light with an overflowed axis; native/DEVICE.md, item 233): the MIS weight is NaN unless the
+        // path skips MIS, and film_clamp_light drops the emission.
+        if((bitcast<u32>(pdf)&0x7fffffffu)>0x7f800000u){if((flag&PATH_RAY_MIS_SKIP)==0u){factor=0.0;}pdf=0.0;}
+//#endif
     }else{
         factor=heap_float(light+L_point_eval);pdf=point_forward_pdf(index,light);
         if(kind==LIGHT_SPOT){let delta=origin-heap_vec3(light+L_co);let radius=heap_float(light+L_radius);

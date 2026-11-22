@@ -30,6 +30,10 @@ std::vector<ccl::SurfaceSvmRecord> original_surface_svm(ccl::DeviceScene &scene,
     Ray ray{};Intersection isect{};ShaderData sd{};SurfaceSvmRecord result{};
     integrator_state_read_ray(&states[i],&ray);integrator_state_read_isect(&states[i],&isect);
     shader_setup_from_ray(kg,&sd,&ray,&isect);
+#if defined(CBC_PRINCIPLED_FIXTURE) && CBC_PRINCIPLED_FIXTURE==2
+    // The dispersion fixture: the wavelength draw of the surface stage (integrate_surface_shader_setup).
+    shader_setup_wavelength(kg,&sd,&states[i]);
+#endif
     // A state with the arguments of the kernel's light evaluation (integrator/shade_light.h integrate_light_nee and
     // light/sample.h: PATH_RAY_VISIBILITY_NONE, PATH_RAY_EMISSION) is evaluated as there, with the light node mask.
     if(states[i].path.visibility==PATH_RAY_VISIBILITY_NONE&&states[i].path.flag==PATH_RAY_EMISSION)

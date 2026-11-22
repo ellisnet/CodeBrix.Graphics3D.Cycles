@@ -64,7 +64,10 @@ fn ss_bounce(index:u32,sd:SurfaceData,r:SvmResult,selected:u32){
     let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),offset+SS_PRNG_BSDF,2u).xy;
 //#endif
     let wo=ss_entry_bounce(c,sd.wi,random);
-    if(wo.w==0.0||rounded_dot(sd.Ng,wo.xyz)>=0.0){surf_finish(index,false);return;}
+//#if BAKE_ZERO_AREA else     if(wo.w==0.0||rounded_dot(sd.Ng,wo.xyz)>=0.0){surf_finish(index,false);return;}
+    // subsurface_bounce: `dot(sd->Ng, wo) >= 0.0f` at the normal of a zero-area bake texel (false for a NaN).
+    if(wo.w==0.0||zero_area_less_equal(0.0,zero_area_rounded_dot(sd.Ng,wo.xyz))){surf_finish(index,false);return;}
+//#endif
     state_vec3(S_ray_D,index,wo.xyz);state_vec3(S_subsurface_N,index,sd.N);
 //#if SUBSURFACE_DISK
     }

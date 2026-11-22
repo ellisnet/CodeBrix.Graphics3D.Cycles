@@ -43,6 +43,10 @@ MneeTrace original_mnee_trace(ccl::DeviceScene &scene,const ccl::IntegratorState
     if(intersection_get_object_flags(kg,&isect)&SD_OBJECT_CAUSTICS_CASTER){
       if(count>=MNEE_MAX_CAUSTIC_CASTERS)return out;
       shader_setup_from_ray(kg,sd_mnee,&probe,&isect);
+#ifdef __SPECTRAL__
+      // As mnee_path_trace (integrator/mnee.h): the wavelength draw of a caster whose shader needs one.
+      shader_setup_wavelength(kg,sd_mnee,state);
+#endif
       surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW>(kg,state,sd_mnee,nullptr,PATH_RAY_VISIBILITY_DIFFUSE,PATH_RAY_FLAG_NONE,true);
       bool found=false;
       for(int ci=0;ci<sd_mnee->num_closure;ci++){ShaderClosure *bsdf=&sd_mnee->closure[ci];

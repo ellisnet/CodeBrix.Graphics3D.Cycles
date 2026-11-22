@@ -129,6 +129,9 @@ fn integrate_suns(index:u32,base:u32){
         if(!shadow_link_membership_all(load_word(light+L_object_id))){continue;}
 //#endif
 //#if LIGHT_LAMP_SHADER else         let eval=forward_constant_emission(light)*heap_float(light+L_sun_eval);if(all(eval==vec3<f32>(0))){continue;}
+//#if TILED_IMAGES
+        image_tile_lcg=svm_lcg(index);
+//#endif
 //#if LIGHT_PATH_STATE
         svm_emission_path=index;svm_emission_shadow=false;
 //#endif
@@ -167,6 +170,9 @@ fn integrate_suns(index:u32,base:u32){
         else{pdf=point_forward_pdf(index,light);if(load_word(light+L_type)==LIGHT_SPOT){let delta=origin-heap_vec3(light+L_co);let radius=heap_float(light+L_radius);
             if(load_word(light+L_is_sphere)==0u||dot(delta,delta)>radius*radius){factor*=spot_attenuation(light,-direction);}}}
 //#if LIGHT_LAMP_SHADER else         let eval=forward_constant_emission(light)*factor;
+//#if TILED_IMAGES
+        image_tile_lcg=svm_lcg(index);
+//#endif
 //#if LIGHT_PATH_STATE
         svm_emission_path=index;svm_emission_shadow=false;
 //#endif
@@ -175,7 +181,12 @@ fn integrate_suns(index:u32,base:u32){
 //#if LIGHT_TREE
         forward_light_slot=0u;
 //#endif
-        if(any(eval!=vec3<f32>(0))){forward_emission(index,p(4u)+pixel*stride*4u,light,eval,forward_mis_weight(index,pdf));}
+//#if LIGHT_AREA_OVERFLOW else         if(any(eval!=vec3<f32>(0))){forward_emission(index,p(4u)+pixel*stride*4u,light,eval,forward_mis_weight(index,pdf));}
+        // An area light with an overflowed axis (native/DEVICE.md, item 233) can have a NaN pdf at a hit: the forward MIS
+        // weight is then NaN unless the path skips MIS, and film_clamp_light's ensure_finite drops the emission.
+        let pdf_nan=(bitcast<u32>(pdf)&0x7fffffffu)>0x7f800000u;let skip=(state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)!=0u;
+        if(any(eval!=vec3<f32>(0))&&(!pdf_nan||skip)){var weight=1.0;if(!pdf_nan){weight=forward_mis_weight(index,pdf);}forward_emission(index,p(4u)+pixel*stride*4u,light,eval,weight);}
+//#endif
     }
     let transparent=state_half(S_path_transparent_bounce,index)+1u;state_u16(S_path_transparent_bounce,index,transparent);
     let next=select(K_CLOSEST,0u,transparent>=data_word(D_integrator_transparent_max_bounce));

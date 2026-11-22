@@ -43,7 +43,13 @@ fn point_setup_hit(kind:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32,time:f32,ra
     var center=point_record(object_id,prim,kind,time).xyz;
     if(load_word(p(17u))!=0u){sd.error=1u;return sd;}
     if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){center=surface_object_point(sd,center,false);}
-    sd.Ng=pt_normalize(ptb3(sd.P-center,o),o);sd.N=sd.Ng;
+//#if GSPLATS else     sd.Ng=pt_normalize(ptb3(sd.P-center,o),o);sd.N=sd.Ng;
+    // point_shader_setup: `if (isect->type & PRIMITIVE_POINT)` the sphere's normal, otherwise the splat's (gsplat_normal,
+    // in object space) through object_normal_transform; a splat cloud's transform is never applied.
+    if((kind&GS_PRIMITIVE_POINT)!=0u){sd.Ng=pt_normalize(ptb3(sd.P-center,o),o);}
+    else{sd.Ng=surface_object_normal(sd,gsplat_normal(object_id,prim,kind,time),false);}
+    sd.N=sd.Ng;
+//#endif
     // point_shader_setup: make_orthonormals(Ng, &dPdu, &dPdv), an arbitrary tangent frame (the Bump node needs one).
     // A hit at the point's own centre has a NaN normal (0/0), and the frame is NaN: the oracle's default NaN in every component
     // (a GPU's NaN bits are its own).

@@ -31,7 +31,7 @@ struct ShadowScheduler:Scheduler {
   using Scheduler::Scheduler;
   void active(int n){integrator_next_shadow_path_index_[0]=n;integrator_next_shadow_path_index_.copy_to_device();}
 };
-struct Row {std::string name;bool unaligned=false;unsigned unaligned_nodes=0,instances=0;uint64_t paths=0,hits=0,point_hits=0,curve_hits=0,tri_hits=0,misses=0,transparent_paths=0,transparent_recorded=0,transparent_hit_mismatches=0,transparent_hit_bits=0,decision=0,bits=0,strict=0,practical=0,
+struct Row {std::string name;bool unaligned=false;unsigned unaligned_nodes=0,instances=0;uint64_t paths=0,hits=0,splat_hits=0,point_hits=0,curve_hits=0,tri_hits=0,misses=0,transparent_paths=0,transparent_recorded=0,transparent_hit_mismatches=0,transparent_hit_bits=0,decision=0,bits=0,strict=0,practical=0,
   shadow_paths=0,shadow_blocked=0,shadow_clear=0,shadow_decision=0,sd_paths=0,sd_float=0,sd_bits=0,sd_strict=0,sd_practical=0,sd_int=0;double maximum=0,sd_maximum=0;};
 struct ShadowField {std::string name;uint32_t address;size_t stride,offset;};
 static std::vector<ShadowField> shadow_fields(WebGPUDevice &d){std::vector<ShadowField> out;
@@ -73,7 +73,7 @@ static std::string probe_source(WebGPUDevice &d){
   code<<"}\n";return code.str();
 }
 static std::ofstream mismatch_log;
-struct Case {std::string name;PointMotion motion;unsigned count;bool curves,transparent;};
+struct Case {std::string name;PointMotion motion;unsigned count;bool curves,transparent;bool splats=false,mixed=false;};
 static Shader *transparent_shader(Scene &scene){
   auto g=make_unique<ShaderGraph>();auto bsdf=g->create_node<TransparentBsdfNode>();bsdf->set_color(make_float3(.7f,.8f,.9f));
   g->connect(bsdf->output("BSDF"),g->output()->input("Surface"));auto shader=scene.create_node<Shader>();shader->set_graph(std::move(g));shader->tag_update(&scene);return shader;
@@ -93,13 +93,14 @@ static void run_case(const DeviceInfo &info,const Case &spec,std::vector<Row> &r
     scene.integrator->set_aa_samples(64);scene.integrator->set_seed(17);scene.film->set_use_sample_count(false);
     scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->set_screen_size(64,48);scene.camera->compute_auto_viewplane();
     Shader *first=spec.transparent?transparent_shader(scene):scene.default_surface;Shader *second=second_shader(scene);
-    const auto fixture=point_fixture(scene,first,second,scene.default_surface,spec.count,spec.motion);
+    const auto fixture=point_fixture(scene,first,second,scene.default_surface,spec.count,spec.motion,spec.splats,spec.mixed);
     // Curves in the same scene: their unaligned BVH2 nodes beside the points' aligned ones.
     CurveFixtureGeometry curve_geometry;
     if(spec.curves){auto hair=curve_fixture_hair(scene,curve_geometry,CURVE_THICK,scene.default_surface,2026511);auto object=scene.create_node<Object>();object->set_geometry(hair);object->set_tfm(transform_translate(make_float3(0.f,4.f,1.f)));}
     Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Point scene update failed");
     auto &data=scene.dscene.data;data.integrator.use_light_mis=0;data.integrator.use_caustics=0;if(!spec.transparent)data.integrator.transparent_shadows=0;else{require(data.integrator.transparent_shadows,"Fixture has no transparent shadows");data.integrator.transparent_max_bounce=8;}d.const_copy_to("data",&data,sizeof(KernelData));
     require(data.bvh.have_points,"Fixture has no points");
+    require(spec.splats==bool(data.kernel_features&KERNEL_FEATURE_GSPLATS),"Gaussian splat presence differs from the scene");
     for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)row.instances+=scene.dscene.bvh_leaf_nodes[i].x<0;
     // Walk the node table's flags from the root for the unaligned count.
     {std::vector<int> stack;std::vector<int> pending{scene.dscene.data.bvh.root};for(size_t o=0;o<scene.dscene.object_node.size();o++)pending.push_back(scene.dscene.object_node[o]);
@@ -130,7 +131,7 @@ static void run_case(const DeviceInfo &info,const Case &spec,std::vector<Row> &r
       auto actual=download(d,layout,n);
       for(unsigned i=0;i<n;i++){const auto &e=expected[i].isect;const auto &a=actual[i].isect;row.paths++;
         const bool same=e.prim==a.prim&&e.object==a.object&&e.type==a.type;const bool same_queue=expected[i].path.queued_kernel==actual[i].path.queued_kernel;
-        if(e.prim!=PRIM_NONE){row.hits++;if(e.type&PRIMITIVE_POINT)row.point_hits++;else if(e.type&PRIMITIVE_CURVE)row.curve_hits++;else row.tri_hits++;}else row.misses++;
+        if(e.prim!=PRIM_NONE){row.hits++;if(e.type&PRIMITIVE_GSPLAT)row.splat_hits++;else if(e.type&PRIMITIVE_POINT)row.point_hits++;else if(e.type&PRIMITIVE_CURVE)row.curve_hits++;else row.tri_hits++;}else row.misses++;
         bool bits=same&&std::memcmp(&e.t,&a.t,4)==0&&std::memcmp(&e.u,&a.u,4)==0&&std::memcmp(&e.v,&a.v,4)==0;
         bool practical=same&&same_queue;
         if(same)for(auto [ev,av]:{std::pair{e.t,a.t},std::pair{e.u,a.u},std::pair{e.v,a.v}}){const double error=std::abs(double(av)-ev);row.maximum=std::max(row.maximum,error);
@@ -238,16 +239,20 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(!infos.empty(),"No WebGPU device");
   std::vector<Row> rows;
   const std::vector<Case> cases={{"static",POINT_STATIC,192,false,false},{"dense",POINT_STATIC,4096,false,false},{"object-motion",POINT_OBJECT_MOTION,192,false,false},{"deform-3",POINT_DEFORM_3,192,false,false},{"deform-5",POINT_DEFORM_5,192,false,false},
-    {"with-curves",POINT_STATIC,192,true,false},{"transparent",POINT_STATIC,192,false,true},{"transparent-motion",POINT_DEFORM_3,192,false,true}};
+    {"with-curves",POINT_STATIC,192,true,false},{"transparent",POINT_STATIC,192,false,true},{"transparent-motion",POINT_DEFORM_3,192,false,true},
+    // Gaussian splats (kernel/geom/gsplat_intersect.h, gsplat.h gsplat_normal): the same traversals and shader data.
+    {"splats",POINT_STATIC,192,false,false,true},{"splats-dense",POINT_STATIC,4096,false,false,true},{"splats-object-motion",POINT_OBJECT_MOTION,192,false,false,true},
+    {"splats-deform-3",POINT_DEFORM_3,192,false,false,true},{"splats-deform-5",POINT_DEFORM_5,192,false,false,true},{"splats-with-points",POINT_STATIC,192,false,false,true,true},
+    {"splats-with-curves",POINT_STATIC,192,true,false,true},{"splats-transparent",POINT_STATIC,192,false,true,true},{"splats-transparent-motion",POINT_DEFORM_3,192,false,true,true}};
   for(const auto &spec:cases){if(!only.empty()&&std::find(only.begin(),only.end(),spec.name)==only.end())continue;
     std::cerr<<"[point] "<<spec.name<<"\n";run_case(infos[0],spec,rows);
-    const auto &r=rows.back();std::cerr<<"  paths="<<r.paths<<" pointHits="<<r.point_hits<<" curveHits="<<r.curve_hits<<" triHits="<<r.tri_hits<<" misses="<<r.misses<<" decision="<<r.decision<<" bits="<<r.bits<<" strict="<<r.strict<<" practical="<<r.practical<<" max="<<r.maximum
+    const auto &r=rows.back();std::cerr<<"  paths="<<r.paths<<" splatHits="<<r.splat_hits<<" pointHits="<<r.point_hits<<" curveHits="<<r.curve_hits<<" triHits="<<r.tri_hits<<" misses="<<r.misses<<" decision="<<r.decision<<" bits="<<r.bits<<" strict="<<r.strict<<" practical="<<r.practical<<" max="<<r.maximum
       <<" shadow="<<r.shadow_paths<<" blocked="<<r.shadow_blocked<<" decision="<<r.shadow_decision<<" transparentPaths="<<r.transparent_paths<<" recorded="<<r.transparent_recorded<<" recordMismatch="<<r.transparent_hit_mismatches<<" recordBits="<<r.transparent_hit_bits<<" sdFloats="<<r.sd_float<<" sdBits="<<r.sd_bits<<" sdStrict="<<r.sd_strict<<" sdPractical="<<r.sd_practical<<" sdInt="<<r.sd_int<<" sdMax="<<r.sd_maximum<<" unalignedNodes="<<r.unaligned_nodes<<" instances="<<r.instances<<"\n";}
   const unsigned refused=only.empty()?refusals(infos[0]):0;
-  bool passed=true;for(const auto &r:rows)passed=passed&&r.decision==0&&r.practical==0&&r.shadow_decision==0&&r.sd_practical==0&&r.sd_int==0&&r.point_hits>0&&r.transparent_hit_mismatches==0;
+  bool passed=true;for(const auto &r:rows)passed=passed&&r.decision==0&&r.practical==0&&r.shadow_decision==0&&r.sd_practical==0&&r.sd_int==0&&r.point_hits+r.splat_hits>0&&r.transparent_hit_mismatches==0;
   std::cout<<"{\"passed\":"<<(passed?"true":"false")<<",\"arithmetic\":\""<<wgsl_arithmetic()<<"\",\"refused\":"<<refused<<",\"rows\":[";bool first=true;
   for(const auto &r:rows){if(!first)std::cout<<",";first=false;
-    std::cout<<"{\"case\":\""<<r.name<<"\",\"unaligned\":"<<r.unaligned<<",\"unalignedNodes\":"<<r.unaligned_nodes<<",\"instances\":"<<r.instances<<",\"paths\":"<<r.paths<<",\"pointHits\":"<<r.point_hits<<",\"curveHits\":"<<r.curve_hits<<",\"triangleHits\":"<<r.tri_hits<<",\"misses\":"<<r.misses<<",\"decisionMismatches\":"<<r.decision<<",\"bitMismatches\":"<<r.bits<<",\"strict\":"<<r.strict<<",\"practicalFailures\":"<<r.practical<<",\"maximum\":"<<r.maximum
+    std::cout<<"{\"case\":\""<<r.name<<"\",\"unaligned\":"<<r.unaligned<<",\"unalignedNodes\":"<<r.unaligned_nodes<<",\"instances\":"<<r.instances<<",\"paths\":"<<r.paths<<",\"splatHits\":"<<r.splat_hits<<",\"pointHits\":"<<r.point_hits<<",\"curveHits\":"<<r.curve_hits<<",\"triangleHits\":"<<r.tri_hits<<",\"misses\":"<<r.misses<<",\"decisionMismatches\":"<<r.decision<<",\"bitMismatches\":"<<r.bits<<",\"strict\":"<<r.strict<<",\"practicalFailures\":"<<r.practical<<",\"maximum\":"<<r.maximum
       <<",\"transparentPaths\":"<<r.transparent_paths<<",\"transparentRecorded\":"<<r.transparent_recorded<<",\"transparentMismatches\":"<<r.transparent_hit_mismatches<<",\"transparentBits\":"<<r.transparent_hit_bits<<",\"shadowPaths\":"<<r.shadow_paths<<",\"shadowBlocked\":"<<r.shadow_blocked<<",\"shadowClear\":"<<r.shadow_clear<<",\"shadowDecisionMismatches\":"<<r.shadow_decision<<",\"shaderDataPaths\":"<<r.sd_paths<<",\"shaderDataFloats\":"<<r.sd_float<<",\"shaderDataBitMismatches\":"<<r.sd_bits<<",\"shaderDataStrict\":"<<r.sd_strict<<",\"shaderDataPracticalFailures\":"<<r.sd_practical<<",\"shaderDataIntegerMismatches\":"<<r.sd_int<<",\"shaderDataMaximum\":"<<r.sd_maximum<<"}";}
   std::cout<<"]}\n";
   status=passed?0:1;

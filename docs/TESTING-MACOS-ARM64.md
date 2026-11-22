@@ -421,19 +421,31 @@ the render results per mode, and delete the `nugets/Release/<version>/` folder.
 **Recording the Metal references.** `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64/`
 holds one reviewed Metal film per GPU test scene (`<name>.rgba.f32`) and
 `manifest.json` (SHA-256, length, recording OS and device, library version and
-the film's CPU comparison). Re-record them only when the Cycles revision, the
-toolchain, a scene or its render settings change:
+the film's CPU comparison). The recording variable has two settings:
 
-```sh
-CODEBRIX_CYCLES_RECORD_METAL_REFERENCES=1 dotnet test --project tests/CodeBrix.Graphics3D.Cycles.Tests \
-  --configuration Release --no-build --filter-class "*GpuRenderTests"
-```
+- `CODEBRIX_CYCLES_RECORD_METAL_REFERENCES=1` writes only the names that have
+  **no** reference yet. A name that already has one is left alone, film and
+  manifest entry, and is judged against it as in a run without the variable.
+  This is the setting for a visit that adds scenes or tests:
 
-Then review every changed film and its recorded CPU comparison (`git diff` of
-`manifest.json`; a CPU comparison that grew is a finding to explain before the
-films are accepted) and run the tests again without the variable. A test
-whose film no longer matches its manifest length fails with a request to
-re-record; a missing reference fails, never skips.
+  ```sh
+  CODEBRIX_CYCLES_RECORD_METAL_REFERENCES=1 dotnet test --project tests/CodeBrix.Graphics3D.Cycles.Tests \
+    --configuration Release --no-build --filter-class "*GpuRenderTests"
+  ```
+
+- `CODEBRIX_CYCLES_RECORD_METAL_REFERENCES=all` re-records every name. Use it
+  only when the Cycles revision or the toolchain changes (a new pin), with the
+  same command.
+
+Any other value of the variable fails the test rather than being read as off.
+To re-record one name (its scene or render settings changed), remove that
+name's entry from `manifest.json` and record with `=1`. After either setting,
+review every new or changed film and its recorded CPU comparison (`git diff`
+of `manifest.json`; with `=1` the diff must show added entries only; a CPU
+comparison that grew is a finding to explain before the films are accepted)
+and run the tests again without the variable. A test whose film no longer
+matches its manifest length fails with a request to record that name again; a
+missing reference fails, never skips.
 
 ### Step 8: licensing audit
 

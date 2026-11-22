@@ -127,7 +127,15 @@ static void run_case(WebGPUDevice &d,AoScheduler &scheduler,Scene &scene,const s
 // only_local on an instanced box, linked normal and distance.
 #ifdef CBC_RAYTRACE_NODES_FIXTURE
 #include "raytrace_nodes_fixture.h"
-static Shader *ao_shader(Scene &scene,unsigned variant){return raytrace_node_shader(scene,variant);}
+// The node kinds the fixture's graphs keep (raytrace_nodes_fixture.h; 3: every graph as it is).
+static unsigned raytrace_parts=3u;
+// The curve-mixed run's scene without its curve tufts (main), and the proof that leaving them out loses nothing: with
+// `record` the scene is built WITH the tufts, the unmodified CPU kernels shade every path, nothing is dispatched to the
+// device, and the results are kept; the run without the tufts then requires the same CPU result, bit for bit, for every
+// path (the film values and the whole path state), before the device is judged against it.
+struct CurveFreeProof {bool without_tufts=false,record=false;std::map<int,std::pair<std::vector<IntegratorStateCPU>,std::vector<float>>> kept;uint64_t paths=0;};
+static CurveFreeProof curve_free;
+static Shader *ao_shader(Scene &scene,unsigned variant){return raytrace_node_shader(scene,variant,raytrace_parts);}
 #else
 static Shader *ao_shader(Scene &scene,unsigned variant){
   auto g=make_unique<ShaderGraph>();auto ao=g->create_node<AmbientOcclusionNode>();ao->set_color(make_float3(.9,.7,.4));
@@ -162,7 +170,7 @@ static void ao_node_cases(WebGPUDevice &d,Metrics &m,Mode mode){
   if(mode==Mode::ObjectMotion){object_motion_fixture(scene,*targets[2],1);object_motion_fixture(scene,*targets[4],2);}
   if(mode==Mode::DeformingMotion){deforming_motion_fixture(scene,*targets[2],1);deforming_motion_fixture(scene,*targets[4],0);}
 #ifdef CBC_RAYTRACE_NODES_FIXTURE
-  gate_curve_tufts(scene,nullptr,false);
+  if(!curve_free.without_tufts||curve_free.record)gate_curve_tufts(scene,nullptr,false);
 #else
   gate_curve_tufts(scene);
 #endif
@@ -195,6 +203,13 @@ static void ao_node_cases(WebGPUDevice &d,Metrics &m,Mode mode){
     if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){auto traced=input;for(int i:ids)traced[i].path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE;
       std::vector<float> unused(count,.125f);original_surface_raytrace(ds,ids,traced,unused);
       for(int i:ids)sensitive+=std::memcmp(&traced[i].path.throughput,&expected[i].path.throughput,sizeof(expected[i].path.throughput))!=0;}
+#ifdef CBC_RAYTRACE_NODES_FIXTURE
+    if(curve_free.without_tufts){const int key=int(mode)*2+(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE?1:0);
+      if(curve_free.record){curve_free.kept[key]={expected,wanted};continue;}
+      const auto &kept=curve_free.kept.at(key);require(kept.first.size()==expected.size()&&kept.second.size()==wanted.size(),"Curve-free proof: other paths than the scene with curves");
+      for(int i:ids){require(!std::memcmp(&kept.first[i],&expected[i],sizeof(IntegratorStateCPU)),"Curve-free proof: the CPU state of path "+std::to_string(i)+" depends on the curve tufts");curve_free.paths++;}
+      require(!std::memcmp(kept.second.data(),wanted.data(),wanted.size()*sizeof(float)),"Curve-free proof: the CPU film depends on the curve tufts");}
+#endif
     scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"AO node reset");scheduler.next_shadow(0);upload(d,layout,input);
     device_vector<float> film(&d,"ao_node_film",MEM_READ_WRITE);film.alloc(count);std::fill_n(film.data(),count,.125f);film.copy_to_device();
     device_vector<int> selected(&d,"ao_node_indices",MEM_READ_WRITE);selected.alloc(ids.size());std::copy(ids.begin(),ids.end(),selected.data());selected.copy_to_device();
@@ -212,6 +227,9 @@ static void ao_node_cases(WebGPUDevice &d,Metrics &m,Mode mode){
     require(!std::memcmp(&observed,&want,sizeof(want)),label+": queue counters");
     m.cases++;m.paths+=ids.size();m.node_paths+=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE?ids.size():0;if(mode!=Mode::Static)m.motion_paths+=ids.size();std::cerr<<"Passed "<<label<<" ("<<ids.size()<<" paths, running maximum "<<m.maximum<<", strict "<<m.strict<<")\n";
   }
+#ifdef CBC_RAYTRACE_NODES_FIXTURE
+  if(curve_free.without_tufts&&curve_free.record)return;
+#endif
   // The node's ray tracing changes the result: raytrace and non-raytrace CPU throughputs differ.
   m.node_sensitive+=sensitive;require(sensitive>50,"AO node coverage: raytrace and non-raytrace results differ for only "+std::to_string(sensitive)+" paths");
 }
@@ -272,12 +290,38 @@ static void ao_node_cases(WebGPUDevice &d,Metrics &m,Mode mode){
   }
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
-  require(argc==2,"Usage: ao_state_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+#ifdef CBC_RAYTRACE_NODES_FIXTURE
+  // MODE (0 static, 1 object motion, 2 deformation motion) runs that scene mode alone: a shorter run for a maintainer.
+  require(argc==2||(argc==3&&argv[2][0]>='0'&&argv[2][0]<='2'&&!argv[2][1]),"Usage: raytrace_nodes_state_gate OUTPUT_PREFIX [MODE]");
+  std::vector<Mode> modes={Mode::Static,Mode::ObjectMotion,Mode::DeformingMotion};if(argc==3)modes={modes[size_t(argv[2][0]-'0')]};
+#else
+  require(argc==2,"Usage: ao_state_gate OUTPUT_PREFIX");
+#endif
+  auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"ao_state_gate device creation");Metrics m;
 #ifdef CBC_RAYTRACE_NODES_FIXTURE
   // The Bevel and Raycast node shaders on the AO node cases' scenes (raytrace_nodes_fixture.h).
-  for(const Mode mode:{Mode::Static,Mode::ObjectMotion,Mode::DeformingMotion})ao_node_cases(d,m,mode);
-  require(stats.mem_used==0,"Raytrace node state Cycles allocation leak");require(m.motion_paths>1000,"Missing motion coverage");
+  // With curves in the fixture (CODEBRIX_CYCLES_GATE_CURVES, curve_gate_tuft.h) the object-motion scene builds the Bevel
+  // node's local traversal with every curve shape and object motion in one entry, which passes the compile envelope
+  // (native/DEVICE.md, item 236); it is one traversal, so no part of the fixture's graphs divides it. There each motion
+  // mode runs twice, once with the Raycast nodes of every graph and once with the Bevel nodes (each node with its own
+  // inputs and links as in the full graph), and the object-motion scene with the Bevel nodes is built without the curve
+  // tufts: a Bevel node traces only the object it shades (svm/bevel.h: scene_intersect_local), so no ray of it can meet a
+  // tuft, which the gate proves on the CPU side for every path (CurveFreeProof). The graphs with both nodes run whole
+  // in the static scene with curves, and in every mode without curves (the gate's plain run).
+  for(const Mode mode:modes){
+    if(gate_curves_enabled()&&mode!=Mode::Static){
+      for(const unsigned parts:{2u,1u}){raytrace_parts=parts;std::cerr<<(parts==2u?"Raycast nodes only\n":"Bevel nodes only\n");
+        if(parts==1u&&mode==Mode::ObjectMotion){curve_free.without_tufts=true;curve_free.record=true;ao_node_cases(d,m,mode);curve_free.record=false;
+          // A device of its own: this device keeps the curve tables of the scenes before it, and with them the curve regions.
+          {auto fresh=Device::create(infos[0],stats,profiler,true);ao_node_cases(require_webgpu_device(fresh.get(),"ao_state_gate curve-free device"),m,mode);}
+          curve_free.without_tufts=false;std::cerr<<"Curve-free proof: "<<curve_free.paths<<" CPU path states and both films identical with and without the curve tufts\n";}
+        else ao_node_cases(d,m,mode);}
+      raytrace_parts=3u;
+    }
+    else ao_node_cases(d,m,mode);
+  }
+  require(stats.mem_used==0,"Raytrace node state Cycles allocation leak");require(m.motion_paths>1000||(argc==3&&modes[0]==Mode::Static),"Missing motion coverage");
 #else
   // The static cases first, in their original order; then the shadow catcher and motion cases.
   ao_ray_cases(d,m,Mode::Static);ao_node_cases(d,m,Mode::Static);

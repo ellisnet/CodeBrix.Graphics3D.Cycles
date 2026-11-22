@@ -83,7 +83,10 @@ fn terminator_smooth_offset(sd:SurfaceData,Ng:vec3<f32>)->vec3<f32>{
     if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){n=surface_object_direction(sd,n,false);}
     let a=rounded_dot(N[2]-N[0],V[0]-V[2]);let b=rounded_dot(N[2]-N[1],V[1]-V[2]);let c=rounded_dot(N[1]-N[0],V[1]-V[0]);
     var h=rounded_add(rounded_add((a*u)*rounded_add(u,-1.0),((rounded_add(rounded_add(a,b),c))*u)*v),(b*v)*rounded_add(v,-1.0));
-    if(rounded_dot(n,Ng)>0.0){
+//#if BAKE_ZERO_AREA else     if(rounded_dot(n,Ng)>0.0){
+    // shadow_ray_smooth_surface_offset: `if (dot(n, Ng) > 0)` at the normal of a zero-area bake texel.
+    if(zero_area_less(0.0,zero_area_rounded_dot(Ng,n))){
+//#endif
         var h0=max(max(rounded_dot(V[1]-V[0],N[0]),rounded_dot(V[2]-V[0],N[0])),0.0);
         var h1=max(max(rounded_dot(V[0]-V[1],N[1]),rounded_dot(V[2]-V[1],N[1])),0.0);
         var h2=max(max(rounded_dot(V[0]-V[2],N[2]),rounded_dot(V[1]-V[2],N[2])),0.0);
@@ -105,6 +108,17 @@ fn terminator_geometry_active(sd:SurfaceData)->bool{
 // shadow_ray_offset: xyz is the shadow-ray origin, w is 1 when the ray keeps
 // skipping its own primitive (Cycles' skip_self).
 fn terminator_shadow_origin(sd:SurfaceData,L:vec3<f32>)->vec4<f32>{
+//#if BAKE_ZERO_AREA
+    // shadow_ray_offset (light/sample.h) with the normal of a zero-area bake texel. For NgL a NaN or +infinity both forms
+    // of offset_amount are clamp(NaN or -infinity, 0.0f, 1.0f) = min(max(a, 0.0f), 1.0f) = 0 and `offset_amount > 0.0f` is
+    // false: the origin is sd->P and the ray keeps skipping its own primitive. For NgL = -infinity both are 1: the origin
+    // is P plus the whole smooth surface offset, and `*r_skip_self = (NgL > 0.0f)` is false.
+    if(zero_area_not_finite(sd.Ng.x)){
+        let through=zero_area_less(zero_area_rounded_dot(sd.N,L),0.0);let facing=select(sd.Ng,zero_area_negate3(sd.Ng),through);
+        if(bitcast<u32>(zero_area_dot(facing,L))!=0xff800000u){return vec4<f32>(sd.P,1.0);}
+        return vec4<f32>(rounded_add3(sd.P,terminator_smooth_offset(sd,facing)),0.0);
+    }
+//#endif
     let cutoff=heap_float(terminator_object(sd)+O_shadow_terminator_geometry_offset);
     var NL=rounded_dot(sd.N,L);let transmit=NL<0.0;if(NL<0.0){NL=-NL;}
     let Ng=select(sd.Ng,-sd.Ng,transmit);let NgL=rounded_dot(Ng,L);

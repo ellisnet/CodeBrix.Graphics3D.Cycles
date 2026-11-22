@@ -148,17 +148,21 @@ static ShadowPrecision shadow_precision(const DeviceInfo &info){
   require(stats.mem_used==0,"Shadow precision leaked Cycles allocations");return p;
 }
 static unsigned rejections(const DeviceInfo &info){unsigned rejected=0;
-  for(int test=0;test<18;test++){
+  for(int test=0;test<19;test++){
     Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"shadow_gate device creation");
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
-    Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
+    Scene scene(params,&d);prepare(scene);if(test==1)object_motion_fixture(scene,*scene.objects[0],0);Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
     d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));bool cancel=false;ShadowScheduler scheduler(&d,scene.film,&scene.dscene,&cancel);
     scheduler.alloc_work_memory();scheduler.init_execution();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Shadow rejection setup failed");
     const bool shading=test>=9;const auto kernel=shading?DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW:DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW;
     States states=initial(1,0);states[0].shadow_path.queued_kernel=kernel;states[0].shadow_path.packed_num_hits=0;
     auto &data=scene.dscene.data;std::string reason="reported invalid data";
-    if(test==0){data.integrator.transparent_shadows=1;data.integrator.transparent_max_bounce=4096;reason="packed state";}
-    if(test==1){data.bvh.have_motion=1;reason="motion flag/table mismatch";}
+    // The transparent shadow hit limit where the kernel's own counters overflow (shadow.cpp): from 65535 on its 16-bit hit
+    // count wraps before it passes the limit; below INT_MIN + 65535 the limit minus the shadow path's count overflows an int.
+    if(test==0){data.integrator.transparent_shadows=1;data.integrator.transparent_max_bounce=65535;reason="transparent max bounce above 65534";}
+    if(test==18){data.integrator.transparent_shadows=1;data.integrator.transparent_max_bounce=INT_MIN+65534;reason="transparent max bounce above 65534";}
+    // A moving object without bvh.have_motion (a static scene with have_motion is valid: pinned scene/object.cpp).
+    if(test==1){data.bvh.have_motion=0;reason="motion flag/table mismatch";}
     // Shadow paths through volumes are supported (VOLUME_SHADOW); path guiding stays refused.
     if(test==2){data.kernel_features|=KERNEL_FEATURE_PATH_GUIDING;reason="optional integration";}
     // Shadow linking is implemented, with AO too; with path guiding (outside the scope) it stays refused.

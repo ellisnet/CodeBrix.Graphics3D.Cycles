@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Write the moving-lights oracle scenes (scenes/light-motion/moving-lamps*) byte for byte.
+"""Write the moving-lights oracle scenes (scenes/light-motion/moving-lamps*) and light-motion/motion-blur-static byte for byte.
 
 Object motion on light objects with motion blur: light-motion/camera-object-motion (a moving camera and a moving
 object) with its point lamp given object motion, plus a moving spot lamp and a moving area lamp. ObjectManager
@@ -64,8 +64,24 @@ def moving_lamps(object_space):
     return name+'.json', document
 
 
+def motion_blur_static():
+    """starter/glass-and-area-light with motion blur on and every mesh and the lamp flagged for motion blur, nothing moving:
+    Cycles sets the BVH motion flag for a geometry with motion blur on whether or not it has motion steps (scene/object.cpp)."""
+    document = json.loads((Path(__file__).resolve().parent/'starter/glass-and-area-light.json').read_text())
+    document['id'] = 'light-motion/motion-blur-static'
+    document['description'] = ('Motion blur on with every mesh and the area lamp flagged for motion blur and nothing moving (no object motion, no '
+                               'motion steps): the scene of starter/glass-and-area-light under the BVH motion flag')
+    document['sourceFixture'] = 'native/oracle/scenes/starter/glass-and-area-light.json (author_starters.py) with motion blur flags'
+    for entry in document['nodes']:
+        if entry.get('scene') == 'integrator':
+            entry['set']['motion_blur'] = True
+        if entry.get('create') in ('mesh', 'arealight'):
+            entry['set']['use_motion_blur'] = True
+    return 'motion-blur-static.json', document
+
+
 def scenes():
-    return dict([moving_lamps(False), moving_lamps(True)])
+    return dict([moving_lamps(False), moving_lamps(True), motion_blur_static()])
 
 
 def main():

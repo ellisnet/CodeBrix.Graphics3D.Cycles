@@ -28,6 +28,16 @@ def thin(handle, values):
     return subsurface.principled(handle, settings)
 
 
+def thin_linked(handle, values):
+    """Thin Wall from a checker (0 or 1): both of the Principled subsurface lobe's forms in one shader."""
+    settings = {'distribution': 'multi_ggx', 'base_color': [0.8, 0.55, 0.45], 'roughness': 0.35, 'ior': 1.45, 'subsurface_weight': 0.8,
+                'subsurface_method': 'random_walk', 'subsurface_radius': [1.0, 0.45, 0.25], 'subsurface_scale': 0.3, 'subsurface_anisotropy': 0.3}
+    settings.update(values)
+    return subsurface.room.shader(handle, [{'handle': 'c', 'type': 'checker_texture', 'set': {'scale': 3.0, 'color1': [1, 1, 1], 'color2': [0, 0, 0]}},
+                                           {'handle': 'p', 'type': 'principled_bsdf', 'set': settings}],
+                                  [['c', 'Fac', 'p', 'Thin Wall'], ['p', 'BSDF', 'output', 'Surface']])
+
+
 def scenes():
     return {
         'principled-thin-wall.json': scene('subsurface/principled-thin-wall', 'Thin-walled Principled BSDF subsurface: diffuse and translucent closures '
@@ -39,6 +49,10 @@ def scenes():
                                                               'subsurface_anisotropy': 0.6}),
                                                  thin('sss-burley', {'subsurface_method': 'burley', 'subsurface_weight': 0.8, 'diffuse_roughness': 0.4,
                                                                      'subsurface_anisotropy': -0.2, 'base_color': [0.75, 0.6, 0.5]})),
+        'principled-thin-wall-linked.json': scene('subsurface/principled-thin-wall-linked', 'A Principled BSDF with subsurface whose Thin Wall '
+                                                  'is linked to a checker (thin-walled diffuse and translucent closures on one square, the BSSRDF on the '
+                                                  'other; middle); the same with a diffuse roughness of 0.5 (right)',
+                                                  thin_linked('sss', {}), thin_linked('sss-rough', {'diffuse_roughness': 0.5})),
     }
 
 

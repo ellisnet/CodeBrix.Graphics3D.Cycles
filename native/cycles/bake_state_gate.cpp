@@ -10,7 +10,9 @@
 // orthographic camera; tabulated Sobol, Sobol-Burley and both blue-noise patterns, scrambling distance below 0.9;
 // the position and normal fast paths, the normal through shading (bump), environment baking, the seed pass,
 // adaptive sampling with the sample count pass, the shadow catcher split, the raytrace queue (AO node) and a
-// world volume (volume stack), and a single-user target with deformation motion under motion blur. Every integer, flag, sort key, queue counter, seed and untouched guard byte is
+// world volume (volume stack), a single-user target with deformation motion under motion blur, and targets with zero-area
+// triangles in the map (a segment and a point: the path starts as on any other triangle, the test against the
+// not-a-number geometric normal towards the camera is false). Every integer, flag, sort key, queue counter, seed and untouched guard byte is
 // exact; the ray, its differentials and the barycentrics are judged by the practical criterion
 // (abs(a-e) <= 5e-5 + 2e-4*abs(e)) with the strict one (1e-7 + 1e-7*abs(e)) reported; film floats are exact.
 // Usage: codebrix_cycles_bake_state_gate OUTPUT_DIRECTORY   (writes OUTPUT_DIRECTORY/status.json)
@@ -47,7 +49,7 @@ using namespace ccl;
 using namespace wavefront_test;
 constexpr unsigned W=16,H=12;
 struct Case {const char *name;int target;PassType pass;bool use_camera;CameraType camera;SamplingPattern pattern;unsigned samples;
-  bool seed,adaptive,catcher;int shader;bool volume;float scrambling;bool deform=false;};
+  bool seed,adaptive,catcher;int shader;bool volume;float scrambling;bool deform=false;bool zero_area=false;};
 // shader: 0 diffuse, 1 Ambient Occlusion node (SD_HAS_RAYTRACE), 2 bump (SD_HAS_BUMP), 3 diffuse mixed with a Ray Portal BSDF.
 static const Case cases[]={
   {"instanced combined along the normal",0,PASS_COMBINED,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,4,false,false,false,0,false,1},
@@ -64,8 +66,13 @@ static const Case cases[]={
   {"world volume, diffuse direct pass, blue noise first",0,PASS_DIFFUSE_DIRECT,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_BLUE_NOISE_FIRST,2,false,false,false,0,true,1},
   {"Ray Portal BSDF on the baked object (KERNEL_FEATURE_NODE_PORTAL: the portal bounce)",0,PASS_COMBINED,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,2,false,false,false,3,false,1},
   // Deformation motion under motion blur (deforming_motion_fixture.h): the texel on the static positions (BAKE_DEFORM).
-  {"deforming target under motion blur (the texel on the static positions)",1,PASS_COMBINED,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,2,false,false,false,0,false,1,true}};
-struct Metrics {uint64_t paths=0,queued=0,empty=0,splits=0,integers=0,floats=0,strict=0,bit_differences=0,film_floats=0,vertex_texels=0,jitter_given_up=0;double maximum=0;std::string maximum_field;
+  {"deforming target under motion blur (the texel on the static positions)",1,PASS_COMBINED,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,2,false,false,false,0,false,1,true},
+  // Zero-area triangles in the map (init_from_bake.h: triangle_point_normal's normalize of a zero cross product is NaN in every
+  // component; the ray reads the smooth normal, and `dot(D, Ng) <= true_normal_epsilon` towards the camera is false).
+  {"instanced target with zero-area triangles along the normal",0,PASS_COMBINED,false,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,3,false,false,false,0,false,1,false,true},
+  {"applied negative scale with zero-area triangles towards a perspective camera",1,PASS_COMBINED,true,CAMERA_PERSPECTIVE,SAMPLING_PATTERN_TABULATED_SOBOL,3,false,false,false,0,false,1,false,true},
+  {"instanced target with zero-area triangles towards an orthographic camera, data pass",0,PASS_ROUGHNESS,true,CAMERA_ORTHOGRAPHIC,SAMPLING_PATTERN_TABULATED_SOBOL,2,false,false,false,0,false,1,false,true}};
+struct Metrics {uint64_t paths=0,queued=0,empty=0,splits=0,integers=0,floats=0,strict=0,bit_differences=0,film_floats=0,vertex_texels=0,jitter_given_up=0,zero_area_texels=0,zero_area_queued=0;double maximum=0;std::string maximum_field;
   std::map<std::string,uint64_t> strict_by_field;std::map<std::string,uint64_t> kernels;std::vector<std::string> layouts;};
 static Shader *graph_shader(Scene &scene,std::unique_ptr<ShaderGraph> g){auto s=scene.create_node<Shader>();s->set_graph(std::move(g));s->tag_update(&scene);return s;}
 static Shader *material(Scene &scene,int kind,float3 color){
@@ -78,15 +85,18 @@ static Shader *material(Scene &scene,int kind,float3 color){
   g->connect(d->output("BSDF"),g->output()->input("Surface"));return graph_shader(scene,std::move(g));
 }
 // A tent of four triangles around a raised centre vertex: smooth vertex normals that vary over each triangle.
-static Mesh *tent(Scene &scene,Shader *shader,float lift){
-  auto mesh=scene.create_node<Mesh>();array<Node*> slots;slots.push_back_slow(shader);mesh->set_used_shaders(slots);mesh->resize_mesh(5,4);
+// zero_area: two more triangles without area, the segment from corner 0 to the centre (two corners at the centre) and the
+// point at corner 2 (all three corners).
+static Mesh *tent(Scene &scene,Shader *shader,float lift,bool zero_area=false){
+  auto mesh=scene.create_node<Mesh>();array<Node*> slots;slots.push_back_slow(shader);mesh->set_used_shaders(slots);mesh->resize_mesh(5,zero_area?6:4);
+  if(zero_area){const int extra[]={0,4,4,2,2,2};std::copy_n(extra,6,mesh->get_triangles().data()+12);}
   const float3 v[]={make_float3(-1,-1,0),make_float3(1,-1,.3f),make_float3(1,1,0),make_float3(-1,1,.4f),make_float3(.1f,-.05f,lift)};
   std::copy(std::begin(v),std::end(v),mesh->get_position_for_write());const int t[]={0,1,4,1,2,4,2,3,4,3,0,4};std::copy_n(t,12,mesh->get_triangles().data());
   std::ranges::fill(mesh->get_smooth(),true);std::ranges::fill(mesh->get_shader(),0);mesh->tag_triangles_modified();return mesh;
 }
 static Object *object(Scene &scene,Mesh *mesh,const Transform &tfm){auto o=scene.create_node<Object>();o->set_geometry(mesh);o->set_tfm(tfm);return o;}
 // The texel map: per pixel a triangle (or -1), Blender-convention barycentrics and their differentials.
-static void write_map(const KernelFilm &f,unsigned stride,unsigned c,std::vector<float> &film,Metrics &m){
+static void write_map(const KernelFilm &f,unsigned stride,unsigned c,std::vector<float> &film,Metrics &m,unsigned triangles){
   std::mt19937 random(1234+c);std::uniform_real_distribution<float> unit(0.f,1.f);
   for(unsigned pixel=0;pixel<W*H;pixel++){
     float *at=film.data()+size_t(pixel)*stride;
@@ -97,7 +107,7 @@ static void write_map(const KernelFilm &f,unsigned stride,unsigned c,std::vector
     if(kind==1){u=0;v=0;m.vertex_texels++;}else if(kind==2){u=1;v=0;m.vertex_texels++;}else if(kind==3){u=0;v=1;m.vertex_texels++;}
     else if(kind==4){u=0;}else if(kind==5){v=1-u;}
     float scale=kind==6?4.f:kind==7?1e-6f:.08f;
-    primitive[0]=u;primitive[1]=v;primitive[2]=std::bit_cast<float>(int(pixel%4));
+    primitive[0]=u;primitive[1]=v;primitive[2]=std::bit_cast<float>(int(pixel%triangles));if(pixel%triangles>=4)m.zero_area_texels++;
     for(int k=0;k<4;k++)differential[k]=(unit(random)-.5f)*scale;
     if(kind==6)m.jitter_given_up++;
   }
@@ -126,10 +136,10 @@ static void run_case(WebGPUDevice &d,unsigned c,Metrics &m){
   scene.background->set_shader(graph_shader(scene,std::move(world)));scene.background->set_transparent(k.catcher);
   // An unrelated object first, so that the bake mesh's triangles start after an offset (kernel_data.bake.tri_offset).
   object(scene,tent(scene,material(scene,0,make_float3(.5,.5,.5)),.2f),transform_translate(make_float3(0,0,-3)));
-  Mesh *shared=tent(scene,material(scene,k.target==0?k.shader:0,make_float3(.7,.4,.2)),.8f);
+  Mesh *shared=tent(scene,material(scene,k.target==0?k.shader:0,make_float3(.7,.4,.2)),.8f,k.zero_area&&k.target==0);
   Object *a=object(scene,shared,transform_translate(make_float3(.2f,.1f,.3f))*transform_rotate(.4f,make_float3(0,0,1))*transform_scale(make_float3(1.3f,.9f,1.1f)));
   object(scene,shared,transform_translate(make_float3(3,0,0)));
-  Object *b=object(scene,tent(scene,material(scene,k.target==1?k.shader:0,make_float3(.2,.6,.4)),.6f),
+  Object *b=object(scene,tent(scene,material(scene,k.target==1?k.shader:0,make_float3(.2,.6,.4)),.6f,k.zero_area&&k.target==1),
                    transform_translate(make_float3(-.3f,.2f,.1f))*transform_rotate(-.3f,make_float3(1,0,0))*transform_scale(make_float3(-1.2f,1.f,.9f)));
   Object *target=k.target?b:a;target->set_is_bake_target(true);target->set_is_shadow_catcher(k.catcher);
   if(k.deform)deforming_motion_fixture(scene,*target,0);
@@ -152,7 +162,7 @@ static void run_case(WebGPUDevice &d,unsigned c,Metrics &m){
   buffer_params.update_passes(scene.passes);
   auto buffers=scheduler.get_render_buffers();buffers->reset(buffer_params);buffers->zero();healthy(d);
   const unsigned stride=unsigned(data.film.pass_stride);require(buffer_params.pass_stride==int(stride),"Bake buffer stride");
-  std::vector<float> film(size_t(W)*H*stride,0.f);write_map(data.film,stride,c,film,m);
+  std::vector<float> film(size_t(W)*H*stride,0.f);write_map(data.film,stride,c,film,m,k.zero_area?6:4);
   if(k.seed)for(unsigned pixel=0;pixel<W*H;pixel++)film[size_t(pixel)*stride+data.film.pass_bake_seed]=std::bit_cast<float>(pixel*2654435761u+c);
   if(k.adaptive){require(data.film.pass_adaptive_aux_buffer!=PASS_UNUSED&&data.film.pass_sample_count!=PASS_UNUSED,"Adaptive bake passes");
     for(unsigned pixel=0;pixel<W*H;pixel++){film[size_t(pixel)*stride+data.film.pass_sample_count]=std::bit_cast<float>(pixel%7);
@@ -179,6 +189,7 @@ static void run_case(WebGPUDevice &d,unsigned c,Metrics &m){
       const unsigned x=tile.x+pixel%tile.w,y=tile.y+pixel/tile.w,path=tile.path_index_offset+item;
       IntegratorStateCPU pair[2]={expected[path],expected[path]};
       original_bake(scene.dscene,tile,x,y,tile.start_sample+sample,pair,film);expected[path]=pair[0];
+      if(k.zero_area&&pair[0].path.queued_kernel&&pair[0].isect.prim-data.bake.tri_offset>=4)m.zero_area_queued++;
       const auto kernel=DeviceKernel(expected[path].path.queued_kernel);
       if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE)expected[path].path.shader_sort_key=sort_key(expected[path],path);
       // The kernel resets the flag (path_state_init_integrator): PATH_RAY_SHADOW_CATCHER_HIT afterwards is this call's split.
@@ -215,11 +226,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;Metrics m;std
     auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
     Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"Bake state gate");
     for(unsigned c=0;c<std::size(cases);c++){run_case(d,c,m);passed++;std::cerr<<"PASS "<<cases[c].name<<"\n";}
+    require(m.zero_area_texels>0&&m.zero_area_queued>0,"No path started on a zero-area triangle");
     require(stats.mem_used==0,"Bake gate leaked Cycles allocations");
   }catch(const std::exception &e){failure=e.what();std::cerr<<"FAIL "<<failure<<'\n';status=1;}
   std::ostringstream out;out<<"{\"complete\":true,\"passed\":"<<(status==0?"true":"false")<<",\"cases\":"<<std::size(cases)<<",\"casesPassed\":"<<passed
     <<",\"failure\":\""<<failure.substr(0,400)<<"\",\"paths\":"<<m.paths<<",\"queuedPaths\":"<<m.queued<<",\"shadowCatcherSplits\":"<<m.splits
-    <<",\"emptyTexelsWritten\":"<<m.empty<<",\"vertexTexelsWritten\":"<<m.vertex_texels<<",\"wideDifferentialTexels\":"<<m.jitter_given_up
+    <<",\"zeroAreaTexelsWritten\":"<<m.zero_area_texels<<",\"zeroAreaPathsQueued\":"<<m.zero_area_queued<<",\"emptyTexelsWritten\":"<<m.empty<<",\"vertexTexelsWritten\":"<<m.vertex_texels<<",\"wideDifferentialTexels\":"<<m.jitter_given_up
     <<",\"exactStateFieldChecks\":"<<m.integers<<",\"filmFloatsExact\":"<<m.film_floats<<",\"practicalFloatChecks\":"<<m.floats
     <<",\"strictFailures\":"<<m.strict<<",\"bitDifferences\":"<<m.bit_differences<<",\"maximumAbsoluteError\":"<<m.maximum<<",\"maximumField\":\""<<m.maximum_field<<"\",\"strictByField\":{";
   {bool first=true;for(auto &[name,count]:m.strict_by_field){out<<(first?"":",")<<'"'<<name.substr(0,name.find(' '))<<"\":"<<count;first=false;}}

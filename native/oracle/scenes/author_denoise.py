@@ -19,7 +19,8 @@ DENOISE = {'use_denoise': True, 'denoiser_type': 'openimagedenoise', 'denoiser_p
 NOISY = [('Noisy Image', 'combined'), ('Shadow Catcher Noisy', 'shadow_catcher'), ('Shadow Catcher Matte Noisy', 'shadow_catcher_matte')]
 SOURCES = [('enclosure-emissive-panel', 'combinations/enclosure-emissive-panel.json', False),
            ('beckmann', 'bsdf/beckmann.json', False),
-           ('catcher-point-light', 'shadow-catcher/catcher-point-light.json', True)]
+           ('catcher-point-light', 'shadow-catcher/catcher-point-light.json', True),
+           ('principled-dispersion', 'bsdf/principled-dispersion.json', False)]
 
 
 def variant(name, source, denoise, noisy):

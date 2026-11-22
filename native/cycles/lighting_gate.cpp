@@ -58,7 +58,11 @@ constexpr int lighting_cases=6;
 // Image modes; mode 4 is the static instanced emitter.
 constexpr int lighting_modes[lighting_cases]={0,1,2,3,4,5};
 #elif defined(CODEBRIX_BROAD_LIGHT_GATE)
-constexpr int lighting_cases=12;
+// Mode 12: a rectangle light whose u size (1e-23) underflows, with a spread of zero: the pinned next-event sample is valid
+// with a NaN direction (kernel/light/area.h area_light_spread_attenuation: `(tan_a > 1e-5f) ? 0.0f : M_PI_F`), which the
+// floor's GGX closure turns into finite light (closure/bsdf_microfacet.h bsdf_D: `min(sqr(cos_NH), 1.0f)`) and no shadow
+// ray blocks (bvh/util.h intersection_ray_valid); native/DEVICE.md, item 148.
+constexpr int lighting_cases=13;
 #elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
 constexpr int lighting_cases=shadow_terminator_cases;
 #elif defined(CODEBRIX_MNEE_GATE)
@@ -182,7 +186,7 @@ static void fixture(Scene &scene,int mode,bool stationary=false){
     Light *light;
     if(mode<4||(mode==11&&lamp==1)){auto spot=scene.create_node<SpotLight>();spot->set_radius(mode==0?0.f:mode==3?1.8f:.45f);spot->set_is_sphere(mode!=1);spot->set_angle(mode==3?.25f:1.2f);spot->set_smooth(mode==0?0.f:.35f);light=spot;}
     else if(mode==11&&lamp==2){auto sun=scene.create_node<SunLight>();sun->set_angle(.22f);sun->set_normalize(false);light=sun;}
-    else{auto area=scene.create_node<AreaLight>();area->set_sizeu(mode==6||mode==9?1.4f:2.f);area->set_sizev(mode==6||mode==9?1.4f:.9f);area->set_ellipse(mode==5||mode==6||mode==8||mode==9);area->set_spread(mode==10?0.f:mode>=7?.7f:M_PI_F);area->set_normalize(mode!=4);light=area;}
+    else{auto area=scene.create_node<AreaLight>();area->set_sizeu(mode==12?1e-23f:mode==6||mode==9?1.4f:2.f);area->set_sizev(mode==6||mode==9?1.4f:.9f);area->set_ellipse(mode==5||mode==6||mode==8||mode==9);area->set_spread(mode==10||mode==12?0.f:mode>=7?.7f:M_PI_F);area->set_normalize(mode!=4);light=area;}
     light->set_strength(light->get_light_type()==LIGHT_SUN?make_float3(.3,.5,.7):make_float3(140,100,70));light->set_use_mis(true);
     array<Node*> slots;slots.push_back_slow(emitter);light->set_used_shaders(slots);auto object=scene.create_node<Object>();object->set_geometry(light);
     object->set_tfm(transform_translate(make_float3(lamp==1?-2.7f:2.2f,2,-2))*transform_rotate(light->get_light_type()==LIGHT_SUN?2.85f:2.8f,make_float3(0,1,0))*transform_rotate(-.4f,make_float3(1,0,0)));
@@ -285,6 +289,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     const int mode=lighting_modes[image];
 #else
     const int mode=image;
+#endif
+#ifdef CODEBRIX_BROAD_LIGHT_GATE
+    // Diagnostic: CODEBRIX_CYCLES_BROAD_LIGHTING_CASE=N runs case N alone (the report still names the case count; the
+    // coverage totals over all cases are then not required).
+    if(const char *only=std::getenv("CODEBRIX_CYCLES_BROAD_LIGHTING_CASE")){if(std::atoi(only)!=image)continue;}
 #endif
     std::cerr<<"lighting mode="<<mode<<'\n';auto folder=out/("case-"+std::to_string(image));std::filesystem::create_directories(folder);const auto prefix=(folder/"run").string();Metrics metrics;
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
@@ -399,7 +408,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     std::ofstream details(folder/"result.json");report(details);report(std::cerr);total.mesh_mis_paths+=metrics.mesh_mis_paths;total.deforming_paths+=metrics.deforming_paths;total.transparent_hits+=metrics.transparent_hits;total.max_shadow_hits=std::max(total.max_shadow_hits,metrics.max_shadow_hits);total.transmissions+=metrics.transmissions;total.forward+=metrics.forward;total.shadows+=metrics.shadows;total.blocked+=metrics.blocked;total.visible+=metrics.visible;total.stages+=metrics.stages;total.floats+=metrics.floats;total.strict+=metrics.strict;total.maximum=std::max(total.maximum,metrics.maximum);total.repeat_differences+=metrics.repeat_differences;
   }
   const bool exchange_only=reference_policy::prepare_only()||reference_policy::reference_only();
-  if(!exchange_only){
+#ifdef CODEBRIX_BROAD_LIGHT_GATE
+  const bool one_case=std::getenv("CODEBRIX_CYCLES_BROAD_LIGHTING_CASE")!=nullptr;
+#else
+  const bool one_case=false;
+#endif
+  if(!exchange_only&&!one_case){
 #ifdef CODEBRIX_FEATURE_COMBINATION_GATE
   require(total.transmissions>100,"Combined scene did not exercise transmission");
 #endif

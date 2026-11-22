@@ -256,6 +256,23 @@ inline constexpr ShaderFeatures SF_MNEE_ANISOTROPIC=ShaderFeatures::bit(79);
 // wavefront_svm_microfacet.wgsl svm_glass, the SVM_BSDF_GLASS_MULTISCATTER regions, with the energy helpers it shares
 // with the Principled BSDF). Set together with SF_BSDF_GLASS. Without it such a node is error 16.
 inline constexpr ShaderFeatures SF_BSDF_GLASS_MULTISCATTER=ShaderFeatures::bit(73);
+// The Glass BSDF node's thin film (svm/closure.h, the GGX, multiscatter GGX and Beckmann glass closures: a Thin Film
+// Thickness above THINFILM_THICKNESS_CUTOFF, or linked; the SVM census): the closure's generalized Schlick Fresnel with
+// the film (generalized_schlick_fresnel's iridescence branch), through the Principled BSDF's thin-film handlers
+// (wavefront_svm_microfacet.wgsl svm_glass, the SVM_BSDF_GLASS_THIN_FILM regions). Set together with SF_BSDF_THIN_FILM.
+// Without it such a node is error 16.
+inline constexpr ShaderFeatures SF_BSDF_GLASS_THIN_FILM=ShaderFeatures::bit(112);
+// A Glossy or Glass BSDF node (GGX or multiscatter GGX) that rotates its tangent: a Tangent on the stack, an anisotropy
+// that is linked or not within 1e-4 of zero, and a Rotation that is linked or not zero (svm/closure.h: `if (rotation !=
+// 0.0f) bsdf->T = rotate_around_axis(bsdf->T, bsdf->N, rotation * M_2PI_F)`; the SVM census). The rotation then uses
+// the binary32 sine and cosine and the fenced sums of principled_rotate, as the Beckmann and Ashikhmin-Shirley families
+// do (the SVM_BSDF_ROTATION and SVM_BSDF_ROTATE regions), instead of the driver's sin and cos (microfacet_rotate), whose
+// error of about 2^-11 turns the lobe (native/DEVICE.md, item 237). A scene without such a node keeps its text.
+inline constexpr ShaderFeatures SF_BSDF_TANGENT_ROTATION=ShaderFeatures::bit(113);
+// The Sheen BSDF node with the microfiber distribution (svm/closure.h CLOSURE_BSDF_SHEEN_ID, bsdf_sheen_setup): the node's
+// handler (wavefront_svm_microfacet.wgsl svm_sheen, SVM_BSDF_SHEEN) and the sheen closure it shares with the Principled
+// BSDF's sheen lobe (SVM_BSDF_SHEEN_CLOSURE: the evaluation, the sample, the LTC table). A scene without the node keeps its text.
+inline constexpr ShaderFeatures SF_BSDF_SHEEN=ShaderFeatures::bit(114);
 // LIGHT_SPHERE_INSIDE: a sphere light (a point or spot light with a radius) whose ball reaches the scene's geometry, so that a
 // surface point can lie inside it (light/point.h point_light_sample, "Inside sphere"): there the sample is
 // sample_uniform_sphere or sample_cos_hemisphere, in the oracle's order with the scalar sinf and cosf adapter
@@ -271,6 +288,20 @@ inline constexpr ShaderFeatures SF_LIGHT_SPHERE_INSIDE=ShaderFeatures::bit(74);
 // volume program holds one of those nodes (WebGPUDevice::shader_features). Without it every evaluation of a surface
 // module runs them, which is what the surface and shadow evaluations do.
 inline constexpr ShaderFeatures SF_NODE_MASK_BUMP=ShaderFeatures::bit(85);
+// TILED_IMAGES: the scene holds a tiled image (Cycles' texture cache: the image_texture_tile_descriptors table is not
+// empty). The image sampler then maps a lookup to a mip level and a tile (kernel/util/image_2d.h kernel_image_tile_map),
+// requests a tile that is not loaded and marks the dispatch as missed (wavefront_images.wgsl; device.cpp tile_transaction),
+// and every shader evaluation takes the lcg state the pinned surface_shader_eval gives it (the stochastic level choice).
+inline constexpr ShaderFeatures SF_IMAGE_TILED=ShaderFeatures::bit(90);
+// TILED_IMAGE_PROJECTIONS: a tiled image is read through the sphere, tube or an environment projection (a lookup with
+// derivatives there): the image sampler maps its coordinate with the pinned dual-number forms (wavefront_images.wgsl
+// image_tile_projection).
+inline constexpr ShaderFeatures SF_IMAGE_TILED_PROJECTION=ShaderFeatures::bit(91);
+// TILED_VOLUMES: a scene with tiled images and volumes. A volume shader evaluation takes the lcg state of the volume's own
+// sampling (kernel/integrator/shade_volume.h, kernel/bake/bake.h: lcg_state_init with 0x15b4f88d on a path and in the
+// density evaluation, 0xd9111870 on a shadow path), carried through the integration's evaluations in their order, and a
+// transparent surface in a shadow with volumes the shadow path's (wavefront_volume*.wgsl, wavefront_shadow.wgsl).
+inline constexpr ShaderFeatures SF_IMAGE_TILED_VOLUME=ShaderFeatures::bit(92);
 // Film data passes (film_passes.cpp, wavefront_film_passes.wgsl): a data pass the
 // surface stage's film_write_data_passes writes is enabled (depth, position,
 // normal, roughness, UV, object and material index, the diffuse, glossy and
@@ -434,6 +465,20 @@ inline constexpr ShaderFeatures SF_POINTS_MOTION=ShaderFeatures::bit(207);
 inline constexpr ShaderFeatures SF_NODE_POINT_INFO=ShaderFeatures::bit(208);
 inline constexpr ShaderFeatures SF_NODE_PARTICLE_INFO=ShaderFeatures::bit(209);
 inline constexpr ShaderFeatures SF_POINTS_ALL=SF_POINTS|SF_POINTS_MOTION|SF_NODE_POINT_INFO|SF_NODE_PARTICLE_INFO;
+// Quaternion and spherical-harmonics attributes (range 103-105): the scene's attributes_quaternion or
+// attributes_spherical_harmonics_rest array holds data (kernel/data_arrays.h). ATTRIBUTE_QUATERNION: the quaternion fetch of
+// attribute_data_fetch (kernel/geom/attribute.h) and its conversions in the Attribute node (svm/attribute.h) and in
+// volume_attribute_float4 (kernel/geom/volume.h). ATTRIBUTE_SPHERICAL_HARMONICS: the constant such an attribute reads as in
+// both. Taken from the uploaded tables at every shader_features() call.
+inline constexpr ShaderFeatures SF_ATTR_QUATERNION=ShaderFeatures::bit(103);
+inline constexpr ShaderFeatures SF_ATTR_SPHERICAL_HARMONICS=ShaderFeatures::bit(104);
+// Gaussian splats (bits 105 and 121; 122-127 are free): point clouds rendered as splats (kernel/geom/gsplat_intersect.h,
+// kernel/geom/gsplat.h; wavefront_gsplat.wgsl). GSPLATS: KERNEL_FEATURE_GSPLATS, bit 32 of the 64-bit kernel feature word,
+// which the WGSL cannot read: the splat test beside the point test in every traversal that treats points, the splat's
+// normal, and (with the Attribute node's region) its radiance. GSPLATS_MOTION: an object of PRIMITIVE_MOTION_GSPLAT
+// (kernel/geom/motion_gsplat.h). Both from this call's KernelData and objects at every shader_features() call.
+inline constexpr ShaderFeatures SF_GSPLATS=ShaderFeatures::bit(105);
+inline constexpr ShaderFeatures SF_GSPLATS_MOTION=ShaderFeatures::bit(121);
 // Hair closures (range 200-203). HAIR: the Hair BSDF node's reflection and transmission closures (closure/bsdf_hair.h).
 // HAIR_CHIANG: the Principled Hair BSDF node's Chiang model, all three colour parametrizations
 // (closure/bsdf_principled_hair_chiang.h). Bits 202 and 203 are free.
@@ -526,6 +571,13 @@ inline constexpr ShaderFeatures SF_LIGHT_AREA_DEGENERATE=ShaderFeatures::bit(244
 // mesh's plain triangles at the static positions, as the motion pass without motion blur does (DEFORMING_PLAIN_TRIANGLES
 // regions; native/DEVICE.md, item 115).
 inline constexpr ShaderFeatures SF_BAKE_DEFORM=ShaderFeatures::bit(245);
+// BAKE_ZERO_AREA (range 86-89): a bake whose target mesh has a triangle whose cross product has a squared length of zero
+// (no area in 3D; it can have area in UV, so texels land on it). The pinned kernel's geometric normal there is normalize
+// of that vector: a NaN in every lane for a zero cross product, infinities where only the square underflows
+// (init_from_bake.h triangle_point_normal, then shader_setup_from_ray's triangle_normal), and shade_surface carries it
+// on: the regions follow each comparison, min, max and conversion that reads it as the oracle computes them
+// (native/DEVICE.md, item 149). Set from the bake target's triangles (pipelines.cpp bake_zero_area).
+inline constexpr ShaderFeatures SF_BAKE_ZERO_AREA=ShaderFeatures::bit(86);
 // LIGHT_SPOT: a spot light in the scene: its attenuation in the oracle's float3 order (wavefront_emitters.wgsl spot_attenuation;
 // native/DEVICE.md, item 151).
 inline constexpr ShaderFeatures SF_LIGHT_SPOT=ShaderFeatures::bit(246);
@@ -533,6 +585,19 @@ inline constexpr ShaderFeatures SF_LIGHT_SPOT=ShaderFeatures::bit(246);
 // rounded before their sums (wavefront_lighting.wgsl light_cone and light_sample_lamp, the LAMP_SAMPLE_EXACT regions, which
 // volume direct light also takes; native/DEVICE.md, item 152).
 inline constexpr ShaderFeatures SF_LIGHT_LAMP_SAMPLE=ShaderFeatures::bit(253);
+// Degenerate lights whose pinned arithmetic holds a NaN (range 80-82; native/DEVICE.md, item 148).
+// BACKGROUND_PORTAL_DEGENERATE: a background light portal with an axis of zero length (a size of zero, or one whose squared
+// length underflows): light/background.h with the NaN axis that AreaLight::copy_to_kernel stores (wavefront_background_light.wgsl).
+inline constexpr ShaderFeatures SF_BACKGROUND_PORTAL_DEGENERATE=ShaderFeatures::bit(80);
+// LIGHT_NAN_DIRECTION: a next-event sample that is valid with a NaN direction: an area light with an axis of zero length and
+// a spread of zero (light/area.h area_light_spread_attenuation returns pi for the NaN tangent). The closures evaluate that
+// direction as the pinned kernel does (wavefront_surface.wgsl surf_evaluate_nan), and its shadow ray is never traced
+// (bvh/util.h intersection_ray_valid).
+inline constexpr ShaderFeatures SF_LIGHT_NAN_DIRECTION=ShaderFeatures::bit(81);
+// LIGHT_AREA_OVERFLOW: an area light with an axis whose length overflowed (a zero axis of infinite length in the pinned
+// record; device.cpp keeps which axes).
+inline constexpr ShaderFeatures SF_LIGHT_AREA_OVERFLOW=ShaderFeatures::bit(82);
+inline constexpr ShaderFeatures SF_NAN_LIGHT_ALL=SF_BACKGROUND_PORTAL_DEGENERATE|SF_LIGHT_NAN_DIRECTION|SF_LIGHT_AREA_OVERFLOW;
 // MNEE_WALK_STAGES (overflow bit 66): the MNEE walk (integrator/mnee.h mnee_newton_solver) in two entries, mnee_solve (the
 // constraints, the Newton step and the checks after the projection) and mnee_project (the projection of every vertex onto
 // its caster: the walk's ray trace and mnee_setup_manifold_vertex), dispatched in turn once per iteration with the walk's
@@ -562,12 +627,24 @@ inline constexpr ShaderFeatures SF_SVM_STAGE_NO_NODES=ShaderFeatures::bit(72);
 // The inlined size (wgsl_inlined_bytes) of a one-entry prepare entry from which its evaluation is staged. It is a
 // fixed number, apart from the size guard's threshold and its override: the guard only warns and never changes what is built.
 inline constexpr size_t svm_stage_threshold_bytes=1110000;
-// Every assigned scene feature (bits 0-61, 63, 64, 65, 67-69, 73, 74, 76-79, 85, 94-96, 102, 106, 108, 110, 120,
+// DISPERSION (overflow bit 97): the kernel code under __SPECTRAL__ (wavefront_dispersion.wgsl): the wavelength sample of a
+// shader flagged SD_REQUIRES_WAVELENGTH (geom/shader_data.h shader_setup_wavelength), the Principled BSDF's dispersive
+// index of refraction (closure/bsdf_microfacet.h bsdf_glass_ior) and the throughput weight of a path that became
+// monochromatic (integrator/path_state.h, with its call sites in shade_surface.h and mnee.h). Set when a referenced
+// shader carries SD_REQUIRES_WAVELENGTH, in every specialization mode: not in SF_ALL, so Off and superset modules of a
+// scene without dispersion keep their text, and a scene with dispersion gets the regions in each mode (shader_features).
+inline constexpr ShaderFeatures SF_DISPERSION=ShaderFeatures::bit(97);
+// SHADOW_WIDE_LIMIT (overflow bit 115): transparent shadows with an integrator transparent_max_bounce above 4095. The kernel's
+// shadow hit count is a 16-bit state field (shadow_state_template.h packed_num_hits, written whole by intersect_shadow.h); the
+// shade entries take every count it holds and the intersect entries fail on one it cannot hold (native/DEVICE.md, item 288).
+// Set from this call's KernelData in every specialization mode: not in SF_ALL, so the modules of every other scene keep their text.
+inline constexpr ShaderFeatures SF_SHADOW_WIDE_LIMIT=ShaderFeatures::bit(115);
+// Every assigned scene feature (bits 0-61, 63, 64, 65, 67-69, 73, 74, 76-82, 85, 86, 90-92, 94-96, 102-106, 108, 110, 112-114, 120, 121,
 // 128-160, 162-168, 170-180, 186-189, 194-198, 200, 201, 204, 206-209, 216, 218, 220, 221, 223, 226, 227, 232, 233, 238-243, 244-253; bit 62 is unassigned; 107, 161, 169 and 217 are module variants).
-inline constexpr ShaderFeatures SF_ALL=SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|
+inline constexpr ShaderFeatures SF_ALL=SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|SF_ATTR_QUATERNION|SF_ATTR_SPHERICAL_HARMONICS|SF_GSPLATS|SF_GSPLATS_MOTION|ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|
   SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
   SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|
-  SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_ANISOTROPIC|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE|SF_LIGHT_AREA_DEGENERATE|SF_BAKE_DEFORM|SF_LIGHT_SPOT|SF_LIGHT_LAMP_SAMPLE|SF_DISPLACE_VERTEX_MOTION|SF_LIGHT_PATH_STATE|SF_PRINCIPLED_VOLUME_ATTRIBUTE|SF_NODES_INTEGER|SF_BSDF_GLASS_MULTISCATTER|SF_LIGHT_SPHERE_INSIDE|SF_NODE_MASK_BUMP;
+  SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_ANISOTROPIC|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE|SF_LIGHT_AREA_DEGENERATE|SF_BAKE_DEFORM|SF_LIGHT_SPOT|SF_LIGHT_LAMP_SAMPLE|SF_DISPLACE_VERTEX_MOTION|SF_LIGHT_PATH_STATE|SF_PRINCIPLED_VOLUME_ATTRIBUTE|SF_NODES_INTEGER|SF_BSDF_GLASS_MULTISCATTER|SF_LIGHT_SPHERE_INSIDE|SF_NODE_MASK_BUMP|SF_BSDF_GLASS_THIN_FILM|SF_BSDF_TANGENT_ROTATION|SF_IMAGE_TILED|SF_NAN_LIGHT_ALL|SF_BAKE_ZERO_AREA|SF_IMAGE_TILED_PROJECTION|SF_IMAGE_TILED_VOLUME|SF_BSDF_SHEEN;
 // The families above, for regions shared by all of them (closure classification).
 inline constexpr ShaderFeatures SF_BSDF_FAMILIES=SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_BSDF_HAIR_HUANG;
 inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL;
@@ -576,11 +653,11 @@ inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THI
 // are kept only when the uploaded scene reaches them. They are the regions that
 // pushed the unspecialized entry points past what Intel Mesa 25.0.7 compiles
 // correctly (native/DEVICE.md, "Linux reference fixes on the updated Mesa").
-inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_POINTS_ALL|SF_BUMP|SF_BUMP_STATE|SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|
+inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_POINTS_ALL|SF_ATTR_QUATERNION|SF_ATTR_SPHERICAL_HARMONICS|SF_GSPLATS|SF_GSPLATS_MOTION|SF_BUMP|SF_BUMP_STATE|SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|
   SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|
   SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
   SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|
-  SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_ANISOTROPIC|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE|SF_LIGHT_AREA_DEGENERATE|SF_BAKE_DEFORM|SF_LIGHT_SPOT|SF_LIGHT_LAMP_SAMPLE|SF_DISPLACE_VERTEX_MOTION|SF_LIGHT_PATH_STATE|SF_PRINCIPLED_VOLUME_ATTRIBUTE|SF_NODES_INTEGER|SF_BSDF_GLASS_MULTISCATTER|SF_LIGHT_SPHERE_INSIDE|SF_NODE_MASK_BUMP;
+  SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_ANISOTROPIC|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE|SF_LIGHT_AREA_DEGENERATE|SF_BAKE_DEFORM|SF_LIGHT_SPOT|SF_LIGHT_LAMP_SAMPLE|SF_DISPLACE_VERTEX_MOTION|SF_LIGHT_PATH_STATE|SF_PRINCIPLED_VOLUME_ATTRIBUTE|SF_NODES_INTEGER|SF_BSDF_GLASS_MULTISCATTER|SF_LIGHT_SPHERE_INSIDE|SF_NODE_MASK_BUMP|SF_BSDF_GLASS_THIN_FILM|SF_BSDF_TANGENT_ROTATION|SF_IMAGE_TILED|SF_NAN_LIGHT_ALL|SF_BAKE_ZERO_AREA|SF_IMAGE_TILED_PROJECTION|SF_IMAGE_TILED_VOLUME|SF_BSDF_SHEEN;
 // Specialization modes: Scene (default, only the regions the scene reaches),
 // Superset (the on/off identity check) and Off (every region; diagnostic).
 //
@@ -658,6 +735,9 @@ struct SvmCensus {
   uint64_t stopped_paths=0; // Paths ending where the GPU interpreter reports an error.
   // A Glass BSDF or a Principled transmission lobe that can be anisotropic (with caustics: SF_MNEE_ANISOTROPIC).
   bool anisotropic_transmission=false;
+  // An image lookup with derivatives (the form the pinned compiler emits for a tiled image) through the sphere, tube or
+  // an environment projection (SF_IMAGE_TILED_PROJECTION).
+  bool derivative_image_projection=false;
   // First reachable feature the device rejects before rendering (empty: none).
   // Principled subsurface is refused here when a constant enables it or its
   // weight is linked; the GPU handler also reports it (error 16) and never

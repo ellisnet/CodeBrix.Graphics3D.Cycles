@@ -54,13 +54,13 @@ def main():
                 assert report['originalCpuIntersectMnee'] and report['paths'] > 1000 and report['sampled'] >= 20 and len(report['cases']) == 28
             if kind == 'mnee_render':
                 assert report['cases'] == 29 and report['nativeSceneAndScheduler'] and report['independentOriginalCpuImage'] and report['cyclesAllocationBytesAfterCleanup'] == 0
-                for case in range(29):
+                for case in range(report['cases']):
                     result = json.loads((prefix/('case-'+str(case))/'result.json').read_text())
                     assert (result['mneePaths'] == 0) == (case == 3) and (case in (2, 3, 4, 8, 11, 12, 13, 14) or result['mneeSampled'] >= 5) and (result['aoPaths'] > 100) == (case in (5, 15))
             if kind == 'device': assert report['compactionCases'] == 4 and report['cyclesAllocationBytesAfterCleanup'] == 0
             reports[kind] = report; save(out/'results.json', reports)
         status['phase'] = 'replay'; save(out/'status.json', status)
-        for case in range(29):
+        for case in range(reports['mnee_render']['cases']):
             destination = out/('replay-'+str(case)); capture = out/'mnee_render/run'/('case-'+str(case))
             with (out/('replay-'+str(case)+'.log')).open('w') as log, contextlib.redirect_stdout(log): render_replay.run('linux-x64', capture, destination)
             reports['replay-'+str(case)] = json.loads((destination/'validation.json').read_text()); save(out/'results.json', reports)

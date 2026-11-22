@@ -158,3 +158,57 @@ fn volume_stack_enter_exit(index:u32,object:u32,shader:u32,backfacing:bool){
         store_word(volume_stack_address(index,count+1u,VS_object),NONE);store_word(volume_stack_address(index,count+1u,VS_shader),NONE);
     }
 }
+//#if BAKE_ZERO_AREA
+// A bake texel on a zero-area triangle (native/DEVICE.md, item 149). The pinned kernel's geometric normal there is
+// normalize of a cross product whose squared length is zero: 0/0, the oracle's NaN, in each lane whose cross product is
+// zero (every lane, for a triangle with two corners at one point), and an infinity with the lane's sign where the cross
+// product is not zero but its square underflows. WGSL defines neither arithmetic nor comparisons on such values, so the
+// stages compute what the oracle's IEEE arithmetic gives from the lanes' bits.
+// The NaN the oracle generates (sign set on x86-64, clear on ARM64), a run-time value.
+fn zero_area_nan()->f32{return bitcast<f32>(rounded_steps(select(0xffc00000u,0x7fc00000u,NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u)));}
+fn zero_area_is_nan(x:f32)->bool{return (bitcast<u32>(x)&0x7fffffffu)>0x7f800000u;}
+// An infinity or a NaN. Every lane of that normal is one; no lane of another geometric normal is.
+fn zero_area_not_finite(x:f32)->bool{return (bitcast<u32>(x)&0x7f800000u)==0x7f800000u;}
+// normalize(cross) where dot(cross, cross) is zero: c / 0 per lane (SSE), or c * (1 / 0) (the scalar oracle): the same lanes.
+fn zero_area_normal(c:vec3<f32>)->vec3<f32>{
+    let bits=bitcast<vec3<u32>>(c);let infinity=bitcast<vec3<f32>>((bits&vec3<u32>(0x80000000u))|vec3<u32>(0x7f800000u));
+    return select(infinity,vec3<f32>(zero_area_nan()),(bits&vec3<u32>(0x7fffffffu))==vec3<u32>(0u));
+}
+// a < b and a <= b as the oracle compares them: false when an operand is a NaN; infinities in order (-0 equals 0).
+fn zero_area_key(x:f32)->i32{let b=bitcast<u32>(x);let m=bitcast<i32>(b&0x7fffffffu);return select(m,-m,(b&0x80000000u)!=0u);}
+fn zero_area_less(a:f32,b:f32)->bool{return !zero_area_is_nan(a)&&!zero_area_is_nan(b)&&zero_area_key(a)<zero_area_key(b);}
+fn zero_area_less_equal(a:f32,b:f32)->bool{return !zero_area_is_nan(a)&&!zero_area_is_nan(b)&&zero_area_key(a)<=zero_area_key(b);}
+// min(a, b) and max(a, b) of util/math_base.h, `(a < b) ? a : b` and `(a > b) ? a : b`: b when an operand is a NaN.
+fn zero_area_min(a:f32,b:f32)->f32{return select(b,a,zero_area_less(a,b));}
+fn zero_area_max(a:f32,b:f32)->f32{return select(b,a,zero_area_less(b,a));}
+// dot(ng, v) for that normal: each product is an infinity with the product's sign, or a NaN where a factor is a NaN or
+// v's lane is zero; the sum is the NaN when a product is one or two infinities have opposite signs, else the infinity.
+fn zero_area_dot(ng:vec3<f32>,v:vec3<f32>)->f32{
+    var n=ng;var x=v;var plus=false;var minus=false;var nan=false;
+    for(var k=0u;k<3u;k++){let a=bitcast<u32>(n[k]);let b=bitcast<u32>(x[k]);
+        if((a&0x7fffffffu)>0x7f800000u||(b&0x7fffffffu)>0x7f800000u||(b&0x7fffffffu)==0u){nan=true;}
+        else if(((a^b)&0x80000000u)!=0u){minus=true;}else{plus=true;}}
+    if(nan||(plus&&minus)){return zero_area_nan();}
+    return bitcast<f32>(select(0x7f800000u,0xff800000u,minus));
+}
+fn zero_area_negate3(v:vec3<f32>)->vec3<f32>{return bitcast<vec3<f32>>(bitcast<vec3<u32>>(v)^vec3<u32>(0x80000000u));}
+// -v for that normal: the infinities change sign, the NaN lanes stay the oracle's NaN.
+fn zero_area_flip(ng:vec3<f32>)->vec3<f32>{return select(zero_area_negate3(ng),vec3<f32>(zero_area_nan()),(bitcast<vec3<u32>>(ng)&vec3<u32>(0x7fffffffu))>vec3<u32>(0x7f800000u));}
+// dot(sd->Ng, v) at a call site that takes the device's rounded or plain dot for a finite normal.
+fn zero_area_rounded_dot(ng:vec3<f32>,v:vec3<f32>)->f32{if(zero_area_not_finite(ng.x)){return zero_area_dot(ng,v);}return rounded_dot(ng,v);}
+fn zero_area_plain_dot(ng:vec3<f32>,v:vec3<f32>)->f32{if(zero_area_not_finite(ng.x)){return zero_area_dot(ng,v);}return dot(ng,v);}
+// maybe_ensure_valid_specular_reflection at that normal (closure/bsdf_util.h, the shader's bump map correction on):
+// isequal(sd->Ng, N) is false, and ensure_valid_specular_reflection keeps N only when `dot(Ng, R) >= threshold`, with
+// R = 2 * dot(N, I) * N - I and threshold = min(0.9f * Iz, 0.01f): 0.01 for Iz = +infinity or NaN (a false `a < b` gives
+// b), -infinity for Iz = -infinity. Otherwise X = safe_normalize_fallback(N - dot(N, Ng) * Ng, N) has lanes of infinities
+// and NaNs and an infinite or NaN length (`t != 0.0f` is true), so X is a NaN in every lane (infinity * 0), both
+// safe_sqrtf give 0 (max(NaN, 0.0f) is 0), and `Nx * X + Nz * Ng` is a NaN in every lane. A NaN or infinite lane of N
+// or of I (a flat-shaded texel; a bake ray towards the camera that the normal turned into NaNs) makes R, and with it the
+// comparison's left side, a NaN. True: N is kept.
+fn zero_area_keeps_normal(ng:vec3<f32>,wi:vec3<f32>,n:vec3<f32>)->bool{
+    if(any((bitcast<vec3<u32>>(n)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u))||any((bitcast<vec3<u32>>(wi)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u))){return false;}
+    let reflection=rounded_add3((2.0*rounded_dot(n,wi))*n,-wi);
+    let iz=zero_area_dot(ng,wi);let threshold=select(0.01,iz,bitcast<u32>(iz)==0xff800000u);
+    return zero_area_less_equal(threshold,zero_area_dot(ng,reflection));
+}
+//#endif

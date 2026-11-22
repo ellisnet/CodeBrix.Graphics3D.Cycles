@@ -52,6 +52,11 @@ fn attribute_fetch(s:ptr<function,SvmState>,desc:AttributeDesc,index:u32)->vec4<
             if((desc.element&ATTR_ELEMENT_IS_NORMAL)!=0u){table=G_attributes_normal;stride=SIZE_attributes_normal;}}
         case NODE_ATTR_FLOAT4,NODE_ATTR_RGBA:{table=G_attributes_float4;stride=SIZE_attributes_float4;
             if((desc.element&ATTR_ELEMENT_IS_BYTE)!=0u){table=G_attributes_uchar4;stride=SIZE_attributes_uchar4;}}
+//#if ATTRIBUTE_QUATERNION
+        // attribute_data_fetch<Quaternion> (geom/attribute.h): attributes_quaternion, whose element is the four floats
+        // w, x, y, z in that order (make_float4 of it, util/math_quaternion.h). Read below as a float4.
+        case QA_KIND_QUATERNION:{table=G_attributes_quaternion;stride=SIZE_attributes_quaternion;}
+//#endif
         default:{svm_error(s,16u);return vec4<f32>(0);}
     }
     if(at>=table_count(table)){svm_error(s,64u);return vec4<f32>(0);}
@@ -255,7 +260,11 @@ fn attribute_convert(value:vec4<f32>,kind:u32,output:u32,derivative:bool)->vec3<
         if(output==NODE_ATTR_OUTPUT_FLOAT_ALPHA){return vec3<f32>(select(1.0,0.0,derivative));}return vec3<f32>(value.xy,0);
     }
     if(output==NODE_ATTR_OUTPUT_FLOAT_ALPHA){
-        if(kind==NODE_ATTR_FLOAT4||kind==NODE_ATTR_RGBA){return vec3<f32>(value.w);}return vec3<f32>(select(1.0,0.0,derivative));
+//#if ATTRIBUTE_QUATERNION else         if(kind==NODE_ATTR_FLOAT4||kind==NODE_ATTR_RGBA){return vec3<f32>(value.w);}return vec3<f32>(select(1.0,0.0,derivative));
+        // svm_node_attr_surface_eval: a quaternion converts as make_float4 of it, so Alpha is its z, in the value and
+        // in both derivatives; Color and Fac are the generic cases below (w, x, y and their average).
+        if(kind==NODE_ATTR_FLOAT4||kind==NODE_ATTR_RGBA||kind==QA_KIND_QUATERNION){return vec3<f32>(value.w);}return vec3<f32>(select(1.0,0.0,derivative));
+//#endif
     }
     if(output==NODE_ATTR_OUTPUT_FLOAT){return vec3<f32>((value.x+value.y+value.z)*(1.0/3.0));}
     return value.xyz;
@@ -263,6 +272,74 @@ fn attribute_convert(value:vec4<f32>,kind:u32,output:u32,derivative:bool)->vec3<
 fn attribute_store(s:ptr<function,SvmState>,offset:u32,output:u32,value:vec3<f32>){
     if(output==NODE_ATTR_OUTPUT_FLOAT3){svm_store3(s,offset,value);}else{svm_store(s,offset,(value.x+value.y+value.z)*(1.0/3.0));}
 }
+//#if GSPLATS
+// gsplat_radiance (kernel/geom/gsplat.h), the radiance a splat's Attribute node reads when the cloud has no "radiance"
+// attribute: the band-0 colour of radiance:base (motion_gsplat_radiance_base with PRIMITIVE_MOTION: mix(a, b, t) of the
+// two steps of an attribute that has motion), plus bands 1 to 3 of radiance:sh when the object has them
+// (spherical_harmonics_evaluate_rest, util/math_spherical_harmonics.h; the coefficients are bytes,
+// unquantize_spherical_harmonics: byte_to_float(value) * 2.0f - 1.0f), evaluated in the direction -wi taken into the
+// cloud's object space (object_inverse_dir_transform) and normalized with safe_normalize; then
+// color_srgb_to_linear_v3(color_srgb + 0.5f) and rec709_to_rgb. Sums and products in the oracle's order, each through the
+// order word.
+fn gs_sh_coefficient(at:u32,index:u32,o:u32)->vec3<f32>{
+    let a=at+index*3u;
+    let c=vec3<f32>(f32(svm_byte(a)),f32(svm_byte(a+1u)),f32(svm_byte(a+2u)));
+    // val * (1.0f / 255.0f), then * 2.0f - 1.0f.
+    return ptb3(ptb3(ptb3(c*bitcast<f32>(0x3b808081u),o)*2.0,o)-vec3<f32>(1.0),o);
+}
+fn gsplat_radiance(s:ptr<function,SvmState>)->vec3<f32>{
+    let sd=(*s).geometry;let o=pt_order();
+    if(sd.object_id>=table_count(G_objects)){svm_error(s,64u);return vec3<f32>(0);}
+    let at=table_at(G_objects,sd.object_id,SIZE_objects);
+    let base_word=load_word(at+GS_O_radiance_base);let base_at=(bitcast<i32>(base_word)>>1u)+bitcast<i32>(sd.prim);
+    var base=vec4<f32>(0);
+    if((sd.primitive_type&PT_PRIMITIVE_MOTION)==0u||(base_word&1u)==0u){base=gs_base_at(base_at);}
+    else{
+//#if GSPLATS_MOTION else         svm_error(s,16u);return vec3<f32>(0);
+        let m=gs_motion(sd.object_id,sd.time);let a=gs_base_at(m.step+base_at);let b=gs_base_at(m.next+base_at);
+        base=ptb4(a+ptb4(m.t*ptb4(b-a,o),o),o);
+//#endif
+    }
+    let v=rounded_safe_normalize(surface_object_direction(sd,-sd.wi,true));
+    // spherical_harmonics_evaluate_band_L0: 0.282094792f * M0.
+    var color=ptb3(0.282094792*base.xyz,o);
+    let rest=load_word(at+GS_O_radiance_rest);
+    if(rest!=GS_NOT_FOUND){
+//#if ATTRIBUTE_SPHERICAL_HARMONICS else         svm_error(s,16u);return vec3<f32>(0);
+        let element=bitcast<u32>(bitcast<i32>(rest)+bitcast<i32>(sd.prim));
+        if(element>=table_count(G_attributes_spherical_harmonics_rest)){svm_error(s,64u);return vec3<f32>(0);}
+        let sh=table_at(G_attributes_spherical_harmonics_rest,element,SIZE_attributes_spherical_harmonics_rest);
+        let x=v.x;let y=v.y;let z=v.z;
+        let xx=ptb(x*x,o);let yy=ptb(y*y,o);let zz5=ptb(ptb(5.0*z,o)*z,o);let xx_yy=ptb(xx-yy,o);
+        // The polynomial forms of the basis functions, [sloan2010] Appendix A2, in the order of the stored coefficients.
+        var basis:array<f32,15>;
+        basis[0]=ptb(-0.488602512*y,o);basis[1]=ptb(0.488602512*z,o);basis[2]=ptb(-0.488602512*x,o);
+        basis[3]=ptb(1.092548431*ptb(x*y,o),o);basis[4]=ptb(-1.092548431*ptb(y*z,o),o);
+        basis[5]=ptb(0.315391565*ptb(ptb(ptb(3.0*z,o)*z,o)-1.0,o),o);
+        basis[6]=ptb(-1.092548431*ptb(x*z,o),o);basis[7]=ptb(0.546274215*xx_yy,o);
+        basis[8]=ptb(ptb(-0.590043589*y,o)*ptb(ptb(ptb(3.0*x,o)*x,o)-yy,o),o);
+        basis[9]=ptb(2.890611442*ptb(ptb(y*x,o)*z,o),o);
+        basis[10]=ptb(ptb(-0.457045799*y,o)*ptb(-1.0+zz5,o),o);
+        basis[11]=ptb(ptb(0.373176332*z,o)*ptb(zz5-3.0,o),o);
+        basis[12]=ptb(ptb(-0.457045799*x,o)*ptb(-1.0+zz5,o),o);
+        basis[13]=ptb(ptb(1.445305721*z,o)*xx_yy,o);
+        basis[14]=ptb(ptb(-0.5900435899*x,o)*ptb(xx-ptb(ptb(3.0*y,o)*y,o),o),o);
+        // result = L1; result += L2; result += L3: each band summed left to right, then added to the bands before it.
+        var result=vec3<f32>(0);var band=vec3<f32>(0);
+        for(var k=0u;k<15u;k++){
+            let term=ptb3(basis[k]*gs_sh_coefficient(sh,k,o),o);
+            if(k==0u||k==3u||k==8u){band=term;}else{band=ptb3(band+term,o);}
+            if(k==2u){result=band;}else if(k==7u||k==14u){result=ptb3(result+band,o);}
+        }
+        color=ptb3(color+result,o);
+//#endif
+    }
+    let srgb=ptb3(color+vec3<f32>(0.5),o);
+    let rec709=vec3<f32>(attribute_srgb(srgb.x),attribute_srgb(srgb.y),attribute_srgb(srgb.z));
+    if(data_word(D_film_is_rec709)!=0u){return rec709;}
+    return vec3<f32>(pt_dot(heap_vec3(p(6u)+D_film_rec709_to_r),rec709,o),pt_dot(heap_vec3(p(6u)+D_film_rec709_to_g),rec709,o),pt_dot(heap_vec3(p(6u)+D_film_rec709_to_b),rec709,o));
+}
+//#endif
 fn svm_attribute(s:ptr<function,SvmState>,node:u32,derivative:bool){
     let id=load_word(node+N_Attr_attr);let output=svm_byte(node+N_Attr_output_type);
     let bump=svm_byte(node+N_Attr_bump_offset);let store=svm_byte(node+N_Attr_store_derivatives);
@@ -279,6 +356,22 @@ fn svm_attribute(s:ptr<function,SvmState>,node:u32,derivative:bool){
         else{svm_store(s,offset,svm_input(s,node+N_Attr_missing_alpha));}
         return;
     }
+//#if GSPLATS
+    // svm_node_attr_surface_eval, first: `sd->type & PRIMITIVE_GSPLAT && node.attr == ATTR_STD_GSPLAT_RADIANCE &&
+    // !is_attribute_found(desc)` is the splat's radiance (gsplat_radiance), its Alpha 1, with zero derivatives.
+    if(((*s).geometry.primitive_type&GS_PRIMITIVE_GSPLAT)!=0u&&id==GS_STD_RADIANCE&&!desc.found){
+        if(output==NODE_ATTR_OUTPUT_FLOAT_ALPHA){value=vec3<f32>(1.0);}else{value=gsplat_radiance(s);}
+        dx=vec3<f32>(0);dy=vec3<f32>(0);
+    }else
+//#endif
+//#if ATTRIBUTE_SPHERICAL_HARMONICS
+    // svm_node_attr_surface_eval, ahead of its other cases: "Spherical harmonics attribute can not be currently accessed."
+    // One that is found reads 0, its Alpha 1, with zero derivatives (volume_attribute_float4 gives the same (0, 0, 0, 1)
+    // to a volume shader). Its array is never fetched here.
+    if(desc.found&&desc.kind==SH_KIND_SPHERICAL_HARMONICS_REST){
+        value=vec3<f32>(select(0.0,1.0,output==NODE_ATTR_OUTPUT_FLOAT_ALPHA));dx=vec3<f32>(0);dy=vec3<f32>(0);
+    }else
+//#endif
 //#if LIGHT_LAMP_SHADER else     if(id==ATTR_STD_GENERATED&&!desc.found){
     // svm_node_attr_surface_eval: the UV of a lamp (sd->type == PRIMITIVE_LAMP) is its parametric coordinates,
     // (1 - u - v, u, 0) with the derivatives of u and v, whatever the lookup found and whatever the output type.

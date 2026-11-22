@@ -8,8 +8,9 @@ kernels see a zero length and an axis of infinities and NaNs. Its next-event sam
 rectangle or an ellipse with one such axis as a strip without emission (the spread clamp rejects it), and an ellipse with
 both axes zero as an emitting plane. Next to the sampling family room's sphere lamp, with distribution sampling and with
 the light tree, through the public C API. Also a spread of 1e-6 (the pinned kernel's 1e-5 threshold is its volume light
-sampling's only), that spread in a volume, the light tree at a transmissive point (the glass sphere kept), and the case the
-WebGPU device refuses by name (native/DEVICE.md item 148): a spread of zero (with the Glossy Direct pass). Axes of infinities without a NaN (the squared lengths of normal 1e-23-scale axes underflow) are refused
+sampling's only), that spread in a volume, the light tree at a transmissive point (the glass sphere kept), and a spread of
+zero (with the Glossy Direct pass: its light sample is valid with a NaN direction, native/DEVICE.md item 239); and
+area-overflow-*, a size of 1e30 whose squared length overflows (native/DEVICE.md item 233). Axes of infinities without a NaN (the squared lengths of normal 1e-23-scale axes underflow) are refused
 by the host on every backend, so that document is not a committed scene: --scratch DIR writes it, as DIR/lamps/<name>, for
 a survey build that lifts the refusal.
 Usage: python3 native/oracle/scenes/author_degenerate_lights.py [--check] [--scratch DIR]."""
@@ -32,13 +33,13 @@ GLOSSY_DIRECT = [('glossy_direct', 'GlossDir')]
 
 
 def degenerate(scene_id, description, tfm, sizeu, sizev, ellipse=False, spread=None, strength=6.0, tree=False, emission=None, keep_glass=False,
-               passes=()):
+               passes=(), normalize=True):
     document = room.scene(scene_id, description, {'use_light_tree': tree}, samples=16)
     document['sourceFixture'] = SOURCE
     if emission is None:
         emission = room.shader('degenerate-emission', [{'handle': 'e', 'type': 'emission', 'set': {'color': [1.0, 0.9, 0.7], 'strength': 1}}],
                                [['e', 'Emission', 'output', 'Surface']])
-    values = {'strength': [strength]*3, 'use_mis': True, 'cast_shadow': True, 'max_bounces': 1024, 'is_enabled': True, 'normalize': True,
+    values = {'strength': [strength]*3, 'use_mis': True, 'cast_shadow': True, 'max_bounces': 1024, 'is_enabled': True, 'normalize': normalize,
               'used_shaders': ['degenerate-emission'], 'sizeu': sizeu, 'sizev': sizev, 'ellipse': ellipse}
     if spread is not None:
         values['spread'] = spread
@@ -92,6 +93,28 @@ def scenes():
     }
 
 
+def overflow_scenes():
+    """An area light whose u size (1e30) OVERFLOWS: the kernels see a zero axis of infinite length. Normalized, its inverse
+    area is zero and it gives no light at surfaces; not normalized, it is an emitting strip that camera rays and BSDF samples
+    hit, and (an ellipse with a spread) a line of light samples. In a volume its ray segment is the whole line along that axis
+    (a spread below 1e-5), the plane in front of it (a wide spread), or nothing (a spread between). Under the light tree only
+    the normalized light is authored: the tree's energy of the other is infinite, which the WebGPU device refuses by name."""
+    return {
+        'area-overflow-rect.json': degenerate('lamps/area-overflow-rect', 'A rectangle light whose u size (1e30) overflows, not normalized: an emitting strip for the rays that hit it and no light sample, beside the sphere lamp',
+                                              DOWN, 1e30, 1.0, normalize=False),
+        'area-overflow-ellipse-spread.json': degenerate('lamps/area-overflow-ellipse-spread', 'An ellipse light with spread 1 whose u size (1e30) overflows, not normalized: light samples along its v axis, beside the sphere lamp',
+                                                        DOWN, 1e30, 1.0, ellipse=True, spread=1.0, normalize=False),
+        'area-overflow-normalized.json': degenerate('lamps/area-overflow-normalized', 'A rectangle light whose u size (1e30) overflows, normalized (an inverse area of zero): no light and no hit, beside the sphere lamp',
+                                                    DOWN, 1e30, 1.0),
+        'area-overflow-spread-tiny-volume.json': volume(degenerate('lamps/area-overflow-spread-tiny-volume', 'A rectangle light with spread 1e-6 whose u size (1e30) overflows, beside the sphere lamp, in a scattering world volume',
+                                                                   DOWN, 1e30, 1.0, spread=1e-6)),
+        'area-overflow-volume.json': volume(degenerate('lamps/area-overflow-volume', 'A rectangle light whose u size (1e30) overflows, not normalized, beside the sphere lamp, in a scattering world volume',
+                                                       DOWN, 1e30, 1.0, normalize=False)),
+        'area-overflow-tree.json': degenerate('lamps/area-overflow-tree', 'An ellipse light with spread 1 whose u size (1e30) overflows, normalized (the light tree takes its finite energy), the glass sphere kept',
+                                              DOWN, 1e30, 1.0, ellipse=True, spread=1.0, tree=True, keep_glass=True),
+    }
+
+
 def scratch_scenes():
     """The documents the host refuses on every backend (an area light with an axis of infinities): never committed."""
     return {
@@ -116,7 +139,7 @@ def main():
     for name in scratch_scenes():
         if (HERE/name).exists():
             raise SystemExit('A scratch document is in the committed corpus: '+str(HERE/name))
-    for name, document in scenes().items():
+    for name, document in {**scenes(), **overflow_scenes()}.items():
         text = json.dumps(document, indent=1)+'\n'
         path = HERE/name
         if args.check:

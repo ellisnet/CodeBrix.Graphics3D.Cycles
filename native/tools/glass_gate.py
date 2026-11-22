@@ -7,7 +7,7 @@ import json
 import subprocess
 from pathlib import Path
 from build import REPO,WORK,PACKAGE
-from device_gate import sha,save
+from device_gate import sha,save,require_built
 from render_gate import inputs
 import specialization_check
 
@@ -29,6 +29,7 @@ def main():
             command=['python3',str(REPO/'native/tools/build_cycles.py'),'--jobs','2']
             for kind in kinds:command+=['--target','codebrix_cycles_'+kind+'_gate']
             with (out/'build.log').open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True)
+        else:require_built(kinds)
         for kind in kinds:
             binary=WORK/'cycles-build/bin'/('codebrix_cycles_'+kind+'_gate');pins[str(binary)]=sha(binary)
         save(out/'invocation.json',{'productionSourceSha256':sources,'fileSha256':pins})

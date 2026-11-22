@@ -43,13 +43,15 @@ def emissive_panel():
     return [material, *room.quad('panel', 'panel-emission', [(-1.2, 2.6, -0.6), (1.2, 2.6, -0.6), (1.2, 2.6, 1.2), (-1.2, 2.6, 1.2)])]
 
 
-def scene(scene_id, description, values, strength, normalized_vector=False, integrator=None, panel=False):
+def scene(scene_id, description, values, strength, normalized_vector=False, integrator=None, panel=False, sampled=True):
     document = room.scene(scene_id, description, integrator or {}, samples=16)
     document['sourceFixture'] = 'native/oracle/scenes/author_sky.py (the sampling family room under a sky)'
     nodes = []
     for entry in document['nodes']:
         if entry['handle'] == 'world':
             nodes.append(sky_world(values, strength, normalized_vector))
+            if not sampled:
+                continue
             # Standalone Cycles samples the world only through a background light object.
             nodes.append({'handle': 'world-light', 'create': 'backgroundlight',
                           'set': {'use_mis': True, 'map_resolution': 256, 'strength': [1.0, 1.0, 1.0], 'used_shaders': ['world']}})
@@ -96,6 +98,13 @@ def scenes():
                                                    'panel and the light tree', {
             'sky_type': 'single_scattering', 'sun_disc': True, 'sun_size': 0.05, 'sun_intensity': 1.0, 'sun_elevation': 0.6, 'sun_rotation': 2.4,
             'altitude': 100.0, 'air_density': 1.0, 'aerosol_density': 1.0, 'ozone_density': 1.0}, 1.0, integrator={'use_light_tree': True}, panel=True),
+        # A sky with a sun disc that no background light samples: the world is only seen by paths that leave the scene, and the
+        # room's lamp is the one sampled light (the light manager prepares sun guiding only for a background light).
+        'sun-disc-unsampled.json': scene('sky/sun-disc-unsampled', 'Multiple-scattering sky with the sun disc as a world without a background light: '
+                                         'the sky is reached by paths only, the lamp is the sampled light', {
+            'sky_type': 'multiple_scattering', 'sun_disc': True, 'sun_size': 0.2, 'sun_intensity': 0.2, **scattering}, 1.0, sampled=False),
+        'sun-disc-unsampled-defaults.json': scene('sky/sun-disc-unsampled-defaults', 'A Sky Texture with every input at its default (a sun disc) as a world '
+                                                  'without a background light', {}, 1.0, sampled=False),
     }
 
 

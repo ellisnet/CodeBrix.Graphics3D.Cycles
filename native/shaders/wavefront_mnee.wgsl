@@ -57,6 +57,10 @@ const MM_RESULT:u32=12u;
 const MM_D:u32=16u;
 const MM_FIXED:u32=28u;
 const MM_BOUNCES:u32=32u;
+//#if DISPERSION
+// has_dispersion of mnee_path_trace: a caster's evaluation made a dispersive closure.
+const MM_DISPERSION:u32=40u;
+//#endif
 
 // The invocation's traversal stack (MR_STACK of its record): the surface module's copy of the
 // closest traversal keeps its stack there (native/tools/build_cycles.py, mnee_traversal).
@@ -533,7 +537,15 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
         let h=at+MR_HITS+k*32u;
         let hit=surface_setup_hit(load_word(h+20u),load_word(h+16u),load_word(h+12u),mn_f(h+4u),mn_f(h+8u),mn_f(h),sd.time,D,sd.dP,0.0);
         if(hit.error!=0u){return;}
+//#if DISPERSION
+        // shader_setup_wavelength on the caster (mnee_path_trace).
+        if((hit.shader_flag&DISP_SD_REQUIRES_WAVELENGTH)!=0u){disp_setup_wavelength(index);}
+//#endif
         let r=mn_shader_eval(index,hit,at);if(r.error!=0u){return;}
+//#if DISPERSION
+        // has_dispersion, read before the vertex setup: it stays in the record for mnee_contribute.
+        if((r.runtime_flag&DISP_SR_BSDF_HAS_DISPERSION)!=0u){store_word(at+MR_META+MM_DISPERSION,1u);}
+//#endif
         var found=false;
         for(var ci=0u;ci<r.count;ci++){
             let c=svm_closure_read(r,ci);
@@ -946,6 +958,10 @@ fn mn_contribution(at:u32,index:u32,slot:u32,sd:SurfaceData){
         let wi=-wo;let wi_len=wo_len;
         emission=mn_setup_from_sample(v.p,v.n,wi,v.shader,v.object,v.prim,v.uv.x,v.uv.y,wi_len,sd.time);if(emission.error!=0u){return;}
         state_u16(S_path_transmission_bounce,index,transmission_bounce+vi);state_u16(S_path_bounce,index,bounce+1u+vi);
+//#if DISPERSION
+        // sd_mnee->rand_wavelength as the caster's set-up left it: the path's one wavelength sample.
+        if((emission.shader_flag&DISP_SD_REQUIRES_WAVELENGTH)!=0u){disp_setup_wavelength(index);}
+//#endif
         let r=mn_shader_eval(index,emission,at);if(r.error!=0u){return;}emission_N=r.N;
         var next:vec3<f32>;
         if(vi==count-1u){if(fixed){next=ls.D;}else{next=mn_sub(ls.P,v.p);}}else{next=mn_sub(heap_vec3(at+MR_V+(vi+1u)*MN_VERTEX_BYTES),v.p);}
@@ -953,6 +969,11 @@ fn mn_contribution(at:u32,index:u32,slot:u32,sd:SurfaceData){
         throughput*=mn_bsdf_contribution(mn_closure(at,v.ci),wi,wo);
     }
     state_u16(S_path_transmission_bounce,index,transmission_bounce);state_u16(S_path_diffuse_bounce,index,diffuse_bounce);state_u16(S_path_bounce,index,bounce);
+//#if DISPERSION
+    // mnee_path_trace: the weight of a path that is not monochromatic yet, on the walk's throughput only. A caster that
+    // made a dispersive closure has a shader with the flag, so the loop above made the sample.
+    if(load_word(at+MR_META+MM_DISPERSION)!=0u&&(state_word(S_path_flag,index)&DISP_PATH_RAY_SPECTRAL)==0u){throughput*=disp_throughput_weight(disp_sampled);}
+//#endif
     store_word(at+MR_META+MM_RESULT,4u);mn_s3(at+MR_OUT,throughput);
     // light_sample_to_surface_shadow_ray from the last solution vertex.
     emission.N=emission_N;var start=vec4<f32>(emission.P,1.0);

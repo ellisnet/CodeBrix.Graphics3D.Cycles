@@ -9,6 +9,7 @@ heterogeneous world volume alone and with the heterogeneous box inside it; a het
 whose shadow rays end in an octree segment without an end. Two Henyey-Greenstein lobes of different
 anisotropy in one medium lit by the world (the phase-sampled path stores the pdf of all the phase closures).
 Two overlapping heterogeneous boxes that are not closed meshes.
+A dispersive glass sphere inside the homogeneous medium box.
 Usage: python3 native/oracle/scenes/author_volumes_c.py [--check]."""
 import argparse
 import json
@@ -86,8 +87,22 @@ def open_boxes(document):
     return document
 
 
+def dispersive_glass(document):
+    """The family room's glass sphere (the one inside the medium box) as a dispersive Principled BSDF."""
+    glass = next(n for n in document['nodes'] if n['handle'] == 'glass')['graph']
+    glass['nodes'] = [{'handle': 'n', 'type': 'principled_bsdf', 'set': {
+        'distribution': 'ggx', 'base_color': [0.95, 0.97, 1.0], 'roughness': 0.05, 'ior': 1.5, 'transmission_weight': 1.0,
+        'transmission_dispersion_scale': 1.0, 'transmission_dispersion_abbe_number': 15.0}}]
+    return document
+
+
 def scenes():
     return {
+        'dispersion-in-medium.json': dispersive_glass(volumes.scene(
+            'volumes/dispersion-in-medium',
+            'A dispersive Principled glass sphere (Transmission Dispersion Scale 1, Abbe number 15) inside the homogeneous '
+            'medium box, point light with MIS: the monochromatic path scatters and is absorbed in the medium'))
+        | {'sourceFixture': 'native/oracle/scenes/author_volumes_c.py (the medium box of author_volumes.py around a dispersive glass sphere)'},
         'heterogeneous-open-boxes.json': open_boxes(volumes.scene(
             'volumes/heterogeneous-open-boxes',
             'Two overlapping boxes of a heterogeneous medium (noise density) that have no back face, lit by a sun behind the '

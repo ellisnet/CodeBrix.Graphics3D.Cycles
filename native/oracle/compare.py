@@ -35,9 +35,13 @@ differences, maximum absolute and relative error, RMS, the worst pixel (largest 
 tolerance) and NaN/Inf counts. Per backend: every repeat film is re-read and compared with
 film-0 (bitwise identity and maximum difference), next to the meta.json repeat record. Films
 whose bytes differ from their recorded SHA-256, shape or scene mismatches, NaN/Inf, and
-practical failures or sample-count mismatches of gating pairs fail. The verdict is "perfect"
-when nothing failed (every gating pair passes the practical criterion). A run without a CPU
-gold standard is invalid input ("no gold standard", exit 2).
+practical failures or sample-count mismatches of gating pairs fail. Every repeat is judged:
+repeat N of a pair's candidate (film-N and its passes) against repeat N of the reference (its
+repeat 0 when the reference has no film-N); a pair's fields and "problems" hold repeat 0, its
+"repeatResults" every repeat (repeat 0 first), and a gating failure of a later repeat goes to
+"repeatProblems". The verdict is "perfect" (and "passed" true, exit 0) when nothing failed:
+every gating pair passes the practical criterion in every repeat ("everyRepeatPassed"). A run
+without a CPU gold standard is invalid input ("no gold standard", exit 2).
 
 Named passes (meta.json "passes", files pass-K-N.f32 from codebrix_cycles_oracle): every pass of the
 reference of a pair is compared with the candidate's pass of the same name and type, with the same
@@ -215,6 +219,36 @@ def judged_scene(meta):
  return (named['sceneId'],named['sceneSha256']) if named else (meta['sceneId'],meta['sceneSha256'])
 
 
+def repeat_range(directory,meta):
+ """The repeats a backend has films of: 0, then every later repeat whose film-N.f32 exists (as repeats() reads them)."""
+ n=1
+ while n<int(meta.get('repeats',1)) and (Path(directory)/f'film-{n}.f32').exists():n+=1
+ return range(n)
+
+
+def judge_repeat(rd,rm,rv,cd,cm,cv,rr,cr,first):
+ """One repeat of a pair: the candidate's film CV and named passes of repeat CR against the reference's film RV and
+ passes of repeat RR. Returns (the film comparison, the pass rows, the problems without the pair's name)."""
+ film=compare(rv,cv,first['width'],int(first.get('filmComponents',4)));found=[]
+ if film['practicalFailures']:found.append(f'{film["practicalFailures"]} practical failures')
+ # Named passes of the reference, judged like Combined with the pair's role.
+ passes=[];candidate_passes={e['name']:e for e in cm.get('passes',[])}
+ for entry in rm.get('passes',[]):
+  other=candidate_passes.get(entry['name']);row=dict(name=entry['name'],type=entry.get('type'),components=entry.get('components'),kind=pass_kind(entry))
+  problem=None
+  if not entry.get('written'):row['status']='not written by the reference'
+  elif other is None or not other.get('written'):row['status']='missing in the candidate';problem='is missing'
+  elif (other.get('type'),other.get('components'))!=(entry.get('type'),entry.get('components')):row['status']='different type or shape';problem='has a different type or shape'
+  elif cr>=len(other.get('filmSha256',[])):row['status']='repeat not written by the candidate';problem='is missing in this repeat'
+  else:
+   p=rr if rr<len(entry.get('filmSha256',[])) else 0
+   row.update(compare_pass(entry,read_pass(rd,rm,entry,p),read_pass(cd,cm,other,cr),first['width']));row['status']='compared'
+   if row.get('practicalFailures'):problem=f"{row['practicalFailures']} {'differing values' if row['kind']=='exact' else 'practical failures'}"
+  row['passed']=problem is None;passes.append(row)
+  if problem:found.append(f'pass {entry["name"]} {problem}')
+ return film,passes,found
+
+
 def run(directories):
  films=[];problems=[]
  for directory in directories:
@@ -261,32 +295,29 @@ def run(directories):
  report['oracleReferences']={m['backend']:dict(sceneId=m['sceneId'],sceneSha256=m['sceneSha256']) for _,m,_ in films if m.get('oracleReferenceFor')}
  report['crossIsaGating']=sorted(m['backend'] for _,m,_ in films if role_of(m['backend'])=='candidate' and isas[m['backend']] not in cpu_isas)
  report['legacyAndroidIsa']=sorted(m['backend'] for _,m,_ in films if isa_source(m['backend'],m)[1]==LEGACY_ANDROID)
+ repeat_problems=[]
  for x,y in itertools.combinations(films,2):
   # The gold standard is the reference (the CPU one when both are gold); otherwise the earlier directory.
   (rd,rm,rv),(cd,cm,cv)=(y,x) if rank[role_of(y[1]['backend'])]<rank[role_of(x[1]['backend'])] else (x,y)
-  role=pair_role(rm['backend'],cm['backend'],cpu_isas,isas)
-  result=compare(rv,cv,first['width'],int(first.get('filmComponents',4)));result.update(reference=rm['backend'],candidate=cm['backend'],role=role)
-  result['practicalPassed']=result['practicalFailures']==0;result['samplesMatch']=rm['samples']==cm['samples']
-  if role=='gating':
-   if not result['samplesMatch']:problems.append(f'{cm["backend"]} used {cm["samples"]} samples; {rm["backend"]} used {rm["samples"]}')
-   if not result['practicalPassed']:problems.append(f'{cm["backend"]} vs {rm["backend"]}: {result["practicalFailures"]} practical failures')
-  # Named passes of the reference, judged like Combined with the pair's role.
-  passes=[];candidate_passes={e['name']:e for e in cm.get('passes',[])}
-  for entry in rm.get('passes',[]):
-   other=candidate_passes.get(entry['name']);row=dict(name=entry['name'],type=entry.get('type'),components=entry.get('components'),kind=pass_kind(entry))
-   problem=None
-   if not entry.get('written'):row['status']='not written by the reference'
-   elif other is None or not other.get('written'):row['status']='missing in the candidate';problem='is missing'
-   elif (other.get('type'),other.get('components'))!=(entry.get('type'),entry.get('components')):row['status']='different type or shape';problem='has a different type or shape'
-   else:
-    row.update(compare_pass(entry,read_pass(rd,rm,entry,0),read_pass(cd,cm,other,0),first['width']));row['status']='compared'
-    if row.get('practicalFailures'):problem=f"{row['practicalFailures']} {'differing values' if row['kind']=='exact' else 'practical failures'}"
-   row['passed']=problem is None;passes.append(row)
-   if role=='gating' and problem:problems.append(f'{cm["backend"]} vs {rm["backend"]}: pass {entry["name"]} {problem}')
-  if passes:result['passes']=passes
+  role=pair_role(rm['backend'],cm['backend'],cpu_isas,isas);name=f'{cm["backend"]} vs {rm["backend"]}'
+  # Every repeat of the candidate against the reference's film of the same repeat (its film-0 when it has fewer repeat
+  # films, whose own repeats are compared with film-0 above). Repeat 0 fills the pair's fields as before.
+  rows=[]
+  for r in repeat_range(cd,cm):
+   rr=r if r in repeat_range(rd,rm) else 0
+   film,passes,found=judge_repeat(rd,rm,rv if rr==0 else read_film(rd,rm,rr),cd,cm,cv if r==0 else read_film(cd,cm,r),rr,r,first)
+   rows.append(dict(repeat=r,referenceRepeat=rr,**film,practicalPassed=film['practicalFailures']==0,**({'passes':passes} if passes else {}),passed=not found))
+   if r==0:
+    result=dict(film,reference=rm['backend'],candidate=cm['backend'],role=role)
+    result['practicalPassed']=result['practicalFailures']==0;result['samplesMatch']=rm['samples']==cm['samples']
+    if role=='gating' and not result['samplesMatch']:problems.append(f'{cm["backend"]} used {cm["samples"]} samples; {rm["backend"]} used {rm["samples"]}')
+    if passes:result['passes']=passes
+   if role=='gating':(problems if r==0 else repeat_problems).extend(f'{name}: '+('' if r==0 else f'repeat {r}: ')+p for p in found)
+  result['repeatResults']=rows;result['everyRepeatPassed']=all(row['passed'] for row in rows)
   report['pairs'].append(result)
  report['gatingPairs']=sum(1 for p in report['pairs'] if p['role']=='gating')
- report['problems']=problems;report['passed']=not problems
+ report['everyRepeatPassed']=all(p['everyRepeatPassed'] for p in report['pairs'] if p['role']=='gating')
+ report['problems']=problems;report['repeatProblems']=repeat_problems;report['passed']=not problems and not repeat_problems
  report['verdict']='perfect' if report['passed'] and len(films)>=2 else 'not perfect'
  return report
 
@@ -318,9 +349,13 @@ def table(report):
    extra=f" slotOrderDiff={q['slotOrderDifferences']}" if 'slotOrderDifferences' in q else ''
    mx='exact' if q['kind']=='exact' else f"{q['maxAbsoluteDifference']:.3g}"
    lines.append(f"      pass {q['name']:<24} {q['type']:<22} maxAbs={mx:>10} practicalFail={q['practicalFailures']} strictDiff={q['strictDifferences']}{extra}")
+  for q in p.get('repeatResults',[])[1:]:
+   failed=[x['name'] for x in q.get('passes',[]) if not x['passed']]
+   lines.append(f"      repeat {q['repeat']} vs reference repeat {q['referenceRepeat']}: maxAbs={q['maxAbsoluteDifference']:.3g} practicalFail={q['practicalFailures']} "
+                f"strictDiff={q['strictDifferences']}"+(f" passesFailed={','.join(failed)}" if failed else '')+(' passed' if q['passed'] else ' FAILED' if p['role']=='gating' else ' differs (reported)'))
  if report.get('legacyAndroidIsa'):lines.append('  note: '+', '.join(report['legacyAndroidIsa'])+': '+LEGACY_ANDROID)
  if report.get('crossIsaGating'):lines.append('  note: no same-ISA CPU gold standard for '+', '.join(report['crossIsaGating'])+'; gated against the CPU film present')
- lines.append(f"  verdict: {report['verdict']}"+('' if report['passed'] else '; FAILED: '+'; '.join(report['problems'])))
+ lines.append(f"  verdict: {report['verdict']}"+('' if report['passed'] else '; FAILED: '+'; '.join(report['problems']+report['repeatProblems'])))
  return '\n'.join(lines)
 
 
@@ -329,11 +364,13 @@ def self_test():
  root=Path(tempfile.mkdtemp(prefix='compare-self-test-'))
  def film(name,values,width=2,height=1,scene='s',repeat_values=None,passes=None,**extra):
   d=root/name;d.mkdir();hashes=[];entries=[]
-  for k,(pname,ptype,components,pvalues) in enumerate(passes or []):
-   data=array.array('f',pvalues)
-   if sys.byteorder!='little':data.byteswap()
-   raw=data.tobytes();(d/f'pass-{k}-0.f32').write_bytes(raw)
-   entries.append(dict(index=k,name=pname,type=ptype,components=components,written=True,filmSha256=[hashlib.sha256(raw).hexdigest()]))
+  for k,(pname,ptype,components,*pvalues) in enumerate(passes or []):
+   # One list of values per repeat (a pass without a second list has repeat 0 only).
+   entries.append(dict(index=k,name=pname,type=ptype,components=components,written=True,filmSha256=[]))
+   for r,vals in enumerate(pvalues):
+    data=array.array('f',vals)
+    if sys.byteorder!='little':data.byteswap()
+    raw=data.tobytes();(d/f'pass-{k}-{r}.f32').write_bytes(raw);entries[-1]['filmSha256'].append(hashlib.sha256(raw).hexdigest())
   for r,vals in enumerate([values]+([repeat_values] if repeat_values else [])):
    data=array.array('f',vals)
    if sys.byteorder!='little':data.byteswap()
@@ -428,6 +465,33 @@ def self_test():
   r=run([film('cpu-arm64-a6',base),film('wgsl-linux-a6',far,rid='linux-x64',wgslArithmetic='arm64-scalar')])
   checks['desktopArm64ScalarGatesOnArm64']=r['verdict']=='not perfect' and r['pairs'][0]['role']=='gating' and r['crossIsaGating']==[]
   checks['unknownArithmeticInvalid']=invalid([film('cpu-x64-a7',base),film('wgsl-android-a7',base,wgslArithmetic='mips')])
+  # Every repeat gates: repeat N of the candidate against repeat N of the reference (its repeat 0 when it has no film-N).
+  # Repeat 0's numbers and problems stay where they were; a later repeat's failures go to repeatProblems.
+  def cpu2(name):return film(name,base,repeat_values=base)
+  r=run([cpu2('cpu-r1'),film('wgsl-r1',base,repeat_values=far)])
+  checks['repeat0PassesRepeat1FailsNotPerfect']=r['verdict']=='not perfect' and not r['passed'] and r['problems']==[] and not r['everyRepeatPassed'] \
+   and r['repeatProblems']==['wgsl-r1 vs cpu-r1: repeat 1: 1 practical failures'] and r['pairs'][0]['practicalFailures']==0 \
+   and [(q['repeat'],q['referenceRepeat'],q['practicalFailures'],q['passed']) for q in r['pairs'][0]['repeatResults']]==[(0,0,0,True),(1,1,1,False)]
+  r=run([cpu2('cpu-r2'),film('wgsl-r2',near,repeat_values=base)])
+  checks['bothRepeatsPassPerfect']=r['verdict']=='perfect' and r['everyRepeatPassed'] and r['repeatProblems']==[] and len(r['pairs'][0]['repeatResults'])==2
+  r=run([cpu2('cpu-r3'),film('wgsl-r3',far,repeat_values=base)])
+  checks['repeat0FailsAsBefore']=r['verdict']=='not perfect' and r['problems']==['wgsl-r3 vs cpu-r3: 1 practical failures'] and r['repeatProblems']==[]
+  r=run([cpu2('cpu-r4'),film('wgsl-r4',far,repeat_values=far)])
+  checks['bothRepeatsFailCountsNotDoubled']=r['verdict']=='not perfect' and r['pairs'][0]['practicalFailures']==1 \
+   and r['problems']==['wgsl-r4 vs cpu-r4: 1 practical failures'] and r['repeatProblems']==['wgsl-r4 vs cpu-r4: repeat 1: 1 practical failures']
+  r=run([film('cpu-r5',base),film('wgsl-r5',near)])
+  checks['oneRepeatAsBefore']=r['verdict']=='perfect' and [q['repeat'] for q in r['pairs'][0]['repeatResults']]==[0]
+  r=run([cpu2('cpu-r6'),film('wgsl-r6',base,repeat_values=nan)])
+  checks['nanInRepeat1Fails']=r['verdict']=='not perfect' and any('repeat 1 has 1 NaN/Inf' in x for x in r['problems'])
+  r=run([film('cpu-r7',base),film('wgsl-r7',base,repeat_values=far)])
+  checks['referenceWithoutRepeatGivesFilm0']=r['verdict']=='not perfect' and r['pairs'][0]['repeatResults'][1]['referenceRepeat']==0 \
+   and r['repeatProblems']==['wgsl-r7 vs cpu-r7: repeat 1: 1 practical failures']
+  r=run([cpu2('cpu-r8'),film('metal-r8',base,repeat_values=far),film('wgsl-r8',base,repeat_values=near)])
+  checks['reportedPairRepeatNeverFails']=r['verdict']=='perfect' and r['everyRepeatPassed'] and \
+   any(not p['everyRepeatPassed'] for p in r['pairs'] if p['role']=='reported')
+  r=run([film('cpu-r9',base,repeat_values=base,passes=[('Depth','depth',1,[1.5,2.0],[1.5,2.0])]),
+         film('wgsl-r9',base,repeat_values=base,passes=[('Depth','depth',1,[1.5,2.0],[1.5,2.1])])])
+  checks['passBeyondPracticalInRepeat1Fails']=r['verdict']=='not perfect' and r['problems']==[] and r['repeatProblems']==['wgsl-r9 vs cpu-r9: repeat 1: pass Depth 1 practical failures']
  finally:shutil.rmtree(root)
  print(json.dumps(checks,indent=2))
  return all(checks.values())

@@ -19,6 +19,9 @@ the full spread, a disk area light with a narrow spread or a rectangular area li
 mnee/anisotropic-glass-caustic, mnee/anisotropic-principled-caustic: the sphere is a rough anisotropic Glass BSDF (GGX, a constant
 tangent) or a Principled BSDF with full transmission, an Anisotropic value and the same tangent: the anisotropic branch of
 mnee_sample_bsdf_dh (no mnee_fixture.h case; the nearest is case 1, a rough isotropic refraction caster).
+mnee/dispersion-caustic, mnee/dispersion-rough-caustic: the sphere is a dispersive Principled BSDF with full transmission, smooth or
+rough (the wavelength set-up of the manifold walk's shader evaluations and the throughput weight of its contribution; no
+mnee_fixture.h case).
 """
 import json
 from pathlib import Path
@@ -90,6 +93,16 @@ def multiscatter():
  node(nodes,'glass')['graph']=dict(nodes=[dict(handle='bsdf',type='glass_bsdf',set=dict(distribution='multi_ggx',roughness=0.2,IOR=1.45,color=[0.95,0.97,1.0]))],
   connect=[['bsdf','BSDF','output','Surface']])
  return data
+def dispersion(rough):
+ data,nodes=derived('mnee/dispersion-rough-caustic' if rough else 'mnee/dispersion-caustic',
+  'MNEE shadow caustics through a rough dispersive Principled BSDF (multiscatter GGX, roughness 0.08, Transmission Dispersion Scale 1, Abbe number 15)'
+  if rough else 'MNEE shadow caustics through a smooth dispersive Principled BSDF (full transmission, Transmission Dispersion Scale 1, Abbe number 15): '
+  'the wavelength of the path sets the index of refraction of the manifold walk, and the walk\'s contribution carries the throughput weight',1 if rough else 0)
+ data['sourceFixture']='native/oracle/scenes/author_mnee.py; no mnee_fixture() case (nearest: case '+('1, a rough refraction caster)' if rough else '0, the smooth glass caster)')
+ node(nodes,'glass')['graph']=dict(nodes=[dict(handle='bsdf',type='principled_bsdf',set=dict(distribution='multi_ggx' if rough else 'ggx',base_color=[0.95,0.97,1.0],
+   roughness=0.08 if rough else 0.0,ior=1.45,transmission_weight=1.0,transmission_dispersion_scale=1.0,transmission_dispersion_abbe_number=15.0))],
+  connect=[['bsdf','BSDF','output','Surface']])
+ return data
 def volume():
  data,nodes=derived('mnee/volume-caustic','MNEE shadow caustics inside an absorbing medium: the sphere and the floor under it in a box with an absorption volume',24)
  at=nodes.index(node(nodes,'world'))
@@ -124,7 +137,7 @@ def catcher():
  return data
 def main():
  for data in [moving_caster(),spot(False),spot(True),
-              background(),lamp_shader(),beckmann(),volume(),huang(),catcher(),anisotropic(False),anisotropic(True),multiscatter(),
+              background(),lamp_shader(),beckmann(),volume(),huang(),catcher(),anisotropic(False),anisotropic(True),multiscatter(),dispersion(False),dispersion(True),
               area('mnee/area-caustic','MNEE shadow caustics from a rectangular area light with the full spread',26,dict(sizeu=1.2,sizev=0.9,ellipse=False,spread=3.1415927)),
               area('mnee/area-disk-spread-caustic','MNEE shadow caustics from a disk area light with a narrow spread (the clamped sample region)',27,
                    dict(sizeu=0.8,sizev=0.8,ellipse=True,spread=1.2)),

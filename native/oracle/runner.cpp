@@ -17,6 +17,7 @@
 #include <functional>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -40,6 +41,24 @@ std::string read_file(const fs::path &path) {
   if (!file) fail("Cannot read " + path.string());
   std::ostringstream content; content << file.rdbuf(); return content.str();
 }
+
+// The levels of a tiled image entry (provisional), served to the host's read callback; freed by its release callback.
+struct TiledLevels {
+  std::vector<std::string> levels;
+  std::vector<std::pair<uint32_t, uint32_t>> sizes;
+  uint64_t pixel_bytes = 0;
+  static int read(void *user_data, uint32_t level, uint32_t x, uint32_t y, uint32_t width, uint32_t height, void *pixels, uint64_t row_bytes) {
+    const auto &self = *static_cast<const TiledLevels *>(user_data);
+    if (level >= self.levels.size()) return 1;
+    const auto [w, h] = self.sizes[level];
+    if (x > w || width > w - x || y > h || height > h - y) return 2;
+    for (uint32_t row = 0; row < height; row++)
+      std::memcpy(static_cast<char *>(pixels) + row * row_bytes, self.levels[level].data() + (uint64_t(y + row) * w + x) * self.pixel_bytes,
+                  width * self.pixel_bytes);
+    return 0;
+  }
+  static void release(void *user_data) { delete static_cast<TiledLevels *>(user_data); }
+};
 
 struct Loader {
   CBCHost host;
@@ -67,6 +86,24 @@ struct Loader {
     if (pixels.size() != uint64_t(config.width) * config.height * format->second.second)
       fail("Raw pixel file size does not match " + handle);
     CBCImage image = 0;
+    // Provisional (native/host/ABI.md "Tiled images"): `tiled` makes the entry a tiled image, `file` its level 0 and
+    // `tiled.levels` the raw files of levels 1 and up (the caller's pixels: the author script writes them); `tiled.tileSize`
+    // is the tile side (0 or absent: the default). The read callback copies the asked rectangle out of the level's file.
+    if (auto tiled = entry.find("tiled")) {
+      auto source = std::make_unique<TiledLevels>();
+      source->pixel_bytes = format->second.second;
+      source->levels.push_back(std::move(pixels));
+      if (auto levels = tiled->find("levels")) for (auto &level : levels->items) source->levels.push_back(read_file(directory / level.string()));
+      for (size_t level = 0; level < source->levels.size(); level++) {
+        const uint64_t w = std::max<uint32_t>(1, config.width >> level), h = std::max<uint32_t>(1, config.height >> level);
+        if (level > 31 || source->levels[level].size() != w * h * source->pixel_bytes)
+          fail("Raw pixel file size of level " + std::to_string(level) + " does not match " + handle);
+        source->sizes.emplace_back(uint32_t(w), uint32_t(h));
+      }
+      if (auto size = tiled->find("tileSize")) config.tile_size = uint32_t(size->as_int());
+      check(cbc_host_image_create_tiled(host, &config, &TiledLevels::read, &TiledLevels::release, source.release(), &image),
+            "cbc_host_image_create_tiled(" + handle + ")");
+    } else
     check(cbc_host_image_create(host, &config, pixels.data(), pixels.size(), &image), "cbc_host_image_create(" + handle + ")");
     if (!images.emplace(handle, image).second) fail("Duplicate image handle: " + handle);
   }
@@ -436,6 +473,13 @@ int run(int argc, char **argv) {
   const uint32_t samples = uint32_t(render.at("samples").as_int());
   const uint32_t repeats = render.find("repeats") ? uint32_t(render.at("repeats").as_int()) : 2;
   if (!repeats) fail("render.repeats must be positive");
+  // Provisional: the render threads a scene pins (it overrides --threads). A tiled image's Linear and Cubic lookups depend
+  // in their last bits on the pool slot Cycles' texture cache gave each tile, which follows the order of the loads: only
+  // one CPU thread fixes that order, and with it the CPU film from one process to the next.
+  if (auto threads = render.find("threads")) {
+    if (!threads->is(Json::Number) || threads->as_int() < 1 || threads->as_int() > 1024) fail("render.threads must be a number from 1 to 1024");
+    options.threads = uint32_t(threads->as_int());
+  }
   const fs::path directory = options.scene.parent_path();
   if (auto color = scene.find("colorConfig"); color && !color->is(Json::Null))
     check(cbc_host_color_config_path((directory / color->string()).string().c_str()), "cbc_host_color_config_path");

@@ -211,6 +211,14 @@ int main(int argc, char **argv) {
     CBCNode converted = create("shader"), colour = graph_node(converted, "color"), glow = graph_node(converted, "emission");
     CHECK(cbc_host_connect(host, colour, "Color", glow, "Strength"));
     REQUIRE(cbc_host_connect(host, glow, "Emission", glow, "Strength") == CBC_UNSUPPORTED);
+    /* A value linked into a Boolean input: Cycles has no conversion node for it, so the link is refused when it is made. */
+    { CBCNode range = graph_node(converted, "map_range"), map = graph_node(converted, "uvmap"), math = graph_node(converted, "math");
+      char refusal[512];
+      REQUIRE(cbc_host_connect(host, math, "Value", range, "Clamp") == CBC_UNSUPPORTED);
+      CHECK(cbc_host_error(refusal, sizeof(refusal), &required)); REQUIRE(strstr(refusal, "A Boolean input cannot be linked") != NULL);
+      REQUIRE(cbc_host_connect(host, colour, "Color", map, "from dupli") == CBC_UNSUPPORTED);
+      CHECK(cbc_host_error(refusal, sizeof(refusal), &required)); REQUIRE(strstr(refusal, "A Boolean input cannot be linked") != NULL);
+      CHECK(cbc_host_connect(host, math, "Value", range, "Value")); }
     CHECK(cbc_host_delete_node(host, converted)); api_reach++;
     text(mesh, "subdivision_type", "catmull_clark");
     REQUIRE(cbc_host_render(host, &settings, film_b, FLOATS) == CBC_UNSUPPORTED);

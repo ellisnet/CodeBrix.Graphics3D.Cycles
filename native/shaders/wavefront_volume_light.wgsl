@@ -237,6 +237,14 @@ fn vl_direct_light(index:u32,slot:u32,r:SvmResult,P:vec3<f32>,throughput:vec3<f3
 //#endif
     let ls=light_sample_lamp(index,sd,rr,selection);
 //#endif
+//#if LIGHT_NAN_DIRECTION
+    // A sample with a NaN direction at the scatter position (an area light with an axis of zero length and a spread of zero):
+    // whatever the phase function gives for it (1 / (4 pi) for a Henyey-Greenstein |g| below 1e-3, NaN otherwise), its shadow
+    // ray starts inside the scattering volume with a NaN distance, and a homogeneous stack's transmittance over it is NaN
+    // (wavefront_shadow.wgsl vl_shadow_step): no contribution. Heterogeneous volumes and ray marching are refused with such a
+    // light before rendering (lighting.cpp).
+    if(light_nan(ls.D.x)){return;}
+//#endif
 //#if !BACKGROUND_PORTAL
     vl_direct_finish(index,slot,r,P,throughput,D,sd,ls);
 //#endif
@@ -614,6 +622,47 @@ fn vl_area_segment(light:u32,P_in:vec3<f32>,D_in:vec3<f32>,range:vec2<f32>)->vec
     let tan_half_spread=heap_float(light+L_area_tan_half_spread);var axis=heap_vec3(light+L_area_dir);var out=range;var valid=true;
     let u=heap_vec3(light+L_area_axis_u);let v=heap_vec3(light+L_area_axis_v);let len_u=heap_float(light+L_area_len_u);let len_v=heap_float(light+L_area_len_v);
     var P=P_in;var D=D_in;
+//#if LIGHT_AREA_OVERFLOW
+    // An axis whose length overflowed (native/DEVICE.md, item 233): the pinned record holds a zero axis of infinite length.
+    let over_u=ovf_axis(len_u);let over_v=ovf_axis(len_v);
+    if(over_u||over_v){
+        if(tan_half_spread<1e-5){
+            // The light's frame: the coordinate and the direction component along the zero axis are 0.
+            let lP=vec3<f32>(rounded_dot(u,P_in),rounded_dot(v,P_in),rounded_dot(axis,P_in));let lD=vec3<f32>(rounded_dot(u,D_in),rounded_dot(v,D_in),rounded_dot(axis,D_in));
+            if(heap_float(light+L_area_invarea)<0.0){
+                // ray_infinite_cylinder_intersect: inv_len = 1 / inf = 0 on that axis, so the quadratic is the other axis's
+                // alone. Both axes: a = 0, t_mid = -b / a is NaN and so is the range (empty).
+                if(over_u&&over_v){return vec2<f32>(1.0,0.0);}
+                let inv=rounded_divide(1.0,0.5*select(len_u,len_v,over_u));var Pp=select(lP.x,lP.y,over_u)*inv;let Dp=select(lD.x,lD.y,over_u)*inv;
+                let a=Dp*Dp;if(a==0.0){return vec2<f32>(1.0,0.0);}
+                var b=Pp*Dp;let t_mid=rounded_divide(-b,a);Pp=rounded_add(Pp,Dp*t_mid);b=Pp*Dp;let c=rounded_add(Pp*Pp,-1.0);let q=vl_solve_quadratic(a,2.0*b,c);
+                out=vec2<f32>(max(out.x,rounded_add(q.x,t_mid)),min(out.y,rounded_add(q.y,t_mid)));valid=q.z!=0.0&&out.x<out.y;
+            }else{
+                // ray_aabb_intersect: that axis's slab is the whole line ((-inf - 0) * inv and (inf - 0) * inv are infinities
+                // of opposite signs, whatever the sign of the zero direction component), so the other slabs remain.
+                let inv_z=rounded_divide(1.0,lD.z);let lower_z=rounded_add(0.0,-lP.z)*inv_z;let upper_z=rounded_add(bitcast<f32>(0x7f7fffffu),-lP.z)*inv_z;
+                var tmin=max(min(lower_z,upper_z),out.x);var tmax=min(max(lower_z,upper_z),out.y);
+                if(!over_u){let inv=rounded_divide(1.0,lD.x);let lower=rounded_add(-0.5*len_u,-lP.x)*inv;let upper=rounded_add(0.5*len_u,-lP.x)*inv;tmin=max(tmin,min(lower,upper));tmax=min(tmax,max(lower,upper));}
+                if(!over_v){let inv=rounded_divide(1.0,lD.y);let lower=rounded_add(-0.5*len_v,-lP.y)*inv;let upper=rounded_add(0.5*len_v,-lP.y)*inv;tmin=max(tmin,min(lower,upper));tmax=min(tmax,max(lower,upper));}
+                out=vec2<f32>(tmin,tmax);valid=out.x<out.y;
+            }
+            if(!valid){return vec2<f32>(1.0,0.0);}
+            return vl_plane_segment(vec3<f32>(0.0,0.0,1.0),lP,lD,out);
+        }
+        // The spread cone: area_light_max_extent is infinite, so apex_to_point = P + inf / tan_half_spread * axis is NaN in
+        // the lanes where the light's direction is zero and an infinity in the others. With cos_angle_sq >= 1e-4,
+        // ray_cone_intersect's c = sqr(AP) - cos_angle_sq * dot(P, P) is NaN, solve_quadratic's roots are NaN and neither
+        // `AP + tmin * AD > 0.0f` nor the other holds: no segment. A wider spread is the plane through that apex:
+        // t = -dot(P, N) / DN is NaN when the direction has a zero lane (fmaxf and fminf keep the range), and otherwise
+        // -inf / DN, which leaves the range too unless DN is a positive zero (fminf(max, -inf)).
+        var plane=tan_half_spread>=1000.0;
+        if(!plane){plane=rounded_divide(1.0,rounded_add(1.0,tan_half_spread*tan_half_spread))<1e-4;}
+        if(!plane){return vec2<f32>(1.0,0.0);}
+        if(all(axis!=vec3<f32>(0.0))&&bitcast<u32>(rounded_dot(D_in,axis))==0u){return vec2<f32>(1.0,0.0);}
+        if(!(out.x<out.y)){return vec2<f32>(1.0,0.0);}
+        return vl_plane_segment(axis,P_in,D_in,out);
+    }
+//#endif
     if(tan_half_spread<1e-5){
         // make_transform(axis_u, axis_v, axis): rows u, v, axis.
         P=vec3<f32>(rounded_dot(u,P_in),rounded_dot(v,P_in),rounded_dot(axis,P_in));D=vec3<f32>(rounded_dot(u,D_in),rounded_dot(v,D_in),rounded_dot(axis,D_in));
